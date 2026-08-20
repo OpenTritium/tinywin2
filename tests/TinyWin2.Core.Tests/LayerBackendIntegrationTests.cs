@@ -143,7 +143,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
 
         // The build completes; only the healthy step's layer survives in the chain.
         await Assert.That(result.Succeeded).IsTrue();
-        await Assert.That(result.FailedStepId).IsEqualTo("it.registry-boom");
+        await Assert.That(result.FailedStepId).IsEqualTo("group:BoomGroup"); // group granularity steps carry the group id, not the plan id
         await Assert.That(result.LayerCount).IsEqualTo(1);
         await Assert.That(File.Exists(result.ManifestPath)).IsTrue();
     }
