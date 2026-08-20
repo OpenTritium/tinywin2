@@ -7,9 +7,11 @@ public static class ToolLocator {
         if (string.IsNullOrWhiteSpace(fileName)) {
             return null;
         }
+
         if (Path.IsPathRooted(fileName)) {
             return File.Exists(fileName) ? fileName : null;
         }
+
         var path = Environment.GetEnvironmentVariable("PATH");
         // File.Exists never throws; malformed PATH entries simply miss.
         var found = path?
