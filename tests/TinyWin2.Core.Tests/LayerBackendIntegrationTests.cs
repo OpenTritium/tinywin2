@@ -5,6 +5,7 @@ using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
 using TinyWin2.Core.Pipeline;
 using TinyWin2.Core.Plans;
+using TUnit.Core;
 
 namespace TinyWin2.Core.Tests;
 
@@ -14,8 +15,9 @@ namespace TinyWin2.Core.Tests;
 /// %TEMP% workspaces and the mounted image — the host system is never modified (ISO mounts
 /// are dismounted in finally). TINYWIN2_TEST_ISO points at an ISO file or a media folder.
 /// </summary>
+[NotInParallel] // every test claims drive letters, diskpart and ISO mounts — global resources
 public sealed class LayerBackendIntegrationTests : IDisposable {
-    private readonly string _root = TestPlans.CreateTempDirectory();
+    private readonly string _root = ItGateAttribute.CreateTestRoot();
 
     [Test]
     [ItGate]

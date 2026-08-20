@@ -200,9 +200,18 @@ public sealed class VhdLayerStack(
         try {
             await applyAsync($"{letter}:\\", ct);
         }
-        finally {
-            await backend.DetachAsync(BaseVhdxPath, ct);
+        catch {
+            // A failed apply leaves the base unusable anyway; a detach error here (often
+            // "not attached" after disk-full) must not mask the original apply failure.
+            try {
+                await backend.DetachAsync(BaseVhdxPath, ct);
+            }
+            catch (Exception ex) {
+                log.Warn($"detach after a failed base apply also failed: {ex.Message}");
+            }
+            throw;
         }
+        await backend.DetachAsync(BaseVhdxPath, ct);
     }
 
     /// <summary>Creates + attaches a fresh differencing layer for one plan step.</summary>
