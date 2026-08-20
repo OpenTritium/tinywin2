@@ -62,8 +62,8 @@ public sealed partial class SourcePage : Page {
                 var item = new ImageIndexItem(
                     node["index"]!.GetValue<int>(),
                     node["name"]?.GetValue<string>() ?? "",
-                    node["editionId"]?.GetValue<string>(),
-                    node["version"]?.GetValue<string>(),
+                    node["editionId"]?.GetValue<string>() ?? "",
+                    node["version"]?.GetValue<string>() ?? "",
                     $"{node["index"]}: {node["name"]}" + (node["editionId"] is not null ? $" [{node["editionId"]}]" : ""));
                 State.ImageIndexes.Add(item);
                 IndexCombo.Items.Add(item);

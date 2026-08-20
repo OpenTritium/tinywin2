@@ -8,6 +8,7 @@
     <IsPackable>false</IsPackable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
     <TestingPlatformDotNetTestSupport>true</TestingPlatformDotNetTestSupport>
   </PropertyGroup>
 
