@@ -31,11 +31,11 @@ public static class EnvironmentDoctor {
             new("administrator", elevated, true, elevated ? "running elevated" : "must run as administrator"),
         };
         results.AddRange(from tool in Tools
-            let path = tool.IsSystemTool && File.Exists(Path.Combine(Environment.SystemDirectory, tool.Tool))
-                ? Path.Combine(Environment.SystemDirectory, tool.Tool)
-                : ToolLocator.Locate(tool.Tool)
-            select new CheckResult(tool.Tool, path is not null, tool.Required,
-                path ?? "not found on PATH or System32"));
+                         let path = tool.IsSystemTool && File.Exists(Path.Combine(Environment.SystemDirectory, tool.Tool))
+                             ? Path.Combine(Environment.SystemDirectory, tool.Tool)
+                             : ToolLocator.Locate(tool.Tool)
+                         select new CheckResult(tool.Tool, path is not null, tool.Required,
+                             path ?? "not found on PATH or System32"));
         if (outputDirectoryHint is not null) {
             results.Add(CheckFreeSpace(outputDirectoryHint, MinimumFreeBytes));
         }
