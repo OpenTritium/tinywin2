@@ -59,7 +59,9 @@ public sealed class LayerSession {
 /// <summary>
 /// The VHDX overlay chain: base.vhdx + L001..Ln.vhdx differencing layers with a
 /// persistent manifest (<c>layers.json</c>). Layer atomicity = a failed layer's VHDX is
-/// deleted, leaving the image byte-identical to before the step started.
+/// deleted, leaving the image byte-identical to before the step started. Consolidation
+/// (merging diffs into the base) happens at artifact export; mid-build only when the
+/// backend's chain-depth safety limit demands it.
 /// </summary>
 public sealed class VhdLayerStack(
     string workDirectory,
@@ -67,7 +69,6 @@ public sealed class VhdLayerStack(
     BuildLog log) {
     private const string BaseFileName = "base.vhdx";
     private const string ManifestFileName = "layers.json";
-    private const int ConsolidateThreshold = 30;
 
     private readonly object _gate = new();
     private readonly List<LayerRecord> _records = [];
@@ -259,7 +260,9 @@ public sealed class VhdLayerStack(
         Save();
         log.Info($"layer {session.Record.Index:000} committed ({new FileInfo(session.VhdxPath).Length / 1024.0 / 1024:F1} MB)",
             layerIndex: session.Record.Index);
-        if (ChainDepth > ConsolidateThreshold) {
+        // Merging is export-time work; mid-build it is only a safety valve for backends
+        // whose deep-chain handling is unreliable (see ILayerBackend.MaxSafeChainDepth).
+        if (ChainDepth > backend.MaxSafeChainDepth) {
             await ConsolidateAsync(ct);
         }
     }

@@ -144,6 +144,12 @@ public sealed class LayerBackendTests : IDisposable {
         await Assert.That(ex.Message).Contains("differencing parent not found");
     }
 
+    [Test]
+    public async Task ChainDepthLimitsMatchBackendReliability() {
+        await Assert.That(new DiskPartVhdBackend(_runner).MaxSafeChainDepth).IsEqualTo(30);
+        await Assert.That(new HyperVhdBackend(_runner).MaxSafeChainDepth).IsEqualTo(int.MaxValue);
+    }
+
     // ---- ExecuterRegistry validation ----------------------------------------
 
     [Test]

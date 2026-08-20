@@ -243,9 +243,11 @@ public sealed class BuildEngine(
         var letter = await layerBackend.AttachAsync(leaf, ct);
         try {
             if (format == ImageFormat.Esd) {
+                // Uncompressed staging + single compression in the export below: the recovery
+                // pass would re-encode everything anyway, so pre-compressing only costs time.
                 var intermediate = Path.Combine(workspace, "install.intermediate.wim");
                 await builder.CaptureAsync($"{letter}:\\", intermediate, sourceIndex.Name, sourceIndex.Description,
-                    ImageFormat.Wim, options.Fast, ct);
+                    compress: "none", verify: false, ct);
                 var esdPath = Path.Combine(workspace, "install.esd");
                 await builder.ExportEsdAsync(intermediate, esdPath, ct);
                 return esdPath;

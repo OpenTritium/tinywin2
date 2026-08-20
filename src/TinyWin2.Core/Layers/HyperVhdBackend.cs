@@ -8,6 +8,9 @@ namespace TinyWin2.Core.Layers;
 /// chains — the preferred backend wherever the Hyper-V module is available.
 /// </summary>
 public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
+    /// <summary>This is the same machinery Hyper-V uses for its own checkpoint chains:
+    /// arbitrarily deep differencing chains are native, so merging is never forced mid-build.</summary>
+    public int MaxSafeChainDepth => int.MaxValue;
     public async Task CreateBaseAsync(string vhdxPath, long maximumMb, string volumeLabel, CancellationToken ct) {
         Directory.CreateDirectory(Path.GetDirectoryName(vhdxPath)!);
         var ps = $"""

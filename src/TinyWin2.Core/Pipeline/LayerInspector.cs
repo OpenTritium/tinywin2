@@ -228,7 +228,9 @@ public sealed partial class LayerInspector(
             if (format == ImageFormat.Esd) {
                 var intermediate = Path.Combine(Path.GetTempPath(), $"tinywin2-rollback-{Guid.NewGuid():N}.wim");
                 try {
-                    await builder.CaptureAsync($"{letter}:\\", intermediate, name, null, ImageFormat.Wim, fast, ct);
+                    // uncompressed staging: the recovery export re-encodes anyway
+                    await builder.CaptureAsync($"{letter}:\\", intermediate, name, null,
+                        compress: "none", verify: false, ct);
                     await builder.ExportEsdAsync(intermediate, destinationPath, ct);
                 }
                 finally {

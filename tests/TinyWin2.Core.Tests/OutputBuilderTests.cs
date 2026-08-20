@@ -33,6 +33,15 @@ public sealed class OutputBuilderTests : IDisposable {
     }
 
     [Test]
+    public async Task UncompressedStagingCaptureSkipsCompressionAndVerify() {
+        await _builder.CaptureAsync("M:\\", "staging.wim", "name", null, compress: "none", verify: false,
+            CancellationToken.None);
+        var args = string.Join(' ', _runner.ArgsOf(0));
+        await Assert.That(args).Contains("/Compress:none");
+        await Assert.That(args.Contains("/Verify")).IsFalse();
+    }
+
+    [Test]
     public async Task RebuildMediaToleratesRobocopySuccessCodesOnlyBelowEight() {
         var source = CreateMediaSource();
         var captured = Path.Combine(_root, "captured.wim");

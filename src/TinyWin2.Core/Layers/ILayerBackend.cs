@@ -21,4 +21,12 @@ public interface ILayerBackend {
 
     /// <summary>Merges the selected disk and depth-1 ancestors into its parent (offline).</summary>
     Task MergeAsync(string vhdxPath, int depth, CancellationToken ct);
+
+    /// <summary>
+    /// Deepest differencing chain this backend attaches reliably. The stack merges mid-build
+    /// only past this safety limit — merging is export-time work (the VHDX artifact path does
+    /// it once), so a backend that handles deep chains natively should never force it.
+    /// diskpart's parent locators are fragile on deep chains; Hyper-V checkpoint machinery is not.
+    /// </summary>
+    int MaxSafeChainDepth { get; }
 }

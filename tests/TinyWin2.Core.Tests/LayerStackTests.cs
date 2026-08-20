@@ -10,6 +10,7 @@ namespace TinyWin2.Core.Tests;
 public sealed class FakeLayerBackend : ILayerBackend {
     public List<string> Calls { get; } = [];
     public int MergeDepth { get; private set; }
+    public int MaxSafeChainDepth { get; set; } = 30;
 
     public Task CreateBaseAsync(string vhdxPath, long maximumMb, string volumeLabel, CancellationToken ct) {
         Calls.Add($"create-base:{Path.GetFileName(vhdxPath)}");
@@ -139,6 +140,22 @@ public sealed class VhdLayerStackTests : IDisposable {
         await Assert.That(_backend.MergeDepth).IsEqualTo(1);
         await Assert.That(File.Exists(reborn.VhdxPath)).IsFalse();
         await Assert.That(stack.LeafVhdxPath).EndsWith("base.vhdx");
+    }
+
+    [Test]
+    public async Task DeepChainNeverMergesMidBuildWhenTheBackendSupportsIt() {
+        _backend.MaxSafeChainDepth = int.MaxValue; // Hyper-V-shaped backend
+        var stack = await CreateWithBaseAsync();
+        for (var i = 0; i < 35; i++) { // past diskpart's limit — must not matter here
+            var session = await stack.BeginLayerAsync($"s{i}", $"S{i}", null, CancellationToken.None);
+            await stack.CommitLayerAsync(session, [], CancellationToken.None);
+        }
+        await Assert.That(_backend.Calls.Count(c => c.StartsWith("merge:"))).IsEqualTo(0);
+
+        // Merging is export-time work: one merge pass when the artifact demands it.
+        await stack.ExportMergedVhdxAsync(Path.Combine(_workDir, "merged.vhdx"), CancellationToken.None);
+        await Assert.That(_backend.Calls.Count(c => c.StartsWith("merge:"))).IsEqualTo(1);
+        await Assert.That(_backend.MergeDepth).IsEqualTo(35);
     }
 
     [Test]

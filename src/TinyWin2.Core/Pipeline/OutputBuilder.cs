@@ -12,7 +12,7 @@ public enum ImageFormat {
 /// <summary>Captures the final (or rolled-back) layer into WIM/ESD and packages media + ISO.</summary>
 public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
     /// <summary>Captures a mounted layer directory into a WIM or ESD.</summary>
-    public async Task CaptureAsync(
+    public Task CaptureAsync(
         string mountPath,
         string targetPath,
         string imageName,
@@ -24,6 +24,22 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
             ImageFormat.Esd => "recovery",
             _ => fast ? "fast" : "max",
         };
+        return CaptureAsync(mountPath, targetPath, imageName, description, compress, verify: !fast, ct);
+    }
+
+    /// <summary>
+    /// Staging capture with explicit compression: the ESD pipeline captures an UNCOMPRESSED
+    /// intermediate WIM and compresses exactly once in the export step — compressing the
+    /// intermediate and then re-compressing to recovery doubles the work for nothing.
+    /// </summary>
+    public async Task CaptureAsync(
+        string mountPath,
+        string targetPath,
+        string imageName,
+        string? description,
+        string compress,
+        bool verify,
+        CancellationToken ct) {
         var args = new List<string>
         {
             "/English",
@@ -36,7 +52,7 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
             args.Add($"/Description:{description}");
         }
         args.Add($"/Compress:{compress}");
-        if (!fast) {
+        if (verify) {
             args.Add("/Verify");
         }
         log.Info($"capturing {mountPath} → {Path.GetFileName(targetPath)} (compress={compress})");
