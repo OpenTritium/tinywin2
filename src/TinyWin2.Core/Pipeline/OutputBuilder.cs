@@ -11,7 +11,7 @@ public enum ImageFormat {
 }
 
 /// <summary>Captures the final (or rolled-back) layer into WIM/ESD and packages media + ISO.</summary>
-public sealed class OutputBuilder(IProcessRunner runner, IBuildLog log) {
+public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
     /// <summary>Captures a mounted layer directory into a WIM or ESD.</summary>
     public async Task CaptureAsync(
         string mountPath,

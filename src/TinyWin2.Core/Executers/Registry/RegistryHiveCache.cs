@@ -47,7 +47,7 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner? runner =
 
     public void SetSessionPrefix(string prefix) => _sessionPrefix = prefix;
 
-    public async Task<RegistryHive> GetAsync(string hiveId, IBuildLog log, CancellationToken ct) {
+    public async Task<RegistryHive> GetAsync(string hiveId, BuildLog log, CancellationToken ct) {
         if (!HiveFiles.TryGetValue(hiveId, out var relativePath)) {
             throw new ExecException(
                 $"unknown registry hive '{hiveId}' (expected one of: {string.Join(", ", HiveFiles.Keys)}).");
@@ -68,13 +68,13 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner? runner =
         await Runner.RunAsync("reg.exe", ["load", hiveKey, hiveFilePath], cancellationToken: ct);
         log.Debug($"loaded offline hive '{hiveId}' at {hiveKey}");
         lock (_gate) {
-            _loaded[hiveId] = new RegistryHive(hiveId.ToLowerInvariant(), hiveKey) { IsLoaded = true };
+            _loaded[hiveId] = new(hiveId.ToLowerInvariant(), hiveKey) { IsLoaded = true };
             return _loaded[hiveId];
         }
     }
 
     /// <summary>Unloads every loaded hive; retries because handles may lag behind a moment.</summary>
-    public async Task UnloadAllAsync(IBuildLog log, CancellationToken ct) {
+    public async Task UnloadAllAsync(BuildLog log, CancellationToken ct) {
         List<RegistryHive> toUnload;
         lock (_gate) {
             toUnload = [.. _loaded.Values.Where(h => h.IsLoaded)];
@@ -111,14 +111,14 @@ public static partial class RegValues {
     /// <summary>Extracts a named value from <c>reg query KEY /v NAME</c> output; null if absent.</summary>
     public static RegValue? ParseQueryValue(string output, string valueName) {
         return (from rawLine in output.Split('\n')
-                select rawLine.TrimEnd('\r')
+            select rawLine.TrimEnd('\r')
             into line
-                select ValueLine().Match(line)
+            select ValueLine().Match(line)
             into match
-                where match.Success
-                let name = match.Groups[1].Value.Trim()
-                where string.Equals(name, valueName, StringComparison.OrdinalIgnoreCase)
-                select new RegValue(match.Groups[2].Value, match.Groups[3].Value)).FirstOrDefault();
+            where match.Success
+            let name = match.Groups[1].Value.Trim()
+            where string.Equals(name, valueName, StringComparison.OrdinalIgnoreCase)
+            select new RegValue(match.Groups[2].Value, match.Groups[3].Value)).FirstOrDefault();
     }
 
     /// <summary>Renders desired data for reg.exe /d for each supported type.</summary>

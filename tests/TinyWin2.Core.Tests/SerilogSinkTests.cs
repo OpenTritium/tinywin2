@@ -7,7 +7,7 @@ public sealed class SerilogSinkTests : IDisposable {
 
     [Test]
     public async Task BridgesBuildEventsToFileWithDomainFields() {
-        var log = new BuildLog { EchoConsole = false };
+        var log = new BuildLog();
         var logFile = Path.Combine(_root, "build.log");
         using (log.UseSerilog(logFile, echoConsole: false)) {
             log.Phase = "plan";
@@ -25,7 +25,7 @@ public sealed class SerilogSinkTests : IDisposable {
 
     [Test]
     public async Task FlushingOnDisposeProducesCompleteFile() {
-        var log = new BuildLog { EchoConsole = false };
+        var log = new BuildLog();
         var logFile = Path.Combine(_root, "flush.log");
         using (var sink = log.UseSerilog(logFile, echoConsole: false)) {
             log.Info("before-dispose");

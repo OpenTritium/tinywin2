@@ -65,13 +65,13 @@ public sealed class ExecException(string message, Exception? inner = null)
 /// </summary>
 public sealed class ExecContext(
     string mountPath,
-    IBuildLog log,
+    BuildLog log,
     Registry.RegistryHiveCache hives,
     string? planAssetsRoot = null) {
     /// <summary>Drive letter root of the currently attached (mounted) image layer.</summary>
     public string MountPath { get; } = mountPath;
 
-    public IBuildLog Log { get; } = log;
+    public BuildLog Log { get; } = log;
 
     /// <summary>Offline registry hive sessions for the current layer; owned by the build engine.</summary>
     public Registry.RegistryHiveCache Hives { get; } = hives;

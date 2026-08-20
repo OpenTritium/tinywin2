@@ -9,7 +9,13 @@ namespace TinyWin2.Core.Pipeline;
 
 public sealed record FileDiffEntry(string RelativePath, string Kind, long OldSize, long NewSize);
 
-public sealed record RegistryDiffEntry(string Hive, string Key, string ValueName, string Kind, string? Before, string? After);
+public sealed record RegistryDiffEntry(
+    string Hive,
+    string Key,
+    string ValueName,
+    string Kind,
+    string? Before,
+    string? After);
 
 public sealed record LayerDiffReport(
     int FromIndex,
@@ -43,12 +49,13 @@ public sealed record LayerDiffReport(
 public sealed partial class LayerInspector(
     IProcessRunner runner,
     ILayerBackend backend,
-    IBuildLog log) {
+    BuildLog log) {
     /// <summary>
     /// Diffs two layers via their commit-time evidence snapshots (file manifests + registry
     /// exports) — no VHDX re-attach needed, which some Windows builds reject after a build.
     /// </summary>
-    public Task<LayerDiffReport> DiffAsync(string workDirectory, int fromIndex, int toIndex, bool deep, CancellationToken ct) {
+    public Task<LayerDiffReport> DiffAsync(string workDirectory, int fromIndex, int toIndex, bool deep,
+        CancellationToken ct) {
         var snapshotsRoot = Layers.LayerEvidence.SnapshotsRoot(workDirectory);
         var fromManifest = Layers.LayerEvidence.ManifestPathFor(snapshotsRoot, fromIndex);
         var toManifest = Layers.LayerEvidence.ManifestPathFor(snapshotsRoot, toIndex);
@@ -57,9 +64,10 @@ public sealed partial class LayerInspector(
                 $"layer evidence snapshots missing for {fromIndex:000}/{toIndex:000} under '{snapshotsRoot}' " +
                 "(rebuild with a current engine version, which captures evidence at commit time).");
         }
+
         log.Info($"diffing layer {fromIndex:000} → {toIndex:000} via evidence snapshots");
-        var before = Layers.LayerEvidence.LoadManifest(fromManifest);
-        var after = Layers.LayerEvidence.LoadManifest(toManifest);
+        var before = LayerEvidence.LoadManifest(fromManifest);
+        var after = LayerEvidence.LoadManifest(toManifest);
         var files = new List<FileDiffEntry>();
         foreach (var (path, oldEntry) in before.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)) {
             if (!after.TryGetValue(path, out var newEntry)) {
@@ -69,11 +77,13 @@ public sealed partial class LayerInspector(
                 files.Add(new FileDiffEntry(path, "modified", oldEntry.Size, newEntry.Size));
             }
         }
+
         foreach (var (path, entry) in after.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)) {
             if (!before.ContainsKey(path)) {
                 files.Add(new FileDiffEntry(path, "added", 0, entry.Size));
             }
         }
+
         var registry = new List<RegistryDiffEntry>();
         var fromRegistryPath = Layers.LayerEvidence.RegistryPathFor(snapshotsRoot, fromIndex);
         var toRegistryPath = Layers.LayerEvidence.RegistryPathFor(snapshotsRoot, toIndex);
@@ -88,9 +98,11 @@ public sealed partial class LayerInspector(
                         beforeText is null ? "added" : "removed", null, null));
                     continue;
                 }
+
                 registry.AddRange(RegTextDiff(hiveId, beforeText, afterText));
             }
         }
+
         return Task.FromResult(new LayerDiffReport(fromIndex, toIndex, files, registry));
     }
 
@@ -110,6 +122,7 @@ public sealed partial class LayerInspector(
                 if (oldValue == newValue) {
                     continue;
                 }
+
                 result.Add(new RegistryDiffEntry(
                     hiveId,
                     key,
@@ -119,6 +132,7 @@ public sealed partial class LayerInspector(
                     newValue));
             }
         }
+
         return result;
     }
 
@@ -134,6 +148,7 @@ public sealed partial class LayerInspector(
             if (line.Length == 0 || line.StartsWith(';')) {
                 continue;
             }
+
             var header = KeyHeader().Match(line);
             if (header.Success) {
                 var path = header.Groups[1].Value;
@@ -145,11 +160,14 @@ public sealed partial class LayerInspector(
                 if (!result.ContainsKey(currentKey)) {
                     result[currentKey] = [];
                 }
+
                 continue;
             }
+
             if (currentKey is null) {
                 continue;
             }
+
             if (line.StartsWith('@')) {
                 result[currentKey]["(Default)"] = line;
             }
@@ -160,6 +178,7 @@ public sealed partial class LayerInspector(
                 }
             }
         }
+
         return result;
     }
 
@@ -169,11 +188,13 @@ public sealed partial class LayerInspector(
                 return i;
             }
         }
+
         return -1;
     }
 
     /// <summary>Extracts one file (image-relative) from a layer to a host destination.</summary>
-    public async Task ExtractAsync(string workDirectory, int layerIndex, string imageRelativePath, string destinationPath, CancellationToken ct) {
+    public async Task ExtractAsync(string workDirectory, int layerIndex, string imageRelativePath,
+        string destinationPath, CancellationToken ct) {
         var stack = VhdLayerStack.Load(workDirectory, backend, log);
         var vhdxPath = stack.VhdxForLayer(layerIndex);
         var letter = await backend.AttachAsync(vhdxPath, ct);
@@ -182,6 +203,7 @@ public sealed partial class LayerInspector(
             if (!File.Exists(source)) {
                 throw new FileNotFoundException($"'{imageRelativePath}' not found in layer {layerIndex:000}.");
             }
+
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(destinationPath))!);
             File.Copy(source, destinationPath, overwrite: true);
             log.Info($"extracted '{imageRelativePath}' from layer {layerIndex:000} → {destinationPath}");
@@ -207,23 +229,32 @@ public sealed partial class LayerInspector(
             if (format == ImageFormat.Esd) {
                 var intermediate = Path.Combine(Path.GetTempPath(), $"tinywin2-rollback-{Guid.NewGuid():N}.wim");
                 try {
-                    await new OutputBuilder(runner, log).CaptureAsync($"{letter}:\\", intermediate, name, null, ImageFormat.Wim, fast, ct);
+                    await new OutputBuilder(runner, log).CaptureAsync($"{letter}:\\", intermediate, name, null,
+                        ImageFormat.Wim, fast, ct);
                     await runner.RunAsync("dism.exe",
-                        ["/English", "/Export-Image", $"/SourceImageFile:{intermediate}", "/SourceIndex:1",
-                         $"/DestinationImageFile:{destinationPath}", "/Compress:recovery"], cancellationToken: ct);
+                    [
+                        "/English", "/Export-Image", $"/SourceImageFile:{intermediate}", "/SourceIndex:1",
+                        $"/DestinationImageFile:{destinationPath}", "/Compress:recovery"
+                    ], cancellationToken: ct);
                 }
                 finally {
-                    try { File.Delete(intermediate); } catch { /* best effort */ }
+                    try {
+                        File.Delete(intermediate);
+                    }
+                    catch {
+                        /* best effort */
+                    }
                 }
             }
             else {
-                await new OutputBuilder(runner, log).CaptureAsync($"{letter}:\\", destinationPath, name, null, ImageFormat.Wim, fast, ct);
+                await new OutputBuilder(runner, log).CaptureAsync($"{letter}:\\", destinationPath, name, null,
+                    ImageFormat.Wim, fast, ct);
             }
+
             return destinationPath;
         }
         finally {
             await backend.DetachAsync(vhdxPath, ct);
         }
     }
-
 }

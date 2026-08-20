@@ -34,7 +34,7 @@ internal static class BuildCommand {
         var selections = Cli.BuildSelections(options, catalog);
         var jsonEvents = options.ContainsKey("json-events");
         // Serilog owns console + file output; the JSONL event stream owns stdout in --json-events mode.
-        var log = new BuildLog { EchoConsole = false };
+        var log = new BuildLog();
         if (jsonEvents) {
             _ = log.Attach(evt => Console.Out.WriteLine(evt.ToJson().ToCompactString()));
         }
@@ -127,7 +127,7 @@ internal static class PreviewCommand {
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var selections = Cli.BuildSelections(options, catalog);
         var json = options.ContainsKey("json");
-        var log = new BuildLog { EchoConsole = false };
+        var log = new BuildLog();
         var (runner, executers, layers) = Cli.CreateEngineParts();
         var previewer = new PreviewRunner(runner, executers, layers, log);
         var workDirectory = Path.Combine(Path.GetFullPath(get("o") ?? "out"), "work", "preview");
@@ -182,7 +182,7 @@ internal static class LayerCommand {
             return 2;
         }
         var workDirectory = positional.Count > 1 ? positional[1] : throw new ArgumentException("missing <workspace>");
-        var log = new BuildLog { EchoConsole = false };
+        var log = new BuildLog();
         var (runner, _, layers) = Cli.CreateEngineParts();
         var inspector = new LayerInspector(runner, layers, log);
         switch (positional[0]) {
@@ -249,7 +249,7 @@ internal static class LayerCommand {
     }
 
     private static int List(string workDirectory, bool json) {
-        var log = new BuildLog { EchoConsole = false };
+        var log = new BuildLog();
         var stack = VhdLayerStack.Load(workDirectory, Core.Layers.LayerBackendFactory.Create(), log);
         if (json) {
             Console.WriteLine(new JsonObject {

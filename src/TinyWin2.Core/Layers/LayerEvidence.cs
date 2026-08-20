@@ -26,7 +26,7 @@ public static partial class LayerEvidence {
         string workDirectory,
         int index,
         IProcessRunner runner,
-        IBuildLog log,
+        BuildLog log,
         CancellationToken ct) {
         var snapshotsRoot = SnapshotsRoot(workDirectory);
         Directory.CreateDirectory(snapshotsRoot);
@@ -64,7 +64,7 @@ public static partial class LayerEvidence {
     }
 
     /// <summary>Concatenated semantic exports of the offline hives, headed per hive for diffing.</summary>
-    private static async Task CaptureRegistryAsync(string mountPath, string outputFile, IProcessRunner runner, IBuildLog log, CancellationToken ct) {
+    private static async Task CaptureRegistryAsync(string mountPath, string outputFile, IProcessRunner runner, BuildLog log, CancellationToken ct) {
         var combined = new StringBuilder(1 << 20);
         foreach (var (hiveId, relativePath) in RegistryHiveCache.HiveFiles) {
             var hiveFile = Path.Combine(mountPath, relativePath.Replace('\\', Path.DirectorySeparatorChar));

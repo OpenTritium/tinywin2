@@ -25,7 +25,7 @@ public sealed class LayerEvidenceTests : IDisposable {
             Path.Combine(imageDir, "Users"));
         var manifest = LayerEvidence.ManifestPathFor(LayerEvidence.SnapshotsRoot(_root), 0);
         await LayerEvidence.CaptureAsync(imageDir, _root, 0, new FakeProcessRunner(),
-            new Core.Logging.BuildLog { EchoConsole = false }, CancellationToken.None);
+            new Core.Logging.BuildLog(), CancellationToken.None);
         var loaded = LayerEvidence.LoadManifest(manifest);
         await Assert.That(loaded.ContainsKey("Windows\\notepad.exe")).IsTrue();
         await Assert.That(loaded.ContainsKey("inetpub\\wwwroot")).IsFalse(); // directories are not listed

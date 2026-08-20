@@ -1,8 +1,7 @@
 using Serilog;
 using Serilog.Events;
-using TinyWin2.Core.Logging;
 
-namespace TinyWin2.Core;
+namespace TinyWin2.Core.Logging;
 
 public static class SerilogBuildLogExtensions {
     /// <summary>
@@ -29,18 +28,22 @@ public static class SerilogBuildLogExtensions {
             configuration = configuration.WriteTo.Console(
                 outputTemplate: "{Timestamp:HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}");
         }
+
         var logger = configuration.CreateLogger();
+
         LogEventLevel ToSerilogLevel(BuildEventLevel level) => level switch {
             BuildEventLevel.Debug => LogEventLevel.Debug,
             BuildEventLevel.Info => LogEventLevel.Information,
             BuildEventLevel.Warn => LogEventLevel.Warning,
             _ => LogEventLevel.Error,
         };
+
         var token = log.Attach(evt => {
             var level = ToSerilogLevel(evt.Level);
             if (!logger.IsEnabled(level)) {
                 return;
             }
+
             logger
                 .ForContext("phase", evt.Phase)
                 .ForContext("planId", evt.PlanId)

@@ -12,7 +12,7 @@ internal static class InspectCommand {
             return 2;
         }
         var source = args[0];
-        var log = new Core.Logging.BuildLog { EchoConsole = false };
+        var log = new Core.Logging.BuildLog();
         var resolver = new SourceImageResolver(new ProcessRunner(), log);
         var media = await resolver.ResolveAsync(source, CancellationToken.None);
         var indexes = await resolver.GetIndexesAsync(media.InstallImagePath, CancellationToken.None);

@@ -68,7 +68,7 @@ public sealed class LayerSession {
 public sealed class VhdLayerStack(
     string workDirectory,
     ILayerBackend backend,
-    IBuildLog log) {
+    BuildLog log) {
     public const string BaseFileName = "base.vhdx";
     public const string ManifestFileName = "layers.json";
     public const int ConsolidateThreshold = 30;
@@ -116,7 +116,7 @@ public sealed class VhdLayerStack(
 
     // ---- lifecycle ---------------------------------------------------------
 
-    public static VhdLayerStack Load(string workDirectory, ILayerBackend backend, IBuildLog log) {
+    public static VhdLayerStack Load(string workDirectory, ILayerBackend backend, BuildLog log) {
         var stack = new VhdLayerStack(workDirectory, backend, log);
         var manifestPath = Path.Combine(workDirectory, ManifestFileName);
         if (File.Exists(manifestPath)) {

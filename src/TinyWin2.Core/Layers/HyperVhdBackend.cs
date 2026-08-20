@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+
 using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Layers;
@@ -12,14 +12,14 @@ public sealed partial class HyperVhdBackend(IProcessRunner runner) : ILayerBacke
     public async Task CreateBaseAsync(string vhdxPath, long maximumMb, string volumeLabel, CancellationToken ct) {
         Directory.CreateDirectory(Path.GetDirectoryName(vhdxPath)!);
         var ps = $"""
-            $ErrorActionPreference = 'Stop'
-            $vhd = New-VHD -Path '{vhdxPath}' -SizeBytes {maximumMb}MB -Dynamic
-            Mount-VHD -Path $vhd.Path -PassThru |
-                Initialize-Disk -PartitionStyle MBR -PassThru |
-                New-Partition -UseMaximumSize -AssignDriveLetter:$false -DriveLetter X |
-                Format-Volume -FileSystem NTFS -NewFileSystemLabel '{volumeLabel}' -Confirm:$false | Out-Null
-            Dismount-VHD -Path $vhd.Path
-            """;
+                  $ErrorActionPreference = 'Stop'
+                  $vhd = New-VHD -Path '{vhdxPath}' -SizeBytes {maximumMb}MB -Dynamic
+                  Mount-VHD -Path $vhd.Path -PassThru |
+                      Initialize-Disk -PartitionStyle MBR -PassThru |
+                      New-Partition -UseMaximumSize -AssignDriveLetter:$false -DriveLetter X |
+                      Format-Volume -FileSystem NTFS -NewFileSystemLabel '{volumeLabel}' -Confirm:$false | Out-Null
+                  Dismount-VHD -Path $vhd.Path
+                  """;
         await RunPsAsync(ps, ct);
     }
 
@@ -27,7 +27,9 @@ public sealed partial class HyperVhdBackend(IProcessRunner runner) : ILayerBacke
         if (!File.Exists(parentPath)) {
             throw new FileNotFoundException($"differencing parent not found: {parentPath}");
         }
-        var ps = $"$ErrorActionPreference = 'Stop'\nNew-VHD -Path '{diffPath}' -ParentPath '{parentPath}' -Differencing | Out-Null";
+
+        var ps =
+            $"$ErrorActionPreference = 'Stop'\nNew-VHD -Path '{diffPath}' -ParentPath '{parentPath}' -Differencing | Out-Null";
         return RunPsAsync(ps, ct);
     }
 
@@ -35,6 +37,7 @@ public sealed partial class HyperVhdBackend(IProcessRunner runner) : ILayerBacke
         if (!File.Exists(vhdxPath)) {
             throw new FileNotFoundException($"layer VHDX not found: {vhdxPath}");
         }
+
         // Brace-free PowerShell (raw interpolated strings and script blocks do not mix well).
         var ps = string.Join('\n',
             "$ErrorActionPreference = 'Stop'",
@@ -45,6 +48,7 @@ public sealed partial class HyperVhdBackend(IProcessRunner runner) : ILayerBacke
         if (letter == default) {
             throw new IOException($"mounted '{vhdxPath}' but could not resolve its drive letter.");
         }
+
         return letter;
     }
 
@@ -58,10 +62,14 @@ public sealed partial class HyperVhdBackend(IProcessRunner runner) : ILayerBacke
         if (!OperatingSystem.IsWindows()) {
             return false;
         }
+
         var probe = new ProcessRunner();
         try {
             var result = probe.RunAsync("pwsh.exe",
-                ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "[bool](Get-Command New-VHD -ErrorAction SilentlyContinue)"],
+                [
+                    "-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
+                    "[bool](Get-Command New-VHD -ErrorAction SilentlyContinue)"
+                ],
                 new ProcessRunOptions { IgnoreExitCode = true, Timeout = TimeSpan.FromSeconds(30) },
                 CancellationToken.None).GetAwaiter().GetResult();
             return result.Success && result.Output.Trim().EndsWith("True", StringComparison.OrdinalIgnoreCase);

@@ -28,7 +28,7 @@ public sealed class SourceMedia : IAsyncDisposable {
 }
 
 /// <summary>Resolves ISO/folder sources and inspects install-image indexes (read-only).</summary>
-public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog log) {
+public sealed partial class SourceImageResolver(IProcessRunner runner, BuildLog log) {
     public async Task<SourceMedia> ResolveAsync(string sourcePath, CancellationToken ct) {
         var fullPath = Path.GetFullPath(sourcePath);
         if (Directory.Exists(fullPath)) {

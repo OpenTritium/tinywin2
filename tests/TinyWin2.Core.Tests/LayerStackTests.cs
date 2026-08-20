@@ -172,7 +172,7 @@ public sealed class BuildEngineDryRunTests : IDisposable {
     public async Task DryRunResolvesAndTouchesNothing() {
         var runner = new FakeProcessRunner();
         var executers = new ExecuterRegistry([new FakeExecuter("test.noop", fail: false)]);
-        var engine = new BuildEngine(runner, executers, new FakeLayerBackend(), new BuildLog { EchoConsole = false });
+        var engine = new BuildEngine(runner, executers, new FakeLayerBackend(), new BuildLog());
         var result = await engine.BuildAsync(new BuildOptions {
             SourcePath = @"C:\does\not\exist.iso",
             ImageIndex = 1,

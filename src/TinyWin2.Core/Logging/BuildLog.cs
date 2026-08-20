@@ -9,48 +9,46 @@ public enum BuildEventLevel {
     Error = 3,
 }
 
-public interface IBuildLog {
-    string Phase { get; set; }
-    int? LayerIndex { get; set; }
-    string? PlanId { get; set; }
-    void Write(BuildEventLevel level, string message, string? planId = null, int? layerIndex = null, JsonObject? data = null);
-    void Debug(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null) => Write(BuildEventLevel.Debug, message, planId, layerIndex, data);
-    void Info(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null) => Write(BuildEventLevel.Info, message, planId, layerIndex, data);
-    void Warn(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null) => Write(BuildEventLevel.Warn, message, planId, layerIndex, data);
-    void Error(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null) => Write(BuildEventLevel.Error, message, planId, layerIndex, data);
-    IReadOnlyList<BuildEvent> Events { get; }
+/// <summary>
+/// One structured, serializable build event. The CLI streams these as JSONL
+/// (<c>--json-events</c>); the GUI renders them as the live progress/log feed.
+/// </summary>
+public sealed record BuildEvent {
+    public int Sequence { get; init; }
+    public DateTimeOffset Timestamp { get; init; }
+    public BuildEventLevel Level { get; init; }
+    /// <summary>Coarse build phase, e.g. <c>prepare</c>, <c>base-layer</c>, <c>plan</c>, <c>capture</c>, <c>package</c>.</summary>
+    public string Phase { get; init; } = "init";
+    public string Message { get; init; } = "";
+    public string? PlanId { get; init; }
+    public int? LayerIndex { get; init; }
+    public JsonObject? Data { get; init; }
+
+    public JsonObject ToJson() => new() {
+        ["seq"] = Sequence,
+        ["ts"] = Timestamp.ToString("O"),
+        ["level"] = Level.ToString().ToLowerInvariant(),
+        ["phase"] = Phase,
+        ["message"] = Message,
+        ["planId"] = PlanId,
+        ["layerIndex"] = LayerIndex,
+        ["data"] = Data?.DeepClone(),
+    };
 }
 
 /// <summary>
-/// Central structured log. The engine writes through it; sinks (console echo,
-/// JSONL stream for the GUI, in-memory manifest log) subscribe via <see cref="Attach"/>.
+/// Central structured log. The engine writes through it; sinks (Serilog file/console
+/// bridge, JSONL stream for the GUI) subscribe via <see cref="Attach"/>. Events are
+/// pushed to sinks only — nothing is buffered, so a long build costs no memory.
 /// </summary>
-public sealed class BuildLog : IBuildLog {
+public sealed class BuildLog {
     private readonly object _gate = new();
-    private readonly List<BuildEvent> _events = [];
     private readonly List<Action<BuildEvent>> _sinks = [];
     private int _sequence;
 
+    /// <summary>Ambient context stamped onto every event unless overridden per call.</summary>
     public string Phase { get; set; } = "init";
-    public int? LayerIndex { get; set; }
     public string? PlanId { get; set; }
-    public bool EchoConsole { get; set; }
-
-    public IReadOnlyList<BuildEvent> Events {
-        get {
-            lock (_gate) {
-                return _events.ToArray();
-            }
-        }
-    }
-
-    /// <summary>Attaches a sink; dispose the token to detach. Sinks must not throw.</summary>
-    public IDisposable Attach(Action<BuildEvent> sink) {
-        lock (_gate) {
-            _sinks.Add(sink);
-        }
-        return new SinkToken(this, sink);
-    }
 
     public void Debug(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null)
         => Write(BuildEventLevel.Debug, message, planId, layerIndex, data);
@@ -64,7 +62,7 @@ public sealed class BuildLog : IBuildLog {
     public void Error(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null)
         => Write(BuildEventLevel.Error, message, planId, layerIndex, data);
 
-    public void Write(BuildEventLevel level, string message, string? planId = null, int? layerIndex = null, JsonObject? data = null) {
+    private void Write(BuildEventLevel level, string message, string? planId, int? layerIndex, JsonObject? data) {
         BuildEvent evt;
         Action<BuildEvent>[] sinks;
         lock (_gate) {
@@ -75,14 +73,10 @@ public sealed class BuildLog : IBuildLog {
                 Phase = Phase,
                 Message = message,
                 PlanId = planId ?? PlanId,
-                LayerIndex = layerIndex ?? LayerIndex,
+                LayerIndex = layerIndex,
                 Data = data,
             };
-            _events.Add(evt);
             sinks = _sinks.ToArray();
-        }
-        if (EchoConsole) {
-            EchoToConsole(evt);
         }
         foreach (var sink in sinks) {
             try {
@@ -94,27 +88,12 @@ public sealed class BuildLog : IBuildLog {
         }
     }
 
-    private static void EchoToConsole(BuildEvent evt) {
-        var previous = Console.ForegroundColor;
-        try {
-            Console.ForegroundColor = evt.Level switch {
-                BuildEventLevel.Warn => ConsoleColor.Yellow,
-                BuildEventLevel.Error => ConsoleColor.Red,
-                BuildEventLevel.Debug => ConsoleColor.DarkGray,
-                _ => ConsoleColor.Gray,
-            };
-            var prefix = evt.PlanId is null ? "" : $"[{evt.PlanId}] ";
-            Console.WriteLine($"{evt.Timestamp:HH:mm:ss} {evt.Level.ToString().ToUpperInvariant(),5} {prefix}{evt.Message}");
-        }
-        finally {
-            Console.ForegroundColor = previous;
-        }
-    }
-
-    public IReadOnlyList<BuildEvent> Snapshot() {
+    /// <summary>Attaches a sink; dispose the token to detach. Sinks must not throw.</summary>
+    public IDisposable Attach(Action<BuildEvent> sink) {
         lock (_gate) {
-            return _events.ToArray();
+            _sinks.Add(sink);
         }
+        return new SinkToken(this, sink);
     }
 
     private void Detach(Action<BuildEvent> sink) {

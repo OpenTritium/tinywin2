@@ -1,6 +1,7 @@
 using TinyWin2.Core.Env;
 using TinyWin2.Core.Executers;
 using TinyWin2.Core.Layers;
+using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Tests;
@@ -91,8 +92,9 @@ public sealed class LayerBackendIntegrationTests {
             });
         });
         var catalog = Plans.PlanCatalog.LoadDirectory(plansDir);
-        var engine = new Pipeline.BuildEngine(runner, executers, backend,
-            new Logging.BuildLog { EchoConsole = true });
+        var log = new Logging.BuildLog();
+        using var logSink = log.UseSerilog(Path.Combine(outputRoot, "it.log"), echoConsole: true);
+        var engine = new Pipeline.BuildEngine(runner, executers, backend, log);
         var result = await engine.BuildAsync(new Pipeline.BuildOptions {
             SourcePath = TestIso,
             ImageIndex = 1, // boot.wim index 1 (WinPE) — light enough for CI-ish validation
