@@ -40,11 +40,8 @@ internal static class InspectCommand {
         Console.WriteLine();
         Console.WriteLine($"{"idx",-4} {"name",-45} {"edition",-18} {"version",-12} size");
         foreach (var index in indexes) {
-            Console.WriteLine($"{index.Index,-4} {Truncate(index.Name, 45),-45} {Truncate(index.EditionId ?? "-", 18),-18} {Truncate(index.Version ?? "-", 12),-12} {index.SizeBytes / 1024.0 / 1024:F0} MB");
+            Console.WriteLine($"{index.Index,-4} {Cli.Truncate(index.Name, 45),-45} {Cli.Truncate(index.EditionId ?? "-", 18),-18} {Cli.Truncate(index.Version ?? "-", 12),-12} {index.SizeBytes / 1024.0 / 1024:F0} MB");
         }
         return 0;
     }
-
-    private static string Truncate(string value, int width) =>
-        value.Length <= width ? value : value[..(width - 1)] + "…";
 }

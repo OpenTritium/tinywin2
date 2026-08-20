@@ -69,7 +69,6 @@ public sealed partial class ProgressPage : Page {
     }
 
     private async Task RunBuildAsync(CancellationToken ct) {
-        State.LogLines.Clear();
         var dispatcher = DispatcherQueue;
         var arguments = BuildArguments();
         void HandleEvent(JsonObject evt) {

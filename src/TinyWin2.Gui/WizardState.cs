@@ -97,19 +97,13 @@ public sealed class WizardState {
     public string OutputMode { get; set; } = "iso"; // wim | esd | iso | iso+vhdx
     public string Granularity { get; set; } = "group";
     public bool Fast { get; set; }
-    public string? OscdimgPath { get; set; }
 
     public ObservableCollection<PlanItemViewModel> Plans { get; } = [];
     public ObservableCollection<PlanItemViewModel> VisiblePlans { get; } = [];
 
-    // Progress + result state filled by CliRunner.
-    public ObservableCollection<LogLine> LogLines { get; } = [];
+    // Progress + result state filled by the CLI event stream on ProgressPage.
     public string CurrentPhase { get; set; } = "";
-    public int Progress { get; set; }
     public bool BuildSucceeded { get; set; }
-    public string? FailedStep { get; set; }
-    public int? FailedLayer { get; set; }
-    public string WorkspacePath { get; set; } = "";
     public string MediaPath { get; set; } = "";
     public string? IsoPath { get; set; }
     public string? VhdxPath { get; set; }
@@ -131,8 +125,4 @@ public sealed class WizardState {
         }
         return result;
     }
-}
-
-public sealed record LogLine(DateTimeOffset Timestamp, string Level, string Message) {
-    public string Display => $"{Timestamp:HH:mm:ss} {Message}";
 }

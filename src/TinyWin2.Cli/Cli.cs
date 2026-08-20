@@ -15,20 +15,13 @@ internal static class Cli {
                 ? Path.GetFullPath(explicitPath)
                 : throw new DirectoryNotFoundException($"plans directory not found: {explicitPath}");
         }
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        for (var i = 0; i < 8 && directory is not null; i++, directory = directory.Parent) {
-            var candidate = Path.Combine(directory.FullName, "plans");
-            if (Directory.Exists(candidate)) {
-                return candidate;
-            }
-        }
-        var fallback = Path.Combine(Environment.CurrentDirectory, "plans");
-        if (Directory.Exists(fallback)) {
-            return Path.GetFullPath(fallback);
-        }
-        throw new DirectoryNotFoundException(
-            "could not locate a 'plans' directory (pass --plans <dir>).");
+        return PlansDirectoryLocator.TryLocate()
+               ?? throw new DirectoryNotFoundException("could not locate a 'plans' directory (pass --plans <dir>).");
     }
+
+    /// <summary>Clips a string to a table column, marking the cut with an ellipsis.</summary>
+    public static string Truncate(string value, int width) =>
+        value.Length <= width ? value : value[..(width - 1)] + "…";
 
     /// <summary>Builds the effective selection list from --profile, --plan and --set options.</summary>
     public static List<PlanSelection> BuildSelections(Dictionary<string, List<string>> options, PlanCatalog catalog) {

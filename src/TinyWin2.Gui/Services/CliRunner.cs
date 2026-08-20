@@ -1,30 +1,14 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
+using TinyWin2.Core.Plans;
 
 namespace TinyWin2.Gui.Services;
 
 /// <summary>Locates the repo root (plans/ directory) and the tinywin2 CLI executable.</summary>
 public static class RepositoryLocator {
-    public static string FindPlansDirectory() {
-        var probes = new List<string> { AppContext.BaseDirectory };
-        var current = AppContext.BaseDirectory;
-        for (var i = 0; i < 6; i++) {
-            var parent = Directory.GetParent(current);
-            if (parent is null) {
-                break;
-            }
-            current = parent.FullName;
-            probes.Add(current);
-        }
-        probes.Add(Environment.CurrentDirectory);
-        foreach (var probe in probes) {
-            var candidate = Path.Combine(probe, "plans");
-            if (Directory.Exists(candidate)) {
-                return Path.GetFullPath(candidate);
-            }
-        }
-        throw new DirectoryNotFoundException("未找到 plans 目录（请从仓库内启动 GUI）.");
-    }
+    public static string FindPlansDirectory() =>
+        PlansDirectoryLocator.TryLocate()
+        ?? throw new DirectoryNotFoundException("未找到 plans 目录（请从仓库内启动 GUI）.");
 
     public static string FindCliExecutable() {
         // Same output directory first (published layout), then CLI build output beside us.

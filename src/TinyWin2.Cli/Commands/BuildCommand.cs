@@ -259,14 +259,11 @@ internal static class LayerCommand {
         Console.WriteLine();
         Console.WriteLine($"{"idx",-5} {"status",-10} {"size",-12} {"step",-28} title");
         foreach (var record in stack.Records) {
-            Console.WriteLine($"{record.Index,-5} {record.Status.ToString().ToLowerInvariant(),-10} {record.SizeBytes / 1024.0 / 1024,-12:F1} MB {Truncate(record.StepId ?? "-", 28),-28} {record.Title}");
+            Console.WriteLine($"{record.Index,-5} {record.Status.ToString().ToLowerInvariant(),-10} {record.SizeBytes / 1024.0 / 1024,-12:F1} MB {Cli.Truncate(record.StepId ?? "-", 28),-28} {record.Title}");
             if (!string.IsNullOrEmpty(record.Error)) {
                 Console.WriteLine($"       error: {record.Error}");
             }
         }
         return 0;
     }
-
-    private static string Truncate(string value, int width) =>
-        value.Length <= width ? value : value[..(width - 1)] + "…";
 }

@@ -33,15 +33,13 @@ public sealed partial class ResultPage : Page {
         }
         ArtifactsText.Text = string.Join(Environment.NewLine, artifacts);
         LayerSummaryText.Text = State.LayerCount > 0 ? $"层链：{State.LayerCount} 个已提交层（详见 manifest）" : "";
-        var workspace = State.WorkspacePath.Length > 0
-            ? State.WorkspacePath
-            : Path.Combine(string.IsNullOrEmpty(State.OutputRoot) ? "out" : State.OutputRoot, "work");
+        var workspace = Path.Combine(string.IsNullOrEmpty(State.OutputRoot) ? "out" : State.OutputRoot, "work");
         FailureHint.Text = $"""
             # 查看层链（每层对应的 plan 与状态）
             tinywin2 layer list "{workspace}"
 
             # 对比失败层前后差异（文件 + 注册表语义级）
-            tinywin2 layer diff "{workspace}" <N-1> <N> --deep
+            tinywin2 layer diff "{workspace}" <N-1> <N>
 
             # 排除失败项后重试：去掉对应的 --plan / 在第 2 页取消勾选
             """;
@@ -74,7 +72,6 @@ public sealed partial class ResultPage : Page {
 
     private void Restart(object sender, RoutedEventArgs e) {
         State.CurrentPhase = "";
-        State.Progress = 0;
         ((MainWindow)App.MainAppWindow!).GoTo(1);
     }
 }
