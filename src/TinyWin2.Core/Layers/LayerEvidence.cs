@@ -13,7 +13,7 @@ namespace TinyWin2.Core.Layers;
 /// reject after the build finished) and avoids polluting layers on remount.
 /// </summary>
 public static partial class LayerEvidence {
-    public const string SnapshotsDirectoryName = "snapshots";
+    private const string SnapshotsDirectoryName = "snapshots";
 
     public static string SnapshotsRoot(string workDirectory) => Path.Combine(workDirectory, SnapshotsDirectoryName);
 

@@ -175,7 +175,7 @@ internal static class LayerCommand {
         if (positional.Count == 0) {
             Console.Error.WriteLine("""
                 usage: tinywin2 layer list    <workspace> [--json]
-                       tinywin2 layer diff    <workspace> <from> <to> [--deep] [--json]
+                       tinywin2 layer diff    <workspace> <from> <to> [--json]
                        tinywin2 layer extract <workspace> <layer> <image-relative-path> <dest>
                        tinywin2 layer rollback-to <workspace> <layer> -o <out.wim|esd> [--fast]
                 """);
@@ -187,14 +187,13 @@ internal static class LayerCommand {
         var inspector = new LayerInspector(runner, layers, log);
         switch (positional[0]) {
             case "list":
-                return List(workDirectory, options.ContainsKey("json"));
+                return List(layers, log, workDirectory, options.ContainsKey("json"));
             case "diff": {
                     if (positional.Count < 4) {
-                        Console.Error.WriteLine("usage: tinywin2 layer diff <workspace> <from> <to> [--deep] [--json]");
+                        Console.Error.WriteLine("usage: tinywin2 layer diff <workspace> <from> <to> [--json]");
                         return 2;
                     }
-                    var report = await inspector.DiffAsync(workDirectory, int.Parse(positional[2]), int.Parse(positional[3]),
-                        options.ContainsKey("deep"), CancellationToken.None);
+                    var report = await inspector.DiffAsync(workDirectory, int.Parse(positional[2]), int.Parse(positional[3]), CancellationToken.None);
                     if (options.ContainsKey("json")) {
                         Console.WriteLine(report.ToJson().ToJsonString(DoctorCommand.JsonSerializerOptions));
                     }
@@ -248,9 +247,8 @@ internal static class LayerCommand {
         }
     }
 
-    private static int List(string workDirectory, bool json) {
-        var log = new BuildLog();
-        var stack = VhdLayerStack.Load(workDirectory, Core.Layers.LayerBackendFactory.Create(), log);
+    private static int List(ILayerBackend layers, BuildLog log, string workDirectory, bool json) {
+        var stack = VhdLayerStack.Load(workDirectory, layers, log);
         if (json) {
             Console.WriteLine(new JsonObject {
                 ["layers"] = new JsonArray(stack.Records.Select(r => (JsonNode)r.ToJson()).ToArray()),

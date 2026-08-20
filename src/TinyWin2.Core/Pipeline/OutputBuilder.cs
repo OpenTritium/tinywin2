@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using TinyWin2.Core.Layers;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
 
@@ -95,18 +94,6 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         await runner.RunAsync(oscdimgPath,
             ["-m", "-o", "-u2", "-udfver102", $"-bootdata:{bootData}", mediaPath, isoPath],
             new ProcessRunOptions { Timeout = TimeSpan.FromHours(1) }, ct);
-    }
-
-    /// <summary>Merges the whole chain into a copy under the output folder (boot-testable VHDX artifact).</summary>
-    public static async Task<string> ExportMergedVhdxAsync(
-        VhdLayerStack stack,
-        ILayerBackend backend,
-        string targetPath,
-        CancellationToken ct) {
-        await stack.ConsolidateAsync(ct);
-        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
-        File.Copy(stack.BaseVhdxPath, targetPath, overwrite: true);
-        return targetPath;
     }
 
     public static async Task<string> ComputeSha256Async(string filePath, CancellationToken ct) {

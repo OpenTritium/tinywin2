@@ -1,17 +1,16 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using TinyWin2.Core.Logging;
+using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Layers;
 
 /// <summary>Picks the Hyper-V cmdlet backend when available, diskpart otherwise.</summary>
 public static class LayerBackendFactory {
-    public static ILayerBackend Create(TinyWin2.Core.Native.IProcessRunner? runner = null) {
-        runner ??= new TinyWin2.Core.Native.ProcessRunner();
-        return HyperVhdBackend.IsAvailable()
+    public static ILayerBackend Create(IProcessRunner runner) =>
+        HyperVhdBackend.IsAvailable()
             ? new HyperVhdBackend(runner)
             : new DiskPartVhdBackend(runner);
-    }
 }
 
 public enum LayerStatus {
@@ -36,7 +35,7 @@ public sealed record LayerRecord {
     public string? Error { get; init; }
     public long SizeBytes => VhdxPath is { } path && File.Exists(path) ? new FileInfo(path).Length : 0;
 
-    public string? VhdxPath { get; set; }
+    public string? VhdxPath { get; init; }
 
     public JsonObject ToJson() => new() {
         ["index"] = Index,
@@ -69,9 +68,9 @@ public sealed class VhdLayerStack(
     string workDirectory,
     ILayerBackend backend,
     BuildLog log) {
-    public const string BaseFileName = "base.vhdx";
-    public const string ManifestFileName = "layers.json";
-    public const int ConsolidateThreshold = 30;
+    private const string BaseFileName = "base.vhdx";
+    private const string ManifestFileName = "layers.json";
+    private const int ConsolidateThreshold = 30;
 
     private readonly object _gate = new();
     private readonly List<LayerRecord> _records = [];
@@ -129,9 +128,8 @@ public sealed class VhdLayerStack(
 
     public static VhdLayerStack Load(string workDirectory, ILayerBackend backend, BuildLog log) {
         var stack = new VhdLayerStack(workDirectory, backend, log);
-        var manifestPath = Path.Combine(workDirectory, ManifestFileName);
-        if (File.Exists(manifestPath)) {
-            var root = JsonNode.Parse(File.ReadAllText(manifestPath))?["layers"] as JsonArray ?? [];
+        if (File.Exists(stack.ManifestPath)) {
+            var root = JsonNode.Parse(File.ReadAllText(stack.ManifestPath))?["layers"] as JsonArray ?? [];
             foreach (var node in root.OfType<JsonObject>()) {
                 var record = new LayerRecord {
                     Index = node["index"]!.GetValue<int>(),
@@ -214,7 +212,7 @@ public sealed class VhdLayerStack(
             letter = await backend.AttachAsync(vhdxPath, ct);
         }
         catch {
-            TryDelete(vhdxPath);
+            TryDelete(vhdxPath, strict: false);
             throw;
         }
         var record = new LayerRecord {
@@ -261,7 +259,7 @@ public sealed class VhdLayerStack(
         catch (Exception ex) {
             log.Warn($"detach failed while discarding layer {session.Record.Index:000}: {ex.Message}");
         }
-        TryDelete(session.VhdxPath);
+        TryDelete(session.VhdxPath, strict: false);
         lock (_gate) {
             var record = _records.First(r => r.Index == session.Record.Index);
             _records[_records.IndexOf(record)] = record with {
@@ -288,13 +286,22 @@ public sealed class VhdLayerStack(
         var leaf = diffs[^1];
         await backend.MergeAsync(leaf.VhdxPath!, depth, ct);
         foreach (var diff in diffs) {
-            TryDelete(diff.VhdxPath!);
+            TryDelete(diff.VhdxPath!, strict: true);
             lock (_gate) {
                 var record = _records.First(r => r.Index == diff.Index);
                 _records[_records.IndexOf(record)] = record with { Status = LayerStatus.Merged, EndedUtc = DateTimeOffset.UtcNow };
             }
         }
         Save();
+    }
+
+    /// <summary>Consolidates the chain and copies the merged base to <paramref name="targetPath"/>
+    /// (a boot-testable VHDX artifact).</summary>
+    public async Task<string> ExportMergedVhdxAsync(string targetPath, CancellationToken ct) {
+        await ConsolidateAsync(ct);
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        File.Copy(BaseVhdxPath, targetPath, overwrite: true);
+        return targetPath;
     }
 
     /// <summary>The VHDX to capture output from when rolling back to a given layer index.</summary>
@@ -311,15 +318,20 @@ public sealed class VhdLayerStack(
         }
     }
 
-    private static void TryDelete(string path) {
+    /// <summary>Deletes a layer file. Strict (consolidation): failure aborts while the manifest
+    /// still matches disk. Otherwise a locked file is only disk-space debt — layer indexes are
+    /// monotonic, so the name is never reused — and must not mask the caller's real error.</summary>
+    private void TryDelete(string path, bool strict) {
         try {
             if (File.Exists(path)) {
                 File.Delete(path);
             }
         }
         catch (Exception ex) {
-            // A locked layer file blocks re-use of its name; Surface the problem loudly.
-            throw new IOException($"failed to delete layer file '{path}': {ex.Message}", ex);
+            if (strict) {
+                throw new IOException($"failed to delete layer file '{path}': {ex.Message}", ex);
+            }
+            log.Warn($"could not delete layer file '{path}' ({ex.Message}); leaving it behind");
         }
     }
 }

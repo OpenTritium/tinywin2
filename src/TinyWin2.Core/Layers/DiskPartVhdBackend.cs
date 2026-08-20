@@ -132,7 +132,7 @@ public sealed class DiskPartVhdBackend(IProcessRunner runner) : ILayerBackend {
         }
     }
 
-    internal static IEnumerable<char> FreeDriveLetters() {
+    private static IEnumerable<char> FreeDriveLetters() {
         var used = Directory.GetLogicalDrives()
             .Select(d => char.ToUpperInvariant(d[0]))
             .ToHashSet();

@@ -190,7 +190,7 @@ public sealed class BuildEngine(
             string? vhdxPath = null;
             if (options.OutputMode == OutputMode.IsoAndVhdx) {
                 vhdxPath = Path.Combine(outputRoot, $"TinyWin2-{buildId}.vhdx");
-                await OutputBuilder.ExportMergedVhdxAsync(stack, layerBackend, vhdxPath, ct);
+                await stack.ExportMergedVhdxAsync(vhdxPath, ct);
             }
             var manifestPath = await WriteManifestAsync(buildId, options, plan, stack, mediaPath, finalInstall, isoPath, vhdxPath, sourceIndex, failedSteps, ct);
             log.Phase = "done";

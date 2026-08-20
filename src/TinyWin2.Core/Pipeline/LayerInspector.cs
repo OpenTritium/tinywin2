@@ -54,8 +54,7 @@ public sealed partial class LayerInspector(
     /// Diffs two layers via their commit-time evidence snapshots (file manifests + registry
     /// exports) — no VHDX re-attach needed, which some Windows builds reject after a build.
     /// </summary>
-    public Task<LayerDiffReport> DiffAsync(string workDirectory, int fromIndex, int toIndex, bool deep,
-        CancellationToken ct) {
+    public Task<LayerDiffReport> DiffAsync(string workDirectory, int fromIndex, int toIndex, CancellationToken ct) {
         var snapshotsRoot = Layers.LayerEvidence.SnapshotsRoot(workDirectory);
         var fromManifest = Layers.LayerEvidence.ManifestPathFor(snapshotsRoot, fromIndex);
         var toManifest = Layers.LayerEvidence.ManifestPathFor(snapshotsRoot, toIndex);
