@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using TinyWin2.Core.Executers;
+using TinyWin2.Core.Executers.Registry;
 using TinyWin2.Core.Layers;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
@@ -15,8 +16,9 @@ public sealed record PreviewOptions {
     public required string WorkDirectory { get; init; }
     public required PlanCatalog Catalog { get; init; }
     public LayerGranularity Granularity { get; init; } = LayerGranularity.Group;
+    /// <summary>Plans directory: fs.path-present previews need each plan's assets root.</summary>
     public string? PlansDirectory { get; init; }
-    public long BaseVhdxMaximumMb { get; init; } = 130_000;
+    public long BaseVhdxMaximumMb { get; init; } = BuildOptions.DefaultBaseVhdxMaximumMb;
 }
 
 public sealed record PlanPreview(
@@ -45,19 +47,14 @@ public sealed class PreviewRunner(
     public async Task<IReadOnlyList<PlanPreview>> RunAsync(PreviewOptions options, CancellationToken ct) {
         var plan = BuildPlanResolver.Resolve(options.Catalog, options.Selections, options.Granularity);
         executers.ValidateBuildPlan(plan);
-        log.Phase = "preview";
+        log.Phase = BuildPhases.Preview;
         log.Info($"preview: {plan.PlanIds.Count} plans resolved into {plan.Steps.Count} steps");
         var resolver = new SourceImageResolver(runner, log);
         var source = await resolver.ResolveAsync(options.SourcePath, ct);
         try {
             Directory.CreateDirectory(options.WorkDirectory);
             var stagingWim = Path.Combine(options.WorkDirectory, "install.source.wim");
-            if (source.IsEsd) {
-                await resolver.ExportIndexToWimAsync(source.InstallImagePath, options.ImageIndex, stagingWim, fast: true, ct);
-            }
-            else {
-                File.Copy(source.InstallImagePath, stagingWim, overwrite: true);
-            }
+            await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, fast: true, ct);
             var stack = VhdLayerStack.Load(options.WorkDirectory, layerBackend, log);
             await stack.EnsureBaseAsync(options.BaseVhdxMaximumMb, "TinyWin2-preview", ct);
             log.Info("applying source image into the preview base layer");
@@ -69,18 +66,24 @@ public sealed class PreviewRunner(
             var letter = await layerBackend.AttachAsync(stack.BaseVhdxPath, ct);
             try {
                 var previews = new List<PlanPreview>();
-                var hiveCache = new Executers.Registry.RegistryHiveCache($"{letter}:\\", runner);
-                var context = new ExecContext($"{letter}:\\", log, hiveCache);
                 foreach (var step in plan.Steps) {
                     foreach (var resolved in step.Plans) {
+                        var hiveCache = new RegistryHiveCache($"{letter}:\\", runner);
+                        var context = new ExecContext($"{letter}:\\", log, hiveCache,
+                            ResolveAssetsRoot(options.PlansDirectory, resolved.Definition.Id));
                         var differences = new List<ChangeItem>();
                         var notes = new List<(string, string)>();
-                        foreach (var exec in resolved.Execs) {
-                            var diff = await executers.Get(exec.Resource).InspectAsync(context, exec, ct);
-                            differences.AddRange(diff.Differences.Where(d => d.Kind != ChangeKind.Skipped));
-                            notes.AddRange(diff.Differences
-                                .Where(d => d.Kind == ChangeKind.Skipped)
-                                .Select(d => (exec.Resource, d.Before ?? "not present")));
+                        try {
+                            foreach (var exec in resolved.Execs) {
+                                var diff = await executers.Get(exec.Resource).InspectAsync(context, exec, ct);
+                                differences.AddRange(diff.Differences.Where(d => d.Kind != ChangeKind.Skipped));
+                                notes.AddRange(diff.Differences
+                                    .Where(d => d.Kind == ChangeKind.Skipped)
+                                    .Select(d => (exec.Resource, d.Before ?? "not present")));
+                            }
+                        }
+                        finally {
+                            await hiveCache.UnloadAllAsync(log, ct);
                         }
                         previews.Add(new PlanPreview(
                             resolved.Definition.Id,
@@ -90,7 +93,6 @@ public sealed class PreviewRunner(
                             notes));
                     }
                 }
-                await hiveCache.UnloadAllAsync(log, ct);
                 return previews;
             }
             finally {
@@ -100,5 +102,13 @@ public sealed class PreviewRunner(
         finally {
             await resolver.DismountIsoAsync(source, ct);
         }
+    }
+
+    private static string? ResolveAssetsRoot(string? plansDirectory, string planId) {
+        if (plansDirectory is null) {
+            return null;
+        }
+        var candidate = Path.Combine(plansDirectory, "assets", planId);
+        return Directory.Exists(candidate) ? candidate : null;
     }
 }

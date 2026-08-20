@@ -223,18 +223,14 @@ public sealed partial class LayerInspector(
         var stack = VhdLayerStack.Load(workDirectory, backend, log);
         var vhdxPath = stack.VhdxForLayer(layerIndex);
         var letter = await backend.AttachAsync(vhdxPath, ct);
+        var builder = new OutputBuilder(runner, log);
         try {
             var name = $"TinyWin2 layer {layerIndex:000}";
             if (format == ImageFormat.Esd) {
                 var intermediate = Path.Combine(Path.GetTempPath(), $"tinywin2-rollback-{Guid.NewGuid():N}.wim");
                 try {
-                    await new OutputBuilder(runner, log).CaptureAsync($"{letter}:\\", intermediate, name, null,
-                        ImageFormat.Wim, fast, ct);
-                    await runner.RunAsync("dism.exe",
-                    [
-                        "/English", "/Export-Image", $"/SourceImageFile:{intermediate}", "/SourceIndex:1",
-                        $"/DestinationImageFile:{destinationPath}", "/Compress:recovery"
-                    ], cancellationToken: ct);
+                    await builder.CaptureAsync($"{letter}:\\", intermediate, name, null, ImageFormat.Wim, fast, ct);
+                    await builder.ExportEsdAsync(intermediate, destinationPath, ct);
                 }
                 finally {
                     try {
@@ -246,8 +242,7 @@ public sealed partial class LayerInspector(
                 }
             }
             else {
-                await new OutputBuilder(runner, log).CaptureAsync($"{letter}:\\", destinationPath, name, null,
-                    ImageFormat.Wim, fast, ct);
+                await builder.CaptureAsync($"{letter}:\\", destinationPath, name, null, ImageFormat.Wim, fast, ct);
             }
 
             return destinationPath;

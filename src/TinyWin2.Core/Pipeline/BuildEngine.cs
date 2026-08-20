@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using TinyWin2.Core.Env;
 using TinyWin2.Core.Executers;
+using TinyWin2.Core.Executers.Registry;
 using TinyWin2.Core.Layers;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
@@ -15,7 +17,26 @@ public enum OutputMode {
     IsoAndVhdx,
 }
 
+/// <summary>
+/// Build phases exactly as they appear in the JSONL event stream and the GUI's routing.
+/// Renaming a value here changes the wire contract — the GUI mirrors these strings.
+/// </summary>
+public static class BuildPhases {
+    public const string Prepare = "prepare";
+    public const string Media = "media";
+    public const string BaseLayer = "base-layer";
+    public const string Plan = "plan";
+    public const string Capture = "capture";
+    public const string Package = "package";
+    public const string Done = "done";
+    public const string Failed = "failed";
+    public const string Preview = "preview";
+    public const string Result = "result";
+}
+
 public sealed record BuildOptions {
+    public const long DefaultBaseVhdxMaximumMb = 130_000;
+
     public required string SourcePath { get; init; }
     public required int ImageIndex { get; init; }
     public required IReadOnlyList<PlanSelection> Selections { get; init; }
@@ -29,12 +50,11 @@ public sealed record BuildOptions {
     public bool DryRun { get; init; }
     public string? OscdimgPath { get; init; }
     public string? PlansDirectory { get; init; }
-    public long BaseVhdxMaximumMb { get; init; } = 130_000;
+    public long BaseVhdxMaximumMb { get; init; } = DefaultBaseVhdxMaximumMb;
 }
 
 public sealed record BuildResult {
     public required string BuildId { get; init; }
-    public required string WorkspacePath { get; init; }
     public required string MediaPath { get; init; }
     public string? IsoPath { get; init; }
     public string? VhdxPath { get; init; }
@@ -43,7 +63,6 @@ public sealed record BuildResult {
     public required int LayerCount { get; init; }
     public required bool Succeeded { get; init; }
     public string? FailedStepId { get; init; }
-    public int? FailedLayerIndex { get; init; }
 }
 
 /// <summary>One plan step failed; its layer was discarded, so the chain stays consistent.</summary>
@@ -64,11 +83,15 @@ public sealed class BuildEngine(
     ExecuterRegistry executers,
     ILayerBackend layerBackend,
     BuildLog log) {
-    public BuildLog Log => log;
+    internal const int ProgressAfterBase = 40;
+    internal const int ProgressPlanWeight = 40;
+    private const int ProgressMedia = 10;
+    private const int ProgressPackage = 90;
+    private const int ProgressComplete = 100;
 
     public async Task<BuildResult> BuildAsync(BuildOptions options, CancellationToken ct) {
         var buildId = DateTimeOffset.UtcNow.ToString("yyyyMMddTHHmmss");
-        log.Phase = "prepare";
+        log.Phase = BuildPhases.Prepare;
         log.Info($"build {buildId} starting (granularity={options.Granularity}, out={options.OutputMode}, fast={options.Fast})");
         var plan = BuildPlanResolver.Resolve(options.Catalog, options.Selections, options.Granularity);
         executers.ValidateBuildPlan(plan);
@@ -78,7 +101,7 @@ public sealed class BuildEngine(
         }
         if (options.DryRun) {
             log.Info("dry run: no mutations performed");
-            return DryRunResult(buildId, options);
+            return DryRunResult(buildId);
         }
         RunDoctor(options);
         var outputRoot = Path.GetFullPath(options.OutputRoot);
@@ -90,111 +113,17 @@ public sealed class BuildEngine(
         var failedSteps = new List<(string StepId, int LayerIndex, string Error)>();
         try {
             Directory.CreateDirectory(workspace);
-            source = await resolver.ResolveAsync(options.SourcePath, ct);
-            log.Phase = "media";
-            log.Info($"source media: {source.RootPath} ({(source.IsEsd ? "ESD" : "WIM")} install image)", data: new JsonObject { ["progress"] = 10 });
-            var indexes = await resolver.GetIndexesAsync(source.InstallImagePath, ct);
-            var sourceIndex = indexes.FirstOrDefault(i => i.Index == options.ImageIndex)
-                              ?? throw new InvalidOperationException(
-                                  $"image index {options.ImageIndex} not found (available: {string.Join(", ", indexes.Select(i => i.Index))}).");
-
-            // Stage the selected index as a plain WIM (ESD sources get exported first).
-            var stagingWim = Path.Combine(workspace, "install.source.wim");
-            if (source.IsEsd) {
-                log.Info("source uses ESD; exporting selected index to WIM first");
-                await resolver.ExportIndexToWimAsync(source.InstallImagePath, options.ImageIndex, stagingWim, options.Fast, ct);
-            }
-            else {
-                File.Copy(source.InstallImagePath, stagingWim, overwrite: true);
-            }
-            log.Phase = "base-layer";
-            var stack = VhdLayerStack.Load(workspace, layerBackend, log);
-            await stack.EnsureBaseAsync(options.BaseVhdxMaximumMb, $"TinyWin2-{buildId}", ct);
-            log.Info($"applying '{sourceIndex.Name}' (index {sourceIndex.Index}) into the base layer");
-            await stack.ApplyImageToBaseAsync(async (mount, token) => {
-                await runner.RunAsync("dism.exe",
-                    ["/English", "/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}", $"/ApplyDir:{mount}"],
-                    new ProcessRunOptions { Timeout = TimeSpan.FromHours(2) }, token);
-                log.Info("capturing base-layer evidence snapshots (file manifest + registry)");
-                await Layers.LayerEvidence.CaptureAsync(mount, workspace, 0, runner, log, token);
-            }, ct);
-            log.Phase = "plan";
-            var stepNumber = 0;
-            foreach (var step in plan.Steps) {
-                ct.ThrowIfCancellationRequested();
-                stepNumber++;
-                log.Info($"step {stepNumber}/{plan.Steps.Count}: '{step.Title}'",
-                    data: new JsonObject { ["progress"] = ProgressAfterBase + (int)(PlanWeight * stepNumber / (double)plan.Steps.Count) });
-                var session = await stack.BeginLayerAsync(step.Id, step.Title, null, ct);
-                var execResults = new JsonArray();
-                try {
-                    foreach (var resolved in step.Plans) {
-                        await RunPlanInLayerAsync(resolved, session, execResults, workspace, options, ct);
-                    }
-                    if (!options.Fast) {
-                        await CheckLayerHealthAsync(session, ct);
-                    }
-                    await Layers.LayerEvidence.CaptureAsync(session.MountPath, workspace, session.Record.Index, runner, log, ct);
-                    await stack.CommitLayerAsync(session, execResults, ct);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException) {
-                    await stack.DiscardLayerAsync(session, ex.Message, ct);
-                    failedSteps.Add((step.Id, session.Record.Index, ex.Message));
-                    log.Error($"step '{step.Id}' failed and its layer was discarded: {ex.Message}", step.Id, session.Record.Index);
-                    if (!options.ContinueOnError) {
-                        throw new BuildStepFailedException(step.Id, session.Record.Index, ex);
-                    }
-                }
-            }
-            log.Phase = "capture";
-            var format = options.OutputMode switch {
-                OutputMode.Wim => ImageFormat.Wim,
-                _ => ImageFormat.Esd,
-            };
-            var capturedWim = Path.Combine(workspace, "install.captured.wim");
-            var leaf = stack.LeafVhdxPath;
-            var letter = await layerBackend.AttachAsync(leaf, ct);
-            string installPath;
-            try {
-                if (format == ImageFormat.Esd) {
-                    // ESD (LZMS) capture goes through an intermediate WIM export for reliability.
-                    var intermediate = Path.Combine(workspace, "install.intermediate.wim");
-                    await builder.CaptureAsync($"{letter}:\\", intermediate, sourceIndex.Name, sourceIndex.Description, ImageFormat.Wim, options.Fast, ct);
-                    await layerBackend.DetachAsync(leaf, ct);
-                    installPath = Path.Combine(workspace, "install.esd");
-                    await runner.RunAsync("dism.exe",
-                        ["/English", "/Export-Image", $"/SourceImageFile:{intermediate}", "/SourceIndex:1",
-                         $"/DestinationImageFile:{installPath}", "/Compress:recovery"],
-                        new ProcessRunOptions { Timeout = TimeSpan.FromHours(3) }, ct);
-                }
-                else {
-                    await builder.CaptureAsync($"{letter}:\\", capturedWim, sourceIndex.Name, sourceIndex.Description, ImageFormat.Wim, options.Fast, ct);
-                    await layerBackend.DetachAsync(leaf, ct);
-                    installPath = capturedWim;
-                }
-            }
-            finally {
-                try { await layerBackend.DetachAsync(leaf, ct); } catch { /* already detached */ }
-            }
-            log.Phase = "package";
-            log.Info("rebuilding installation media folder", data: new JsonObject { ["progress"] = 90 });
-            var finalInstall = await builder.RebuildMediaAsync(source.RootPath, mediaPath, installPath, format, ct);
-            string? isoPath = null;
-            if (options.OutputMode is OutputMode.Iso or OutputMode.IsoAndVhdx) {
-                var oscdimg = options.OscdimgPath
-                              ?? ToolLocator.Locate("oscdimg.exe")
-                              ?? throw new FileNotFoundException("oscdimg.exe not found (pass --oscdimg or install Windows ADK).");
-                isoPath = Path.Combine(outputRoot, $"TinyWin2-{buildId}.iso");
-                await builder.CreateIsoAsync(mediaPath, isoPath, oscdimg, ct);
-            }
-            string? vhdxPath = null;
-            if (options.OutputMode == OutputMode.IsoAndVhdx) {
-                vhdxPath = Path.Combine(outputRoot, $"TinyWin2-{buildId}.vhdx");
-                await stack.ExportMergedVhdxAsync(vhdxPath, ct);
-            }
-            var manifestPath = await WriteManifestAsync(buildId, options, plan, stack, mediaPath, finalInstall, isoPath, vhdxPath, sourceIndex, failedSteps, ct);
-            log.Phase = "done";
-            log.Info($"build complete: {mediaPath}", data: new JsonObject { ["progress"] = 100 });
+            var (resolvedSource, stagingWim, sourceIndex) = await PrepareSourceAsync(options, workspace, resolver, ct);
+            source = resolvedSource;
+            var stack = await ApplyBaseAsync(options, buildId, workspace, stagingWim, sourceIndex, ct);
+            failedSteps = await RunStepsAsync(options, plan, stack, workspace, ct);
+            var installPath = await CaptureInstallImageAsync(options, workspace, stack, builder, sourceIndex, ct);
+            var (finalInstall, isoPath, vhdxPath) =
+                await PackageOutputAsync(options, buildId, source, mediaPath, installPath, stack, builder, ct);
+            var manifestPath = await WriteManifestAsync(buildId, options, plan, stack, mediaPath, finalInstall,
+                isoPath, vhdxPath, sourceIndex, failedSteps, ct);
+            log.Phase = BuildPhases.Done;
+            log.Info($"build complete: {mediaPath}", data: new JsonObject { ["progress"] = ProgressComplete });
             if (isoPath is not null) {
                 log.Info($"ISO: {isoPath}");
             }
@@ -206,7 +135,6 @@ public sealed class BuildEngine(
             }
             return new BuildResult {
                 BuildId = buildId,
-                WorkspacePath = workspace,
                 MediaPath = mediaPath,
                 IsoPath = isoPath,
                 VhdxPath = vhdxPath,
@@ -215,11 +143,10 @@ public sealed class BuildEngine(
                 LayerCount = stack.CommittedDepth,
                 Succeeded = true,
                 FailedStepId = failedSteps.Count > 0 ? failedSteps[0].StepId : null,
-                FailedLayerIndex = failedSteps.Count > 0 ? failedSteps[0].LayerIndex : null,
             };
         }
         catch (Exception ex) {
-            log.Phase = "failed";
+            log.Phase = BuildPhases.Failed;
             log.Error($"build failed: {ex.Message}");
             // Keep the workspace on failure: the layer chain is the post-mortem data.
             throw;
@@ -231,8 +158,136 @@ public sealed class BuildEngine(
         }
     }
 
-    internal const int ProgressAfterBase = 40;
-    internal const int PlanWeight = 40;
+    /// <summary>Resolves the source, picks the image index, and stages it as a plain WIM.</summary>
+    private async Task<(SourceMedia Source, string StagingWim, ImageIndexInfo SourceIndex)> PrepareSourceAsync(
+        BuildOptions options, string workspace, SourceImageResolver resolver, CancellationToken ct) {
+        log.Phase = BuildPhases.Media;
+        var source = await resolver.ResolveAsync(options.SourcePath, ct);
+        log.Info($"source media: {source.RootPath} ({(source.IsEsd ? "ESD" : "WIM")} install image)",
+            data: new JsonObject { ["progress"] = ProgressMedia });
+        var indexes = await resolver.GetIndexesAsync(source.InstallImagePath, ct);
+        var sourceIndex = indexes.FirstOrDefault(i => i.Index == options.ImageIndex)
+                          ?? throw new InvalidOperationException(
+                              $"image index {options.ImageIndex} not found (available: {string.Join(", ", indexes.Select(i => i.Index))}).");
+        var stagingWim = Path.Combine(workspace, "install.source.wim");
+        if (source.IsEsd) {
+            log.Info("source uses ESD; exporting selected index to WIM first");
+        }
+        await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, options.Fast, ct);
+        return (source, stagingWim, sourceIndex);
+    }
+
+    /// <summary>Creates (or reuses) the base layer and applies the staged image into it.</summary>
+    private async Task<VhdLayerStack> ApplyBaseAsync(
+        BuildOptions options, string buildId, string workspace, string stagingWim, ImageIndexInfo sourceIndex,
+        CancellationToken ct) {
+        log.Phase = BuildPhases.BaseLayer;
+        var stack = VhdLayerStack.Load(workspace, layerBackend, log);
+        await stack.EnsureBaseAsync(options.BaseVhdxMaximumMb, $"TinyWin2-{buildId}", ct);
+        log.Info($"applying '{sourceIndex.Name}' (index {sourceIndex.Index}) into the base layer");
+        await stack.ApplyImageToBaseAsync(async (mount, token) => {
+            await runner.RunAsync("dism.exe",
+                ["/English", "/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}", $"/ApplyDir:{mount}"],
+                new ProcessRunOptions { Timeout = TimeSpan.FromHours(2) }, token);
+            log.Info("capturing base-layer evidence snapshots (file manifest + registry)");
+            await LayerEvidence.CaptureAsync(mount, workspace, 0, runner, log, token);
+        }, ct);
+        return stack;
+    }
+
+    /// <summary>Runs every plan step as one atomic layer; returns the failed ones (ContinueOnError).</summary>
+    private async Task<List<(string StepId, int LayerIndex, string Error)>> RunStepsAsync(
+        BuildOptions options, BuildPlan plan, VhdLayerStack stack, string workspace, CancellationToken ct) {
+        log.Phase = BuildPhases.Plan;
+        var failedSteps = new List<(string, int, string)>();
+        var stepNumber = 0;
+        foreach (var step in plan.Steps) {
+            ct.ThrowIfCancellationRequested();
+            stepNumber++;
+            log.Info($"step {stepNumber}/{plan.Steps.Count}: '{step.Title}'",
+                data: new JsonObject {
+                    ["progress"] = ProgressAfterBase + (int)(ProgressPlanWeight * stepNumber / (double)plan.Steps.Count),
+                });
+            var session = await stack.BeginLayerAsync(step.Id, step.Title, null, ct);
+            var execResults = new JsonArray();
+            try {
+                foreach (var resolved in step.Plans) {
+                    await RunPlanInLayerAsync(resolved, session, execResults, workspace, options, ct);
+                }
+                if (!options.Fast) {
+                    await CheckLayerHealthAsync(session, ct);
+                }
+                await LayerEvidence.CaptureAsync(session.MountPath, workspace, session.Record.Index, runner, log, ct);
+                await stack.CommitLayerAsync(session, execResults, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                await stack.DiscardLayerAsync(session, ex.Message, ct);
+                failedSteps.Add((step.Id, session.Record.Index, ex.Message));
+                log.Error($"step '{step.Id}' failed and its layer was discarded: {ex.Message}", step.Id, session.Record.Index);
+                if (!options.ContinueOnError) {
+                    throw new BuildStepFailedException(step.Id, session.Record.Index, ex);
+                }
+            }
+        }
+        return failedSteps;
+    }
+
+    /// <summary>Captures the chain leaf into the install image (WIM directly; ESD via intermediate WIM).</summary>
+    private async Task<string> CaptureInstallImageAsync(
+        BuildOptions options, string workspace, VhdLayerStack stack, OutputBuilder builder, ImageIndexInfo sourceIndex,
+        CancellationToken ct) {
+        log.Phase = BuildPhases.Capture;
+        var format = options.OutputMode switch {
+            OutputMode.Wim => ImageFormat.Wim,
+            _ => ImageFormat.Esd,
+        };
+        var leaf = stack.LeafVhdxPath;
+        var letter = await layerBackend.AttachAsync(leaf, ct);
+        try {
+            if (format == ImageFormat.Esd) {
+                var intermediate = Path.Combine(workspace, "install.intermediate.wim");
+                await builder.CaptureAsync($"{letter}:\\", intermediate, sourceIndex.Name, sourceIndex.Description,
+                    ImageFormat.Wim, options.Fast, ct);
+                var esdPath = Path.Combine(workspace, "install.esd");
+                await builder.ExportEsdAsync(intermediate, esdPath, ct);
+                return esdPath;
+            }
+            var capturedWim = Path.Combine(workspace, "install.captured.wim");
+            await builder.CaptureAsync($"{letter}:\\", capturedWim, sourceIndex.Name, sourceIndex.Description,
+                ImageFormat.Wim, options.Fast, ct);
+            return capturedWim;
+        }
+        finally {
+            try { await layerBackend.DetachAsync(leaf, ct); } catch { /* already detached */ }
+        }
+    }
+
+    /// <summary>Rebuilds the media folder and produces the ISO / merged-VHDX artifacts.</summary>
+    private async Task<(string FinalInstall, string? IsoPath, string? VhdxPath)> PackageOutputAsync(
+        BuildOptions options, string buildId, SourceMedia source, string mediaPath, string installPath,
+        VhdLayerStack stack, OutputBuilder builder, CancellationToken ct) {
+        log.Phase = BuildPhases.Package;
+        log.Info("rebuilding installation media folder", data: new JsonObject { ["progress"] = ProgressPackage });
+        var format = options.OutputMode switch {
+            OutputMode.Wim => ImageFormat.Wim,
+            _ => ImageFormat.Esd,
+        };
+        var finalInstall = await builder.RebuildMediaAsync(source.RootPath, mediaPath, installPath, format, ct);
+        string? isoPath = null;
+        if (options.OutputMode is OutputMode.Iso or OutputMode.IsoAndVhdx) {
+            var oscdimg = options.OscdimgPath
+                          ?? ToolLocator.Locate("oscdimg.exe")
+                          ?? throw new FileNotFoundException("oscdimg.exe not found (pass --oscdimg or install Windows ADK).");
+            isoPath = Path.Combine(Path.GetFullPath(options.OutputRoot), $"TinyWin2-{buildId}.iso");
+            await builder.CreateIsoAsync(mediaPath, isoPath, oscdimg, ct);
+        }
+        string? vhdxPath = null;
+        if (options.OutputMode == OutputMode.IsoAndVhdx) {
+            vhdxPath = Path.Combine(Path.GetFullPath(options.OutputRoot), $"TinyWin2-{buildId}.vhdx");
+            await stack.ExportMergedVhdxAsync(vhdxPath, ct);
+        }
+        return (finalInstall, isoPath, vhdxPath);
+    }
 
     private async Task RunPlanInLayerAsync(
         ResolvedPlan resolved,
@@ -241,7 +296,7 @@ public sealed class BuildEngine(
         string workspace,
         BuildOptions options,
         CancellationToken ct) {
-        var hiveCache = new Executers.Registry.RegistryHiveCache(session.MountPath, runner);
+        var hiveCache = new RegistryHiveCache(session.MountPath, runner);
         hiveCache.SetSessionPrefix($"TinyWin2_L{session.Record.Index:D3}");
         var context = new ExecContext(
             session.MountPath,
@@ -342,9 +397,8 @@ public sealed class BuildEngine(
         return manifestPath;
     }
 
-    private static BuildResult DryRunResult(string buildId, BuildOptions options) => new() {
+    private static BuildResult DryRunResult(string buildId) => new() {
         BuildId = buildId,
-        WorkspacePath = "",
         MediaPath = "",
         InstallImagePath = "",
         ManifestPath = "",
@@ -356,7 +410,7 @@ public sealed class BuildEngine(
         if (!OperatingSystem.IsWindows()) {
             throw new PlatformNotSupportedException("TinyWin2 builds are Windows-only (DISM/diskpart/VHDX).");
         }
-        var failures = Env.EnvironmentDoctor.Check(options.OutputRoot)
+        var failures = EnvironmentDoctor.Check(options.OutputRoot)
             .Where(c => c.Required && !c.Ok)
             .ToList();
         if (failures.Count > 0) {

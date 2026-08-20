@@ -96,6 +96,13 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
             new ProcessRunOptions { Timeout = TimeSpan.FromHours(1) }, ct);
     }
 
+    /// <summary>ESD (LZMS) output goes through an intermediate WIM export for reliability (v1 rule).</summary>
+    public Task ExportEsdAsync(string intermediateWim, string esdPath, CancellationToken ct) =>
+        runner.RunAsync("dism.exe",
+            ["/English", "/Export-Image", $"/SourceImageFile:{intermediateWim}", "/SourceIndex:1",
+             $"/DestinationImageFile:{esdPath}", "/Compress:recovery"],
+            new ProcessRunOptions { Timeout = TimeSpan.FromHours(3) }, ct);
+
     public static async Task<string> ComputeSha256Async(string filePath, CancellationToken ct) {
         await using var stream = File.OpenRead(filePath);
         var hash = await SHA256.HashDataAsync(stream, ct);

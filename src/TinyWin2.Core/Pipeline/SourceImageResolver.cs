@@ -15,7 +15,7 @@ public sealed record ImageIndexInfo(
     long SizeBytes);
 
 /// <summary>A resolved installation media source: folder or mounted ISO.</summary>
-public sealed class SourceMedia : IAsyncDisposable {
+public sealed class SourceMedia {
     public required string RootPath { get; init; }
     public bool IsMountedIso { get; init; }
     public required string IsoPath { get; init; }
@@ -23,8 +23,6 @@ public sealed class SourceMedia : IAsyncDisposable {
     public bool IsEsd => InstallImagePath.EndsWith(".esd", StringComparison.OrdinalIgnoreCase);
 
     public string BootWimPath => Path.Combine(RootPath, "sources", "boot.wim");
-
-    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
 
 /// <summary>Resolves ISO/folder sources and inspects install-image indexes (read-only).</summary>
@@ -174,6 +172,16 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, BuildLog 
             ["/English", "/Export-Image", $"/SourceImageFile:{sourceImagePath}", $"/SourceIndex:{index}",
              $"/DestinationImageFile:{targetWimPath}", $"/Compress:{compress}"], cancellationToken: ct);
         return targetWimPath;
+    }
+
+    /// <summary>Stages the selected index as a plain WIM: ESD sources are exported, WIM sources copied.</summary>
+    public async Task StageAsWimAsync(SourceMedia source, int imageIndex, string targetWimPath, bool fast,
+        CancellationToken ct) {
+        if (!source.IsEsd) {
+            File.Copy(source.InstallImagePath, targetWimPath, overwrite: true);
+            return;
+        }
+        await ExportIndexToWimAsync(source.InstallImagePath, imageIndex, targetWimPath, fast, ct);
     }
 
     private async Task<string> MountIsoAsync(string isoPath, CancellationToken ct) {

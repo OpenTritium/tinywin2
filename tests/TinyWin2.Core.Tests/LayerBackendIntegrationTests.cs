@@ -163,6 +163,20 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
                 ["with"] = new JsonObject { ["paths"] = new JsonArray("Windows/System32") },
             });
         });
+        // fs.path-present needs the plan assets root: previews must resolve it exactly like builds.
+        var payload = Path.Combine(plansDir, "assets", "it.fs-copy", "payload");
+        Directory.CreateDirectory(payload);
+        await File.WriteAllTextAsync(Path.Combine(payload, "pinned.txt"), "pinned");
+        TestPlans.WritePlan(plansDir, "it.fs-copy", o => {
+            o["execs"] = new JsonArray(new JsonObject {
+                ["resource"] = "fs.path",
+                ["ensure"] = "present",
+                ["with"] = new JsonObject {
+                    ["path"] = "TinyWin2/pinned.txt",
+                    ["source"] = "payload/pinned.txt",
+                },
+            });
+        });
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var log = new Logging.BuildLog();
         using var logSink = log.UseSerilog(Path.Combine(_root, "it-preview.log"), echoConsole: true);
@@ -170,19 +184,26 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         var previews = await previewer.RunAsync(new PreviewOptions {
             SourcePath = sourcePath,
             ImageIndex = 1,
-            Selections = [new PlanSelection("it.registry-probe"), new PlanSelection("it.fs-remove")],
+            Selections = [
+                new PlanSelection("it.registry-probe"),
+                new PlanSelection("it.fs-remove"),
+                new PlanSelection("it.fs-copy"),
+            ],
             WorkDirectory = Path.Combine(_root, "work", "preview"),
             Catalog = catalog,
             PlansDirectory = plansDir,
         }, CancellationToken.None);
 
-        await Assert.That(previews).Count().IsEqualTo(2);
+        await Assert.That(previews).Count().IsEqualTo(3);
         var registry = previews.First(p => p.PlanId == "it.registry-probe");
         await Assert.That(registry.Satisfied).IsFalse();
         await Assert.That(registry.Differences.Count).IsGreaterThan(0);
         var fs = previews.First(p => p.PlanId == "it.fs-remove");
         await Assert.That(fs.Satisfied).IsFalse(); // Windows/System32 always exists in the applied image
         await Assert.That(fs.Differences.Count).IsGreaterThan(0);
+        var copy = previews.First(p => p.PlanId == "it.fs-copy");
+        await Assert.That(copy.Satisfied).IsFalse();
+        await Assert.That(copy.Differences[0].Kind).IsEqualTo(ChangeKind.Created);
     }
 
     private static void WriteRegistryProbePlan(string plansDir) {
