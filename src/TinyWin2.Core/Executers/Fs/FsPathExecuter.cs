@@ -4,79 +4,84 @@ using TinyWin2.Core.Native;
 namespace TinyWin2.Core.Executers.Fs;
 
 /// <summary>
-/// Converges paths inside the image. absent = delete (path-traversal guarded);
-/// present = copy files/directories from the plan's assets directory into the image.
-/// Desired absent: <c>{ paths:[...] }</c>; present: <c>{ path, source }</c>.
+/// Converges image paths. absent = delete paths inside the mount; present = copy a plan
+/// asset (file or directory) into the image.
 /// </summary>
 public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
     public const string ResourceId = "fs.path";
     public string Resource => ResourceId;
 
-    public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
-        var differences = new List<ChangeItem>();
-        var options = FsPathOptions.FromDesired(spec.Desired, spec.Ensure);
-        if (spec.Ensure == Ensure.Absent) {
-            differences.AddRange(from relative in options.Paths
-                                 let target = ResolveInsideMount(context.MountPath, relative)
-                                 where File.Exists(target) || Directory.Exists(target)
-                                 select new ChangeItem(ChangeKind.Removed, relative));
-        }
-        else {
-            _ = ResolveAssetSource(context, options.Source!);
-            var target = ResolveInsideMount(context.MountPath, options.Path!);
-            if (!File.Exists(target) && !Directory.Exists(target)) {
-                differences.Add(new ChangeItem(ChangeKind.Created, options.Path!, After: options.Source));
-            }
-        }
+    /// <summary>
+    /// One structured difference carrying its resolved targets — apply never re-parses
+    /// options, re-validates paths, or re-resolves the asset source.
+    /// </summary>
+    private sealed record PathChange(ChangeItem Change, string AbsoluteTarget, string? AssetSource = null);
 
-        return Task.FromResult(new ResourceDiff(differences.Count == 0, differences));
+    public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
+        var changes = InspectCore(context, spec);
+        return Task.FromResult(new ResourceDiff(changes.Count == 0, [.. changes.Select(c => c.Change)]));
     }
 
     public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
-        var diff = await InspectAsync(context, spec, ct);
-        if (diff.Satisfied) {
+        var changes = InspectCore(context, spec);
+        if (changes.Count == 0) {
             return ExecResult.Skipped("paths already in the desired state");
         }
 
-        var options = FsPathOptions.FromDesired(spec.Desired, spec.Ensure);
         if (spec.Ensure == Ensure.Absent) {
-            var applied = new List<ChangeItem>();
-            foreach (var change in diff.Differences) {
-                var target = ResolveInsideMount(context.MountPath, change.Target);
-                context.Log.Info($"removing image path: {change.Target}");
+            foreach (var change in changes) {
+                context.Log.Info($"removing image path: {change.Change.Target}");
                 try {
-                    Delete(target);
+                    Delete(change.AbsoluteTarget);
                 }
                 catch (UnauthorizedAccessException) {
-                    await runner.RunAsync("takeown.exe", ["/F", target, "/A", "/R", "/D", "Y"], cancellationToken: ct);
-                    await runner.RunAsync("icacls.exe", [target, "/grant", "*S-1-5-32-544:F", "/T"],
-                        cancellationToken: ct);
-                    Delete(target);
+                    await runner.RunAsync("takeown.exe",
+                        ["/F", change.AbsoluteTarget, "/A", "/R", "/D", "Y"], cancellationToken: ct);
+                    await runner.RunAsync("icacls.exe",
+                        [change.AbsoluteTarget, "/grant", "*S-1-5-32-544:F", "/T"], cancellationToken: ct);
+                    Delete(change.AbsoluteTarget);
                 }
-
-                applied.Add(change);
             }
 
-            return ExecResult.Applied(applied);
+            return ExecResult.Applied([.. changes.Select(c => c.Change)]);
         }
 
-        var assetPath = ResolveAssetSource(context, options.Source!);
-        var destination = ResolveInsideMount(context.MountPath, options.Path!);
+        var (_, destination, assetSource) = changes[0];
+        var assetPath = assetSource!;
         if (File.Exists(assetPath)) {
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
             File.Copy(assetPath, destination, overwrite: true);
         }
         else {
             foreach (var file in Directory.EnumerateFiles(assetPath, "*", SearchOption.AllDirectories)) {
-                var relativeToAsset = Path.GetRelativePath(assetPath, file);
-                var targetFile = Path.Combine(destination, relativeToAsset);
+                var targetFile = Path.Combine(destination, Path.GetRelativePath(assetPath, file));
                 Directory.CreateDirectory(Path.GetDirectoryName(targetFile)!);
                 File.Copy(file, targetFile, overwrite: true);
             }
         }
 
-        context.Log.Info($"copied asset '{options.Source}' → image path '{options.Path}'");
-        return ExecResult.Applied(diff.Differences);
+        context.Log.Info($"copied asset '{changes[0].Change.After}' → image path '{changes[0].Change.Target}'");
+        return ExecResult.Applied([.. changes.Select(c => c.Change)]);
+    }
+
+    private static List<PathChange> InspectCore(ExecContext context, ExecSpec spec) {
+        var options = FsPathOptions.FromDesired(spec.Desired, spec.Ensure);
+        if (spec.Ensure == Ensure.Absent) {
+            return
+            [
+                .. from relative in options.Paths
+                   let target = ResolveInsideMount(context.MountPath, relative)
+                   where File.Exists(target) || Directory.Exists(target)
+                   select new PathChange(new ChangeItem(ChangeKind.Removed, relative), target),
+            ];
+        }
+
+        var assetSource = ResolveAssetSource(context, options.Source!);
+        var destination = ResolveInsideMount(context.MountPath, options.Path!);
+        return File.Exists(destination) || Directory.Exists(destination)
+            ? []
+            : [new PathChange(new ChangeItem(ChangeKind.Created, options.Path!, After: options.Source),
+                destination, assetSource)];
     }
 
     private static void Delete(string target) {

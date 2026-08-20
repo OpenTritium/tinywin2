@@ -11,68 +11,73 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
     public const string ResourceId = "driver.store";
     public string Resource => ResourceId;
 
+    /// <summary>One structured difference carrying its resolved directory — apply never re-derives paths.</summary>
+    private sealed record DriverChange(ChangeItem Change, string Directory);
+
     public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
         if (spec.Ensure == Ensure.Present) {
             throw new ExecException("driver.store present (driver integration) is not implemented yet.");
         }
 
-        var options = DriverStoreOptions.FromDesired(spec.Desired);
-        var repositoryRoot = Path.GetFullPath(Path.Combine(
-            context.MountPath, "Windows", "System32", "DriverStore", "FileRepository"));
-        if (!Directory.Exists(repositoryRoot)) {
-            throw new ExecException($"Driver Store was not found at '{repositoryRoot}'.");
-        }
-
-        var differences = new List<ChangeItem>();
-        foreach (var infName in options.InfNames) {
-            var matches = Directory.EnumerateDirectories(repositoryRoot, $"{infName}_*", SearchOption.TopDirectoryOnly)
-                .ToList();
-            if (matches.Count == 0) {
-                context.Log.Info($"skipping unavailable Driver Store package: {infName}");
-                differences.Add(new ChangeItem(ChangeKind.Skipped, infName, "not in FileRepository"));
-                continue;
-            }
-
-            differences.AddRange(matches.Select(directory => Path.GetRelativePath(context.MountPath, directory))
-                .Select(relative => new ChangeItem(ChangeKind.Removed, relative, Before: infName)));
-        }
-
-        return Task.FromResult(new ResourceDiff(differences.All(d => d.Kind == ChangeKind.Skipped), differences));
+        var changes = InspectCore(context, spec);
+        return Task.FromResult(new ResourceDiff(changes.All(c => c.Change.Kind == ChangeKind.Skipped),
+            [.. changes.Select(c => c.Change)]));
     }
 
     public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
-        var diff = await InspectAsync(context, spec, ct);
-        if (diff.Satisfied) {
+        var changes = InspectCore(context, spec);
+        if (changes.All(c => c.Change.Kind == ChangeKind.Skipped)) {
             return ExecResult.Skipped("no matching Driver Store packages",
-                [.. diff.Differences.Where(d => d.Kind == ChangeKind.Skipped)]);
+                [.. changes.Select(c => c.Change).Where(c => c.Kind == ChangeKind.Skipped)]);
         }
 
-        var applied = new List<ChangeItem>();
-        foreach (var change in diff.Differences.Where(d => d.Kind != ChangeKind.Skipped)) {
-            var directory = Path.GetFullPath(Path.Combine(context.MountPath, change.Target));
-            var repositoryRoot = Path.GetFullPath(Path.Combine(
-                context.MountPath, "Windows", "System32", "DriverStore", "FileRepository"));
-            if (!directory.StartsWith(repositoryRoot + Path.DirectorySeparatorChar,
-                    StringComparison.OrdinalIgnoreCase)) {
-                throw new ExecException($"Driver Store package '{change.Target}' resolved outside FileRepository.");
+        foreach (var (change, directory) in changes) {
+            if (change.Kind == ChangeKind.Skipped) {
+                continue;
             }
 
             context.Log.Warn($"removing Driver Store package directory: {change.Target}");
             try {
-                TryDelete(directory);
+                Delete(directory);
             }
             catch (UnauthorizedAccessException) {
                 await GrantDeleteAccessAsync(directory, ct);
-                TryDelete(directory);
+                Delete(directory);
             }
-
-            applied.Add(change);
         }
 
-        return ExecResult.Applied(applied);
+        return ExecResult.Applied([.. changes.Where(c => c.Change.Kind != ChangeKind.Skipped).Select(c => c.Change)]);
     }
 
-    private static void TryDelete(string directory) {
+    private static List<DriverChange> InspectCore(ExecContext context, ExecSpec spec) {
+        var options = DriverStoreOptions.FromDesired(spec.Desired);
+        var repositoryRoot = RepositoryRoot(context.MountPath);
+        if (!Directory.Exists(repositoryRoot)) {
+            throw new ExecException($"Driver Store was not found at '{repositoryRoot}'.");
+        }
+
+        var changes = new List<DriverChange>();
+        foreach (var infName in options.InfNames) {
+            var matches = Directory.EnumerateDirectories(repositoryRoot, $"{infName}_*", SearchOption.TopDirectoryOnly)
+                .ToList();
+            if (matches.Count == 0) {
+                changes.Add(new(new ChangeItem(ChangeKind.Skipped, infName, "not in FileRepository"), ""));
+                continue;
+            }
+
+            changes.AddRange(matches.Select(directory => new DriverChange(
+                new ChangeItem(ChangeKind.Removed,
+                    Path.GetRelativePath(context.MountPath, directory), Before: infName),
+                directory)));
+        }
+
+        return changes;
+    }
+
+    private static string RepositoryRoot(string mountPath) => Path.GetFullPath(Path.Combine(
+        mountPath, "Windows", "System32", "DriverStore", "FileRepository"));
+
+    private static void Delete(string directory) {
         if (Directory.Exists(directory)) {
             Directory.Delete(directory, recursive: true);
         }

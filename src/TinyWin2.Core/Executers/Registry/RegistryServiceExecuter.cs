@@ -11,7 +11,45 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
     public const string ResourceId = "registry.service";
     public string Resource => ResourceId;
 
+    /// <summary>
+    /// One structured difference carrying its own service key and desired start values —
+    /// apply never re-parses options or re-resolves the control set.
+    /// </summary>
+    private sealed record ServiceChange(ChangeItem Change, string ServiceKey, int Start, int Delayed);
+
     public async Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
+        var changes = await InspectCoreAsync(context, spec, ct);
+        return new(changes.All(c => c.Change.Kind == ChangeKind.Skipped), [.. changes.Select(c => c.Change)]);
+    }
+
+    public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
+        var changes = await InspectCoreAsync(context, spec, ct);
+        if (changes.All(c => c.Change.Kind == ChangeKind.Skipped)) {
+            return ExecResult.Skipped("services already in the desired start mode",
+                [.. changes.Where(c => c.Change.Kind == ChangeKind.Skipped).Select(c => c.Change)]);
+        }
+
+        var applied = new List<ChangeItem>();
+        foreach (var (change, serviceKey, start, delayed) in changes) {
+            if (change.Kind == ChangeKind.Skipped) {
+                continue;
+            }
+
+            await runner.RunAsync("reg.exe",
+                ["add", serviceKey, "/v", "Start", "/t", "REG_DWORD", "/d", start.ToString(), "/f"],
+                cancellationToken: ct);
+            await runner.RunAsync("reg.exe",
+            [
+                "add", serviceKey, "/v", "DelayedAutoStart", "/t", "REG_DWORD", "/d", delayed.ToString(), "/f"
+            ], cancellationToken: ct);
+            context.Log.Info($"service {change.Target} → {change.After}");
+            applied.Add(change);
+        }
+
+        return ExecResult.Applied(applied);
+    }
+
+    private async Task<List<ServiceChange>> InspectCoreAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
         var options = RegistryServiceOptions.FromDesired(spec.Desired);
         var hive = await context.Hives.GetAsync("system", context.Log, ct);
         var controlSet = await ResolveControlSetAsync(hive, ct);
@@ -28,7 +66,7 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             .ToList();
         var resolved = new List<string>(options.Services);
         foreach (var pattern in options.ServicePatterns) {
-            var regex = LikeToRegex(pattern);
+            var regex = LikePattern.ToRegex(pattern);
             var matches = allNames.Where(n => regex.IsMatch(n)).ToList();
             if (matches.Count == 0) {
                 context.Log.Warn($"no services matched pattern '{pattern}' in {controlSet}; skipping.");
@@ -37,58 +75,28 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             resolved.AddRange(matches);
         }
 
-        var differences = new List<ChangeItem>();
+        var desiredDelayed = options.IsDelayed ? 1 : 0;
+        var changes = new List<ServiceChange>();
         foreach (var service in resolved.Distinct(StringComparer.OrdinalIgnoreCase)) {
             var serviceKey = $"{servicesRoot}\\{service}";
             var existingStart = await ReadDwordAsync(serviceKey, "Start", ct);
             if (existingStart is null) {
                 context.Log.Warn($"service '{service}' was not present in {controlSet}; skipping.");
-                differences.Add(new(ChangeKind.Skipped, service, "service not present"));
+                changes.Add(new(new(ChangeKind.Skipped, service, "service not present"), serviceKey, 0, 0));
                 continue;
             }
 
             var existingDelayed = await ReadDwordAsync(serviceKey, "DelayedAutoStart", ct) ?? 0;
-            var satisfied = existingStart == options.StartDword && existingDelayed == (options.IsDelayed ? 1 : 0);
-            if (!satisfied) {
-                differences.Add(new(ChangeKind.Modified, service,
-                    Before: Describe(existingStart.Value, existingDelayed),
-                    After: Describe(options.StartDword, options.IsDelayed ? 1 : 0)));
+            if (existingStart != options.StartDword || existingDelayed != desiredDelayed) {
+                changes.Add(new(
+                    new(ChangeKind.Modified, service,
+                        Before: Describe(existingStart.Value, existingDelayed),
+                        After: Describe(options.StartDword, desiredDelayed)),
+                    serviceKey, options.StartDword, desiredDelayed));
             }
         }
 
-        return new(differences.All(d => d.Kind == ChangeKind.Skipped), differences);
-    }
-
-    public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
-        var diff = await InspectAsync(context, spec, ct);
-        if (diff.Satisfied) {
-            return ExecResult.Skipped("services already in the desired start mode",
-                [.. diff.Differences.Where(d => d.Kind == ChangeKind.Skipped)]);
-        }
-
-        var options = RegistryServiceOptions.FromDesired(spec.Desired);
-        var hive = await context.Hives.GetAsync("system", context.Log, ct);
-        var controlSet = await ResolveControlSetAsync(hive, ct);
-        var applied = new List<ChangeItem>();
-        foreach (var change in diff.Differences) {
-            if (change.Kind == ChangeKind.Skipped) {
-                continue;
-            }
-
-            var serviceKey = $@"{hive.HiveKey}\{controlSet}\Services\{change.Target}";
-            await runner.RunAsync("reg.exe",
-                ["add", serviceKey, "/v", "Start", "/t", "REG_DWORD", "/d", options.StartDword.ToString(), "/f"],
-                cancellationToken: ct);
-            await runner.RunAsync("reg.exe",
-            [
-                "add", serviceKey, "/v", "DelayedAutoStart", "/t", "REG_DWORD", "/d",
-                (options.IsDelayed ? 1 : 0).ToString(), "/f"
-            ], cancellationToken: ct);
-            context.Log.Info($"service {change.Target} → {change.After}");
-            applied.Add(change);
-        }
-
-        return ExecResult.Applied(applied);
+        return changes;
     }
 
     private async Task<string> ResolveControlSetAsync(RegistryHive hive, CancellationToken ct) {
@@ -122,11 +130,6 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         3 => "manual",
         _ => delayed == 1 ? "delayedAuto" : "auto",
     };
-
-    /// <summary>PowerShell -like wildcards (* and ?) anchored for full-string matching.</summary>
-    internal static Regex LikeToRegex(string pattern) => new(
-        "^" + Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", ".") + "$",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     [GeneratedRegex("0x([0-9A-Fa-f]+)")]
     private static partial Regex HexRegex();

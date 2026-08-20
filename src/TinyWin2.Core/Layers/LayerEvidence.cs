@@ -79,14 +79,7 @@ public static partial class LayerEvidence {
                     await runner.RunAsync("reg.exe", ["export", tempKey, exportFile, "/y"], cancellationToken: ct);
                 }
                 finally {
-                    for (var attempt = 0; attempt < 5; attempt++) {
-                        var unload = await runner.RunAsync("reg.exe", ["unload", tempKey],
-                            new ProcessRunOptions { IgnoreExitCode = true }, ct);
-                        if (unload.Success) {
-                            break;
-                        }
-                        await Task.Delay(200, ct);
-                    }
+                    await RegistryHiveCache.UnloadWithRetryAsync(runner, tempKey, hiveId, log, ct);
                 }
                 combined.AppendLine($";;hive {hiveId}");
                 combined.AppendLine(await File.ReadAllTextAsync(exportFile, ct));

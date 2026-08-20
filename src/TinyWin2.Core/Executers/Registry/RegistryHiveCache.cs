@@ -82,24 +82,30 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner? runner =
         }
 
         foreach (var hive in toUnload) {
-            var unloaded = false;
-            for (var attempt = 1; attempt <= 5 && !unloaded; attempt++) {
-                try {
-                    await Runner.RunAsync("reg.exe", ["unload", hive.HiveKey], cancellationToken: ct);
-                    unloaded = true;
-                }
-                catch (ProcessRunnerException) {
-                    if (attempt == 5) {
-                        log.Warn(
-                            $"could not unload offline hive '{hive.HiveId}' after {attempt} attempts; continuing.");
-                    }
-                    else {
-                        await Task.Delay(200 * attempt, ct);
-                    }
-                }
-            }
-
+            await UnloadWithRetryAsync(Runner, hive.HiveKey, hive.HiveId, log, ct);
             hive.IsLoaded = false;
+        }
+    }
+
+    /// <summary>reg.exe unload lags behind handle release: linear-backoff retries, then warn and move on.</summary>
+    internal static async Task UnloadWithRetryAsync(
+        IProcessRunner runner,
+        string hiveKey,
+        string what,
+        BuildLog log,
+        CancellationToken ct) {
+        for (var attempt = 1; ; attempt++) {
+            try {
+                await runner.RunAsync("reg.exe", ["unload", hiveKey], cancellationToken: ct);
+                return;
+            }
+            catch (ProcessRunnerException) when (attempt < 5) {
+                await Task.Delay(200 * attempt, ct);
+            }
+            catch (ProcessRunnerException) {
+                log.Warn($"could not unload offline hive '{what}' after {attempt} attempts; continuing.");
+                return;
+            }
         }
     }
 }
