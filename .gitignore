@@ -1,0 +1,11 @@
+bin/
+obj/
+out/
+raw/
+.tools/
+*.user
+.vs/
+.vscode/
+TestResults/
+artifacts/
+*.log
