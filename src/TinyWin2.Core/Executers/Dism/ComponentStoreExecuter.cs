@@ -23,15 +23,20 @@ public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuter
         if (resetBase) {
             context.Log.Warn("ResetBase is enabled; installed updates cannot be uninstalled from the resulting image.");
         }
+
         var args = new List<string> { "/Cleanup-Image", "/StartComponentCleanup" };
         if (resetBase) {
             args.Add("/ResetBase");
         }
+
         var (exitCode, output) = await RunDismAsync(context, args, ct);
         var outcome = DismErrors.Classify(exitCode, output);
         return outcome switch {
             DismOutcome.Success or DismOutcome.SuccessRebootRequired => ExecResult.Applied(
-                [new ChangeItem(ChangeKind.Modified, "component-store", Before: "uncleaned", After: resetBase ? "cleaned+resetbase" : "cleaned")]),
+            [
+                new(ChangeKind.Modified, "component-store", Before: "uncleaned",
+                    After: resetBase ? "cleaned+resetbase" : "cleaned")
+            ]),
             DismOutcome.ComponentCleanupUnsupported => ExecResult.Skipped(
                 "this image rejects offline StartComponentCleanup (DISM error 4350)",
                 [new ChangeItem(ChangeKind.Skipped, "component-store", "DISM error 4350")]),
@@ -39,7 +44,4 @@ public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuter
         };
     }
 
-    private static bool Parse(ExecSpec spec) =>
-        spec.Desired["resetBase"]?.GetValue<bool>()
-        ?? (spec.Desired.ContainsKey("resetBase") && spec.Desired["resetBase"]!.GetValue<bool>());
 }

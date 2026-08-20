@@ -10,10 +10,9 @@ public sealed record FeatureOptions {
 
     public static FeatureOptions FromDesired(JsonObject desired) {
         var features = Desired.RequiredStringArray(desired, "features", "dism.feature");
-        if (features.Count == 0) {
-            throw new ExecException("dism.feature requires at least one feature name.");
-        }
-        return new FeatureOptions { Features = features, RemovePayload = Desired.OptionalBool(desired, "removePayload", true) };
+        return features.Count == 0
+            ? throw new ExecException("dism.feature requires at least one feature name.")
+            : new() { Features = features, RemovePayload = Desired.OptionalBool(desired, "removePayload", true) };
     }
 }
 
@@ -25,6 +24,7 @@ public sealed record CapabilityOptions {
         if (capabilities.Count == 0) {
             throw new ExecException("dism.capability requires at least one capability name.");
         }
+
         return new CapabilityOptions { Capabilities = capabilities };
     }
 }
@@ -37,6 +37,7 @@ public sealed record PackageOptions {
         if (raw.Count == 0) {
             throw new ExecException("dism.package requires at least one pattern.");
         }
+
         var compiled = new List<Regex>();
         foreach (var pattern in raw) {
             try {
@@ -46,6 +47,7 @@ public sealed record PackageOptions {
                 throw new ExecException($"invalid package pattern '{pattern}': {ex.Message}");
             }
         }
+
         return new PackageOptions { Patterns = compiled };
     }
 }
@@ -65,6 +67,7 @@ public sealed record AppxOptions {
         if (patterns.Count == 0) {
             throw new ExecException("appx.provisioned requires at least one pattern.");
         }
+
         return new AppxOptions { Patterns = patterns };
     }
 }

@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace TinyWin2.Core.Executers;
+namespace TinyWin2.Core.Executers.Dism;
 
 /// <summary>
 /// Classifies dism.exe outcomes by exit code (and, where needed, English/Chinese text hints),
@@ -33,32 +33,20 @@ public static partial class DismErrors {
     public const int SuccessRebootRequired = 3010;
 
     public static DismOutcome Classify(int exitCode, string output) {
-        if (exitCode == 0) {
-            return DismOutcome.Success;
-        }
-        if (exitCode == SuccessRebootRequired) {
-            return DismOutcome.SuccessRebootRequired;
-        }
-        if (exitCode == ComponentCleanup4350) {
-            return DismOutcome.ComponentCleanupUnsupported;
-        }
-        if (exitCode == ErrorNotSupported) {
-            return DismOutcome.ProviderUnavailable;
-        }
-        if (exitCode == CbsEInvalidInstallState) {
-            return DismOutcome.InvalidInstallState;
-        }
-        if (exitCode == CbsECannotUninstall) {
-            return DismOutcome.CannotUninstall;
-        }
-        if (ProviderUnavailableText().IsMatch(output)) {
-            return DismOutcome.ProviderUnavailable;
-        }
-        return DismOutcome.Fatal;
+        return exitCode switch {
+            0 => DismOutcome.Success,
+            SuccessRebootRequired => DismOutcome.SuccessRebootRequired,
+            ComponentCleanup4350 => DismOutcome.ComponentCleanupUnsupported,
+            ErrorNotSupported => DismOutcome.ProviderUnavailable,
+            CbsEInvalidInstallState => DismOutcome.InvalidInstallState,
+            CbsECannotUninstall => DismOutcome.CannotUninstall,
+            _ => ProviderUnavailableText().IsMatch(output) ? DismOutcome.ProviderUnavailable : DismOutcome.Fatal
+        };
     }
 
     /// <summary>DISM provider-gone message fragments (kept as a last-resort fallback for zh-CN media).</summary>
-    [GeneratedRegex("cannot be used on this computer|不能用于此计算机", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex("cannot be used on this computer|不能用于此计算机",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex ProviderUnavailableText();
 }
 
@@ -72,10 +60,12 @@ public static class DismListParser {
             if (line.Length == 0) {
                 continue;
             }
+
             var separator = line.IndexOf(':', StringComparison.Ordinal);
             if (separator <= 0) {
                 continue;
             }
+
             var key = line[..separator].Trim();
             var value = line[(separator + 1)..].Trim();
             if (key.Equals("Feature Name", StringComparison.OrdinalIgnoreCase)
@@ -86,14 +76,13 @@ public static class DismListParser {
                 current = [];
                 records.Add(current);
             }
-            if (current is null) {
-                continue;
-            }
-            current[key] = value;
+
+            current?[key] = value;
         }
+
         return records;
     }
 
     public static string? Get(Dictionary<string, string> record, string key) =>
-        record.TryGetValue(key, out var value) ? value : null;
+        record.GetValueOrDefault(key);
 }

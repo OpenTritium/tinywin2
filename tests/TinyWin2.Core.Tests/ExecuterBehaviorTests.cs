@@ -4,6 +4,7 @@ using TinyWin2.Core.Executers.Dism;
 using TinyWin2.Core.Executers.Driver;
 using TinyWin2.Core.Executers.Fs;
 using TinyWin2.Core.Executers.Registry;
+using DismErrors = TinyWin2.Core.Executers.Dism.DismErrors;
 
 namespace TinyWin2.Core.Tests;
 
@@ -123,12 +124,12 @@ public sealed class CapabilityAndPackageTests : IDisposable {
         var packages = new PackageExecuter(_harness.Runner);
         _harness.Runner.Handler = (_, args) => args.Contains("/Get-Packages")
             ? FakeProcessRunner.Ok("""
-                Package Identity : Microsoft-Windows-Foo-Package~31bf3856ad364e35~amd64~~10.0.1
-                State : Installed
+                                   Package Identity : Microsoft-Windows-Foo-Package~31bf3856ad364e35~amd64~~10.0.1
+                                   State : Installed
 
-                Package Identity : Microsoft-Windows-Bar-Package~31bf3856ad364e35~amd64~~10.0.1
-                State : Superseded
-                """)
+                                   Package Identity : Microsoft-Windows-Bar-Package~31bf3856ad364e35~amd64~~10.0.1
+                                   State : Superseded
+                                   """)
             : FakeProcessRunner.Ok();
         var diff = await packages.InspectAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("dism.package", Ensure.Absent,
@@ -154,7 +155,8 @@ public sealed class ComponentStoreExecuterTests : IDisposable {
     public async Task CleanupRunsAndApplies() {
         _harness.Runner.Handler = (_, _) => FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("dism.component-store", Ensure.Absent, ("resetBase", true)), CancellationToken.None);
+            ExecuterTestHarness.Spec("dism.component-store", Ensure.Absent, ("resetBase", true)),
+            CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(string.Join(" ", _harness.Runner.Calls[0].Args)).Contains("/ResetBase");
     }
@@ -183,12 +185,12 @@ public sealed class AppxProvisionedExecuterTests : IDisposable {
     public async Task WildcardsMatchDisplayNameAndRemove() {
         _harness.Runner.Handler = (_, args) => args.Contains("/Get-ProvisionedAppxPackages")
             ? FakeProcessRunner.Ok("""
-                DisplayName : Microsoft.XboxApp
-                Package Name : Microsoft.XboxApp_48.48.48.0_x64__8wekyb3d8bbwe
+                                   DisplayName : Microsoft.XboxApp
+                                   Package Name : Microsoft.XboxApp_48.48.48.0_x64__8wekyb3d8bbwe
 
-                DisplayName : Microsoft.WindowsCalculator
-                Package Name : Microsoft.WindowsCalculator_11.0_x64__8wekyb3d8bbwe
-                """)
+                                   DisplayName : Microsoft.WindowsCalculator
+                                   Package Name : Microsoft.WindowsCalculator_11.0_x64__8wekyb3d8bbwe
+                                   """)
             : FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("appx.provisioned", Ensure.Absent,
@@ -254,13 +256,15 @@ public sealed class FilesystemExecuterTests : IDisposable {
         Directory.CreateDirectory(Path.Combine(assets, "tools", "sub"));
         File.WriteAllText(Path.Combine(assets, "tools", "app.exe"), "bin");
         File.WriteAllText(Path.Combine(assets, "tools", "sub", "lib.dll"), "dll");
-        var context = new ExecContext(_harness.MountPath, _harness.Log, new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
+        var context = new ExecContext(_harness.MountPath, _harness.Log,
+            new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
         var result = await _executer.ApplyAsync(context,
             ExecuterTestHarness.Spec("fs.path", Ensure.Present,
                 ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(File.Exists(Path.Combine(_harness.MountPath, "ProgramData", "Tools", "app.exe"))).IsTrue();
-        await Assert.That(File.Exists(Path.Combine(_harness.MountPath, "ProgramData", "Tools", "sub", "lib.dll"))).IsTrue();
+        await Assert.That(File.Exists(Path.Combine(_harness.MountPath, "ProgramData", "Tools", "sub", "lib.dll")))
+            .IsTrue();
     }
 
     public void Dispose() => _harness.Dispose();
@@ -279,6 +283,7 @@ public sealed class DriverStoreExecuterTests : IDisposable {
         foreach (var name in directoryNames) {
             Directory.CreateDirectory(Path.Combine(root, name));
         }
+
         return root;
     }
 
@@ -306,8 +311,9 @@ public sealed class DriverStoreExecuterTests : IDisposable {
     public async Task InvalidInfNameRejected() {
         var ex = Assert.Throws<ExecException>(() =>
             _executer.InspectAsync(_harness.NewContext(),
-                ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
-                    ("infNames", new JsonArray("C:\\evil\\path.inf"))), CancellationToken.None).GetAwaiter().GetResult())!;
+                    ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
+                        ("infNames", new JsonArray("C:\\evil\\path.inf"))), CancellationToken.None).GetAwaiter()
+                .GetResult())!;
         await Assert.That(ex.Message).Contains("invalid driver INF name");
     }
 
@@ -318,8 +324,7 @@ public sealed class ExecuterRegistryTests {
     [Test]
     public async Task RegistersAllBuiltInResources() {
         var registry = new ExecuterRegistry(new FakeProcessRunner());
-        foreach (var resource in new[]
-                 {
+        foreach (var resource in new[] {
                      "registry.value", "registry.service", "dism.feature", "dism.capability",
                      "dism.package", "dism.component-store", "appx.provisioned", "driver.store", "fs.path",
                  }) {

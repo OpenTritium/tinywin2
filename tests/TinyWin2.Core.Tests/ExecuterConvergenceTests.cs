@@ -3,6 +3,7 @@ using TinyWin2.Core.Executers;
 using TinyWin2.Core.Executers.Dism;
 using TinyWin2.Core.Executers.Registry;
 using TinyWin2.Core.Logging;
+using DismErrors = TinyWin2.Core.Executers.Dism.DismErrors;
 
 namespace TinyWin2.Core.Tests;
 
@@ -26,11 +27,17 @@ public sealed class ExecuterTestHarness : IDisposable {
         foreach (var (key, value) in desired) {
             obj[key] = value?.DeepClone();
         }
+
         return new ExecSpec(resource, ensure, obj);
     }
 
     public void Dispose() {
-        try { Directory.Delete(MountPath, recursive: true); } catch { /* best effort */ }
+        try {
+            Directory.Delete(MountPath, recursive: true);
+        }
+        catch {
+            /* best effort */
+        }
     }
 }
 
@@ -41,30 +48,33 @@ public sealed class DismClassifierTests {
         await Assert.That(DismErrors.Classify(3010, "")).IsEqualTo(DismOutcome.SuccessRebootRequired);
         await Assert.That(DismErrors.Classify(4350, "")).IsEqualTo(DismOutcome.ComponentCleanupUnsupported);
         await Assert.That(DismErrors.Classify(50, "")).IsEqualTo(DismOutcome.ProviderUnavailable);
-        await Assert.That(DismErrors.Classify(DismErrors.CbsEInvalidInstallState, "")).IsEqualTo(DismOutcome.InvalidInstallState);
-        await Assert.That(DismErrors.Classify(DismErrors.CbsECannotUninstall, "")).IsEqualTo(DismOutcome.CannotUninstall);
+        await Assert.That(DismErrors.Classify(DismErrors.CbsEInvalidInstallState, ""))
+            .IsEqualTo(DismOutcome.InvalidInstallState);
+        await Assert.That(DismErrors.Classify(DismErrors.CbsECannotUninstall, ""))
+            .IsEqualTo(DismOutcome.CannotUninstall);
         await Assert.That(DismErrors.Classify(2, "")).IsEqualTo(DismOutcome.Fatal);
     }
 
     [Test]
     public async Task FallsBackToTextHintsForProviderGaps() {
         await Assert.That(DismErrors.Classify(-1, "这个文件当前不能用于此计算机")).IsEqualTo(DismOutcome.ProviderUnavailable);
-        await Assert.That(DismErrors.Classify(-1, "file cannot be used on this computer")).IsEqualTo(DismOutcome.ProviderUnavailable);
+        await Assert.That(DismErrors.Classify(-1, "file cannot be used on this computer"))
+            .IsEqualTo(DismOutcome.ProviderUnavailable);
     }
 
     [Test]
     public async Task ParsesFormatListBlocks() {
         const string output = """
-            Deployment Image Servicing and Management tool
-            Version: 10.0.1
+                              Deployment Image Servicing and Management tool
+                              Version: 10.0.1
 
-            Feature Name : Microsoft-Hyper-V
-            State : Enabled
+                              Feature Name : Microsoft-Hyper-V
+                              State : Enabled
 
-            Feature Name : NetFx3
-            State : Disabled
+                              Feature Name : NetFx3
+                              State : Disabled
 
-            """;
+                              """;
         var records = DismListParser.Parse(output);
         await Assert.That(records.Count).IsEqualTo(2);
         await Assert.That(DismListParser.Get(records[0], "State")).IsEqualTo("Enabled");
@@ -180,23 +190,29 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
             if (args[0] == "load" || args[0] == "add") {
                 return FakeProcessRunner.Ok();
             }
+
             if (args[0] != "query") {
                 return FakeProcessRunner.Ok();
             }
+
             if (args.Count == 4 && args[1] == $"{hiveKey}\\Select" && args[2] == "/v") {
                 return FakeProcessRunner.Ok($"\r\n    Current    REG_DWORD    0x1\r\n");
             }
+
             if (args.Count == 2 && args[1] == servicesRoot) {
                 var lines = services.Select(s => $"{servicesRoot}\\{s.Name}");
                 return FakeProcessRunner.Ok($"\r\n{servicesRoot}\r\n" + string.Join("\r\n", lines) + "\r\n");
             }
+
             // /v Start or /v DelayedAutoStart on a service key
             var key = args[1];
             var valueName = args[3];
-            var service = services.FirstOrDefault(s => key.Equals($"{servicesRoot}\\{s.Name}", StringComparison.OrdinalIgnoreCase));
+            var service = services.FirstOrDefault(s =>
+                key.Equals($"{servicesRoot}\\{s.Name}", StringComparison.OrdinalIgnoreCase));
             if (service.Name is null) {
                 return FakeProcessRunner.Fail(1);
             }
+
             var value = valueName == "Start" ? service.Start : service.Delayed;
             return value is null
                 ? FakeProcessRunner.Fail(1)
