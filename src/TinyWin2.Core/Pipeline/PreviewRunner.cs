@@ -70,7 +70,7 @@ public sealed class PreviewRunner(
             try {
                 var previews = new List<PlanPreview>();
                 var hiveCache = new Executers.Registry.RegistryHiveCache($"{letter}:\\", runner);
-                var context = new ExecContext($"{letter}:\\", log, 0, fastMode: true) { Hives = hiveCache };
+                var context = new ExecContext($"{letter}:\\", log, hiveCache);
                 foreach (var step in plan.Steps) {
                     foreach (var resolved in step.Plans) {
                         var differences = new List<ChangeItem>();

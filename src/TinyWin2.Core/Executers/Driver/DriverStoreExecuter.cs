@@ -15,12 +15,14 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
         if (spec.Ensure == Ensure.Present) {
             throw new ExecException("driver.store present (driver integration) is not implemented yet.");
         }
+
         var options = DriverStoreOptions.FromDesired(spec.Desired);
         var repositoryRoot = Path.GetFullPath(Path.Combine(
             context.MountPath, "Windows", "System32", "DriverStore", "FileRepository"));
         if (!Directory.Exists(repositoryRoot)) {
             throw new ExecException($"Driver Store was not found at '{repositoryRoot}'.");
         }
+
         var differences = new List<ChangeItem>();
         foreach (var infName in options.InfNames) {
             var matches = Directory.EnumerateDirectories(repositoryRoot, $"{infName}_*", SearchOption.TopDirectoryOnly)
@@ -30,11 +32,11 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
                 differences.Add(new ChangeItem(ChangeKind.Skipped, infName, "not in FileRepository"));
                 continue;
             }
-            foreach (var directory in matches) {
-                var relative = Path.GetRelativePath(context.MountPath, directory);
-                differences.Add(new ChangeItem(ChangeKind.Removed, relative, Before: infName));
-            }
+
+            differences.AddRange(matches.Select(directory => Path.GetRelativePath(context.MountPath, directory))
+                .Select(relative => new ChangeItem(ChangeKind.Removed, relative, Before: infName)));
         }
+
         return Task.FromResult(new ResourceDiff(differences.All(d => d.Kind == ChangeKind.Skipped), differences));
     }
 
@@ -42,16 +44,19 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
         var diff = await InspectAsync(context, spec, ct);
         if (diff.Satisfied) {
             return ExecResult.Skipped("no matching Driver Store packages",
-                diff.Differences.Where(d => d.Kind == ChangeKind.Skipped).ToArray());
+                [.. diff.Differences.Where(d => d.Kind == ChangeKind.Skipped)]);
         }
+
         var applied = new List<ChangeItem>();
         foreach (var change in diff.Differences.Where(d => d.Kind != ChangeKind.Skipped)) {
             var directory = Path.GetFullPath(Path.Combine(context.MountPath, change.Target));
             var repositoryRoot = Path.GetFullPath(Path.Combine(
                 context.MountPath, "Windows", "System32", "DriverStore", "FileRepository"));
-            if (!directory.StartsWith(repositoryRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) {
+            if (!directory.StartsWith(repositoryRoot + Path.DirectorySeparatorChar,
+                    StringComparison.OrdinalIgnoreCase)) {
                 throw new ExecException($"Driver Store package '{change.Target}' resolved outside FileRepository.");
             }
+
             context.Log.Warn($"removing Driver Store package directory: {change.Target}");
             try {
                 TryDelete(directory);
@@ -60,8 +65,10 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
                 await GrantDeleteAccessAsync(directory, ct);
                 TryDelete(directory);
             }
+
             applied.Add(change);
         }
+
         return ExecResult.Applied(applied);
     }
 
@@ -76,5 +83,4 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
         await runner.RunAsync("takeown.exe", ["/F", directory, "/A", "/R", "/D", "Y"], cancellationToken: ct);
         await runner.RunAsync("icacls.exe", [directory, "/grant", "*S-1-5-32-544:F", "/T"], cancellationToken: ct);
     }
-
 }

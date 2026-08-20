@@ -11,9 +11,7 @@ public sealed class ExecuterTestHarness : IDisposable {
     public FakeProcessRunner Runner { get; } = new();
     public BuildLog Log { get; } = new() { Phase = "test" };
 
-    public ExecContext NewContext(int layerIndex = 1) => new(MountPath, Log, layerIndex, fastMode: false) {
-        Hives = new RegistryHiveCache(MountPath, Runner),
-    };
+    public ExecContext NewContext() => new(MountPath, Log, new RegistryHiveCache(MountPath, Runner));
 
     /// <summary>Creates the offline hive file the cache requires before loading.</summary>
     public void CreateHiveFile(string hiveId = "software") {

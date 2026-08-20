@@ -16,12 +16,10 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
         var differences = new List<ChangeItem>();
         var options = FsPathOptions.FromDesired(spec.Desired, spec.Ensure);
         if (spec.Ensure == Ensure.Absent) {
-            foreach (var relative in options.Paths) {
-                var target = ResolveInsideMount(context.MountPath, relative);
-                if (File.Exists(target) || Directory.Exists(target)) {
-                    differences.Add(new ChangeItem(ChangeKind.Removed, relative));
-                }
-            }
+            differences.AddRange(from relative in options.Paths
+                                 let target = ResolveInsideMount(context.MountPath, relative)
+                                 where File.Exists(target) || Directory.Exists(target)
+                                 select new ChangeItem(ChangeKind.Removed, relative));
         }
         else {
             _ = ResolveAssetSource(context, options.Source!);
@@ -30,6 +28,7 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
                 differences.Add(new ChangeItem(ChangeKind.Created, options.Path!, After: options.Source));
             }
         }
+
         return Task.FromResult(new ResourceDiff(differences.Count == 0, differences));
     }
 
@@ -38,6 +37,7 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
         if (diff.Satisfied) {
             return ExecResult.Skipped("paths already in the desired state");
         }
+
         var options = FsPathOptions.FromDesired(spec.Desired, spec.Ensure);
         if (spec.Ensure == Ensure.Absent) {
             var applied = new List<ChangeItem>();
@@ -49,13 +49,17 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
                 }
                 catch (UnauthorizedAccessException) {
                     await runner.RunAsync("takeown.exe", ["/F", target, "/A", "/R", "/D", "Y"], cancellationToken: ct);
-                    await runner.RunAsync("icacls.exe", [target, "/grant", "*S-1-5-32-544:F", "/T"], cancellationToken: ct);
+                    await runner.RunAsync("icacls.exe", [target, "/grant", "*S-1-5-32-544:F", "/T"],
+                        cancellationToken: ct);
                     Delete(target);
                 }
+
                 applied.Add(change);
             }
+
             return ExecResult.Applied(applied);
         }
+
         var assetPath = ResolveAssetSource(context, options.Source!);
         var destination = ResolveInsideMount(context.MountPath, options.Path!);
         if (File.Exists(assetPath)) {
@@ -70,6 +74,7 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
                 File.Copy(file, targetFile, overwrite: true);
             }
         }
+
         context.Log.Info($"copied asset '{options.Source}' → image path '{options.Path}'");
         return ExecResult.Applied(diff.Differences);
     }
@@ -91,11 +96,13 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
             || DotSegment().IsMatch(normalized)) {
             throw new ExecException($"unsafe relative path '{relativePath}'.");
         }
+
         var mountRoot = Path.GetFullPath(mountPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         var target = Path.GetFullPath(Path.Combine(mountRoot, normalized));
         if (!target.StartsWith(mountRoot, StringComparison.OrdinalIgnoreCase)) {
             throw new ExecException($"path '{relativePath}' resolved outside the mounted image.");
         }
+
         return target;
     }
 
@@ -103,14 +110,18 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
         if (context.PlanAssetsRoot is null) {
             throw new ExecException("fs.path present requires a plan assets root, which this build did not provide.");
         }
-        var assetRoot = Path.GetFullPath(context.PlanAssetsRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+        var assetRoot = Path.GetFullPath(context.PlanAssetsRoot).TrimEnd(Path.DirectorySeparatorChar) +
+                        Path.DirectorySeparatorChar;
         var candidate = Path.GetFullPath(Path.Combine(assetRoot, source.Replace('/', '\\')));
         if (!candidate.StartsWith(assetRoot, StringComparison.OrdinalIgnoreCase)) {
             throw new ExecException($"asset source '{source}' resolved outside the plan assets directory.");
         }
+
         if (!File.Exists(candidate) && !Directory.Exists(candidate)) {
             throw new ExecException($"asset source '{source}' was not found under '{context.PlanAssetsRoot}'.");
         }
+
         return candidate;
     }
 

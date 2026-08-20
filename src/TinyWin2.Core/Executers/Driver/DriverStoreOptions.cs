@@ -11,13 +11,15 @@ public sealed record DriverStoreOptions {
         if (infNames.Count == 0) {
             throw new ExecException("driver.store requires at least one INF name.");
         }
-        foreach (var infName in infNames) {
-            var normalized = Path.GetFileName(infName);
-            if (!string.Equals(normalized, infName, StringComparison.Ordinal)
-                || !infName.EndsWith(".inf", StringComparison.OrdinalIgnoreCase)) {
-                throw new ExecException($"invalid driver INF name '{infName}'.");
-            }
+
+        foreach (var infName in from infName in infNames
+                                let normalized = Path.GetFileName(infName)
+                                where !string.Equals(normalized, infName, StringComparison.Ordinal)
+                                      || !infName.EndsWith(".inf", StringComparison.OrdinalIgnoreCase)
+                                select infName) {
+            throw new ExecException($"invalid driver INF name '{infName}'.");
         }
-        return new DriverStoreOptions { InfNames = infNames };
+
+        return new() { InfNames = infNames };
     }
 }

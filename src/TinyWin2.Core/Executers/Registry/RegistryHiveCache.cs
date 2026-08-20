@@ -5,13 +5,15 @@ using TinyWin2.Core.Native;
 namespace TinyWin2.Core.Executers.Registry;
 
 /// <summary>One offline registry hive loaded under HKLM\&lt;sessionPrefix&gt;_&lt;hive&gt;.</summary>
-public sealed partial class RegistryHive(
+public sealed class RegistryHive(
     string hiveId,
     string hiveKey,
     string hiveFilePath) : IAsyncDisposable {
     public string HiveId { get; } = hiveId;
+
     /// <summary>Loaded key path, e.g. <c>HKLM\TinyWin2_build1_system</c>.</summary>
     public string HiveKey { get; } = hiveKey;
+
     public string HiveFilePath { get; } = hiveFilePath;
     public bool IsLoaded { get; internal set; }
 
@@ -34,17 +36,18 @@ public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? 
     private string _sessionPrefix = "TinyWin2";
 
     public string MountPath { get; } = mountPath;
-    public IProcessRunner Runner { get; internal set; } = runner ?? new ProcessRunner();
+    public IProcessRunner Runner { get; } = runner ?? new ProcessRunner();
 
     /// <summary>Hive id → file path inside the image (v1 mapping + SECURITY/SAM).</summary>
-    public static readonly IReadOnlyDictionary<string, string> HiveFiles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
-        ["software"] = @"Windows\System32\config\SOFTWARE",
-        ["system"] = @"Windows\System32\config\SYSTEM",
-        ["security"] = @"Windows\System32\config\SECURITY",
-        ["sam"] = @"Windows\System32\config\SAM",
-        ["default"] = @"Windows\System32\config\default",
-        ["default-user"] = @"Users\Default\NTUSER.DAT",
-    };
+    public static readonly IReadOnlyDictionary<string, string> HiveFiles =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
+            ["software"] = @"Windows\System32\config\SOFTWARE",
+            ["system"] = @"Windows\System32\config\SYSTEM",
+            ["security"] = @"Windows\System32\config\SECURITY",
+            ["sam"] = @"Windows\System32\config\SAM",
+            ["default"] = @"Windows\System32\config\default",
+            ["default-user"] = @"Users\Default\NTUSER.DAT",
+        };
 
     public void SetSessionPrefix(string prefix) {
         _sessionPrefix = prefix;
@@ -52,17 +55,21 @@ public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? 
 
     public async Task<RegistryHive> GetAsync(string hiveId, IBuildLog log, CancellationToken ct) {
         if (!HiveFiles.TryGetValue(hiveId, out var relativePath)) {
-            throw new ExecException($"unknown registry hive '{hiveId}' (expected one of: {string.Join(", ", HiveFiles.Keys)}).");
+            throw new ExecException(
+                $"unknown registry hive '{hiveId}' (expected one of: {string.Join(", ", HiveFiles.Keys)}).");
         }
+
         lock (_gate) {
             if (_loaded.TryGetValue(hiveId, out var hive) && hive.IsLoaded) {
                 return hive;
             }
         }
+
         var hiveFilePath = Path.GetFullPath(Path.Combine(MountPath, relativePath));
         if (!File.Exists(hiveFilePath)) {
             throw new ExecException($"offline registry hive '{hiveId}' was not found at '{hiveFilePath}'.");
         }
+
         var hiveKey = $"HKLM\\{_sessionPrefix}_{hiveId.ToLowerInvariant()}";
         await Runner.RunAsync("reg.exe", ["load", hiveKey, hiveFilePath], cancellationToken: ct);
         log.Debug($"loaded offline hive '{hiveId}' at {hiveKey}");
@@ -79,6 +86,7 @@ public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? 
             toUnload = [.. _loaded.Values.Where(h => h.IsLoaded)];
             _loaded.Clear();
         }
+
         foreach (var hive in toUnload) {
             var unloaded = false;
             for (var attempt = 1; attempt <= 5 && !unloaded; attempt++) {
@@ -88,13 +96,15 @@ public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? 
                 }
                 catch (ProcessRunnerException) {
                     if (attempt == 5) {
-                        log.Warn($"could not unload offline hive '{hive.HiveId}' after {attempt} attempts; continuing.");
+                        log.Warn(
+                            $"could not unload offline hive '{hive.HiveId}' after {attempt} attempts; continuing.");
                     }
                     else {
                         await Task.Delay(200 * attempt, ct);
                     }
                 }
             }
+
             hive.IsLoaded = false;
         }
     }
@@ -112,11 +122,13 @@ public static partial class RegValues {
             if (!match.Success) {
                 continue;
             }
+
             var name = match.Groups[1].Value.Trim();
             if (string.Equals(name, valueName, StringComparison.OrdinalIgnoreCase)) {
                 return new RegValue(match.Groups[2].Value, match.Groups[3].Value);
             }
         }
+
         return null;
     }
 
@@ -145,10 +157,12 @@ public static partial class RegValues {
             if (value.TryGetValue<int>(out var i)) {
                 return i;
             }
+
             if (value.TryGetValue<long>(out var l)) {
                 return l;
             }
         }
+
         return data.GetValue<long>();
     }
 
@@ -160,12 +174,14 @@ public static partial class RegValues {
                    && TryParseHex(desiredData, out var desired)
                    && queried == desired;
         }
+
         return string.Equals(queriedData.TrimEnd('\0'), desiredData, StringComparison.Ordinal);
     }
 
     private static bool TryParseHex(string value, out long number) {
         var trimmed = value.Trim().TrimStart("0x");
-        return long.TryParse(trimmed, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out number);
+        return long.TryParse(trimmed, System.Globalization.NumberStyles.HexNumber,
+            System.Globalization.CultureInfo.InvariantCulture, out number);
     }
 
     /// <summary>reg query value line: four-space separated name, type, data.</summary>

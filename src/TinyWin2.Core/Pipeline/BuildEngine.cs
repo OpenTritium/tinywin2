@@ -243,10 +243,11 @@ public sealed class BuildEngine(
         CancellationToken ct) {
         var hiveCache = new Executers.Registry.RegistryHiveCache(session.MountPath, runner);
         hiveCache.SetSessionPrefix($"TinyWin2_L{session.Record.Index:D3}");
-        var context = new ExecContext(session.MountPath, log, session.Record.Index, options.Fast) {
-            Hives = hiveCache,
-            PlanAssetsRoot = ResolveAssetsRoot(options.PlansDirectory, resolved.Definition.Id),
-        };
+        var context = new ExecContext(
+            session.MountPath,
+            log,
+            hiveCache,
+            ResolveAssetsRoot(options.PlansDirectory, resolved.Definition.Id));
         log.PlanId = resolved.Definition.Id;
         try {
             foreach (var exec in resolved.Execs) {
@@ -261,7 +262,6 @@ public sealed class BuildEngine(
                     ["status"] = result.Status.ToString().ToLowerInvariant(),
                     ["changes"] = new JsonArray(result.Changes.Select(c => (JsonNode)c.ToJson()).ToArray()),
                     ["skipReason"] = result.SkipReason,
-                    ["error"] = result.Error,
                 });
                 if (result.Status == ExecStatus.Applied) {
                     log.Info($"{exec.Resource}: {result.Changes.Count} change(s)", resolved.Definition.Id, session.Record.Index);

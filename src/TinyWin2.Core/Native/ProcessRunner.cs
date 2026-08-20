@@ -11,7 +11,6 @@ public sealed class ProcessRunOptions {
     public string? WorkingDirectory { get; init; }
     public TimeSpan? Timeout { get; init; }
     public bool IgnoreExitCode { get; init; }
-    public IReadOnlyDictionary<string, string>? Environment { get; init; }
     public Action<string>? OnOutputLine { get; init; }
     public Action<string>? OnErrorLine { get; init; }
 }
@@ -52,12 +51,6 @@ public sealed class ProcessRunner : IProcessRunner {
             RedirectStandardInput = true, // stdin closed below: some tools wait on it
             CreateNoWindow = true,
         };
-        if (options.Environment is not null) {
-            foreach (var (key, value) in options.Environment) {
-                startInfo.Environment[key] = value;
-            }
-        }
-
         foreach (var argument in arguments) {
             startInfo.ArgumentList.Add(argument);
         }

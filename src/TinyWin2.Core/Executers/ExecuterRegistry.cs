@@ -43,8 +43,6 @@ public sealed class ExecuterRegistry {
         yield return new FsPathExecuter(runner);
     }
 
-    public IReadOnlyCollection<string> Resources => _byResource.Keys;
-
     public IExecuter Get(string resource) =>
         _byResource.TryGetValue(resource, out var executer)
             ? executer

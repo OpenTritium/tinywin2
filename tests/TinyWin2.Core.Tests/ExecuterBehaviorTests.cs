@@ -254,8 +254,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
         Directory.CreateDirectory(Path.Combine(assets, "tools", "sub"));
         File.WriteAllText(Path.Combine(assets, "tools", "app.exe"), "bin");
         File.WriteAllText(Path.Combine(assets, "tools", "sub", "lib.dll"), "dll");
-        var context = _harness.NewContext();
-        context.PlanAssetsRoot = assets;
+        var context = new ExecContext(_harness.MountPath, _harness.Log, new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
         var result = await _executer.ApplyAsync(context,
             ExecuterTestHarness.Spec("fs.path", Ensure.Present,
                 ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None);

@@ -12,13 +12,13 @@ public sealed record FsPathOptions {
         const string context = "fs.path";
         if (ensure == Ensure.Absent) {
             var paths = Desired.RequiredStringArray(desired, "paths", context);
-            if (paths.Count == 0) {
-                throw new ExecException("fs.path absent requires at least one path.");
-            }
-            return new FsPathOptions { Paths = paths };
+            return paths.Count == 0
+                ? throw new ExecException("fs.path absent requires at least one path.")
+                : new FsPathOptions { Paths = paths };
         }
+
         var path = Desired.RequiredString(desired, "path", context);
         var source = Desired.RequiredString(desired, "source", context);
-        return new FsPathOptions { Path = path, Source = source };
+        return new() { Path = path, Source = source };
     }
 }

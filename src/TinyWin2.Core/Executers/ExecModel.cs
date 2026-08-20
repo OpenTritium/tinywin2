@@ -17,11 +17,11 @@ public enum ChangeKind {
     Skipped,
 }
 
-/// <summary>Final outcome status of one exec.</summary>
+/// <summary>Final outcome status of one exec. Failures are exceptions
+/// (<see cref="ExecException"/>), never a status value.</summary>
 public enum ExecStatus {
     Applied,
     Skipped,
-    Failed,
 }
 
 /// <summary>One semantic change an exec made (or skipped) against a named target.</summary>
@@ -34,24 +34,12 @@ public sealed record ChangeItem(ChangeKind Kind, string Target, string? Before =
     };
 }
 
-/// <summary>Result of one exec.</summary>
-public sealed record ExecResult(
-    ExecStatus Status,
-    IReadOnlyList<ChangeItem> Changes,
-    string? SkipReason = null,
-    int? HResult = null,
-    string? Error = null) {
+/// <summary>Result of one exec. Hard failures throw <see cref="ExecException"/> instead.</summary>
+/// <param name="Changes">What changed; may carry Skipped items for absent targets.</param>
+public sealed record ExecResult(ExecStatus Status, IReadOnlyList<ChangeItem> Changes, string? SkipReason = null) {
     public static ExecResult Applied(IReadOnlyList<ChangeItem> changes) => new(ExecStatus.Applied, changes);
     public static ExecResult Skipped(string reason, IReadOnlyList<ChangeItem>? changes = null)
         => new(ExecStatus.Skipped, changes ?? [], reason);
-
-    public JsonObject ToJson() => new() {
-        ["status"] = Status.ToString().ToLowerInvariant(),
-        ["changes"] = new JsonArray(Changes.Select(c => (JsonNode)c.ToJson()).ToArray()),
-        ["skipReason"] = SkipReason,
-        ["hresult"] = HResult,
-        ["error"] = Error,
-    };
 }
 
 /// <summary>
@@ -64,33 +52,26 @@ public sealed record ResourceDiff(bool Satisfied, IReadOnlyList<ChangeItem> Diff
 /// One bound exec: pure data produced at plan-resolution time (after argument binding).
 /// <paramref name="Desired"/> is resource-specific and validated against the resource schema.
 /// </summary>
-public sealed record ExecSpec(string Resource, Ensure Ensure, JsonObject Desired) {
-    public JsonObject ToJson() => new() {
-        ["resource"] = Resource,
-        ["ensure"] = Ensure.ToString().ToLowerInvariant(),
-        ["with"] = Desired.DeepClone(),
-    };
-}
+public sealed record ExecSpec(string Resource, Ensure Ensure, JsonObject Desired);
 
 /// <summary>Thrown by executers for hard failures; soft/expected misses become Skipped results.</summary>
-public sealed class ExecException(string message, int? hResult = null, Exception? inner = null)
-    : Exception(message, inner) {
-    public int? HResult2 { get; } = hResult;
-}
+public sealed class ExecException(string message, Exception? inner = null)
+    : Exception(message, inner);
 
-/// <summary>Per-exec runtime context handed to every executer.</summary>
+/// <summary>
+/// Per-exec runtime context handed to every executer. Immutable: everything the layer
+/// provides is injected at construction (the engine creates one per plan run).
+/// </summary>
 public sealed class ExecContext(
     string mountPath,
     IBuildLog log,
-    int layerIndex,
-    bool fastMode) {
+    Registry.RegistryHiveCache hives,
+    string? planAssetsRoot = null) {
     /// <summary>Drive letter root of the currently attached (mounted) image layer.</summary>
     public string MountPath { get; } = mountPath;
     public IBuildLog Log { get; } = log;
-    public int LayerIndex { get; } = layerIndex;
-    public bool FastMode { get; } = fastMode;
     /// <summary>Offline registry hive sessions for the current layer; owned by the build engine.</summary>
-    public Registry.RegistryHiveCache Hives { get; set; } = new(mountPath);
+    public Registry.RegistryHiveCache Hives { get; } = hives;
     /// <summary>Root directory of the current plan's bundled assets (for fs.path present copies).</summary>
-    public string? PlanAssetsRoot { get; set; }
+    public string? PlanAssetsRoot { get; } = planAssetsRoot;
 }

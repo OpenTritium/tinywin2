@@ -35,7 +35,7 @@ public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuter
             DismOutcome.ComponentCleanupUnsupported => ExecResult.Skipped(
                 "this image rejects offline StartComponentCleanup (DISM error 4350)",
                 [new ChangeItem(ChangeKind.Skipped, "component-store", "DISM error 4350")]),
-            _ => throw new ExecException($"dism.exe StartComponentCleanup failed (exit {exitCode}).", exitCode),
+            _ => throw new ExecException($"dism.exe StartComponentCleanup failed (exit {exitCode})."),
         };
     }
 
