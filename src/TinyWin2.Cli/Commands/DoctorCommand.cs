@@ -5,6 +5,10 @@ namespace TinyWin2.Cli.Commands;
 
 internal static class DoctorCommand {
     public static int Run(Dictionary<string, string> options) {
+        if (!OperatingSystem.IsWindows()) {
+            Console.Error.WriteLine("error: tinywin2 requires Windows (DISM/diskpart/VHDX).");
+            return 3;
+        }
         var json = options.ContainsKey("json");
         var checks = EnvironmentDoctor.Check(options.TryGetValue("out", out var outDir) ? outDir : null);
         if (json) {

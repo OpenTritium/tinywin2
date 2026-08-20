@@ -353,6 +353,9 @@ public sealed class BuildEngine(
     };
 
     private void RunDoctor(BuildOptions options) {
+        if (!OperatingSystem.IsWindows()) {
+            throw new PlatformNotSupportedException("TinyWin2 builds are Windows-only (DISM/diskpart/VHDX).");
+        }
         var failures = Env.EnvironmentDoctor.Check(options.OutputRoot)
             .Where(c => c.Required && !c.Ok)
             .ToList();
