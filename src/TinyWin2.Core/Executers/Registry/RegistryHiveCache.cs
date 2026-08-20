@@ -111,14 +111,14 @@ public static partial class RegValues {
     /// <summary>Extracts a named value from <c>reg query KEY /v NAME</c> output; null if absent.</summary>
     public static RegValue? ParseQueryValue(string output, string valueName) {
         return (from rawLine in output.Split('\n')
-            select rawLine.TrimEnd('\r')
+                select rawLine.TrimEnd('\r')
             into line
-            select ValueLine().Match(line)
+                select ValueLine().Match(line)
             into match
-            where match.Success
-            let name = match.Groups[1].Value.Trim()
-            where string.Equals(name, valueName, StringComparison.OrdinalIgnoreCase)
-            select new RegValue(match.Groups[2].Value, match.Groups[3].Value)).FirstOrDefault();
+                where match.Success
+                let name = match.Groups[1].Value.Trim()
+                where string.Equals(name, valueName, StringComparison.OrdinalIgnoreCase)
+                select new RegValue(match.Groups[2].Value, match.Groups[3].Value)).FirstOrDefault();
     }
 
     /// <summary>Renders desired data for reg.exe /d for each supported type.</summary>
