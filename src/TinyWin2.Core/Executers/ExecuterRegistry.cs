@@ -17,7 +17,8 @@ public sealed class ExecuterRegistry {
         _byResource = new Dictionary<string, IExecuter>(StringComparer.Ordinal);
         foreach (var executer in executers) {
             if (!_byResource.TryAdd(executer.Resource, executer)) {
-                throw new InvalidOperationException($"duplicate executer registration for resource '{executer.Resource}'.");
+                throw new InvalidOperationException(
+                    $"duplicate executer registration for resource '{executer.Resource}'.");
             }
         }
     }

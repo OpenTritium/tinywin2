@@ -38,6 +38,7 @@ public sealed record ChangeItem(ChangeKind Kind, string Target, string? Before =
 /// <param name="Changes">What changed; may carry Skipped items for absent targets.</param>
 public sealed record ExecResult(ExecStatus Status, IReadOnlyList<ChangeItem> Changes, string? SkipReason = null) {
     public static ExecResult Applied(IReadOnlyList<ChangeItem> changes) => new(ExecStatus.Applied, changes);
+
     public static ExecResult Skipped(string reason, IReadOnlyList<ChangeItem>? changes = null)
         => new(ExecStatus.Skipped, changes ?? [], reason);
 }
@@ -69,9 +70,12 @@ public sealed class ExecContext(
     string? planAssetsRoot = null) {
     /// <summary>Drive letter root of the currently attached (mounted) image layer.</summary>
     public string MountPath { get; } = mountPath;
+
     public IBuildLog Log { get; } = log;
+
     /// <summary>Offline registry hive sessions for the current layer; owned by the build engine.</summary>
     public Registry.RegistryHiveCache Hives { get; } = hives;
+
     /// <summary>Root directory of the current plan's bundled assets (for fs.path present copies).</summary>
     public string? PlanAssetsRoot { get; } = planAssetsRoot;
 }

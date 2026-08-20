@@ -7,7 +7,7 @@ namespace TinyWin2.Core.Executers.Registry;
 /// Converges offline service start modes. Unifies v1's DisableOfflineService and
 /// ConfigureOfflineService: every start mode is present-with-a-value.
 /// </summary>
-public sealed class RegistryServiceExecuter(IProcessRunner runner) : IExecuter {
+public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IExecuter {
     public const string ResourceId = "registry.service";
     public string Resource => ResourceId;
 
@@ -15,11 +15,11 @@ public sealed class RegistryServiceExecuter(IProcessRunner runner) : IExecuter {
         var options = RegistryServiceOptions.FromDesired(spec.Desired);
         var hive = await context.Hives.GetAsync("system", context.Log, ct);
         var controlSet = await ResolveControlSetAsync(hive, ct);
-        var servicesRoot = $"{hive.HiveKey}\\{controlSet}\\Services";
+        var servicesRoot = $@"{hive.HiveKey}\{controlSet}\Services";
 
         // Enumerate service key names once; patterns match against them (v1 wildcard semantics).
         var enumerated = await runner.RunAsync("reg.exe", ["query", servicesRoot],
-            new ProcessRunOptions { IgnoreExitCode = true }, ct);
+            new() { IgnoreExitCode = true }, ct);
         var allNames = enumerated.Output.Split('\n')
             .Select(l => l.TrimEnd('\r').Trim())
             .Where(l => l.StartsWith(servicesRoot + "\\", StringComparison.OrdinalIgnoreCase))
@@ -43,27 +43,27 @@ public sealed class RegistryServiceExecuter(IProcessRunner runner) : IExecuter {
             var existingStart = await ReadDwordAsync(serviceKey, "Start", ct);
             if (existingStart is null) {
                 context.Log.Warn($"service '{service}' was not present in {controlSet}; skipping.");
-                differences.Add(new ChangeItem(ChangeKind.Skipped, service, "service not present"));
+                differences.Add(new(ChangeKind.Skipped, service, "service not present"));
                 continue;
             }
 
             var existingDelayed = await ReadDwordAsync(serviceKey, "DelayedAutoStart", ct) ?? 0;
             var satisfied = existingStart == options.StartDword && existingDelayed == (options.IsDelayed ? 1 : 0);
             if (!satisfied) {
-                differences.Add(new ChangeItem(ChangeKind.Modified, service,
+                differences.Add(new(ChangeKind.Modified, service,
                     Before: Describe(existingStart.Value, existingDelayed),
                     After: Describe(options.StartDword, options.IsDelayed ? 1 : 0)));
             }
         }
 
-        return new ResourceDiff(differences.All(d => d.Kind == ChangeKind.Skipped), differences);
+        return new(differences.All(d => d.Kind == ChangeKind.Skipped), differences);
     }
 
     public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
         var diff = await InspectAsync(context, spec, ct);
         if (diff.Satisfied) {
             return ExecResult.Skipped("services already in the desired start mode",
-                diff.Differences.Where(d => d.Kind == ChangeKind.Skipped).ToArray());
+                [.. diff.Differences.Where(d => d.Kind == ChangeKind.Skipped)]);
         }
 
         var options = RegistryServiceOptions.FromDesired(spec.Desired);
@@ -75,7 +75,7 @@ public sealed class RegistryServiceExecuter(IProcessRunner runner) : IExecuter {
                 continue;
             }
 
-            var serviceKey = $"{hive.HiveKey}\\{controlSet}\\Services\\{change.Target}";
+            var serviceKey = $@"{hive.HiveKey}\{controlSet}\Services\{change.Target}";
             await runner.RunAsync("reg.exe",
                 ["add", serviceKey, "/v", "Start", "/t", "REG_DWORD", "/d", options.StartDword.ToString(), "/f"],
                 cancellationToken: ct);
@@ -93,8 +93,8 @@ public sealed class RegistryServiceExecuter(IProcessRunner runner) : IExecuter {
 
     private async Task<string> ResolveControlSetAsync(RegistryHive hive, CancellationToken ct) {
         var result = await runner.RunAsync("reg.exe", ["query", $"{hive.HiveKey}\\Select", "/v", "Current"],
-            new ProcessRunOptions { IgnoreExitCode = true }, ct);
-        var match = Regex.Match(result.Output, "0x([0-9A-Fa-f]+)");
+            new() { IgnoreExitCode = true }, ct);
+        var match = HexRegex().Match(result.Output);
         if (!result.Success || !match.Success) {
             throw new ExecException("could not resolve the active control set from the offline SYSTEM hive.");
         }
@@ -104,7 +104,7 @@ public sealed class RegistryServiceExecuter(IProcessRunner runner) : IExecuter {
 
     private async Task<int?> ReadDwordAsync(string keyPath, string valueName, CancellationToken ct) {
         var result = await runner.RunAsync("reg.exe", ["query", keyPath, "/v", valueName],
-            new ProcessRunOptions { IgnoreExitCode = true }, ct);
+            new() { IgnoreExitCode = true }, ct);
         if (result.ExitCode != 0) {
             return null;
         }
@@ -127,4 +127,7 @@ public sealed class RegistryServiceExecuter(IProcessRunner runner) : IExecuter {
     internal static Regex LikeToRegex(string pattern) => new(
         "^" + Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", ".") + "$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    [GeneratedRegex("0x([0-9A-Fa-f]+)")]
+    private static partial Regex HexRegex();
 }

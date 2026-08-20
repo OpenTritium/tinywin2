@@ -12,6 +12,7 @@ public sealed class RegistryHive(
 
     /// <summary>Loaded key path, e.g. <c>HKLM\TinyWin2_build1_system</c>.</summary>
     public string HiveKey { get; } = hiveKey;
+
     public bool IsLoaded { get; internal set; }
 
     internal string KeyUnderHive(string keyPath) =>
@@ -109,20 +110,15 @@ public static partial class RegValues {
 
     /// <summary>Extracts a named value from <c>reg query KEY /v NAME</c> output; null if absent.</summary>
     public static RegValue? ParseQueryValue(string output, string valueName) {
-        foreach (var rawLine in output.Split('\n')) {
-            var line = rawLine.TrimEnd('\r');
-            var match = ValueLine().Match(line);
-            if (!match.Success) {
-                continue;
-            }
-
-            var name = match.Groups[1].Value.Trim();
-            if (string.Equals(name, valueName, StringComparison.OrdinalIgnoreCase)) {
-                return new RegValue(match.Groups[2].Value, match.Groups[3].Value);
-            }
-        }
-
-        return null;
+        return (from rawLine in output.Split('\n')
+            select rawLine.TrimEnd('\r')
+            into line
+            select ValueLine().Match(line)
+            into match
+            where match.Success
+            let name = match.Groups[1].Value.Trim()
+            where string.Equals(name, valueName, StringComparison.OrdinalIgnoreCase)
+            select new RegValue(match.Groups[2].Value, match.Groups[3].Value)).FirstOrDefault();
     }
 
     /// <summary>Renders desired data for reg.exe /d for each supported type.</summary>

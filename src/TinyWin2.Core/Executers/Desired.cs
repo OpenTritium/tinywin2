@@ -9,16 +9,14 @@ namespace TinyWin2.Core.Executers;
 internal static class Desired {
     internal static string RequiredString(JsonObject desired, string key, string context) {
         var value = OptionalString(desired, key);
-        if (string.IsNullOrWhiteSpace(value)) {
-            throw new ExecException($"{context} requires '{key}'.");
-        }
-        return value;
+        return string.IsNullOrWhiteSpace(value) ? throw new ExecException($"{context} requires '{key}'.") : value;
     }
 
     internal static string? OptionalString(JsonObject desired, string key) {
         if (!desired.TryGetPropertyValue(key, out var node) || node is null) {
             return null;
         }
+
         return node is JsonValue value && value.TryGetValue<string>(out var text)
             ? text
             : throw new ExecException($"'{key}' must be a string.");
@@ -32,18 +30,22 @@ internal static class Desired {
         if (!desired.TryGetPropertyValue(key, out var node) || node is null) {
             return null;
         }
+
         if (node is not JsonArray array) {
             throw new ExecException($"'{key}' must be an array of strings.");
         }
+
         var result = new List<string>();
         foreach (var item in array) {
-            if (item is JsonValue value && value.TryGetValue<string>(out var text) && !string.IsNullOrWhiteSpace(text)) {
+            if (item is JsonValue value && value.TryGetValue<string>(out var text) &&
+                !string.IsNullOrWhiteSpace(text)) {
                 result.Add(text);
             }
             else {
                 throw new ExecException($"'{key}' must contain non-empty strings.");
             }
         }
+
         return result;
     }
 
@@ -51,6 +53,7 @@ internal static class Desired {
         if (!desired.TryGetPropertyValue(key, out var node) || node is null) {
             return fallback;
         }
+
         return node is JsonValue value && value.TryGetValue<bool>(out var flag)
             ? flag
             : throw new ExecException($"'{key}' must be a boolean.");
@@ -61,9 +64,7 @@ internal static class Desired {
         if (desired.TryGetPropertyValue(key, out var node) && node is JsonArray array) {
             result.AddRange(array.OfType<JsonObject>());
         }
+
         return result;
     }
-
-    internal static JsonObject? OptionalObject(JsonObject desired, string key) =>
-        desired.TryGetPropertyValue(key, out var node) && node is JsonObject obj ? obj : null;
 }
