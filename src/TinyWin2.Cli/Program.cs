@@ -6,7 +6,7 @@ internal static class Program
 {
     private const string Version = "2.0.0-alpha1";
 
-    private static int Main(string[] args)
+    private static async Task<int> Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
         if (args.Length == 0)
@@ -17,12 +17,20 @@ internal static class Program
 
         try
         {
-            return args[0].ToLowerInvariant() switch
+            var command = args[0].ToLowerInvariant();
+            var rest = args[1..].ToList();
+            return command switch
             {
-                "doctor" => DoctorCommand.Run(ParseOptions(args[1..])),
+                "doctor" => DoctorCommand.Run(ToSingleOptions(ParseOptions(rest))),
+                "inspect" => await InspectCommand.RunAsync(rest),
+                "plan" => PlanCommand.Run(rest),
+                "profile" => ProfileCommand.Run(rest),
+                "build" => await BuildCommand.RunAsync(rest),
+                "preview" => await PreviewCommand.RunAsync(rest),
+                "layer" => await LayerCommand.RunAsync(rest),
                 "version" or "--version" => RunVersion(),
                 "help" or "--help" or "-h" => RunHelp(),
-                _ => RunUnknown(args[0]),
+                _ => RunUnknown(command),
             };
         }
         catch (Exception ex)
@@ -34,28 +42,34 @@ internal static class Program
         }
     }
 
-    /// <summary>Parses <c>--key value</c> and <c>--flag</c> style options (flag → "true").</summary>
-    internal static Dictionary<string, string> ParseOptions(string[] args)
+    /// <summary>Parses <c>--key value</c> / <c>--flag</c>; repeated keys accumulate their values.</summary>
+    internal static Dictionary<string, List<string>> ParseOptions(List<string> args)
     {
-        var options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        for (var i = 0; i < args.Length; i++)
+        var options = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < args.Count; i++)
         {
             if (!args[i].StartsWith("--", StringComparison.Ordinal))
             {
                 continue;
             }
             var key = args[i][2..];
-            if (i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal))
+            var value = "true";
+            if (i + 1 < args.Count && !args[i + 1].StartsWith("--", StringComparison.Ordinal))
             {
-                options[key] = args[++i];
+                value = args[++i];
             }
-            else
+            if (!options.TryGetValue(key, out var values))
             {
-                options[key] = "true";
+                options[key] = values = [];
             }
+            values.Add(value);
         }
         return options;
     }
+
+    /// <summary>Old single-value view for commands that only need flags.</summary>
+    internal static Dictionary<string, string> ToSingleOptions(Dictionary<string, List<string>> options) =>
+        options.ToDictionary(kv => kv.Key, kv => kv.Value[^1], StringComparer.OrdinalIgnoreCase);
 
     private static int RunVersion()
     {
@@ -85,10 +99,28 @@ internal static class Program
 
             commands:
               doctor                 check environment (admin, tools, disk space)
-              version                print version
-              help                   show this help
+              inspect <iso|folder>   list image indexes
+              plan list|show         explore the plan catalog
+              profile list|show|export|import
+              build                  run a layered slimming build
+              preview                apply base layer + report what each plan WOULD change
+              layer list|diff|extract|rollback-to   post-mortem the layer chain
 
-            (build / inspect / plan / profile / layer commands land in M4)
+            build options:
+              -s <iso|folder> -i <index>            source and image index
+              --plan <id> [--plan ...]              select plans
+              --set planId.arg=value [--set ...]    set plan arguments
+              --profile <file>                      load a selection profile
+              --out wim|esd|iso|iso+vhdx            output mode (default iso)
+              -o <dir>                              output root (default ./out)
+              --granularity group|plan              one layer per group (default) or per plan
+              [--fast] [--continue-on-error] [--keep-layers] [--dry-run]
+              [--oscdimg <path>] [--json-events]
+
+            examples:
+              tinywin2 inspect D:\iso\server2025.iso
+              tinywin2 build -s D:\iso\server2025.iso -i 1 --plan appx.xbox --plan service.workstation --set service.workstation.startMode=manual
+              tinywin2 layer diff out/work/<buildId> 2 3 --deep
             """);
     }
 }
