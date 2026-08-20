@@ -9,7 +9,7 @@ internal static class DoctorCommand {
         var checks = EnvironmentDoctor.Check(options.TryGetValue("out", out var outDir) ? outDir : null);
 
         if (json) {
-            var root = new JsonObject { ["checks"] = new JsonArray(checks.Select(c => (JsonNode)c.ToJson()).ToArray()) };
+            var root = new JsonObject { ["checks"] = TinyWin2.Core.Json.ToNode(checks) };
             Console.WriteLine(root.ToJsonString(JsonSerializerOptions));
             var failed = checks.Any(c => c.Required && !c.Ok);
             return failed ? 1 : 0;

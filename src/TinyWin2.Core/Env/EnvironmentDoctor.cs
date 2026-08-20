@@ -4,15 +4,8 @@ using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Env;
 
-/// <summary>One environment check outcome.</summary>
-public sealed record CheckResult(string Name, bool Ok, bool Required, string Detail) {
-    public JsonObject ToJson() => new() {
-        ["name"] = Name,
-        ["ok"] = Ok,
-        ["required"] = Required,
-        ["detail"] = Detail,
-    };
-}
+/// <summary>One environment check outcome. Serialized via <see cref="Json.Records"/> (camelCase).</summary>
+public sealed record CheckResult(string Name, bool Ok, bool Required, string Detail);
 
 /// <summary>Probes the host for everything the build pipeline needs. Read-only; never mutates.</summary>
 public static class EnvironmentDoctor {
