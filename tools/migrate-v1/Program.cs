@@ -13,9 +13,8 @@ internal static class Program {
         }
         var entriesDir = args[0];
         var plansDir = args[1];
-        var profileOut = args.Skip(2).ToList().IndexOf("--profile-out") is { } index && index >= 0 && index + 3 <= args.Length
-            ? args[index + 3]
-            : null;
+        var flag = Array.IndexOf(args, "--profile-out");
+        var profileOut = flag >= 0 && flag + 1 < args.Length ? args[flag + 1] : null;
         var files = Directory.GetFiles(entriesDir, "*.json").OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToList();
         Console.WriteLine($"migrating {files.Count} v1 entries from {entriesDir}");
         var entries = new List<(string, JsonObject)>();

@@ -84,7 +84,7 @@ public sealed class SourceImageResolverTests : IDisposable {
 
     [Test]
     public async Task GetIndexesMergesSummaryWithPerIndexDetails() {
-        _runner.Handler = (file, args) => args.Contains("/Index:1")
+        _runner.Handler = (_, args) => args.Contains("/Index:1")
             ? FakeProcessRunner.Ok("""
                 Name : ServerStandard Eval
                 Description : Server Standard Evaluation

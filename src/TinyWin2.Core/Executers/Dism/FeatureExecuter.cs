@@ -4,7 +4,7 @@ namespace TinyWin2.Core.Executers.Dism;
 
 /// <summary>Converges optional features. absent = disable (optionally removing payload).</summary>
 public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterBase(runner) {
-    internal const string ResourceId = "dism.feature";
+    private const string ResourceId = "dism.feature";
     public override string Resource => ResourceId;
 
     protected override IReadOnlyList<string> ListArguments => ["/Get-Features", "/Format:List"];

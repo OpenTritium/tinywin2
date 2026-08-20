@@ -1,4 +1,5 @@
 using TinyWin2.Core.Layers;
+using TinyWin2.Core.Logging;
 
 namespace TinyWin2.Core.Tests;
 
@@ -25,7 +26,7 @@ public sealed class LayerEvidenceTests : IDisposable {
             Path.Combine(imageDir, "Users"));
         var manifest = LayerEvidence.ManifestPathFor(LayerEvidence.SnapshotsRoot(_root), 0);
         await LayerEvidence.CaptureAsync(imageDir, _root, 0, new FakeProcessRunner(),
-            new Core.Logging.BuildLog(), CancellationToken.None);
+            new BuildLog(), CancellationToken.None);
         var loaded = LayerEvidence.LoadManifest(manifest);
         await Assert.That(loaded.ContainsKey("Windows\\notepad.exe")).IsTrue();
         await Assert.That(loaded.ContainsKey("inetpub\\wwwroot")).IsFalse(); // directories are not listed

@@ -76,7 +76,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         Directory.CreateDirectory(plansDir);
         WriteRegistryProbePlan(plansDir);
         var catalog = PlanCatalog.LoadDirectory(plansDir);
-        var log = new Logging.BuildLog();
+        var log = new BuildLog();
         using var logSink = log.UseSerilog(Path.Combine(_root, "it-mini.log"), echoConsole: true);
         var engine = new BuildEngine(runner, executers, backend, log);
         var result = await engine.BuildAsync(new BuildOptions {
@@ -123,7 +123,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
             });
         });
         var catalog = PlanCatalog.LoadDirectory(plansDir);
-        var log = new Logging.BuildLog();
+        var log = new BuildLog();
         using var logSink = log.UseSerilog(Path.Combine(_root, "it-continue.log"), echoConsole: true);
         var engine = new BuildEngine(runner, executers, backend, log);
         var result = await engine.BuildAsync(new BuildOptions {
@@ -178,7 +178,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
             });
         });
         var catalog = PlanCatalog.LoadDirectory(plansDir);
-        var log = new Logging.BuildLog();
+        var log = new BuildLog();
         using var logSink = log.UseSerilog(Path.Combine(_root, "it-preview.log"), echoConsole: true);
         var previewer = new PreviewRunner(runner, executers, backend, log);
         var previews = await previewer.RunAsync(new PreviewOptions {

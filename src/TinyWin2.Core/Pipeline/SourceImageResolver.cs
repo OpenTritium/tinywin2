@@ -152,7 +152,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
     /// <summary>"11,831,247,965 bytes" → 11831247965; falls back when unparsable.</summary>
     internal static long ParseByteSize(string? sizeText, long fallback) =>
         sizeText is not null
-        && System.Text.RegularExpressions.Regex.Match(sizeText.Replace(",", ""), @"\d+").Value is { Length: > 0 } digits
+        && Regex.Match(sizeText.Replace(",", ""), @"\d+").Value is { Length: > 0 } digits
         && long.TryParse(digits, out var size)
             ? size
             : fallback;

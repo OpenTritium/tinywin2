@@ -3,7 +3,7 @@
     x:Class="TinyWin2.Gui.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:pages="using:TinyWin2.Gui.Pages">
+    >
 
     <Grid RowDefinitions="Auto,*">
         <!-- step indicator -->

@@ -1,6 +1,5 @@
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
-using TinyWin2.Core.Executers.Registry;
 using TinyWin2.Core.Layers;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
@@ -54,10 +53,10 @@ public sealed partial class LayerInspector(
     /// Diffs two layers via their commit-time evidence snapshots (file manifests + registry
     /// exports) — no VHDX re-attach needed, which some Windows builds reject after a build.
     /// </summary>
-    public Task<LayerDiffReport> DiffAsync(string workDirectory, int fromIndex, int toIndex, CancellationToken ct) {
-        var snapshotsRoot = Layers.LayerEvidence.SnapshotsRoot(workDirectory);
-        var fromManifest = Layers.LayerEvidence.ManifestPathFor(snapshotsRoot, fromIndex);
-        var toManifest = Layers.LayerEvidence.ManifestPathFor(snapshotsRoot, toIndex);
+    public Task<LayerDiffReport> DiffAsync(string workDirectory, int fromIndex, int toIndex) {
+        var snapshotsRoot = LayerEvidence.SnapshotsRoot(workDirectory);
+        var fromManifest = LayerEvidence.ManifestPathFor(snapshotsRoot, fromIndex);
+        var toManifest = LayerEvidence.ManifestPathFor(snapshotsRoot, toIndex);
         if (!File.Exists(fromManifest) || !File.Exists(toManifest)) {
             throw new FileNotFoundException(
                 $"layer evidence snapshots missing for {fromIndex:000}/{toIndex:000} under '{snapshotsRoot}' " +
@@ -84,11 +83,11 @@ public sealed partial class LayerInspector(
         }
 
         var registry = new List<RegistryDiffEntry>();
-        var fromRegistryPath = Layers.LayerEvidence.RegistryPathFor(snapshotsRoot, fromIndex);
-        var toRegistryPath = Layers.LayerEvidence.RegistryPathFor(snapshotsRoot, toIndex);
+        var fromRegistryPath = LayerEvidence.RegistryPathFor(snapshotsRoot, fromIndex);
+        var toRegistryPath = LayerEvidence.RegistryPathFor(snapshotsRoot, toIndex);
         if (File.Exists(fromRegistryPath) && File.Exists(toRegistryPath)) {
-            var fromHives = Layers.LayerEvidence.SplitByHive(File.ReadAllText(fromRegistryPath));
-            var toHives = Layers.LayerEvidence.SplitByHive(File.ReadAllText(toRegistryPath));
+            var fromHives = LayerEvidence.SplitByHive(File.ReadAllText(fromRegistryPath));
+            var toHives = LayerEvidence.SplitByHive(File.ReadAllText(toRegistryPath));
             foreach (var hiveId in fromHives.Keys.Union(toHives.Keys)) {
                 fromHives.TryGetValue(hiveId, out var beforeText);
                 toHives.TryGetValue(hiveId, out var afterText);

@@ -9,17 +9,17 @@ namespace TinyWin2.Core;
 /// hand-writing ToJson; protocol DTOs (BuildEvent, manifest shapes) keep hand-written output
 /// because their abbreviated keys (seq/ts) are fixed contracts.</summary>
 public static class Json {
-    internal static readonly JsonSerializerOptions Pretty = new() {
+    private static readonly JsonSerializerOptions Pretty = new() {
         WriteIndented = true,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
-    internal static readonly JsonSerializerOptions Compact = new() {
+    private static readonly JsonSerializerOptions Compact = new() {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
     /// <summary>Record serialization: camelCase keys, nulls omitted, CJK-safe.</summary>
-    internal static readonly JsonSerializerOptions Records = new() {
+    private static readonly JsonSerializerOptions Records = new() {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,

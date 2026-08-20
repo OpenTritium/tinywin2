@@ -8,7 +8,7 @@ namespace TinyWin2.Core.Executers.Driver;
 /// Desired: <c>{ infNames:["mdm.inf"] }</c>.
 /// </summary>
 public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
-    internal const string ResourceId = "driver.store";
+    private const string ResourceId = "driver.store";
     public string Resource => ResourceId;
 
     /// <summary>One structured difference carrying its resolved directory — apply never re-derives paths.</summary>

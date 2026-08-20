@@ -15,7 +15,7 @@ public sealed class ExecuterTestHarness : IDisposable {
     public ExecContext NewContext() => new(MountPath, Log, new RegistryHiveCache(MountPath, Runner));
 
     /// <summary>Creates the offline hive file the cache requires before loading.</summary>
-    public void CreateHiveFile(string hiveId = "software") {
+    public void CreateHiveFile(string hiveId) {
         var relative = RegistryHiveCache.HiveFiles[hiveId];
         var path = Path.Combine(MountPath, relative.Replace('\\', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -196,7 +196,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
             }
 
             if (args.Count == 4 && args[1] == hiveKey + "\\Select" && args[2] == "/v") {
-                return FakeProcessRunner.Ok($"\r\n    Current    REG_DWORD    0x1\r\n");
+                return FakeProcessRunner.Ok("\r\n    Current    REG_DWORD    0x1\r\n");
             }
 
             if (args.Count == 2 && args[1] == servicesRoot) {

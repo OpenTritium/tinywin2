@@ -2,7 +2,6 @@ using System.Text.Json.Nodes;
 using TinyWin2.Core.Executers;
 using TinyWin2.Core.Layers;
 using TinyWin2.Core.Logging;
-using TinyWin2.Core.Native;
 using TinyWin2.Core.Pipeline;
 using TinyWin2.Core.Plans;
 
@@ -173,7 +172,7 @@ public sealed class VhdLayerStackTests : IDisposable {
 /// <summary>Fake executer registered under "test.noop" / "test.boom" for engine tests.</summary>
 public sealed class FakeExecuter(string resource, bool fail) : IExecuter {
     public string Resource { get; } = resource;
-    public int ApplyCount { get; private set; }
+    private int ApplyCount { get; set; }
 
     public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) =>
         Task.FromResult(new ResourceDiff(false, [new ChangeItem(ChangeKind.Modified, Resource)]));

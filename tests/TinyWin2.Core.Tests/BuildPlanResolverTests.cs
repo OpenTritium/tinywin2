@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using TinyWin2.Core.Executers;
 using TinyWin2.Core.Plans;
 
 namespace TinyWin2.Core.Tests;
@@ -44,7 +43,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
 
     [Test]
     public async Task RequiresArePulledInAndRunBeforeDependents() {
-        var catalog = Catalog2(
+        Catalog2(
             ("dep.dependent", "GroupA"),
             ("dep.base", "GroupB"));
         // dependent requires base

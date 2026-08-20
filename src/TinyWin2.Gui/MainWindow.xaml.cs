@@ -1,4 +1,3 @@
-using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -12,8 +11,6 @@ public sealed partial class MainWindow : Window {
     private static readonly Color ActiveColor = Color.FromArgb(255, 0, 120, 212);
     private static readonly Color DoneColor = Color.FromArgb(255, 16, 124, 16);
     private static readonly Color IdleColor = Color.FromArgb(255, 160, 160, 160);
-
-    public WizardState State => WizardState.Current;
 
     public MainWindow() {
         InitializeComponent();

@@ -115,7 +115,12 @@ internal static class BuildCommand {
         void OnCancel(object? sender, ConsoleCancelEventArgs e) {
             e.Cancel = true;
             log.Warn("cancellation requested; rolling back the current layer…");
-            cts.Cancel();
+            try {
+                cts.Cancel();
+            }
+            catch (ObjectDisposedException) {
+                // the build finished between the keypress and the handler deregistration
+            }
         }
     }
 }
@@ -198,7 +203,7 @@ internal static class LayerCommand {
                         Console.Error.WriteLine("usage: tinywin2 layer diff <workspace> <from> <to> [--json]");
                         return 2;
                     }
-                    var report = await inspector.DiffAsync(workDirectory, int.Parse(positional[2]), int.Parse(positional[3]), CancellationToken.None);
+                    var report = await inspector.DiffAsync(workDirectory, int.Parse(positional[2]), int.Parse(positional[3]));
                     if (options.ContainsKey("json")) {
                         Console.WriteLine(report.ToJson().ToJsonString(DoctorCommand.JsonSerializerOptions));
                     }

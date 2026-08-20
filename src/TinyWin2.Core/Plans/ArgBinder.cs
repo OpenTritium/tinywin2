@@ -13,7 +13,7 @@ public static class ArgBinder {
         return bound as JsonObject ?? throw new ArgBindException("$", "'with' must remain an object after binding.");
     }
 
-    public static JsonNode? Bind(JsonNode? node, IReadOnlyDictionary<string, JsonNode?> argValues, string path) {
+    private static JsonNode? Bind(JsonNode? node, IReadOnlyDictionary<string, JsonNode?> argValues, string path) {
         switch (node) {
             case null:
                 return null;

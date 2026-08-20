@@ -4,9 +4,9 @@ namespace TinyWin2.Core.Executers.Fs;
 
 /// <summary>Strongly-typed bound payload for <c>fs.path</c>: absent = delete paths, present = copy asset.</summary>
 public sealed record FsPathOptions {
-    public IReadOnlyList<string> Paths { get; init; } = [];
-    public string? Path { get; init; }
-    public string? Source { get; init; }
+    public IReadOnlyList<string> Paths { get; private init; } = [];
+    public string? Path { get; private init; }
+    public string? Source { get; private init; }
 
     public static FsPathOptions FromDesired(JsonObject desired, Ensure ensure) {
         const string context = "fs.path";

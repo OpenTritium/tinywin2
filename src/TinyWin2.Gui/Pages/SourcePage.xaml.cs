@@ -123,11 +123,7 @@ public sealed partial class SourcePage : Page {
 
     private void OutputChanged(object sender, TextChangedEventArgs e) => State.OutputRoot = OutputBox.Text.Trim();
 
-    private void UpdateNextEnabled() {
-        NextButton.IsEnabled = State.SelectedIndex is not null;
-    }
+    private void UpdateNextEnabled() => NextButton.IsEnabled = State.SelectedIndex is not null;
 
-    private void GoNext(object sender, RoutedEventArgs e) {
-        ((MainWindow)App.MainAppWindow!).GoTo(2);
-    }
+    private void GoNext(object sender, RoutedEventArgs e) => ((MainWindow)App.MainAppWindow!).GoTo(2);
 }

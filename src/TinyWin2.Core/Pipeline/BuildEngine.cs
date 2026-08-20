@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using TinyWin2.Core.Env;
 using TinyWin2.Core.Executers;
@@ -374,7 +373,7 @@ public sealed class BuildEngine(
             },
             ["outputMode"] = options.OutputMode.ToString().ToLowerInvariant(),
             ["granularity"] = options.Granularity.ToString().ToLowerInvariant(),
-            ["planIds"] = new JsonArray(plan.PlanIds.Select(p => (JsonNode)JsonValue.Create(p)!).ToArray()),
+            ["planIds"] = new JsonArray(plan.PlanIds.Select(p => (JsonNode)JsonValue.Create(p)).ToArray()),
             ["mediaPath"] = mediaPath,
             ["installImage"] = new JsonObject {
                 ["path"] = installPath,

@@ -1,4 +1,3 @@
-using System.Text.Json.Nodes;
 using TinyWin2.Core.Executers;
 using TinyWin2.Core.Layers;
 using TinyWin2.Core.Native;
@@ -210,8 +209,7 @@ public sealed class LayerBackendTests : IDisposable {
     private static BuildPlan BuildPlan(params ExecSpec[] execs) =>
         new([
             new PlanStep("step-1", "Step 1",
-                [new ResolvedPlan(new Plans.PlanDefinition {
-                    SchemaVersion = 2,
+                [new ResolvedPlan(new PlanDefinition {
                     Id = "p.one",
                     Version = "1.0.0",
                     Title = "P One",

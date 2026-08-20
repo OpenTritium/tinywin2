@@ -4,7 +4,7 @@ namespace TinyWin2.Core.Executers.Dism;
 
 /// <summary>Converges capabilities (Features on Demand). absent = remove capability.</summary>
 public sealed class CapabilityExecuter(IProcessRunner runner) : DismRemoveExecuterBase(runner) {
-    internal const string ResourceId = "dism.capability";
+    private const string ResourceId = "dism.capability";
     public override string Resource => ResourceId;
 
     protected override IReadOnlyList<string> ListArguments => ["/Get-Capabilities", "/Format:List"];

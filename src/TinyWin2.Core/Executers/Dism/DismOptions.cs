@@ -6,7 +6,7 @@ namespace TinyWin2.Core.Executers.Dism;
 /// <summary>Strongly-typed bound payloads for the dism-family resources.</summary>
 public sealed record FeatureOptions {
     public required IReadOnlyList<string> Features { get; init; }
-    public bool RemovePayload { get; init; } = true;
+    public bool RemovePayload { get; private init; } = true;
 
     public static FeatureOptions FromDesired(JsonObject desired) {
         var features = Desired.RequiredStringArray(desired, "features", "dism.feature");
@@ -51,7 +51,7 @@ public sealed record PackageOptions {
 }
 
 public sealed record ComponentStoreOptions {
-    public bool ResetBase { get; init; }
+    public bool ResetBase { get; private init; }
 
     public static ComponentStoreOptions FromDesired(JsonObject desired) =>
         new() { ResetBase = Desired.OptionalBool(desired, "resetBase", false) };

@@ -65,7 +65,7 @@ internal static class Program {
     }
 
     /// <summary>Old single-value view for commands that only need flags.</summary>
-    internal static Dictionary<string, string> ToSingleOptions(Dictionary<string, List<string>> options) =>
+    private static Dictionary<string, string> ToSingleOptions(Dictionary<string, List<string>> options) =>
         options.ToDictionary(kv => kv.Key, kv => kv.Value[^1], StringComparer.OrdinalIgnoreCase);
 
     private static int RunVersion() {

@@ -42,19 +42,18 @@ public sealed record PlanExec(string Resource, Ensure Ensure, JsonObject With);
 public sealed partial record PlanDefinition {
     private const int CurrentSchemaVersion = 2;
 
-    public required int SchemaVersion { get; init; }
     public required string Id { get; init; }
     public required string Version { get; init; }
     public required string Title { get; init; }
     public required string Description { get; init; }
     /// <summary>Display/layer grouping key (maps v1 category).</summary>
     public required string Group { get; init; }
-    public string Risk { get; init; } = "Medium";
-    public string Tier { get; init; } = "Standard";
-    public IReadOnlyList<string> Requires { get; init; } = [];
-    public IReadOnlyList<string> Conflicts { get; init; } = [];
-    public IReadOnlyList<PlanArgument> Arguments { get; init; } = [];
-    public IReadOnlyList<PlanExec> Execs { get; init; } = [];
+    public string Risk { get; private init; } = "Medium";
+    public string Tier { get; private init; } = "Standard";
+    public IReadOnlyList<string> Requires { get; private init; } = [];
+    public IReadOnlyList<string> Conflicts { get; private init; } = [];
+    public IReadOnlyList<PlanArgument> Arguments { get; private init; } = [];
+    public IReadOnlyList<PlanExec> Execs { get; private init; } = [];
     public string? Sha256 { get; init; }
 
     public static PlanDefinition FromJson(JsonObject obj, string? sourceFile = null) {
@@ -90,14 +89,13 @@ public sealed partial record PlanDefinition {
             throw new PlanValidationException(sourceFile ?? "<memory>", errors);
         }
         return new PlanDefinition {
-            SchemaVersion = CurrentSchemaVersion,
             Id = id!,
             Version = version!,
             Title = title!,
             Description = description!,
             Group = group!,
-            Risk = risk!,
-            Tier = tier!,
+            Risk = risk,
+            Tier = tier,
             Requires = requires,
             Conflicts = conflicts,
             Arguments = arguments,

@@ -2,10 +2,8 @@ using System.Collections.ObjectModel;
 using System.Text.Json.Nodes;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 using TinyWin2.Core.Plans;
 using TinyWin2.Core.Profiles;
-using Windows.UI;
 
 namespace TinyWin2.Gui.Pages;
 
@@ -161,7 +159,7 @@ public sealed partial class ItemsPage : Page {
                 applied++;
                 foreach (var argument in item.Arguments) {
                     if (selection.Args is not null && selection.Args.TryGetPropertyValue(argument.Name, out var value) && value is not null) {
-                        argument.SelectedValue = value.ToString() ?? "";
+                        argument.SelectedValue = value.ToString();
                     }
                 }
             }

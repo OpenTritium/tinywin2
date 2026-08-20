@@ -7,7 +7,7 @@ namespace TinyWin2.Core.Executers.Registry;
 public sealed record RegistryValueOptions {
     public required string Hive { get; init; }
     public required IReadOnlyList<RegistryValueTarget> Values { get; init; }
-    public IReadOnlyList<string> DeleteKeys { get; init; } = [];
+    public IReadOnlyList<string> DeleteKeys { get; private init; } = [];
 
     public static RegistryValueOptions FromDesired(JsonObject desired, Ensure ensure) {
         const string context = "registry.value";
@@ -45,12 +45,12 @@ public sealed record RegistryValueOptions {
 
 public sealed record RegistryValueTarget {
     public required string Key { get; init; }
-    public string Name { get; init; } = "";
+    public string Name { get; private init; } = "";
 
     /// <summary>Friendly type (dword/qword/string/expand/multi); null for absent targets.</summary>
-    public string? Type { get; init; }
+    private string? Type { get; init; }
 
-    public JsonNode? Data { get; init; }
+    public JsonNode? Data { get; private init; }
 
     /// <summary>REG_* form for reg.exe.</summary>
     public string RegType => RegistryValueTypes.ToRegType(Type!);
@@ -95,10 +95,10 @@ public static class RegistryValueTypes {
 /// <summary>Strongly-typed bound payload for <c>registry.service</c>.</summary>
 public sealed partial record RegistryServiceOptions {
     public required IReadOnlyList<string> Services { get; init; }
-    public IReadOnlyList<string> ServicePatterns { get; init; } = [];
+    public IReadOnlyList<string> ServicePatterns { get; private init; } = [];
     public required string Start { get; init; }
 
-    public static readonly IReadOnlyDictionary<string, int> StartValues =
+    private static readonly IReadOnlyDictionary<string, int> StartValues =
         new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) {
             ["disabled"] = 4,
             ["manual"] = 3,

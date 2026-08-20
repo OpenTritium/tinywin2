@@ -27,13 +27,12 @@ public sealed class SerilogSinkTests : IDisposable {
     public async Task FlushingOnDisposeProducesCompleteFile() {
         var log = new BuildLog();
         var logFile = Path.Combine(_root, "flush.log");
-        using (var sink = log.UseSerilog(logFile, echoConsole: false)) {
-            log.Info("before-dispose");
-            // Not yet disposed: Serilog file sink buffers; content may be partial.
-            sink.Dispose();
-            var content = await File.ReadAllTextAsync(logFile);
-            await Assert.That(content).Contains("before-dispose");
-        }
+        var sink = log.UseSerilog(logFile, echoConsole: false);
+        log.Info("before-dispose");
+        // Not yet disposed: Serilog file sink buffers; content may be partial.
+        sink.Dispose();
+        var content = await File.ReadAllTextAsync(logFile);
+        await Assert.That(content).Contains("before-dispose");
     }
 
     public void Dispose() {

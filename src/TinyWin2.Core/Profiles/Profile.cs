@@ -12,7 +12,7 @@ public sealed record Profile(
     string Name,
     string? Description,
     IReadOnlyList<ProfileSelection> Selections) {
-    public const int CurrentSchemaVersion = 1;
+    private const int CurrentSchemaVersion = 1;
 
     public JsonObject ToJson() => new() {
         ["schemaVersion"] = CurrentSchemaVersion,

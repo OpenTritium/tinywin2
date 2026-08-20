@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using TinyWin2.Core;
 using TinyWin2.Core.Env;
 
 namespace TinyWin2.Cli.Commands;
@@ -10,9 +11,9 @@ internal static class DoctorCommand {
             return 3;
         }
         var json = options.ContainsKey("json");
-        var checks = EnvironmentDoctor.Check(options.TryGetValue("out", out var outDir) ? outDir : null);
+        var checks = EnvironmentDoctor.Check(options.GetValueOrDefault("out"));
         if (json) {
-            var root = new JsonObject { ["checks"] = TinyWin2.Core.Json.ToNode(checks) };
+            var root = new JsonObject { ["checks"] = Json.ToNode(checks) };
             Console.WriteLine(root.ToJsonString(JsonSerializerOptions));
             var failed = checks.Any(c => c.Required && !c.Ok);
             return failed ? 1 : 0;

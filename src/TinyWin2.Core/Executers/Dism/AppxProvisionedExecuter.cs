@@ -4,7 +4,7 @@ namespace TinyWin2.Core.Executers.Dism;
 
 /// <summary>Converges provisioned Appx packages. absent = remove apps matching wildcards against DisplayName.</summary>
 public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismRemoveExecuterBase(runner) {
-    internal const string ResourceId = "appx.provisioned";
+    private const string ResourceId = "appx.provisioned";
     public override string Resource => ResourceId;
 
     protected override IReadOnlyList<string> ListArguments => ["/Get-ProvisionedAppxPackages", "/Format:List"];
