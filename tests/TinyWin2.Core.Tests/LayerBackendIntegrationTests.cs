@@ -1,29 +1,25 @@
-using TinyWin2.Core.Env;
+using System.Text.Json.Nodes;
 using TinyWin2.Core.Executers;
 using TinyWin2.Core.Layers;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
+using TinyWin2.Core.Pipeline;
+using TinyWin2.Core.Plans;
 
 namespace TinyWin2.Core.Tests;
 
 /// <summary>
-/// Integration tests gated behind TINYWIN2_IT=1 (+ admin). They create real VHDX layers,
-/// so they only run on a Windows host with diskpart and enough temp space.
+/// Integration tests gated behind TINYWIN2_IT=1 (+ admin, <see cref="ItGateAttribute"/>).
+/// They create real VHDX layers and run real dism/reg tooling, but every write stays inside
+/// %TEMP% workspaces and the mounted image — the host system is never modified (ISO mounts
+/// are dismounted in finally). TINYWIN2_TEST_ISO points at an ISO file or a media folder.
 /// </summary>
-public sealed class LayerBackendIntegrationTests {
-    private static bool Enabled =>
-        Environment.GetEnvironmentVariable("TINYWIN2_IT") == "1"
-        && OperatingSystem.IsWindows()
-        && EnvironmentDoctor.IsAdministrator();
-
-    private static string TestIso =>
-        Environment.GetEnvironmentVariable("TINYWIN2_TEST_ISO") ?? "";
+public sealed class LayerBackendIntegrationTests : IDisposable {
+    private readonly string _root = TestPlans.CreateTempDirectory();
 
     [Test]
+    [ItGate]
     public async Task VhdCreateAttachWriteDetachRoundtrip() {
-        if (!Enabled) {
-            return; // integration tests gated behind TINYWIN2_IT=1
-        }
         var runner = new ProcessRunner();
         var backend = new DiskPartVhdBackend(runner);
         var directory = TestPlans.CreateTempDirectory();
@@ -69,20 +65,132 @@ public sealed class LayerBackendIntegrationTests {
     }
 
     [Test]
-    public async Task MiniBuildAgainstBootWimIndex1() {
-        if (!Enabled || !File.Exists(TestIso)) {
-            return; // needs TINYWIN2_IT=1 and TINYWIN2_TEST_ISO
-        }
+    [ItGate(RequiresTestSource = true)]
+    public async Task MiniBuildAgainstSourceIndex1() {
+        var sourcePath = ItGateAttribute.TestSource();
         var runner = new ProcessRunner();
         var executers = new ExecuterRegistry(runner);
         var backend = new DiskPartVhdBackend(runner);
-        var outputRoot = Path.Combine(Path.GetTempPath(), "tinywin2-it-" + Guid.NewGuid().ToString("N"));
-        var plansDir = TestPlans.CreateTempDirectory();
-        TestPlans.WritePlan(plansDir, "it.registry-probe", o => {
-            o["execs"] = new System.Text.Json.Nodes.JsonArray(new System.Text.Json.Nodes.JsonObject {
+        var outputRoot = Path.Combine(_root, "out");
+        var plansDir = Path.Combine(_root, "plans");
+        Directory.CreateDirectory(plansDir);
+        WriteRegistryProbePlan(plansDir);
+        var catalog = PlanCatalog.LoadDirectory(plansDir);
+        var log = new Logging.BuildLog();
+        using var logSink = log.UseSerilog(Path.Combine(_root, "it-mini.log"), echoConsole: true);
+        var engine = new BuildEngine(runner, executers, backend, log);
+        var result = await engine.BuildAsync(new BuildOptions {
+            SourcePath = sourcePath,
+            ImageIndex = 1,
+            Selections = [new PlanSelection("it.registry-probe")],
+            OutputRoot = outputRoot,
+            Catalog = catalog,
+            OutputMode = OutputMode.Wim,
+            Fast = true, // skip the per-layer dism health check to keep the run light
+            PlansDirectory = plansDir,
+            BaseVhdxMaximumMb = 8_192,
+        }, CancellationToken.None);
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.FailedStepId).IsNull();
+        await Assert.That(File.Exists(result.InstallImagePath)).IsTrue();
+    }
+
+    [Test]
+    [ItGate(RequiresTestSource = true)]
+    public async Task ContinueOnErrorDiscardsTheFailedLayerAndCompletes() {
+        var sourcePath = ItGateAttribute.TestSource();
+        var runner = new ProcessRunner();
+        var executers = new ExecuterRegistry(runner);
+        var backend = new DiskPartVhdBackend(runner);
+        var outputRoot = Path.Combine(_root, "out-continue");
+        var plansDir = Path.Combine(_root, "plans-continue");
+        Directory.CreateDirectory(plansDir);
+        WriteRegistryProbePlan(plansDir);
+        // The unsupported hive only fails once the step runs (options parse at exec time),
+        // so the plan resolves fine and the failure is a genuine step-level event.
+        TestPlans.WritePlan(plansDir, "it.registry-boom", o => {
+            o["group"] = "BoomGroup";
+            o["execs"] = new JsonArray(new JsonObject {
                 ["resource"] = "registry.value",
                 ["ensure"] = "present",
-                ["with"] = new System.Text.Json.Nodes.JsonObject {
+                ["with"] = new JsonObject {
+                    ["hive"] = "bogus",
+                    ["key"] = "SOFTWARE\\X",
+                    ["name"] = "N",
+                    ["type"] = "dword",
+                    ["data"] = 1,
+                },
+            });
+        });
+        var catalog = PlanCatalog.LoadDirectory(plansDir);
+        var log = new Logging.BuildLog();
+        using var logSink = log.UseSerilog(Path.Combine(_root, "it-continue.log"), echoConsole: true);
+        var engine = new BuildEngine(runner, executers, backend, log);
+        var result = await engine.BuildAsync(new BuildOptions {
+            SourcePath = sourcePath,
+            ImageIndex = 1,
+            Selections = [new PlanSelection("it.registry-probe"), new PlanSelection("it.registry-boom")],
+            OutputRoot = outputRoot,
+            Catalog = catalog,
+            OutputMode = OutputMode.Wim,
+            Fast = true,
+            ContinueOnError = true,
+            PlansDirectory = plansDir,
+            BaseVhdxMaximumMb = 8_192,
+        }, CancellationToken.None);
+
+        // The build completes; only the healthy step's layer survives in the chain.
+        await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.FailedStepId).IsEqualTo("it.registry-boom");
+        await Assert.That(result.LayerCount).IsEqualTo(1);
+        await Assert.That(File.Exists(result.ManifestPath)).IsTrue();
+    }
+
+    [Test]
+    [ItGate(RequiresTestSource = true)]
+    public async Task PreviewReportsWhatEachPlanWouldChange() {
+        var sourcePath = ItGateAttribute.TestSource();
+        var runner = new ProcessRunner();
+        var executers = new ExecuterRegistry(runner);
+        var backend = new DiskPartVhdBackend(runner);
+        var plansDir = Path.Combine(_root, "plans-preview");
+        Directory.CreateDirectory(plansDir);
+        WriteRegistryProbePlan(plansDir);
+        TestPlans.WritePlan(plansDir, "it.fs-remove", o => {
+            o["execs"] = new JsonArray(new JsonObject {
+                ["resource"] = "fs.path",
+                ["ensure"] = "absent",
+                ["with"] = new JsonObject { ["paths"] = new JsonArray("Windows/System32") },
+            });
+        });
+        var catalog = PlanCatalog.LoadDirectory(plansDir);
+        var log = new Logging.BuildLog();
+        using var logSink = log.UseSerilog(Path.Combine(_root, "it-preview.log"), echoConsole: true);
+        var previewer = new PreviewRunner(runner, executers, backend, log);
+        var previews = await previewer.RunAsync(new PreviewOptions {
+            SourcePath = sourcePath,
+            ImageIndex = 1,
+            Selections = [new PlanSelection("it.registry-probe"), new PlanSelection("it.fs-remove")],
+            WorkDirectory = Path.Combine(_root, "work", "preview"),
+            Catalog = catalog,
+            PlansDirectory = plansDir,
+        }, CancellationToken.None);
+
+        await Assert.That(previews).Count().IsEqualTo(2);
+        var registry = previews.First(p => p.PlanId == "it.registry-probe");
+        await Assert.That(registry.Satisfied).IsFalse();
+        await Assert.That(registry.Differences.Count).IsGreaterThan(0);
+        var fs = previews.First(p => p.PlanId == "it.fs-remove");
+        await Assert.That(fs.Satisfied).IsFalse(); // Windows/System32 always exists in the applied image
+        await Assert.That(fs.Differences.Count).IsGreaterThan(0);
+    }
+
+    private static void WriteRegistryProbePlan(string plansDir) {
+        TestPlans.WritePlan(plansDir, "it.registry-probe", o => {
+            o["execs"] = new JsonArray(new JsonObject {
+                ["resource"] = "registry.value",
+                ["ensure"] = "present",
+                ["with"] = new JsonObject {
                     ["hive"] = "software",
                     ["key"] = "SOFTWARE\\TinyWin2IT",
                     ["name"] = "Probe",
@@ -91,22 +199,9 @@ public sealed class LayerBackendIntegrationTests {
                 },
             });
         });
-        var catalog = Plans.PlanCatalog.LoadDirectory(plansDir);
-        var log = new Logging.BuildLog();
-        using var logSink = log.UseSerilog(Path.Combine(outputRoot, "it.log"), echoConsole: true);
-        var engine = new Pipeline.BuildEngine(runner, executers, backend, log);
-        var result = await engine.BuildAsync(new Pipeline.BuildOptions {
-            SourcePath = TestIso,
-            ImageIndex = 1, // boot.wim index 1 (WinPE) — light enough for CI-ish validation
-            Selections = [new Plans.PlanSelection("it.registry-probe")],
-            OutputRoot = outputRoot,
-            Catalog = catalog,
-            OutputMode = Pipeline.OutputMode.Wim,
-            Fast = true,
-            PlansDirectory = plansDir,
-            BaseVhdxMaximumMb = 8_192,
-        }, CancellationToken.None);
-        await Assert.That(result.Succeeded).IsTrue();
-        await Assert.That(File.Exists(result.InstallImagePath)).IsTrue();
+    }
+
+    public void Dispose() {
+        try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
     }
 }

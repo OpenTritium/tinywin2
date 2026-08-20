@@ -1,0 +1,190 @@
+using System.Text.Json.Nodes;
+using TinyWin2.Core.Executers;
+using TinyWin2.Core.Layers;
+using TinyWin2.Core.Native;
+using TinyWin2.Core.Plans;
+
+namespace TinyWin2.Core.Tests;
+
+/// <summary>Unit tests for both VHDX backends: everything native is answered by the fake runner.</summary>
+public sealed class LayerBackendTests : IDisposable {
+    private readonly string _root = TestPlans.CreateTempDirectory();
+    private readonly FakeProcessRunner _runner = new();
+    private readonly List<string> _scripts = [];
+
+    public LayerBackendTests() {
+        _runner.Handler = (file, args) => {
+            // diskpart scripts are passed as /s <file>: capture the content before deletion.
+            if (file == "diskpart.exe" && args.Count > 1 && args[0] == "/s") {
+                _scripts.Add(File.ReadAllText(args[1]));
+            }
+            return FakeProcessRunner.Ok();
+        };
+    }
+
+    // ---- DiskPartVhdBackend ------------------------------------------------
+
+    [Test]
+    public async Task DiskPartCreateBaseScriptsCreateFormatAssignDetach() {
+        var backend = new DiskPartVhdBackend(_runner);
+        var vhdx = Path.Combine(_root, "base.vhdx");
+        await backend.CreateBaseAsync(vhdx, 512, "tinywin2", CancellationToken.None);
+        var script = _scripts[0];
+        await Assert.That(script).Contains($"create vdisk file=\"{Path.GetFullPath(vhdx)}\" maximum=512");
+        await Assert.That(script).Contains("format fs=ntfs label=\"tinywin2\" quick");
+        await Assert.That(script).Contains("detach vdisk");
+        await Assert.That(script.Contains('/')).IsFalse(); // diskpart rejects forward slashes
+    }
+
+    [Test]
+    public async Task DiskPartCreateDiffRequiresExistingParent() {
+        var backend = new DiskPartVhdBackend(_runner);
+        var ex = Assert.Throws<FileNotFoundException>(() => backend.CreateDiffAsync(
+            Path.Combine(_root, "L001.vhdx"), Path.Combine(_root, "missing.vhdx"), CancellationToken.None)
+            .GetAwaiter().GetResult())!;
+        await Assert.That(ex.Message).Contains("differencing parent not found");
+    }
+
+    [Test]
+    public async Task DiskPartCreateDiffScriptsParentChain() {
+        var parent = Path.Combine(_root, "base.vhdx");
+        File.WriteAllText(parent, "vhd");
+        var backend = new DiskPartVhdBackend(_runner);
+        await backend.CreateDiffAsync(Path.Combine(_root, "L001.vhdx"), parent, CancellationToken.None);
+        await Assert.That(_scripts[0]).Contains("create vdisk");
+        await Assert.That(_scripts[0]).Contains($"parent=\"{Path.GetFullPath(parent)}\"");
+    }
+
+    [Test]
+    public async Task DiskPartAttachRecoversFromAnAlreadyAttachedDisk() {
+        var vhdx = Path.Combine(_root, "base.vhdx");
+        File.WriteAllText(vhdx, "vhd");
+        var backend = new DiskPartVhdBackend(_runner);
+        var attempts = 0;
+        _runner.Handler = (file, args) => {
+            if (file == "diskpart.exe" && args.Count > 1 && args[0] == "/s") {
+                _scripts.Add(File.ReadAllText(args[1]));
+            }
+            return ++attempts == 1
+                ? throw new ProcessRunnerException("diskpart.exe", FakeProcessRunner.Fail(1, "the virtual disk is already attached"))
+                : FakeProcessRunner.Ok();
+        };
+
+        var letter = await backend.AttachAsync(vhdx, CancellationToken.None);
+
+        await Assert.That(attempts).IsEqualTo(3); // attach, detach, attach
+        await Assert.That(_scripts[1]).Contains("detach vdisk");
+        await Assert.That(_scripts[2]).Contains($"assign letter={letter}");
+        await Assert.That(letter is >= 'S' and <= 'Z').IsTrue();
+    }
+
+    [Test]
+    public async Task DiskPartScriptErrorsSurfaceAsIoException() {
+        var backend = new DiskPartVhdBackend(_runner);
+        _runner.Handler = (_, _) => FakeProcessRunner.Ok("diskpart has encountered an error");
+        var ex = Assert.Throws<IOException>(() => backend.CreateBaseAsync(
+            Path.Combine(_root, "b.vhdx"), 512, "l", CancellationToken.None).GetAwaiter().GetResult())!;
+        await Assert.That(ex.Message).Contains("diskpart reported an error");
+    }
+
+    [Test]
+    public async Task DiskPartAttachRequiresExistingVhdx() {
+        var backend = new DiskPartVhdBackend(_runner);
+        var ex = Assert.Throws<FileNotFoundException>(() => backend.AttachAsync(
+            Path.Combine(_root, "ghost.vhdx"), CancellationToken.None).GetAwaiter().GetResult())!;
+        await Assert.That(ex.Message).Contains("layer VHDX not found");
+    }
+
+    // ---- HyperVhdBackend ---------------------------------------------------
+
+    [Test]
+    public async Task HyperVhdAttachParsesDriveLetterFromVolumeOutput() {
+        var vhdx = Path.Combine(_root, "base.vhdx");
+        File.WriteAllText(vhdx, "vhd");
+        var backend = new HyperVhdBackend(_runner);
+        _runner.Handler = (_, _) => FakeProcessRunner.Ok("X");
+        var letter = await backend.AttachAsync(vhdx, CancellationToken.None);
+        await Assert.That(letter).IsEqualTo('X');
+        var script = _runner.ArgsOf(0)[4];
+        await Assert.That(script).Contains("Mount-VHD");
+        await Assert.That(script).Contains("Dismount-VHD"); // self-heal if still mounted
+    }
+
+    [Test]
+    public async Task HyperVhdAttachWithoutDriveLetterThrows() {
+        var vhdx = Path.Combine(_root, "base.vhdx");
+        File.WriteAllText(vhdx, "vhd");
+        var backend = new HyperVhdBackend(_runner);
+        _runner.Handler = (_, _) => FakeProcessRunner.Ok("");
+        var ex = Assert.Throws<IOException>(() => backend.AttachAsync(vhdx, CancellationToken.None).GetAwaiter().GetResult())!;
+        await Assert.That(ex.Message).Contains("could not resolve its drive letter");
+    }
+
+    [Test]
+    public async Task HyperVhdScriptsQuotePathsAndDoubleApostrophes() {
+        var backend = new HyperVhdBackend(_runner);
+        await backend.DetachAsync(@"C:\it's\base.vhdx", CancellationToken.None);
+        var script = _runner.ArgsOf(0)[4];
+        await Assert.That(script).Contains("'C:\\it''s\\base.vhdx'");
+    }
+
+    [Test]
+    public async Task HyperVhdMergeCarriesDepth() {
+        var backend = new HyperVhdBackend(_runner);
+        await backend.MergeAsync(Path.Combine(_root, "L002.vhdx"), depth: 2, CancellationToken.None);
+        await Assert.That(_runner.ArgsOf(0)[4]).Contains("Merge-VHD -Path");
+        await Assert.That(_runner.ArgsOf(0)[4]).Contains("-Depth 2");
+    }
+
+    [Test]
+    public async Task HyperVhdCreateDiffRequiresExistingParent() {
+        var backend = new HyperVhdBackend(_runner);
+        var ex = Assert.Throws<FileNotFoundException>(() => backend.CreateDiffAsync(
+            Path.Combine(_root, "L001.vhdx"), Path.Combine(_root, "missing.vhdx"), CancellationToken.None)
+            .GetAwaiter().GetResult())!;
+        await Assert.That(ex.Message).Contains("differencing parent not found");
+    }
+
+    // ---- ExecuterRegistry validation ----------------------------------------
+
+    [Test]
+    public async Task DuplicateRegistrationIsRejected() {
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            new ExecuterRegistry([new FakeExecuter("dup.resource", fail: false), new FakeExecuter("dup.resource", fail: false)]))!;
+        await Assert.That(ex.Message).Contains("duplicate executer registration for resource 'dup.resource'");
+    }
+
+    [Test]
+    public async Task ValidateBuildPlanRejectsUnknownResources() {
+        var registry = new ExecuterRegistry([new FakeExecuter("known.resource", fail: false)]);
+        var plan = BuildPlan(
+            new ExecSpec("known.resource", Ensure.Absent, []),
+            new ExecSpec("ghost.resource", Ensure.Present, []));
+        var ex = Assert.Throws<ExecException>(() => registry.ValidateBuildPlan(plan))!;
+        await Assert.That(ex.Message).Contains("unknown resources in build plan: ghost.resource");
+    }
+
+    [Test]
+    public void ValidateBuildPlanAcceptsFullyRegisteredPlans() {
+        var registry = new ExecuterRegistry([new FakeExecuter("known.resource", fail: false)]);
+        var plan = BuildPlan(new ExecSpec("known.resource", Ensure.Absent, []));
+        registry.ValidateBuildPlan(plan);
+    }
+
+    private static BuildPlan BuildPlan(params ExecSpec[] execs) =>
+        new([
+            new PlanStep("step-1", "Step 1", "G",
+                [new ResolvedPlan(new Plans.PlanDefinition {
+                    SchemaVersion = 2,
+                    Id = "p.one",
+                    Version = "1.0.0",
+                    Title = "P One",
+                    Description = "d",
+                    Group = "G",
+                }, [], execs)]),
+        ], ["p.one"], LayerGranularity.Plan);
+
+    public void Dispose() {
+        try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
+    }
+}

@@ -1,0 +1,116 @@
+using TinyWin2.Core.Logging;
+using TinyWin2.Core.Pipeline;
+
+namespace TinyWin2.Core.Tests;
+
+public sealed class OutputBuilderTests : IDisposable {
+    private readonly string _root = TestPlans.CreateTempDirectory();
+    private readonly FakeProcessRunner _runner = new();
+    private readonly OutputBuilder _builder;
+
+    public OutputBuilderTests() {
+        _builder = new OutputBuilder(_runner, new BuildLog());
+    }
+
+    [Test]
+    public async Task CaptureBuildsDismArgumentsPerFormatAndSpeed() {
+        await _builder.CaptureAsync("M:\\", "out.wim", "name", "desc", ImageFormat.Wim, fast: true,
+            CancellationToken.None);
+        var args = string.Join(' ', _runner.ArgsOf(0));
+        await Assert.That(args).Contains("/Capture-Image");
+        await Assert.That(args).Contains("/CaptureDir:M:\\");
+        await Assert.That(args).Contains("/Name:name");
+        await Assert.That(args).Contains("/Description:desc");
+        await Assert.That(args).Contains("/Compress:fast");
+        await Assert.That(args.Contains("/Verify")).IsFalse();
+
+        await _builder.CaptureAsync("M:\\", "out.esd", "name", null, ImageFormat.Esd, fast: false,
+            CancellationToken.None);
+        var esdArgs = string.Join(' ', _runner.ArgsOf(1));
+        await Assert.That(esdArgs).Contains("/Compress:recovery");
+        await Assert.That(esdArgs).Contains("/Verify");
+        await Assert.That(esdArgs.Contains("/Description")).IsFalse();
+    }
+
+    [Test]
+    public async Task RebuildMediaToleratesRobocopySuccessCodesOnlyBelowEight() {
+        var source = CreateMediaSource();
+        var captured = Path.Combine(_root, "captured.wim");
+        await File.WriteAllTextAsync(captured, "payload");
+        _runner.Handler = (_, _) => FakeProcessRunner.Fail(1);
+        await _builder.RebuildMediaAsync(source, Path.Combine(_root, "out"), captured, ImageFormat.Wim,
+            CancellationToken.None);
+
+        _runner.Handler = (_, _) => FakeProcessRunner.Fail(8);
+        var ex = Assert.Throws<IOException>(() => _builder.RebuildMediaAsync(
+            source, Path.Combine(_root, "out2"), "captured.wim", ImageFormat.Wim, CancellationToken.None)
+            .GetAwaiter().GetResult())!;
+        await Assert.That(ex.Message).Contains("robocopy failed");
+    }
+
+    [Test]
+    public async Task RebuildMediaReplacesStaleInstallImages() {
+        var source = CreateMediaSource();
+        var outDir = Path.Combine(_root, "out");
+        var sourcesDir = Path.Combine(outDir, "sources");
+        Directory.CreateDirectory(sourcesDir);
+        File.WriteAllText(Path.Combine(sourcesDir, "install.esd"), "stale");
+        File.WriteAllText(Path.Combine(sourcesDir, "install.staging.wim"), "stale");
+        var captured = Path.Combine(_root, "captured.wim");
+        await File.WriteAllTextAsync(captured, "payload");
+
+        var finalPath = await _builder.RebuildMediaAsync(source, outDir, captured, ImageFormat.Wim,
+            CancellationToken.None);
+
+        await Assert.That(finalPath).IsEqualTo(Path.Combine(sourcesDir, "install.wim"));
+        await Assert.That(File.Exists(finalPath)).IsTrue();
+        await Assert.That(File.ReadAllText(finalPath)).IsEqualTo("payload");
+        await Assert.That(File.Exists(Path.Combine(sourcesDir, "install.esd"))).IsFalse();
+        await Assert.That(File.Exists(Path.Combine(sourcesDir, "install.staging.wim"))).IsFalse();
+        await Assert.That(File.Exists(captured)).IsFalse();
+    }
+
+    [Test]
+    public async Task CreateIsoRejectsMediaWithoutBootFiles() {
+        var media = Path.Combine(_root, "media");
+        Directory.CreateDirectory(media);
+        var ex = Assert.Throws<FileNotFoundException>(() => _builder.CreateIsoAsync(
+            media, Path.Combine(_root, "x.iso"), "oscdimg.exe", CancellationToken.None).GetAwaiter().GetResult())!;
+        await Assert.That(ex.Message).Contains("boot files");
+    }
+
+    [Test]
+    public async Task CreateIsoBuildsDualBootData() {
+        var media = Path.Combine(_root, "media");
+        Directory.CreateDirectory(Path.Combine(media, "boot"));
+        Directory.CreateDirectory(Path.Combine(media, "efi", "microsoft", "boot"));
+        File.WriteAllText(Path.Combine(media, "boot", "etfsboot.com"), "b");
+        File.WriteAllText(Path.Combine(media, "efi", "microsoft", "boot", "efisys_noprompt.bin"), "e");
+
+        await _builder.CreateIsoAsync(media, Path.Combine(_root, "x.iso"), "oscdimg.exe", CancellationToken.None);
+
+        var args = string.Join(' ', _runner.ArgsOf(0));
+        await Assert.That(args).Contains("-bootdata:2#p0,e,b");
+        await Assert.That(args).Contains("#pEF,e,b");
+        await Assert.That(args).Contains("-udfver102");
+    }
+
+    [Test]
+    public async Task ComputeSha256MatchesKnownDigest() {
+        var file = Path.Combine(_root, "data.bin");
+        await File.WriteAllTextAsync(file, "abc");
+        var hash = await OutputBuilder.ComputeSha256Async(file, CancellationToken.None);
+        await Assert.That(hash).IsEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    }
+
+    private string CreateMediaSource() {
+        var source = Path.Combine(_root, "src");
+        Directory.CreateDirectory(Path.Combine(source, "sources"));
+        File.WriteAllText(Path.Combine(source, "sources", "install.wim"), "old");
+        return source;
+    }
+
+    public void Dispose() {
+        try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
+    }
+}
