@@ -98,10 +98,21 @@ public sealed class VhdLayerStack(
         }
     }
 
+    /// <summary>Total layers committed into the image (base + diffs, merged-away ones
+    /// included) — a reporting count; the live chain depth resets on consolidation.</summary>
     public int CommittedDepth {
         get {
             lock (_gate) {
                 return _records.Count(r => r.Status is LayerStatus.Committed or LayerStatus.Merged);
+            }
+        }
+    }
+
+    /// <summary>Committed diff layers still on disk; drops back to 0 after consolidation.</summary>
+    private int ChainDepth {
+        get {
+            lock (_gate) {
+                return _records.Count(r => r.Status == LayerStatus.Committed && r.VhdxFileName != BaseFileName);
             }
         }
     }
@@ -143,6 +154,8 @@ public sealed class VhdLayerStack(
         return stack;
     }
 
+    /// <summary>Persists the manifest atomically (staging file + move): a crash mid-write
+    /// must not corrupt the resume state.</summary>
     public void Save() {
         lock (_gate) {
             Directory.CreateDirectory(WorkDirectory);
@@ -151,7 +164,9 @@ public sealed class VhdLayerStack(
                 layers.Add(record.ToJson());
             }
             var root = new JsonObject { ["layers"] = layers };
-            File.WriteAllText(ManifestPath, root.ToPrettyString());
+            var staging = ManifestPath + ".tmp";
+            File.WriteAllText(staging, root.ToPrettyString());
+            File.Move(staging, ManifestPath, overwrite: true);
         }
     }
 
@@ -233,7 +248,7 @@ public sealed class VhdLayerStack(
         Save();
         log.Info($"layer {session.Record.Index:000} committed ({new FileInfo(session.VhdxPath).Length / 1024.0 / 1024:F1} MB)",
             layerIndex: session.Record.Index);
-        if (CommittedDepth > ConsolidateThreshold) {
+        if (ChainDepth > ConsolidateThreshold) {
             await ConsolidateAsync(ct);
         }
     }
@@ -261,7 +276,9 @@ public sealed class VhdLayerStack(
 
     /// <summary>Merges every committed layer into the base and clears the diff files (chain-depth guard).</summary>
     public async Task ConsolidateAsync(CancellationToken ct) {
-        var diffs = Records.Where(r => r.Status is LayerStatus.Committed or LayerStatus.Merged
+        // Merged-away diffs are excluded: their files are gone and their content lives in
+        // the base — counting them would inflate the merge depth on a second pass.
+        var diffs = Records.Where(r => r.Status == LayerStatus.Committed
                                        && r.VhdxFileName != BaseFileName).ToList();
         if (diffs.Count == 0) {
             return;

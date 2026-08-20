@@ -126,6 +126,38 @@ public sealed class VhdLayerStackTests : IDisposable {
     }
 
     [Test]
+    public async Task SecondConsolidationMergesOnlyLiveDiffs() {
+        var stack = await CreateWithBaseAsync();
+        foreach (var title in new[] { "A", "B", "C" }) {
+            var session = await stack.BeginLayerAsync(title, title, null, CancellationToken.None);
+            await stack.CommitLayerAsync(session, [], CancellationToken.None);
+        }
+        await stack.ConsolidateAsync(CancellationToken.None);
+        var reborn = await stack.BeginLayerAsync("D", "D", null, CancellationToken.None);
+        await stack.CommitLayerAsync(reborn, [], CancellationToken.None);
+        await stack.ConsolidateAsync(CancellationToken.None);
+        // merged-away layers must not inflate the second merge's depth (their files are gone)
+        await Assert.That(_backend.MergeDepth).IsEqualTo(1);
+        await Assert.That(File.Exists(reborn.VhdxPath)).IsFalse();
+        await Assert.That(stack.LeafVhdxPath).EndsWith("base.vhdx");
+    }
+
+    [Test]
+    public async Task AutoConsolidationGuardTracksLiveChainDepth() {
+        var stack = await CreateWithBaseAsync();
+        for (var i = 0; i < 31; i++) { // crosses the chain-depth threshold of 30
+            var session = await stack.BeginLayerAsync($"s{i}", $"S{i}", null, CancellationToken.None);
+            await stack.CommitLayerAsync(session, [], CancellationToken.None);
+        }
+        await Assert.That(_backend.Calls.Count(c => c.StartsWith("merge:"))).IsEqualTo(1);
+        await Assert.That(_backend.MergeDepth).IsEqualTo(31);
+        var after = await stack.BeginLayerAsync("after", "after", null, CancellationToken.None);
+        await stack.CommitLayerAsync(after, [], CancellationToken.None);
+        // the guard must reset after consolidation instead of firing on every later commit
+        await Assert.That(_backend.Calls.Count(c => c.StartsWith("merge:"))).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task VhdxForLayerRejectsUncommitted() {
         var stack = await CreateWithBaseAsync();
         var session = await stack.BeginLayerAsync("step1", "S1", null, CancellationToken.None);
