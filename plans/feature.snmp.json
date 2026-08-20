@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.snmp",
+  "version": "2.0.0",
+  "title": "移除 SNMP 组件",
+  "description": "移除 SNMP、RSAT SNMP 工具和 WMI SNMP Provider；基于 SNMP 的监控和设备管理将不可用。",
+  "group": "Networking",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "SNMP",
+          "Server-RSAT-SNMP",
+          "WMISnmpProvider"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

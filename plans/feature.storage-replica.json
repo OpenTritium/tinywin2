@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.storage-replica",
+  "version": "2.0.0",
+  "title": "移除存储副本",
+  "description": "移除 Storage Replica 和管理包；无法使用服务器间块级存储复制。",
+  "group": "Storage",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "Storage-Replica",
+          "Storage-Replica-AdminPack"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.smb-direct",
+  "version": "2.0.0",
+  "title": "移除 SMB Direct",
+  "description": "移除 RDMA 上的 SMB Direct；高速 RDMA 文件共享与 Storage Spaces Direct 工作负载会受影响。",
+  "group": "Networking",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "SmbDirect"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

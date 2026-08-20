@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 2,
+  "id": "capability.korean-language",
+  "version": "2.0.0",
+  "title": "移除韩语输入、字体和语言能力",
+  "description": "移除韩语语言基础、输入、字体、手写、OCR、语音和文本转语音能力；韩语显示与输入将不可用。",
+  "group": "Languages",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.capability",
+      "ensure": "absent",
+      "with": {
+        "capabilities": [
+          "Language.Basic~~~ko-KR~0.0.1.0",
+          "Language.Fonts.Kore~~~und-KORE~0.0.1.0",
+          "Language.Handwriting~~~ko-KR~0.0.1.0",
+          "Language.OCR~~~ko-KR~0.0.1.0",
+          "Language.Speech~~~ko-KR~0.0.1.0",
+          "Language.TextToSpeech~~~ko-KR~0.0.1.0"
+        ]
+      }
+    }
+  ]
+}

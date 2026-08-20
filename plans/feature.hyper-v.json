@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.hyper-v",
+  "version": "2.0.0",
+  "title": "移除 Hyper-V 平台与管理工具",
+  "description": "移除 Hyper-V、虚拟机平台及其管理组件；虚拟机、部分容器和 WSL 2 将不可用。",
+  "group": "Virtualization",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "Microsoft-Hyper-V",
+          "Microsoft-Hyper-V-Management-Clients",
+          "Microsoft-Hyper-V-Management-PowerShell",
+          "HypervisorPlatform",
+          "VirtualMachinePlatform",
+          "RSAT-Hyper-V-Tools-Feature"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

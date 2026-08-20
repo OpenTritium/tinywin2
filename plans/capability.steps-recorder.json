@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "capability.steps-recorder",
+  "version": "2.0.0",
+  "title": "移除问题步骤记录器",
+  "description": "移除 Steps Recorder 故障记录工具。",
+  "group": "Utilities",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.capability",
+      "ensure": "absent",
+      "with": {
+        "capabilities": [
+          "App.StepsRecorder~~~~0.0.1.0"
+        ]
+      }
+    }
+  ]
+}

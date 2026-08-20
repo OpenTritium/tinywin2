@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "id": "registry.chat",
+  "version": "2.0.0",
+  "title": "隐藏聊天入口",
+  "description": "将 Windows Chat 图标设置为隐藏。",
+  "group": "Policies",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "registry.value",
+      "ensure": "present",
+      "with": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Policies\\Microsoft\\Windows\\Windows Chat",
+            "name": "ChatIcon",
+            "type": "dword",
+            "data": 3
+          }
+        ]
+      }
+    }
+  ]
+}

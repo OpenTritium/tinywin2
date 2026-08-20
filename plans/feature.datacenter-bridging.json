@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.datacenter-bridging",
+  "version": "2.0.0",
+  "title": "移除数据中心桥接",
+  "description": "移除 Data Center Bridging 和 LLDP 工具；支持 DCB 的存储和网络适配器将不可用。",
+  "group": "Networking",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "DataCenterBridging",
+          "DataCenterBridging-LLDP-Tools"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

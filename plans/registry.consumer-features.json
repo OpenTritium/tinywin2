@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "id": "registry.consumer-features",
+  "version": "2.0.0",
+  "title": "禁用消费者体验",
+  "description": "阻止 Windows 自动安装推荐的消费者应用。",
+  "group": "Policies",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "registry.value",
+      "ensure": "present",
+      "with": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Policies\\Microsoft\\Windows\\CloudContent",
+            "name": "DisableWindowsConsumerFeatures",
+            "type": "dword",
+            "data": 1
+          }
+        ]
+      }
+    }
+  ]
+}

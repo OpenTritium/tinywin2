@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "id": "service.edge-update",
+  "version": "2.0.0",
+  "title": "禁用 Microsoft Edge 更新服务",
+  "description": "禁用 edgeupdate 和 edgeupdatem；Edge 不会自动更新，依赖 Edge WebView/Edge 的组件可能停留在旧版本。",
+  "group": "Browser",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "edgeupdate",
+          "edgeupdatem"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

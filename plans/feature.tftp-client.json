@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.tftp-client",
+  "version": "2.0.0",
+  "title": "移除 TFTP 客户端",
+  "description": "移除 TFTP Client；无法使用无认证 TFTP 传输文件。",
+  "group": "Networking",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "TFTP"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

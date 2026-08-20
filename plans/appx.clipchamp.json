@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "appx.clipchamp",
+  "version": "2.0.0",
+  "title": "移除 Clipchamp",
+  "description": "移除 Clipchamp 预装 Appx。",
+  "group": "Applications",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "appx.provisioned",
+      "ensure": "absent",
+      "with": {
+        "patterns": [
+          "Clipchamp.Clipchamp"
+        ]
+      }
+    }
+  ]
+}

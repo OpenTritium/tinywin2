@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.text-input",
+  "version": "2.0.0",
+  "title": "禁用 Text Input Management",
+  "description": "禁用 Text Input Management Service；触摸键盘、手写板、部分 IME 和现代文本输入体验将不可用。",
+  "group": "Desktop Experience",
+  "risk": "High",
+  "tier": "Experimental",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "TextInputManagementService"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

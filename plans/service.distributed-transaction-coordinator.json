@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.distributed-transaction-coordinator",
+  "version": "2.0.0",
+  "title": "禁用 Distributed Transaction Coordinator",
+  "description": "禁用 MSDTC；跨进程/跨数据库分布式事务、部分企业应用和安装程序事务将不可用。",
+  "group": "Enterprise",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "MSDTC"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.ras-connection-manager",
+  "version": "2.0.0",
+  "title": "移除连接管理器管理工具",
+  "description": "移除 Connection Manager Administration Kit；无法创建 CMAK 拨号或 VPN 配置包。",
+  "group": "Networking",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "RasCMAK"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

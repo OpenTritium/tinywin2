@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.event-collector",
+  "version": "2.0.0",
+  "title": "禁用 Windows 事件收集器",
+  "description": "禁用 Windows Event Collector (Wecsvc)。订阅式事件转发和集中日志收集将不可用。",
+  "group": "Remote Management",
+  "risk": "Medium",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "Wecsvc"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

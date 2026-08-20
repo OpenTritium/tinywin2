@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.data-usage",
+  "version": "2.0.0",
+  "title": "禁用数据使用量服务",
+  "description": "禁用 Data Usage 服务；系统设置中的流量统计和部分按流量计费网络数据报告将不可用。",
+  "group": "Network Services",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "DusmSvc"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

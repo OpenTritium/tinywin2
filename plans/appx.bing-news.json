@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "appx.bing-news",
+  "version": "2.0.0",
+  "title": "移除 Bing 新闻",
+  "description": "移除 Microsoft Bing News 预装 Appx。",
+  "group": "Applications",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "appx.provisioned",
+      "ensure": "absent",
+      "with": {
+        "patterns": [
+          "Microsoft.BingNews"
+        ]
+      }
+    }
+  ]
+}

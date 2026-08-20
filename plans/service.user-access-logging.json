@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 2,
+  "id": "service.user-access-logging",
+  "version": "2.0.0",
+  "title": "延迟启动 User Access Logging",
+  "description": "将 User Access Logging Service 设置为延迟自动启动；保留服务器使用统计，但减少开机阶段的服务竞争。",
+  "group": "Server",
+  "risk": "Low",
+  "tier": "Standard",
+  "arguments": [
+    {
+      "name": "startMode",
+      "type": "enum",
+      "label": "启动方式",
+      "default": "delayed",
+      "options": [
+        {
+          "value": "delayed",
+          "label": "延迟启动",
+          "risk": "Low"
+        },
+        {
+          "value": "disabled",
+          "label": "禁用",
+          "risk": "Medium"
+        }
+      ]
+    }
+  ],
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "UALSVC"
+        ],
+        "start": {
+          "$map": {
+            "arg": "startMode",
+            "cases": {
+              "delayed": "DelayedAuto",
+              "disabled": "disabled"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

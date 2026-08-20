@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.shielded-vm-tools",
+  "version": "2.0.0",
+  "title": "移除受防护虚拟机管理工具",
+  "description": "移除受防护虚拟机 Fabric 工具和管理包；无法管理 Shielded VM 环境。",
+  "group": "Virtualization",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "FabricShieldedTools",
+          "ShieldedVMToolsAdminPack"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

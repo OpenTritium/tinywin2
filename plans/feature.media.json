@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.media",
+  "version": "2.0.0",
+  "title": "移除媒体播放组件",
+  "description": "移除 Media Playback、Windows Media Player 与 Server Media Foundation。",
+  "group": "Media",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "MediaPlayback",
+          "WindowsMediaPlayer",
+          "ServerMediaFoundation"
+        ],
+        "removePayload": true
+      }
+    },
+    {
+      "resource": "dism.capability",
+      "ensure": "absent",
+      "with": {
+        "capabilities": [
+          "Media.WindowsMediaPlayer~~~~0.0.12.0"
+        ]
+      }
+    }
+  ]
+}

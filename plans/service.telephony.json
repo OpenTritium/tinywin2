@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.telephony",
+  "version": "2.0.0",
+  "title": "禁用电话服务",
+  "description": "禁用 Telephony 服务；TAPI 调制解调器和传统电话应用将不可用。",
+  "group": "Legacy",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "TapiSrv"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

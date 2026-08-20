@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.windows-defender",
+  "version": "2.0.0",
+  "title": "移除 Microsoft Defender 与 Sense",
+  "description": "移除 Defender 功能和 Defender for Endpoint Sense 客户端；明确保留 UAC 与 Windows 防火墙。",
+  "group": "Security",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "Windows-Defender"
+        ],
+        "removePayload": true
+      }
+    },
+    {
+      "resource": "dism.capability",
+      "ensure": "absent",
+      "with": {
+        "capabilities": [
+          "Microsoft.Windows.Sense.Client~~~~"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "fs.inetpub",
+  "version": "2.0.0",
+  "title": "移除 inetpub 目录",
+  "description": "移除镜像中残留的 IIS inetpub 目录；目录不存在时安全跳过。不会安装或卸载 IIS。",
+  "group": "Server Roles",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "fs.path",
+      "ensure": "absent",
+      "with": {
+        "paths": [
+          "inetpub"
+        ]
+      }
+    }
+  ]
+}

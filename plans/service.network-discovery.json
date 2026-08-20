@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 2,
+  "id": "service.network-discovery",
+  "version": "2.0.0",
+  "title": "禁用网络发现服务",
+  "description": "禁用网络发现与 UPnP 相关服务。局域网设备发现、网络浏览和部分媒体设备功能将不可用。",
+  "group": "Network Services",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "fdPHost",
+          "FDResPub",
+          "SSDPSRV",
+          "upnphost"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

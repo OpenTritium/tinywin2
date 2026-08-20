@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "appx.gaming-app",
+  "version": "2.0.0",
+  "title": "移除 Xbox Gaming App",
+  "description": "移除 Microsoft Gaming Appx。",
+  "group": "Applications",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "appx.provisioned",
+      "ensure": "absent",
+      "with": {
+        "patterns": [
+          "Microsoft.GamingApp"
+        ]
+      }
+    }
+  ]
+}

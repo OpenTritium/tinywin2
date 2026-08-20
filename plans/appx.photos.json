@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "appx.photos",
+  "version": "2.0.0",
+  "title": "移除照片",
+  "description": "移除 Microsoft Photos 预置 Appx；照片查看和照片编辑功能将不可用。",
+  "group": "Applications",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "appx.provisioned",
+      "ensure": "absent",
+      "with": {
+        "patterns": [
+          "Microsoft.Windows.Photos"
+        ]
+      }
+    }
+  ]
+}

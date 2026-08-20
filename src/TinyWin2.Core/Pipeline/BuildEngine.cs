@@ -401,7 +401,7 @@ public sealed class BuildEngine(
             ["layers"] = new JsonArray(stack.Records.Select(r => (JsonNode)r.ToJson()).ToArray()),
         };
         var manifestPath = Path.Combine(mediaPath, "tinywin2-manifest.json");
-        await File.WriteAllTextAsync(manifestPath, manifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), ct);
+        await File.WriteAllTextAsync(manifestPath, manifest.ToPrettyString(), ct);
         return manifestPath;
     }
 

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "fs.windows-mail",
+  "version": "2.0.0",
+  "title": "移除 Windows Mail 文件",
+  "description": "移除镜像中的旧 Windows Mail 文件目录；现代 Mail Appx 由 appx.remove-mail-calendar 单独处理。",
+  "group": "Applications",
+  "risk": "Medium",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "fs.path",
+      "ensure": "absent",
+      "with": {
+        "paths": [
+          "Program Files/Windows Mail"
+        ]
+      }
+    }
+  ]
+}

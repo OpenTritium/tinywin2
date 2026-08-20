@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 2,
+  "id": "service.remote-desktop-services",
+  "version": "2.0.0",
+  "title": "禁用远程桌面服务",
+  "description": "禁用远程桌面服务及会话环境服务。RDP 入站连接和远程应用场景将不可用。",
+  "group": "Remote Management",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "TermService",
+          "SessionEnv",
+          "UmRdpService"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

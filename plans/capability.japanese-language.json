@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 2,
+  "id": "capability.japanese-language",
+  "version": "2.0.0",
+  "title": "移除日语输入、字体和语言能力",
+  "description": "移除日语语言基础、输入、字体、手写、OCR、语音和文本转语音能力；日语显示与输入将不可用。",
+  "group": "Languages",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.capability",
+      "ensure": "absent",
+      "with": {
+        "capabilities": [
+          "Language.Basic~~~ja-JP~0.0.1.0",
+          "Language.Fonts.Jpan~~~und-JPAN~0.0.1.0",
+          "Language.Handwriting~~~ja-JP~0.0.1.0",
+          "Language.OCR~~~ja-JP~0.0.1.0",
+          "Language.Speech~~~ja-JP~0.0.1.0",
+          "Language.TextToSpeech~~~ja-JP~0.0.1.0"
+        ]
+      }
+    }
+  ]
+}

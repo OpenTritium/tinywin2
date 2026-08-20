@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.fax",
+  "version": "2.0.0",
+  "title": "移除传真服务",
+  "description": "移除传真服务器角色和配置工具；本机不能发送或接收传真。",
+  "group": "Legacy",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "FaxServiceRole",
+          "FaxServiceConfigRole"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

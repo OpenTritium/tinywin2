@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.wsl",
+  "version": "2.0.0",
+  "title": "移除 Windows Subsystem for Linux",
+  "description": "移除 WSL 与其虚拟机平台依赖；Linux 发行版将无法运行。",
+  "group": "Virtualization",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "Microsoft-Windows-Subsystem-Linux",
+          "VirtualMachinePlatform"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

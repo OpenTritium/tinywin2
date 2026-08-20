@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.ad-certificate-services",
+  "version": "2.0.0",
+  "title": "移除 Active Directory 证书服务",
+  "description": "移除 AD CS 证书颁发机构角色和管理工具；无法部署企业证书颁发机构。",
+  "group": "Server Roles",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "ADCertificateServicesRole",
+          "ADCertificateServicesManagementTools",
+          "CertificateServices",
+          "CertificateServicesManagementTools"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

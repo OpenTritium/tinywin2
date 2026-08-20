@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.remote-desktop-client",
+  "version": "2.0.0",
+  "title": "移除现代远程桌面客户端基础结构",
+  "description": "移除 Microsoft Remote Desktop Client 基础结构；现代远程桌面客户端可能无法运行。",
+  "group": "Remote Access",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "MSRDC-Infrastructure"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

@@ -151,7 +151,7 @@ public sealed class VhdLayerStack(
                 layers.Add(record.ToJson());
             }
             var root = new JsonObject { ["layers"] = layers };
-            File.WriteAllText(ManifestPath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(ManifestPath, root.ToPrettyString());
         }
     }
 

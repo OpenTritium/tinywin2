@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "capability.powershell-ise",
+  "version": "2.0.0",
+  "title": "移除 PowerShell ISE",
+  "description": "移除遗留 PowerShell ISE；PowerShell 7 和 Windows PowerShell 控制台不受影响。",
+  "group": "Developer",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.capability",
+      "ensure": "absent",
+      "with": {
+        "capabilities": [
+          "Microsoft.Windows.PowerShell.ISE~~~~0.0.1.0"
+        ]
+      }
+    }
+  ]
+}

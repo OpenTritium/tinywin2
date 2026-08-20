@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.biometric",
+  "version": "2.0.0",
+  "title": "禁用 Windows 生物识别服务",
+  "description": "禁用 Windows Biometric Service；指纹、人脸和其他 Windows 生物识别登录将不可用。",
+  "group": "Devices",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "WbioSrvc"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

@@ -44,7 +44,7 @@ internal static class BuildCommand
         var log = new BuildLog { EchoConsole = !jsonEvents };
         if (jsonEvents)
         {
-            _ = log.Attach(evt => Console.Out.WriteLine(evt.ToJson().ToJsonString()));
+            _ = log.Attach(evt => Console.Out.WriteLine(evt.ToJson().ToCompactString()));
         }
 
         var (runner, executers, layers) = Cli.CreateEngineParts();

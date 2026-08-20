@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.location",
+  "version": "2.0.0",
+  "title": "禁用位置服务",
+  "description": "禁用 Geolocation Service (lfsvc)。依赖设备位置的应用和自动时区功能将不可用。",
+  "group": "Background Services",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "lfsvc"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

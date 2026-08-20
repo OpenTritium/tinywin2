@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "capability.chinese-handwriting",
+  "version": "2.0.0",
+  "title": "移除中文手写识别",
+  "description": "移除简体中文手写识别按需功能；保留基础中文显示与输入。",
+  "group": "Language",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.capability",
+      "ensure": "absent",
+      "with": {
+        "capabilities": [
+          "Language.Handwriting~~~zh-CN~0.0.1.0"
+        ]
+      }
+    }
+  ]
+}

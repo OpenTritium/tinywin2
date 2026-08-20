@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.nfs",
+  "version": "2.0.0",
+  "title": "移除 Network File System 支持",
+  "description": "移除 NFS 客户端、服务器、管理工具和基础结构；无法连接或托管 NFS 共享。",
+  "group": "Server Roles",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "ClientForNFS-Infrastructure",
+          "ServerForNFS-Infrastructure",
+          "ServicesForNFS-ServerAndClient",
+          "NFS-Administration"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

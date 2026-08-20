@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.legacy-components",
+  "version": "2.0.0",
+  "title": "移除旧版组件与 DirectPlay",
+  "description": "移除 Legacy Components 和 DirectPlay；依赖旧版游戏或应用兼容层的软件将无法运行。",
+  "group": "Legacy",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "LegacyComponents",
+          "DirectPlay"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

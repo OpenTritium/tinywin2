@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.dotnet-framework-4",
+  "version": "2.0.0",
+  "title": "移除 .NET Framework 4.x",
+  "description": "移除 .NET Framework 4.x、Server 扩展和 ASP.NET 4.x；大量服务器管理工具和应用会无法运行。",
+  "group": "Frameworks",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "NetFx4",
+          "NetFx4ServerFeatures",
+          "NetFx4Extended-ASPNET45"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

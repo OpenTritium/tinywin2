@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.phone",
+  "version": "2.0.0",
+  "title": "禁用 Phone Service",
+  "description": "禁用 Phone Service；Phone Link、移动电话集成和部分移动宽带功能将不可用。",
+  "group": "Background Services",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "PhoneSvc"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

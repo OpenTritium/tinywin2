@@ -42,21 +42,31 @@ internal static class Program
         }
     }
 
-    /// <summary>Parses <c>--key value</c> / <c>--flag</c>; repeated keys accumulate their values.</summary>
+    /// <summary>Parses <c>--key value</c> / <c>-k value</c> / flags; repeated keys accumulate.</summary>
     internal static Dictionary<string, List<string>> ParseOptions(List<string> args)
     {
         var options = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < args.Count; i++)
         {
-            if (!args[i].StartsWith("--", StringComparison.Ordinal))
+            var arg = args[i];
+            var isLong = arg.StartsWith("--", StringComparison.Ordinal);
+            var isShort = !isLong && arg.Length == 2 && arg[0] == '-' && char.IsLetter(arg[1]);
+            if (!isLong && !isShort)
             {
                 continue;
             }
-            var key = args[i][2..];
+            var key = isLong ? arg[2..] : arg[1..].ToString();
             var value = "true";
-            if (i + 1 < args.Count && !args[i + 1].StartsWith("--", StringComparison.Ordinal))
+            if (i + 1 < args.Count)
             {
-                value = args[++i];
+                var next = args[i + 1];
+                var nextIsOption = next.StartsWith("--", StringComparison.Ordinal)
+                    || (next.Length == 2 && next[0] == '-' && char.IsLetter(next[1]));
+                if (!nextIsOption)
+                {
+                    value = next;
+                    i++;
+                }
             }
             if (!options.TryGetValue(key, out var values))
             {

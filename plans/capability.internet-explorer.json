@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "capability.internet-explorer",
+  "version": "2.0.0",
+  "title": "移除 Internet Explorer 兼容组件",
+  "description": "移除遗留 Internet Explorer 浏览器能力。",
+  "group": "Legacy",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.capability",
+      "ensure": "absent",
+      "with": {
+        "capabilities": [
+          "Browser.InternetExplorer~~~~0.0.11.0"
+        ]
+      }
+    }
+  ]
+}

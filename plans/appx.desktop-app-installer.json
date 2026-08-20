@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "appx.desktop-app-installer",
+  "version": "2.0.0",
+  "title": "移除 App Installer",
+  "description": "移除 Microsoft Desktop App Installer；将无法通过 .msixbundle 或 winget 安装应用。",
+  "group": "Applications",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "appx.provisioned",
+      "ensure": "absent",
+      "with": {
+        "patterns": [
+          "Microsoft.DesktopAppInstaller"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 2,
+  "id": "maintenance.component-cleanup",
+  "version": "2.0.0",
+  "title": "清理组件存储",
+  "description": "执行 StartComponentCleanup 释放组件存储空间。",
+  "group": "Servicing",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.component-store",
+      "ensure": "absent",
+      "with": {
+        "resetBase": false
+      }
+    }
+  ]
+}

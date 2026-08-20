@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.iscsi-initiator",
+  "version": "2.0.0",
+  "title": "禁用 iSCSI Initiator",
+  "description": "禁用 Microsoft iSCSI Initiator 服务；连接 iSCSI SAN 或远程块存储将不可用。",
+  "group": "Storage",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "MSiSCSI"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

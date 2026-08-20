@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "id": "registry.server-manager-autostart",
+  "version": "2.0.0",
+  "title": "禁用服务器管理器自动启动",
+  "description": "阻止 Server Manager 在管理员登录时自动启动；程序和管理功能仍可手动使用。",
+  "group": "Background Experience",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "registry.value",
+      "ensure": "present",
+      "with": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Microsoft\\ServerManager",
+            "name": "DoNotOpenServerManagerAtLogon",
+            "type": "dword",
+            "data": 1
+          }
+        ]
+      }
+    }
+  ]
+}

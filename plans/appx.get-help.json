@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "appx.get-help",
+  "version": "2.0.0",
+  "title": "移除获取帮助",
+  "description": "移除 Microsoft Get Help 预装 Appx。",
+  "group": "Applications",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "appx.provisioned",
+      "ensure": "absent",
+      "with": {
+        "patterns": [
+          "Microsoft.GetHelp"
+        ]
+      }
+    }
+  ]
+}

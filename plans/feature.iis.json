@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.iis",
+  "version": "2.0.0",
+  "title": "移除 Internet Information Services",
+  "description": "移除 IIS Web Server Role 和 Hostable Web Core payload；无法再部署 IIS 网站或依赖该 Web Core 的应用。",
+  "group": "Server Roles",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "IIS-WebServerRole",
+          "IIS-HostableWebCore"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

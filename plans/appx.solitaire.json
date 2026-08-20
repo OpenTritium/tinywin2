@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "appx.solitaire",
+  "version": "2.0.0",
+  "title": "移除纸牌合集",
+  "description": "移除 Microsoft Solitaire Collection 预装 Appx。",
+  "group": "Applications",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "appx.provisioned",
+      "ensure": "absent",
+      "with": {
+        "patterns": [
+          "Microsoft.MicrosoftSolitaireCollection"
+        ]
+      }
+    }
+  ]
+}

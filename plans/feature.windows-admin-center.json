@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.windows-admin-center",
+  "version": "2.0.0",
+  "title": "移除 Windows Admin Center 与 Azure Arc 安装器",
+  "description": "移除预置的 Windows Admin Center 安装组件和 Azure Arc Setup。",
+  "group": "Server",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "WindowsAdminCenterSetup"
+        ],
+        "removePayload": true
+      }
+    },
+    {
+      "resource": "dism.capability",
+      "ensure": "absent",
+      "with": {
+        "capabilities": [
+          "AzureArcSetup~~~~"
+        ]
+      }
+    }
+  ]
+}

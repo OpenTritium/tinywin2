@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.message-queue",
+  "version": "2.0.0",
+  "title": "移除 Microsoft Message Queuing",
+  "description": "移除 MSMQ、HTTP、路由、触发器和目录服务集成；依赖消息队列的应用将无法运行。",
+  "group": "Server Roles",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "MSMQ",
+          "MSMQ-ADIntegration",
+          "MSMQ-DCOMProxy",
+          "MSMQ-HTTP",
+          "MSMQ-Multicast",
+          "MSMQ-RoutingServer",
+          "MSMQ-Server",
+          "MSMQ-Services",
+          "MSMQ-Triggers"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

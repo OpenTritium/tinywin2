@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "id": "service.security-health",
+  "version": "2.0.0",
+  "title": "禁用 Windows Security Health 服务",
+  "description": "禁用 SecurityHealthService 和 Defender for Endpoint Sense 服务；安全中心健康状态和企业检测上报将不可用。与移除 Defender 条目搭配使用。",
+  "group": "Security",
+  "risk": "High",
+  "tier": "Experimental",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "SecurityHealthService",
+          "Sense"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

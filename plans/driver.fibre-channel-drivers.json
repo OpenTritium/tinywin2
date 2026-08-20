@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 2,
+  "id": "driver.fibre-channel-drivers",
+  "version": "2.0.0",
+  "title": "移除 Fibre Channel 与 FCoE 驱动",
+  "description": "从 Driver Store 移除 Emulex、Marvell、QLogic 和 Broadcom Fibre Channel/FCoE 驱动。连接相应 SAN 或 HBA 时设备将不可用。",
+  "group": "Drivers",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "driver.store",
+      "ensure": "absent",
+      "with": {
+        "infNames": [
+          "elxfcoe.inf",
+          "elxstor.inf",
+          "bxfcoe.inf",
+          "qefcoe.inf",
+          "ql2300.inf",
+          "ql40xx2i.inf",
+          "qlfcoei.inf",
+          "bfad.inf",
+          "bfadfcoe.inf",
+          "bxois.inf",
+          "qeois.inf"
+        ]
+      }
+    }
+  ]
+}

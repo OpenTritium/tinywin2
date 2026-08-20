@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "appx.maps",
+  "version": "2.0.0",
+  "title": "移除地图",
+  "description": "移除 Windows Maps 预装 Appx。",
+  "group": "Applications",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "appx.provisioned",
+      "ensure": "absent",
+      "with": {
+        "patterns": [
+          "Microsoft.WindowsMaps"
+        ]
+      }
+    }
+  ]
+}

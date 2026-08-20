@@ -52,8 +52,6 @@ public sealed record Profile(
 
 public static class ProfileStore
 {
-    private static readonly JsonSerializerOptions Pretty = new() { WriteIndented = true };
-
     public static Profile Load(string path)
     {
         var node = JsonNode.Parse(File.ReadAllText(path));
@@ -67,7 +65,7 @@ public static class ProfileStore
     public static void Save(Profile profile, string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        File.WriteAllText(path, profile.ToJson().ToJsonString(Pretty));
+        File.WriteAllText(path, profile.ToJson().ToPrettyString());
     }
 
     public static IReadOnlyList<PlanSelection> ToPlanSelections(Profile profile) =>

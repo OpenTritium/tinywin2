@@ -39,5 +39,6 @@ internal static class DoctorCommand
     internal static readonly System.Text.Json.JsonSerializerOptions JsonSerializerOptions = new()
     {
         WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 }

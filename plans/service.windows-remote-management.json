@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.windows-remote-management",
+  "version": "2.0.0",
+  "title": "禁用 Windows 远程管理",
+  "description": "禁用 WinRM。PowerShell Remoting、Windows Admin Center 和多数远程服务器管理流程将不可用。",
+  "group": "Remote Management",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "WinRM"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

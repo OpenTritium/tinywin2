@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "id": "registry.windows-firewall",
+  "version": "2.0.0",
+  "title": "禁用 Windows 防火墙",
+  "description": "将域、专用和公用网络配置文件的防火墙策略设为关闭。设备暴露在不受信任网络时风险极高。",
+  "group": "Security",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "registry.value",
+      "ensure": "present",
+      "with": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Policies\\Microsoft\\WindowsFirewall\\DomainProfile",
+            "name": "EnableFirewall",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Policies\\Microsoft\\WindowsFirewall\\PrivateProfile",
+            "name": "EnableFirewall",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Policies\\Microsoft\\WindowsFirewall\\PublicProfile",
+            "name": "EnableFirewall",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
+    }
+  ]
+}

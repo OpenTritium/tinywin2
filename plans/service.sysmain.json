@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.sysmain",
+  "version": "2.0.0",
+  "title": "禁用 SysMain 预取服务",
+  "description": "禁用 SysMain (Superfetch)；可减少后台内存和磁盘活动，但可能降低应用预加载速度。",
+  "group": "Background Services",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "SysMain"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

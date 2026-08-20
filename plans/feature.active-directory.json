@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.active-directory",
+  "version": "2.0.0",
+  "title": "移除 Active Directory 域服务与管理工具",
+  "description": "移除 AD DS 域控制器角色、AD LDS/AD 管理工具及 PowerShell cmdlet；无法部署域控制器或管理 Active Directory。",
+  "group": "Server Roles",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "DirectoryServices-DomainController",
+          "DirectoryServices-DomainController-Tools",
+          "DirectoryServices-AdministrativeCenter",
+          "DirectoryServices-ADAM",
+          "DirectoryServices-ADAM-Tools",
+          "ActiveDirectory-PowerShell",
+          "RSAT-AD-Tools-Feature",
+          "RSAT-ADDS-Tools-Feature"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

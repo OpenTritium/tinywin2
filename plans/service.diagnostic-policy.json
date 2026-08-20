@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 2,
+  "id": "service.diagnostic-policy",
+  "version": "2.0.0",
+  "title": "将诊断服务改为按需启动",
+  "description": "将 Diagnostic Policy Service 及诊断主机改为手动启动；保留需要时的故障诊断触发能力，减少开机常驻。与禁用诊断条目冲突。",
+  "group": "Diagnostics",
+  "risk": "Medium",
+  "tier": "Standard",
+  "arguments": [
+    {
+      "name": "startMode",
+      "type": "enum",
+      "label": "启动方式",
+      "default": "manual",
+      "options": [
+        {
+          "value": "manual",
+          "label": "手动",
+          "risk": "Medium"
+        },
+        {
+          "value": "disabled",
+          "label": "禁用",
+          "risk": "Medium"
+        }
+      ]
+    }
+  ],
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "DPS",
+          "WdiServiceHost",
+          "WdiSystemHost"
+        ],
+        "start": {
+          "$map": {
+            "arg": "startMode",
+            "cases": {
+              "manual": "Manual",
+              "disabled": "disabled"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.rds-management-tools",
+  "version": "2.0.0",
+  "title": "移除远程桌面服务管理工具",
+  "description": "移除 Remote Desktop Services RSAT 管理工具；不影响基础远程桌面客户端和服务器服务。",
+  "group": "Remote Management",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "RSAT-RDS-Tools-Feature"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

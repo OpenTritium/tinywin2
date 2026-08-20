@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.multipoint-services",
+  "version": "2.0.0",
+  "title": "移除 MultiPoint Services",
+  "description": "移除 MultiPoint Services 连接器、服务和工具；无法提供多点桌面会话。",
+  "group": "Server Roles",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "MultiPoint-Connector",
+          "MultiPoint-Connector-Services",
+          "MultiPoint-Tools"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

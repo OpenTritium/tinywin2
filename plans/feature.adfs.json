@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.adfs",
+  "version": "2.0.0",
+  "title": "移除 Active Directory Federation Services",
+  "description": "移除 AD FS 联合身份验证角色及其管理组件；无法作为 AD FS 联合服务器或代理。",
+  "group": "Server Roles",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "ADFS-Federation",
+          "ADFS-Federation-Management"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

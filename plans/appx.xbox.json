@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "appx.xbox",
+  "version": "2.0.0",
+  "title": "移除 Xbox 组件",
+  "description": "移除 Xbox 相关预装 Appx。",
+  "group": "Applications",
+  "risk": "Medium",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "appx.provisioned",
+      "ensure": "absent",
+      "with": {
+        "patterns": [
+          "Microsoft.Xbox*"
+        ]
+      }
+    }
+  ]
+}
