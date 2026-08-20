@@ -108,8 +108,16 @@ internal static class BuildCommand
                 Console.WriteLine();
                 Console.WriteLine($"✔ build {result.BuildId} complete");
                 Console.WriteLine($"  media:     {result.MediaPath}");
-                if (result.IsoPath is not null) Console.WriteLine($"  ISO:       {result.IsoPath}");
-                if (result.VhdxPath is not null) Console.WriteLine($"  VHDX:      {result.VhdxPath}");
+                if (result.IsoPath is not null)
+                {
+                    Console.WriteLine($"  ISO:       {result.IsoPath}");
+                }
+
+                if (result.VhdxPath is not null)
+                {
+                    Console.WriteLine($"  VHDX:      {result.VhdxPath}");
+                }
+
                 Console.WriteLine($"  manifest:  {result.ManifestPath}");
                 Console.WriteLine($"  日志:      {logFilePath}");
                 Console.WriteLine($"  layers:    {result.LayerCount}");
@@ -227,61 +235,75 @@ internal static class LayerCommand
             case "list":
                 return List(workDirectory, options.ContainsKey("json"));
             case "diff":
-            {
-                if (positional.Count < 4)
                 {
-                    Console.Error.WriteLine("usage: tinywin2 layer diff <workspace> <from> <to> [--deep] [--json]");
-                    return 2;
-                }
-                var report = await inspector.DiffAsync(workDirectory, int.Parse(positional[2]), int.Parse(positional[3]),
-                    options.ContainsKey("deep"), CancellationToken.None);
-                if (options.ContainsKey("json"))
-                {
-                    Console.WriteLine(report.ToJson().ToJsonString(DoctorCommand.JsonSerializerOptions));
-                }
-                else
-                {
-                    Console.WriteLine($"layer {report.FromIndex:000} → {report.ToIndex:000}: {report.Files.Count} file changes, {report.Registry.Count} registry changes");
-                    foreach (var file in report.Files.Take(40))
+                    if (positional.Count < 4)
                     {
-                        Console.WriteLine($"  [{file.Kind,-8}] {file.RelativePath}  ({file.OldSize} → {file.NewSize} bytes)");
+                        Console.Error.WriteLine("usage: tinywin2 layer diff <workspace> <from> <to> [--deep] [--json]");
+                        return 2;
                     }
-                    if (report.Files.Count > 40) Console.WriteLine($"  … {report.Files.Count - 40} more");
-                    foreach (var entry in report.Registry.Take(40))
+                    var report = await inspector.DiffAsync(workDirectory, int.Parse(positional[2]), int.Parse(positional[3]),
+                        options.ContainsKey("deep"), CancellationToken.None);
+                    if (options.ContainsKey("json"))
                     {
-                        Console.WriteLine($"  [{entry.Kind,-8}] {entry.Hive}\\{entry.Key}\\{entry.ValueName}");
-                        if (entry.Before is not null) Console.WriteLine($"              - {entry.Before}");
-                        if (entry.After is not null) Console.WriteLine($"              + {entry.After}");
+                        Console.WriteLine(report.ToJson().ToJsonString(DoctorCommand.JsonSerializerOptions));
                     }
-                    if (report.Registry.Count > 40) Console.WriteLine($"  … {report.Registry.Count - 40} more");
+                    else
+                    {
+                        Console.WriteLine($"layer {report.FromIndex:000} → {report.ToIndex:000}: {report.Files.Count} file changes, {report.Registry.Count} registry changes");
+                        foreach (var file in report.Files.Take(40))
+                        {
+                            Console.WriteLine($"  [{file.Kind,-8}] {file.RelativePath}  ({file.OldSize} → {file.NewSize} bytes)");
+                        }
+                        if (report.Files.Count > 40)
+                        {
+                            Console.WriteLine($"  … {report.Files.Count - 40} more");
+                        }
+
+                        foreach (var entry in report.Registry.Take(40))
+                        {
+                            Console.WriteLine($"  [{entry.Kind,-8}] {entry.Hive}\\{entry.Key}\\{entry.ValueName}");
+                            if (entry.Before is not null)
+                            {
+                                Console.WriteLine($"              - {entry.Before}");
+                            }
+
+                            if (entry.After is not null)
+                            {
+                                Console.WriteLine($"              + {entry.After}");
+                            }
+                        }
+                        if (report.Registry.Count > 40)
+                        {
+                            Console.WriteLine($"  … {report.Registry.Count - 40} more");
+                        }
+                    }
+                    return 0;
                 }
-                return 0;
-            }
             case "extract":
-            {
-                if (positional.Count < 5)
                 {
-                    Console.Error.WriteLine("usage: tinywin2 layer extract <workspace> <layer> <image-relative-path> <dest>");
-                    return 2;
+                    if (positional.Count < 5)
+                    {
+                        Console.Error.WriteLine("usage: tinywin2 layer extract <workspace> <layer> <image-relative-path> <dest>");
+                        return 2;
+                    }
+                    await inspector.ExtractAsync(workDirectory, int.Parse(positional[2]), positional[3], positional[4], CancellationToken.None);
+                    Console.WriteLine("extracted.");
+                    return 0;
                 }
-                await inspector.ExtractAsync(workDirectory, int.Parse(positional[2]), positional[3], positional[4], CancellationToken.None);
-                Console.WriteLine("extracted.");
-                return 0;
-            }
             case "rollback-to":
-            {
-                var output = options.GetValueOrDefault("out")?.FirstOrDefault() ?? options.GetValueOrDefault("o")?.FirstOrDefault();
-                if (positional.Count < 3 || output is null)
                 {
-                    Console.Error.WriteLine("usage: tinywin2 layer rollback-to <workspace> <layer> -o <out.wim|esd> [--fast]");
-                    return 2;
+                    var output = options.GetValueOrDefault("out")?.FirstOrDefault() ?? options.GetValueOrDefault("o")?.FirstOrDefault();
+                    if (positional.Count < 3 || output is null)
+                    {
+                        Console.Error.WriteLine("usage: tinywin2 layer rollback-to <workspace> <layer> -o <out.wim|esd> [--fast]");
+                        return 2;
+                    }
+                    var format = output.EndsWith(".esd", StringComparison.OrdinalIgnoreCase) ? ImageFormat.Esd : ImageFormat.Wim;
+                    var captured = await inspector.RollbackCaptureAsync(workDirectory, int.Parse(positional[2]), output, format,
+                        options.ContainsKey("fast"), CancellationToken.None);
+                    Console.WriteLine($"captured layer state → {captured}");
+                    return 0;
                 }
-                var format = output.EndsWith(".esd", StringComparison.OrdinalIgnoreCase) ? ImageFormat.Esd : ImageFormat.Wim;
-                var captured = await inspector.RollbackCaptureAsync(workDirectory, int.Parse(positional[2]), output, format,
-                    options.ContainsKey("fast"), CancellationToken.None);
-                Console.WriteLine($"captured layer state → {captured}");
-                return 0;
-            }
             default:
                 Console.Error.WriteLine($"unknown layer subcommand: {positional[0]}");
                 return 2;

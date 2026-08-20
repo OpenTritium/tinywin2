@@ -113,12 +113,24 @@ public sealed class VhdLayerStack(
 
     public int CommittedDepth
     {
-        get { lock (_gate) return _records.Count(r => r.Status is LayerStatus.Committed or LayerStatus.Merged); }
+        get
+        {
+            lock (_gate)
+            {
+                return _records.Count(r => r.Status is LayerStatus.Committed or LayerStatus.Merged);
+            }
+        }
     }
 
     public IReadOnlyList<LayerRecord> Records
     {
-        get { lock (_gate) return _records.ToArray(); }
+        get
+        {
+            lock (_gate)
+            {
+                return _records.ToArray();
+            }
+        }
     }
 
     // ---- lifecycle ---------------------------------------------------------
@@ -146,7 +158,10 @@ public sealed class VhdLayerStack(
                     Error = node["error"]?.GetValue<string>(),
                     VhdxPath = Path.Combine(workDirectory, node["vhdx"]!.GetValue<string>()),
                 };
-                lock (stack._gate) stack._records.Add(record);
+                lock (stack._gate)
+                {
+                    stack._records.Add(record);
+                }
             }
         }
         return stack;
@@ -236,7 +251,11 @@ public sealed class VhdLayerStack(
             BoundArgs = boundArgs,
             VhdxPath = vhdxPath,
         };
-        lock (_gate) _records.Add(record);
+        lock (_gate)
+        {
+            _records.Add(record);
+        }
+
         Save();
         return new LayerSession { Record = record, VhdxPath = vhdxPath, MountPath = $"{letter}:\\", DriveLetter = letter };
     }

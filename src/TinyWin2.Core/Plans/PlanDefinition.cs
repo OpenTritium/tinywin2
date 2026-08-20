@@ -89,8 +89,15 @@ public sealed partial record PlanDefinition
         var group = ReadString(obj, "group", errors);
         var risk = ReadString(obj, "risk", errors) ?? "Medium";
         var tier = ReadString(obj, "tier", errors) ?? "Standard";
-        if (risk is not null && !RiskLevels.Contains(risk)) errors.Add($"risk '{risk}' invalid (Low|Medium|High).");
-        if (tier is not null && !Tiers.Contains(tier)) errors.Add($"tier '{tier}' invalid (Standard|Expert|Experimental).");
+        if (risk is not null && !RiskLevels.Contains(risk))
+        {
+            errors.Add($"risk '{risk}' invalid (Low|Medium|High).");
+        }
+
+        if (tier is not null && !Tiers.Contains(tier))
+        {
+            errors.Add($"tier '{tier}' invalid (Standard|Expert|Experimental).");
+        }
 
         var requires = ReadStringArray(obj, "requires", errors);
         var conflicts = ReadStringArray(obj, "conflicts", errors);
@@ -128,7 +135,11 @@ public sealed partial record PlanDefinition
     {
         if (obj[name] is not { } node)
         {
-            if (required) errors.Add($"'{name}' is required.");
+            if (required)
+            {
+                errors.Add($"'{name}' is required.");
+            }
+
             return [];
         }
         if (node is not JsonArray array)
@@ -155,7 +166,11 @@ public sealed partial record PlanDefinition
     {
         if (obj[name] is not { } node)
         {
-            if (required) errors.Add($"'{name}' is required.");
+            if (required)
+            {
+                errors.Add($"'{name}' is required.");
+            }
+
             return null;
         }
         if (node is JsonValue value && value.TryGetValue<string>(out var text))
@@ -175,7 +190,11 @@ public sealed partial record PlanDefinition
     {
         if (obj[name] is not { } node)
         {
-            if (required) errors.Add($"'{name}' is required.");
+            if (required)
+            {
+                errors.Add($"'{name}' is required.");
+            }
+
             return null;
         }
         if (node is JsonValue value && value.TryGetValue<int>(out var number))

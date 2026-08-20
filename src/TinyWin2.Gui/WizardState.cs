@@ -30,7 +30,7 @@ public partial class PlanItemViewModel : ObservableObject
     public ObservableCollection<ArgumentViewModel> Arguments { get; } = [];
 
     [ObservableProperty]
-    private bool _isSelected;
+    public partial bool IsSelected { get; set; }
 
     public string Summary => Arguments.Count == 0
         ? ""
@@ -60,14 +60,14 @@ public partial class ArgumentViewModel : ObservableObject
     public ArgumentViewModel(PlanArgument argument)
     {
         Argument = argument;
-        _selectedValue = argument.Options.Count > 0
+        SelectedValue = argument.Options.Count > 0
             ? argument.Options[0].Value
             : argument.Default?.ToString() ?? "";
         foreach (var option in argument.Options)
         {
             if (argument.Default is { } d && d.ToString() == option.Value)
             {
-                _selectedValue = option.Value;
+                SelectedValue = option.Value;
             }
         }
     }
@@ -79,7 +79,7 @@ public partial class ArgumentViewModel : ObservableObject
     public IReadOnlyList<PlanArgumentOption> Options => Argument.Options;
 
     [ObservableProperty]
-    private string _selectedValue;
+    public partial string SelectedValue { get; set; }
 
     public string Display => Type switch
     {

@@ -86,8 +86,8 @@ public sealed class CliRunner
 
         using var process = new Process { StartInfo = startInfo };
         var queue = System.Threading.Channels.Channel.CreateUnbounded<string>();
-        process.OutputDataReceived += (_, e) => { if (e.Data is not null) _ = queue.Writer.WriteAsync(e.Data); };
-        process.ErrorDataReceived += (_, e) => { if (e.Data is not null) _ = queue.Writer.WriteAsync(e.Data); };
+        process.OutputDataReceived += (_, e) => { if (e.Data is not null) { _ = queue.Writer.WriteAsync(e.Data); } };
+        process.ErrorDataReceived += (_, e) => { if (e.Data is not null) { _ = queue.Writer.WriteAsync(e.Data); } };
 
         try
         {

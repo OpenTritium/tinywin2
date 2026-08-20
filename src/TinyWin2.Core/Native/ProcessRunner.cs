@@ -82,14 +82,30 @@ public sealed class ProcessRunner : IProcessRunner
 
         process.OutputDataReceived += (_, e) =>
         {
-            if (e.Data is null) return;
-            lock (outputBuilder) outputBuilder.AppendLine(e.Data);
+            if (e.Data is null)
+            {
+                return;
+            }
+
+            lock (outputBuilder)
+            {
+                outputBuilder.AppendLine(e.Data);
+            }
+
             options.OnOutputLine?.Invoke(e.Data);
         };
         process.ErrorDataReceived += (_, e) =>
         {
-            if (e.Data is null) return;
-            lock (errorBuilder) errorBuilder.AppendLine(e.Data);
+            if (e.Data is null)
+            {
+                return;
+            }
+
+            lock (errorBuilder)
+            {
+                errorBuilder.AppendLine(e.Data);
+            }
+
             options.OnErrorLine?.Invoke(e.Data);
         };
 
@@ -123,8 +139,16 @@ public sealed class ProcessRunner : IProcessRunner
 
         string output;
         string error;
-        lock (outputBuilder) output = outputBuilder.ToString();
-        lock (errorBuilder) error = errorBuilder.ToString();
+        lock (outputBuilder)
+        {
+            output = outputBuilder.ToString();
+        }
+
+        lock (errorBuilder)
+        {
+            error = errorBuilder.ToString();
+        }
+
         var result = new ProcessRunResult(process.ExitCode, output, error, commandLine);
 
         if (process.ExitCode != 0 && !options.IgnoreExitCode)

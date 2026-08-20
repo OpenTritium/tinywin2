@@ -1,0 +1,7 @@
+# Normalize the repo to LF in the working tree and the index.
+* text=auto eol=lf
+*.png binary
+*.vhdx binary
+*.wim binary
+*.esd binary
+*.iso binary

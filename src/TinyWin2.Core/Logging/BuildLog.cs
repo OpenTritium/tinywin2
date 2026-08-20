@@ -41,13 +41,23 @@ public sealed class BuildLog : IBuildLog
 
     public IReadOnlyList<BuildEvent> Events
     {
-        get { lock (_gate) return _events.ToArray(); }
+        get
+        {
+            lock (_gate)
+            {
+                return _events.ToArray();
+            }
+        }
     }
 
     /// <summary>Attaches a sink; dispose the token to detach. Sinks must not throw.</summary>
     public IDisposable Attach(Action<BuildEvent> sink)
     {
-        lock (_gate) _sinks.Add(sink);
+        lock (_gate)
+        {
+            _sinks.Add(sink);
+        }
+
         return new SinkToken(this, sink);
     }
 
@@ -124,12 +134,18 @@ public sealed class BuildLog : IBuildLog
 
     public IReadOnlyList<BuildEvent> Snapshot()
     {
-        lock (_gate) return _events.ToArray();
+        lock (_gate)
+        {
+            return _events.ToArray();
+        }
     }
 
     private void Detach(Action<BuildEvent> sink)
     {
-        lock (_gate) _sinks.Remove(sink);
+        lock (_gate)
+        {
+            _sinks.Remove(sink);
+        }
     }
 
     private sealed class SinkToken(BuildLog owner, Action<BuildEvent> sink) : IDisposable
