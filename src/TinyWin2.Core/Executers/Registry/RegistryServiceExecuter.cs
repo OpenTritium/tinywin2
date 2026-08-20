@@ -1,4 +1,3 @@
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using TinyWin2.Core.Native;
 
@@ -7,24 +6,15 @@ namespace TinyWin2.Core.Executers.Registry;
 /// <summary>
 /// Converges offline service start modes. Unifies v1's DisableOfflineService and
 /// ConfigureOfflineService: every start mode is present-with-a-value.
-/// Desired: <c>{ services:[...], servicePatterns:[...], start: auto|delayedAuto|manual|disabled }</c>.
 /// </summary>
 public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IExecuter
 {
     public const string ResourceId = "registry.service";
     public string Resource => ResourceId;
 
-    private static readonly IReadOnlyDictionary<string, int> StartValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
-    {
-        ["disabled"] = 4,
-        ["manual"] = 3,
-        ["auto"] = 2,
-        ["delayedAuto"] = 2,
-    };
-
     public async Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct)
     {
-        var (services, patterns, start) = Parse(spec);
+        var options = RegistryServiceOptions.FromDesired(spec.Desired);
         var hive = await context.Hives.GetAsync("system", context.Log, ct);
         var controlSet = await ResolveControlSetAsync(hive, ct);
         var servicesRoot = $"{hive.HiveKey}\\{controlSet}\\Services";
@@ -39,8 +29,8 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             .Where(n => !n.Contains('\\'))
             .ToList();
 
-        var resolved = new List<string>(services);
-        foreach (var pattern in patterns)
+        var resolved = new List<string>(options.Services);
+        foreach (var pattern in options.ServicePatterns)
         {
             var regex = LikeToRegex(pattern);
             var matches = allNames.Where(n => regex.IsMatch(n)).ToList();
@@ -52,9 +42,6 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         }
 
         var differences = new List<ChangeItem>();
-        var desiredStart = StartValues[start];
-        var delayed = string.Equals(start, "delayedAuto", StringComparison.OrdinalIgnoreCase);
-
         foreach (var service in resolved.Distinct(StringComparer.OrdinalIgnoreCase))
         {
             var serviceKey = $"{servicesRoot}\\{service}";
@@ -62,17 +49,17 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             if (existingStart is null)
             {
                 context.Log.Warn($"service '{service}' was not present in {controlSet}; skipping.");
-                differences.Add(new ChangeItem(ChangeKind.Skipped, service, SkipReasonValue()));
+                differences.Add(new ChangeItem(ChangeKind.Skipped, service, "service not present"));
                 continue;
             }
 
             var existingDelayed = await ReadDwordAsync(serviceKey, "DelayedAutoStart", ct) ?? 0;
-            var satisfied = existingStart == desiredStart && existingDelayed == (delayed ? 1 : 0);
+            var satisfied = existingStart == options.StartDword && existingDelayed == (options.IsDelayed ? 1 : 0);
             if (!satisfied)
             {
                 differences.Add(new ChangeItem(ChangeKind.Modified, service,
                     Before: Describe(existingStart.Value, existingDelayed),
-                    After: Describe(desiredStart, delayed ? 1 : 0)));
+                    After: Describe(options.StartDword, options.IsDelayed ? 1 : 0)));
             }
         }
 
@@ -88,11 +75,9 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
                 diff.Differences.Where(d => d.Kind == ChangeKind.Skipped).ToArray());
         }
 
-        var (_, _, start) = Parse(spec);
+        var options = RegistryServiceOptions.FromDesired(spec.Desired);
         var hive = await context.Hives.GetAsync("system", context.Log, ct);
         var controlSet = await ResolveControlSetAsync(hive, ct);
-        var desiredStart = StartValues[start];
-        var delayed = string.Equals(start, "delayedAuto", StringComparison.OrdinalIgnoreCase);
         var applied = new List<ChangeItem>();
 
         foreach (var change in diff.Differences)
@@ -102,8 +87,8 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
                 continue;
             }
             var serviceKey = $"{hive.HiveKey}\\{controlSet}\\Services\\{change.Target}";
-            await runner.RunAsync("reg.exe", ["add", serviceKey, "/v", "Start", "/t", "REG_DWORD", "/d", desiredStart.ToString(), "/f"], cancellationToken: ct);
-            await runner.RunAsync("reg.exe", ["add", serviceKey, "/v", "DelayedAutoStart", "/t", "REG_DWORD", "/d", (delayed ? 1 : 0).ToString(), "/f"], cancellationToken: ct);
+            await runner.RunAsync("reg.exe", ["add", serviceKey, "/v", "Start", "/t", "REG_DWORD", "/d", options.StartDword.ToString(), "/f"], cancellationToken: ct);
+            await runner.RunAsync("reg.exe", ["add", serviceKey, "/v", "DelayedAutoStart", "/t", "REG_DWORD", "/d", (options.IsDelayed ? 1 : 0).ToString(), "/f"], cancellationToken: ct);
             context.Log.Info($"service {change.Target} → {change.After}");
             applied.Add(change);
         }
@@ -139,31 +124,6 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         return Convert.ToInt32(value.Data.Trim(), 16);
     }
 
-    private static (List<string> Services, List<string> Patterns, string Start) Parse(ExecSpec spec)
-    {
-        var desired = spec.Desired;
-        if (desired["start"] is not JsonValue startValue || !startValue.TryGetValue<string>(out var start)
-            || !StartValues.ContainsKey(start))
-        {
-            throw new ExecException("registry.service requires 'start' (auto|delayedAuto|manual|disabled).");
-        }
-
-        var services = desired["services"]?.AsArray().OfType<JsonValue>().Select(v => v.GetValue<string>()).ToList() ?? [];
-        var patterns = desired["servicePatterns"]?.AsArray().OfType<JsonValue>().Select(v => v.GetValue<string>()).ToList() ?? [];
-        if (services.Count == 0 && patterns.Count == 0)
-        {
-            throw new ExecException("registry.service requires 'services' or 'servicePatterns'.");
-        }
-        foreach (var name in services.Concat(patterns))
-        {
-            if (!ServiceNamePattern().IsMatch(name))
-            {
-                throw new ExecException($"invalid service name or pattern '{name}'.");
-            }
-        }
-        return (services, patterns, start);
-    }
-
     private static string Describe(int start, int delayed) => start switch
     {
         4 => "disabled",
@@ -171,13 +131,8 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         _ => delayed == 1 ? "delayedAuto" : "auto",
     };
 
-    private static string SkipReasonValue() => "service not present";
-
     /// <summary>PowerShell -like wildcards (* and ?) anchored for full-string matching.</summary>
     internal static Regex LikeToRegex(string pattern) => new(
         "^" + Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", ".") + "$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
-    [GeneratedRegex(@"^[A-Za-z0-9_.?*-]+$")]
-    private static partial Regex ServiceNamePattern();
 }

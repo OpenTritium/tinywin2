@@ -1,4 +1,3 @@
-using System.Text.Json.Nodes;
 using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Executers.Dism;
@@ -14,7 +13,7 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismExecuterBase
 
     public async Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct)
     {
-        var capabilities = Parse(spec);
+        var options = CapabilityOptions.FromDesired(spec.Desired);
         var (exitCode, output) = await RunDismAsync(context, ["/Get-Capabilities", "/Format:List"], ct);
         if (DismErrors.Classify(exitCode, output) == DismOutcome.ProviderUnavailable)
         {
@@ -27,7 +26,7 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismExecuterBase
             StringComparer.OrdinalIgnoreCase);
 
         var differences = new List<ChangeItem>();
-        foreach (var capability in capabilities)
+        foreach (var capability in options.Capabilities)
         {
             if (!states.TryGetValue(capability, out var state))
             {
@@ -78,17 +77,6 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismExecuterBase
             }
         }
         return ExecResult.Applied(applied);
-    }
-
-    private static List<string> Parse(ExecSpec spec)
-    {
-        var capabilities = spec.Desired["capabilities"]?.AsArray().OfType<JsonValue>().Select(v => v.GetValue<string>()).ToList()
-                           ?? throw new ExecException("dism.capability requires 'capabilities'.");
-        if (capabilities.Count == 0)
-        {
-            throw new ExecException("dism.capability requires at least one capability name.");
-        }
-        return capabilities;
     }
 
     private static string SkipReasonValue() => "capability not present in image";

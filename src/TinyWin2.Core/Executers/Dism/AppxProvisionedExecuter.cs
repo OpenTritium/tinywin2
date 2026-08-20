@@ -1,4 +1,3 @@
-using System.Text.Json.Nodes;
 using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Executers.Dism;
@@ -14,7 +13,7 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismExecute
 
     public async Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct)
     {
-        var patterns = Parse(spec);
+        var options = AppxOptions.FromDesired(spec.Desired);
         var (exitCode, output) = await RunDismAsync(context, ["/Get-ProvisionedAppxPackages", "/Format:List"], ct);
         if (DismErrors.Classify(exitCode, output) == DismOutcome.ProviderUnavailable)
         {
@@ -35,7 +34,7 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismExecute
             {
                 continue;
             }
-            if (patterns.Any(p => Registry.RegistryServiceExecuter.LikeToRegex(p).IsMatch(displayName)))
+            if (options.Patterns.Any(p => Registry.RegistryServiceExecuter.LikeToRegex(p).IsMatch(displayName)))
             {
                 differences.Add(new ChangeItem(ChangeKind.Removed, displayName, Before: packageName));
             }
@@ -80,14 +79,4 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismExecute
         return ExecResult.Applied(applied);
     }
 
-    private static List<string> Parse(ExecSpec spec)
-    {
-        var patterns = spec.Desired["patterns"]?.AsArray().OfType<JsonValue>().Select(v => v.GetValue<string>()).ToList()
-                       ?? throw new ExecException("appx.provisioned requires 'patterns'.");
-        if (patterns.Count == 0)
-        {
-            throw new ExecException("appx.provisioned requires at least one pattern.");
-        }
-        return patterns;
-    }
 }

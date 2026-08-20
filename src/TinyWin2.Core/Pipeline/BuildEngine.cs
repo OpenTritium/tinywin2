@@ -246,7 +246,7 @@ public sealed class BuildEngine(
 
             if (!options.KeepLayers)
             {
-                TryDeleteDirectory(workspace);
+                await TryDeleteDirectoryAsync(workspace);
             }
             return new BuildResult
             {
@@ -430,19 +430,28 @@ public sealed class BuildEngine(
         }
     }
 
-    private static void TryDeleteDirectory(string path)
+    /// <summary>dism.exe can hold file handles briefly after exiting; retry before giving up.</summary>
+    private static async Task TryDeleteDirectoryAsync(string path)
     {
-        try
+        for (var attempt = 0; attempt < 3; attempt++)
         {
-            if (Directory.Exists(path))
+            try
             {
-                Directory.Delete(path, recursive: true);
+                if (Directory.Exists(path))
+                {
+                    Directory.Delete(path, recursive: true);
+                }
+                return;
             }
-        }
-        catch (Exception ex)
-        {
-            // Leftover work dirs are annoying but harmless; the next build uses a new id.
-            Console.Error.WriteLine($"warning: could not clean workspace '{path}': {ex.Message}");
+            catch (Exception ex) when (attempt < 2 && (ex is IOException or UnauthorizedAccessException))
+            {
+                await Task.Delay(1000);
+            }
+            catch (Exception ex)
+            {
+                // Leftover work dirs are annoying but harmless; the next build uses a new id.
+                Console.Error.WriteLine($"warning: could not clean workspace '{path}': {ex.Message}");
+            }
         }
     }
 }

@@ -1,4 +1,3 @@
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using TinyWin2.Core.Native;
 
@@ -17,9 +16,10 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter
     public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct)
     {
         var differences = new List<ChangeItem>();
+        var options = FsPathOptions.FromDesired(spec.Desired, spec.Ensure);
         if (spec.Ensure == Ensure.Absent)
         {
-            foreach (var relative in ParseAbsentPaths(spec))
+            foreach (var relative in options.Paths)
             {
                 var target = ResolveInsideMount(context.MountPath, relative);
                 if (File.Exists(target) || Directory.Exists(target))
@@ -30,12 +30,11 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter
         }
         else
         {
-            var (relative, source) = ParsePresent(spec);
-            _ = ResolveAssetSource(context, source);
-            var target = ResolveInsideMount(context.MountPath, relative);
+            _ = ResolveAssetSource(context, options.Source!);
+            var target = ResolveInsideMount(context.MountPath, options.Path!);
             if (!File.Exists(target) && !Directory.Exists(target))
             {
-                differences.Add(new ChangeItem(ChangeKind.Created, relative, After: source));
+                differences.Add(new ChangeItem(ChangeKind.Created, options.Path!, After: options.Source));
             }
         }
         return Task.FromResult(new ResourceDiff(differences.Count == 0, differences));
@@ -48,6 +47,7 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter
         {
             return ExecResult.Skipped("paths already in the desired state");
         }
+        var options = FsPathOptions.FromDesired(spec.Desired, spec.Ensure);
 
         if (spec.Ensure == Ensure.Absent)
         {
@@ -71,9 +71,8 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter
             return ExecResult.Applied(applied);
         }
 
-        var (relative, source) = ParsePresent(spec);
-        var assetPath = ResolveAssetSource(context, source);
-        var destination = ResolveInsideMount(context.MountPath, relative);
+        var assetPath = ResolveAssetSource(context, options.Source!);
+        var destination = ResolveInsideMount(context.MountPath, options.Path!);
         if (File.Exists(assetPath))
         {
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
@@ -89,7 +88,7 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter
                 File.Copy(file, targetFile, overwrite: true);
             }
         }
-        context.Log.Info($"copied asset '{source}' → image path '{relative}'");
+        context.Log.Info($"copied asset '{options.Source}' → image path '{options.Path}'");
         return ExecResult.Applied(diff.Differences);
     }
 
@@ -141,26 +140,6 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter
             throw new ExecException($"asset source '{source}' was not found under '{context.PlanAssetsRoot}'.");
         }
         return candidate;
-    }
-
-    private static List<string> ParseAbsentPaths(ExecSpec spec)
-    {
-        var paths = spec.Desired["paths"]?.AsArray().OfType<JsonValue>().Select(v => v.GetValue<string>()).ToList()
-                   ?? throw new ExecException("fs.path absent requires 'paths'.");
-        if (paths.Count == 0)
-        {
-            throw new ExecException("fs.path absent requires at least one path.");
-        }
-        return paths;
-    }
-
-    private static (string Path, string Source) ParsePresent(ExecSpec spec)
-    {
-        var path = spec.Desired["path"]?.GetValue<string>()
-                   ?? throw new ExecException("fs.path present requires 'path'.");
-        var source = spec.Desired["source"]?.GetValue<string>()
-                     ?? throw new ExecException("fs.path present requires 'source' (relative to the plan assets directory).");
-        return (path, source);
     }
 
     [GeneratedRegex(@"(^|\\)\.\.?(\\|$)")]

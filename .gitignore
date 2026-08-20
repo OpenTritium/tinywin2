@@ -9,4 +9,4 @@ raw/
 TestResults/
 artifacts/
 *.log
-.zcode/.zcode/
+.zcode/

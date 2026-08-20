@@ -1,4 +1,3 @@
-using System.Text.Json.Nodes;
 using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Executers.Driver;
@@ -20,7 +19,7 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter
             throw new ExecException("driver.store present (driver integration) is not implemented yet.");
         }
 
-        var infNames = Parse(spec);
+        var options = DriverStoreOptions.FromDesired(spec.Desired);
         var repositoryRoot = Path.GetFullPath(Path.Combine(
             context.MountPath, "Windows", "System32", "DriverStore", "FileRepository"));
         if (!Directory.Exists(repositoryRoot))
@@ -29,7 +28,7 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter
         }
 
         var differences = new List<ChangeItem>();
-        foreach (var infName in infNames)
+        foreach (var infName in options.InfNames)
         {
             var matches = Directory.EnumerateDirectories(repositoryRoot, $"{infName}_*", SearchOption.TopDirectoryOnly)
                 .ToList();
@@ -98,23 +97,4 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter
         await runner.RunAsync("icacls.exe", [directory, "/grant", "*S-1-5-32-544:F", "/T"], cancellationToken: ct);
     }
 
-    private static List<string> Parse(ExecSpec spec)
-    {
-        var infNames = spec.Desired["infNames"]?.AsArray().OfType<JsonValue>().Select(v => v.GetValue<string>()).ToList()
-                       ?? throw new ExecException("driver.store requires 'infNames'.");
-        if (infNames.Count == 0)
-        {
-            throw new ExecException("driver.store requires at least one INF name.");
-        }
-        foreach (var infName in infNames)
-        {
-            var normalized = Path.GetFileName(infName);
-            if (!string.Equals(normalized, infName, StringComparison.Ordinal)
-                || !infName.EndsWith(".inf", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new ExecException($"invalid driver INF name '{infName}'.");
-            }
-        }
-        return infNames;
-    }
 }

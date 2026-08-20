@@ -6,32 +6,19 @@ namespace TinyWin2.Core.Executers.Registry;
 /// <summary>
 /// Converges registry values inside offline hives.
 /// present = create/modify values; absent = delete values or whole keys.
-/// Desired (present): <c>{ hive, values:[{key,name,type,data}], single form }</c>;
-/// Desired (absent): <c>{ hive, values:[{key,name}], deleteKeys:[key] }</c>.
 /// </summary>
 public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter
 {
     public const string ResourceId = "registry.value";
     public string Resource => ResourceId;
 
-    private static readonly IReadOnlyDictionary<string, string> TypeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-    {
-        ["dword"] = "REG_DWORD",
-        ["qword"] = "REG_QWORD",
-        ["string"] = "REG_SZ",
-        ["expand"] = "REG_EXPAND_SZ",
-        ["multi"] = "REG_MULTI_SZ",
-    };
-
-    private sealed record ValueTarget(string Key, string Name, string? RegType, JsonNode? Data);
-
     public async Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct)
     {
-        var (hiveId, values, deleteKeys) = Parse(spec);
-        var hive = await context.Hives.GetAsync(hiveId, context.Log, ct);
+        var options = RegistryValueOptions.FromDesired(spec.Desired, spec.Ensure);
+        var hive = await context.Hives.GetAsync(options.Hive, context.Log, ct);
 
         var differences = new List<ChangeItem>();
-        foreach (var value in values)
+        foreach (var value in options.Values)
         {
             var keyPath = hive.KeyUnderHive(value.Key);
             var result = await runner.RunAsync("reg.exe",
@@ -49,25 +36,24 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter
                 continue;
             }
 
-            var desiredType = value.RegType!;
-            var desiredData = RegValues.RenderData(desiredType, value.Data);
+            var desiredData = RegValues.RenderData(value.RegType, value.Data);
             if (existing is null)
             {
                 differences.Add(new ChangeItem(ChangeKind.Created, hive.ValueUnderHive(value.Key, value.Name),
-                    After: $"{desiredType} {desiredData}"));
+                    After: $"{value.RegType} {desiredData}"));
             }
-            else if (!string.Equals(existing.Type, desiredType, StringComparison.OrdinalIgnoreCase)
-                     || !RegValues.Equals(desiredType, existing.Data, desiredData))
+            else if (!string.Equals(existing.Type, value.RegType, StringComparison.OrdinalIgnoreCase)
+                     || !RegValues.Equals(value.RegType, existing.Data, desiredData))
             {
                 differences.Add(new ChangeItem(ChangeKind.Modified, hive.ValueUnderHive(value.Key, value.Name),
                     Before: $"{existing.Type} {existing.Data}",
-                    After: $"{desiredType} {desiredData}"));
+                    After: $"{value.RegType} {desiredData}"));
             }
         }
 
         if (spec.Ensure == Ensure.Absent)
         {
-            foreach (var key in deleteKeys)
+            foreach (var key in options.DeleteKeys)
             {
                 var result = await runner.RunAsync("reg.exe", ["query", hive.KeyUnderHive(key)],
                     new ProcessRunOptions { IgnoreExitCode = true }, ct);
@@ -89,8 +75,8 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter
             return ExecResult.Skipped("registry values already in the desired state");
         }
 
-        var (hiveId, values, deleteKeys) = Parse(spec);
-        var hive = await context.Hives.GetAsync(hiveId, context.Log, ct);
+        var options = RegistryValueOptions.FromDesired(spec.Desired, spec.Ensure);
+        var hive = await context.Hives.GetAsync(options.Hive, context.Log, ct);
 
         foreach (var change in diff.Differences)
         {
@@ -102,7 +88,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter
                 continue;
             }
 
-            var target = values.First(v => hive.ValueUnderHive(v.Key, v.Name) == change.Target);
+            var target = options.Values.First(v => hive.ValueUnderHive(v.Key, v.Name) == change.Target);
             if (spec.Ensure == Ensure.Absent)
             {
                 var args = string.IsNullOrEmpty(target.Name)
@@ -113,7 +99,6 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter
             }
             else
             {
-                var desiredType = target.RegType!;
                 var args = new List<string>
                 {
                     "add",
@@ -121,71 +106,16 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter
                     string.IsNullOrEmpty(target.Name) ? "/ve" : "/v",
                     target.Name,
                     "/t",
-                    desiredType,
+                    target.RegType,
                     "/d",
-                    RegValues.RenderData(desiredType, target.Data),
+                    RegValues.RenderData(target.RegType, target.Data),
                     "/f",
                 };
                 await runner.RunAsync("reg.exe", args, cancellationToken: ct);
-                context.Log.Info($"set registry value {change.Target} = {desiredType}");
+                context.Log.Info($"set registry value {change.Target} = {target.RegType}");
             }
         }
 
         return ExecResult.Applied(diff.Differences);
-    }
-
-    private static (string Hive, List<ValueTarget> Values, List<string> DeleteKeys) Parse(ExecSpec spec)
-    {
-        var desired = spec.Desired;
-        var hive = desired["hive"]?.GetValue<string>()
-                   ?? throw new ExecException("registry.value requires 'hive'.");
-
-        var values = new List<ValueTarget>();
-        if (desired["values"] is JsonArray array)
-        {
-            foreach (var item in array.OfType<JsonObject>())
-            {
-                values.Add(ParseValue(item, spec.Ensure));
-            }
-        }
-        else if (desired.ContainsKey("key"))
-        {
-            values.Add(ParseValue(desired, spec.Ensure));
-        }
-        if (values.Count == 0 && desired["deleteKeys"] is null)
-        {
-            throw new ExecException("registry.value requires 'values', a single value form, or 'deleteKeys'.");
-        }
-
-        var deleteKeys = new List<string>();
-        if (spec.Ensure == Ensure.Absent && desired["deleteKeys"] is JsonArray keys)
-        {
-            deleteKeys.AddRange(keys.OfType<JsonValue>().Select(k => k.GetValue<string>()));
-        }
-        if (spec.Ensure == Ensure.Present && desired["deleteKeys"] is not null)
-        {
-            throw new ExecException("'deleteKeys' is only valid with ensure: absent.");
-        }
-        return (hive, values, deleteKeys);
-    }
-
-    private static ValueTarget ParseValue(JsonObject obj, Ensure ensure)
-    {
-        var key = obj["key"]?.GetValue<string>() ?? throw new ExecException("registry value requires 'key'.");
-        var name = obj["name"]?.GetValue<string>() ?? "";
-        var typeText = obj["type"]?.GetValue<string>();
-        if (ensure == Ensure.Present)
-        {
-            if (typeText is null || !TypeMap.TryGetValue(typeText, out var regType))
-            {
-                throw new ExecException($"registry value '{key}\\{name}' requires a valid 'type' (dword|qword|string|expand|multi).");
-            }
-            if (!obj.ContainsKey("data"))
-            {
-                throw new ExecException($"registry value '{key}\\{name}' requires 'data'.");
-            }
-            return new ValueTarget(key.Trim('\\'), name, regType, obj["data"]!.DeepClone());
-        }
-        return new ValueTarget(key.Trim('\\'), name, null, null);
     }
 }

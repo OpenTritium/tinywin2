@@ -1,4 +1,3 @@
-using System.Text.Json.Nodes;
 using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Executers.Dism;
@@ -16,13 +15,14 @@ public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuter
     public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct)
     {
         // Component-store size reduction is a run-once optimization: the diff is the action itself.
-        _ = Parse(spec);
+        _ = ComponentStoreOptions.FromDesired(spec.Desired);
         return Task.FromResult(new ResourceDiff(false, [new ChangeItem(ChangeKind.Modified, "component-store")]));
     }
 
     public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct)
     {
-        var resetBase = Parse(spec);
+        var options = ComponentStoreOptions.FromDesired(spec.Desired);
+        var resetBase = options.ResetBase;
         if (resetBase)
         {
             context.Log.Warn("ResetBase is enabled; installed updates cannot be uninstalled from the resulting image.");

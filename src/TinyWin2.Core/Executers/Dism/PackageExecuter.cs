@@ -1,4 +1,3 @@
-using System.Text.Json.Nodes;
 using TinyWin2.Core.Native;
 using System.Text.RegularExpressions;
 
@@ -17,7 +16,7 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismExecuterBase(ru
 
     public async Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct)
     {
-        var patterns = Parse(spec);
+        var options = PackageOptions.FromDesired(spec.Desired);
         var (exitCode, output) = await RunDismAsync(context, ["/Get-Packages", "/Format:List"], ct);
         if (DismErrors.Classify(exitCode, output) == DismOutcome.ProviderUnavailable)
         {
@@ -25,7 +24,7 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismExecuterBase(ru
         }
 
         var records = ParseList(output);
-        var regexes = patterns.Select(p => new Regex(p, RegexOptions.CultureInvariant)).ToArray();
+        var regexes = options.Patterns;
         var differences = new List<ChangeItem>();
         foreach (var record in records)
         {
@@ -80,25 +79,4 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismExecuterBase(ru
         return ExecResult.Applied(applied);
     }
 
-    private static List<string> Parse(ExecSpec spec)
-    {
-        var patterns = spec.Desired["patterns"]?.AsArray().OfType<JsonValue>().Select(v => v.GetValue<string>()).ToList()
-                       ?? throw new ExecException("dism.package requires 'patterns'.");
-        if (patterns.Count == 0)
-        {
-            throw new ExecException("dism.package requires at least one pattern.");
-        }
-        foreach (var pattern in patterns)
-        {
-            try
-            {
-                _ = new Regex(pattern, RegexOptions.CultureInvariant);
-            }
-            catch (ArgumentException ex)
-            {
-                throw new ExecException($"invalid package pattern '{pattern}': {ex.Message}");
-            }
-        }
-        return patterns;
-    }
 }
