@@ -32,14 +32,11 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
             foreach (var change in changes) {
                 context.Log.Info($"removing image path: {change.Change.Target}");
                 try {
-                    Delete(change.AbsoluteTarget);
+                    ImageFs.DeleteIfExists(change.AbsoluteTarget);
                 }
                 catch (UnauthorizedAccessException) {
-                    await runner.RunAsync("takeown.exe",
-                        ["/F", change.AbsoluteTarget, "/A", "/R", "/D", "Y"], cancellationToken: ct);
-                    await runner.RunAsync("icacls.exe",
-                        [change.AbsoluteTarget, "/grant", "*S-1-5-32-544:F", "/T"], cancellationToken: ct);
-                    Delete(change.AbsoluteTarget);
+                    await ImageFs.GrantDeleteAccessAsync(runner, change.AbsoluteTarget, ct);
+                    ImageFs.DeleteIfExists(change.AbsoluteTarget);
                 }
             }
 
@@ -82,15 +79,6 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
             ? []
             : [new PathChange(new ChangeItem(ChangeKind.Created, options.Path!, After: options.Source),
                 destination, assetSource)];
-    }
-
-    private static void Delete(string target) {
-        if (Directory.Exists(target)) {
-            Directory.Delete(target, recursive: true);
-        }
-        else if (File.Exists(target)) {
-            File.Delete(target);
-        }
     }
 
     /// <summary>Rejects rooted paths, .. traversal, and anything escaping the mount root (v1 rules).</summary>

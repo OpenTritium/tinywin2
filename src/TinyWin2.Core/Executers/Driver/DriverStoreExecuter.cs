@@ -38,11 +38,11 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
 
             context.Log.Warn($"removing Driver Store package directory: {change.Target}");
             try {
-                Delete(directory);
+                ImageFs.DeleteIfExists(directory);
             }
             catch (UnauthorizedAccessException) {
-                await GrantDeleteAccessAsync(directory, ct);
-                Delete(directory);
+                await ImageFs.GrantDeleteAccessAsync(runner, directory, ct);
+                ImageFs.DeleteIfExists(directory);
             }
         }
 
@@ -76,16 +76,4 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
 
     private static string RepositoryRoot(string mountPath) => Path.GetFullPath(Path.Combine(
         mountPath, "Windows", "System32", "DriverStore", "FileRepository"));
-
-    private static void Delete(string directory) {
-        if (Directory.Exists(directory)) {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    /// <summary>v1 fallback: protected packages need ownership + Administrators full control first.</summary>
-    private async Task GrantDeleteAccessAsync(string directory, CancellationToken ct) {
-        await runner.RunAsync("takeown.exe", ["/F", directory, "/A", "/R", "/D", "Y"], cancellationToken: ct);
-        await runner.RunAsync("icacls.exe", [directory, "/grant", "*S-1-5-32-544:F", "/T"], cancellationToken: ct);
-    }
 }
