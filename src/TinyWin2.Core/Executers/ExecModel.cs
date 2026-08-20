@@ -100,4 +100,8 @@ public sealed class ExecContext(
     public IBuildLog Log { get; } = log;
     public int LayerIndex { get; } = layerIndex;
     public bool FastMode { get; } = fastMode;
+    /// <summary>Offline registry hive sessions for the current layer; owned by the build engine.</summary>
+    public Registry.RegistryHiveCache Hives { get; set; } = new(mountPath);
+    /// <summary>Root directory of the current plan's bundled assets (for fs.path present copies).</summary>
+    public string? PlanAssetsRoot { get; set; }
 }
