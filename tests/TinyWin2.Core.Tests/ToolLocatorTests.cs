@@ -30,6 +30,13 @@ public sealed class ToolLocatorTests : IDisposable
     }
 
     [Test]
+    public async Task ReturnsNullForBlankInput()
+    {
+        await Assert.That(ToolLocator.Locate("")).IsNull();
+        await Assert.That(ToolLocator.Locate("   ")).IsNull();
+    }
+
+    [Test]
     public async Task AcceptsAbsoluteFileName()
     {
         var full = Path.Combine(_toolDir, "tinywin2-fake-tool.exe");

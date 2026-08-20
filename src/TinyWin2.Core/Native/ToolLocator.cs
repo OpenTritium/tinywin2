@@ -4,6 +4,9 @@ namespace TinyWin2.Core.Native;
 /// No PATHEXT probing by design: every caller in this repo knows its exact tool name.</summary>
 public static class ToolLocator {
     public static string? Locate(string fileName) {
+        if (string.IsNullOrWhiteSpace(fileName)) {
+            return null;
+        }
         if (Path.IsPathRooted(fileName)) {
             return File.Exists(fileName) ? fileName : null;
         }
