@@ -1,0 +1,132 @@
+using System.Security.Cryptography;
+using TinyWin2.Core.Layers;
+using TinyWin2.Core.Logging;
+using TinyWin2.Core.Native;
+
+namespace TinyWin2.Core.Pipeline;
+
+public enum ImageFormat
+{
+    Wim,
+    Esd,
+}
+
+/// <summary>Captures the final (or rolled-back) layer into WIM/ESD and packages media + ISO.</summary>
+public sealed class OutputBuilder(IProcessRunner runner, IBuildLog log)
+{
+    /// <summary>Captures a mounted layer directory into a WIM or ESD.</summary>
+    public async Task CaptureAsync(
+        string mountPath,
+        string targetPath,
+        string imageName,
+        string? description,
+        ImageFormat format,
+        bool fast,
+        CancellationToken ct)
+    {
+        var compress = format switch
+        {
+            ImageFormat.Esd => "recovery",
+            _ => fast ? "fast" : "max",
+        };
+        var args = new List<string>
+        {
+            "/Capture-Image",
+            $"/ImageFile:{targetPath}",
+            $"/CaptureDir:{mountPath}",
+            $"/Name:{imageName}",
+        };
+        if (!string.IsNullOrEmpty(description))
+        {
+            args.Add($"/Description:{description}");
+        }
+        args.Add($"/Compress:{compress}");
+        if (!fast)
+        {
+            args.Add("/Verify");
+        }
+        log.Info($"capturing {mountPath} → {Path.GetFileName(targetPath)} (compress={compress})");
+        await runner.RunAsync("dism.exe", args,
+            new ProcessRunOptions { Timeout = TimeSpan.FromHours(3) }, ct);
+    }
+
+    /// <summary>Copies the source media tree into the output folder, replacing install.* with the build result.</summary>
+    public async Task<string> RebuildMediaAsync(
+        string sourceRoot,
+        string mediaOutputPath,
+        string capturedInstallImage,
+        ImageFormat format,
+        CancellationToken ct)
+    {
+        Directory.CreateDirectory(mediaOutputPath);
+        // robocopy: 0-7 are success codes (1 = files copied).
+        var result = await runner.RunAsync("robocopy.exe",
+            [sourceRoot, mediaOutputPath, "/E", "/MT:16", "/R:1", "/W:1", "/NFL", "/NDL", "/NJH", "/NJS",
+             "/XF", "install.wim", "install.esd"],
+            new ProcessRunOptions { IgnoreExitCode = true }, ct);
+        if (result.ExitCode >= 8)
+        {
+            throw new IOException($"robocopy failed copying media (exit {result.ExitCode}).");
+        }
+
+        var sourcesDir = Path.Combine(mediaOutputPath, "sources");
+        Directory.CreateDirectory(sourcesDir);
+        foreach (var stale in new[] { "install.wim", "install.esd", "install.staging.wim" })
+        {
+            var stalePath = Path.Combine(sourcesDir, stale);
+            if (File.Exists(stalePath))
+            {
+                File.Delete(stalePath);
+            }
+        }
+        var finalName = format == ImageFormat.Esd ? "install.esd" : "install.wim";
+        var finalPath = Path.Combine(sourcesDir, finalName);
+        File.Move(capturedInstallImage, finalPath);
+        log.Info($"media folder rebuilt at {mediaOutputPath}");
+        return finalPath;
+    }
+
+    /// <summary>Creates a dual BIOS+UEFI bootable ISO with oscdimg (v1 flags, verbatim).</summary>
+    public async Task CreateIsoAsync(
+        string mediaPath,
+        string isoPath,
+        string oscdimgPath,
+        CancellationToken ct)
+    {
+        var bootFolder = Path.Combine(mediaPath, "boot");
+        var biosBoot = Path.Combine(bootFolder, "etfsboot.com");
+        var efiBootNoPrompt = Path.Combine(mediaPath, "efi", "microsoft", "boot", "efisys_noprompt.bin");
+        var efiBoot = Path.Combine(mediaPath, "efi", "microsoft", "boot", "efisys.bin");
+        if (!File.Exists(biosBoot) || (!File.Exists(efiBootNoPrompt) && !File.Exists(efiBoot)))
+        {
+            throw new FileNotFoundException("boot files (etfsboot.com / efisys*.bin) missing from media folder.");
+        }
+        var efisys = File.Exists(efiBootNoPrompt) ? efiBootNoPrompt : efiBoot;
+        var bootData = $"2#p0,e,b{biosBoot}#pEF,e,b{efisys}";
+
+        log.Info($"creating bootable ISO {isoPath}");
+        await runner.RunAsync(oscdimgPath,
+            ["-m", "-o", "-u2", "-udfver102", $"-bootdata:{bootData}", mediaPath, isoPath],
+            new ProcessRunOptions { Timeout = TimeSpan.FromHours(1) }, ct);
+    }
+
+    /// <summary>Merges the whole chain into a copy under the output folder (boot-testable VHDX artifact).</summary>
+    public static async Task<string> ExportMergedVhdxAsync(
+        VhdLayerStack stack,
+        ILayerBackend backend,
+        string targetPath,
+        CancellationToken ct)
+    {
+        await stack.ConsolidateAsync(ct);
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        File.Copy(stack.BaseVhdxPath, targetPath, overwrite: true);
+        return targetPath;
+    }
+
+    public static async Task<string> ComputeSha256Async(string filePath, CancellationToken ct)
+    {
+        await using var stream = File.OpenRead(filePath);
+        var hash = await SHA256.HashDataAsync(stream, ct);
+        return Convert.ToHexStringLower(hash);
+    }
+}

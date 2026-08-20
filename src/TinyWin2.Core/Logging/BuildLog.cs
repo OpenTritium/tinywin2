@@ -15,11 +15,11 @@ public interface IBuildLog
     string Phase { get; set; }
     int? LayerIndex { get; set; }
     string? PlanId { get; set; }
-    void Write(BuildEventLevel level, string message, JsonObject? data = null);
-    void Debug(string message) => Write(BuildEventLevel.Debug, message);
-    void Info(string message) => Write(BuildEventLevel.Info, message);
-    void Warn(string message) => Write(BuildEventLevel.Warn, message);
-    void Error(string message) => Write(BuildEventLevel.Error, message);
+    void Write(BuildEventLevel level, string message, string? planId = null, int? layerIndex = null, JsonObject? data = null);
+    void Debug(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null) => Write(BuildEventLevel.Debug, message, planId, layerIndex, data);
+    void Info(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null) => Write(BuildEventLevel.Info, message, planId, layerIndex, data);
+    void Warn(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null) => Write(BuildEventLevel.Warn, message, planId, layerIndex, data);
+    void Error(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null) => Write(BuildEventLevel.Error, message, planId, layerIndex, data);
     IReadOnlyList<BuildEvent> Events { get; }
 }
 
@@ -51,7 +51,19 @@ public sealed class BuildLog : IBuildLog
         return new SinkToken(this, sink);
     }
 
-    public void Write(BuildEventLevel level, string message, JsonObject? data = null)
+    public void Debug(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null)
+        => Write(BuildEventLevel.Debug, message, planId, layerIndex, data);
+
+    public void Info(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null)
+        => Write(BuildEventLevel.Info, message, planId, layerIndex, data);
+
+    public void Warn(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null)
+        => Write(BuildEventLevel.Warn, message, planId, layerIndex, data);
+
+    public void Error(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null)
+        => Write(BuildEventLevel.Error, message, planId, layerIndex, data);
+
+    public void Write(BuildEventLevel level, string message, string? planId = null, int? layerIndex = null, JsonObject? data = null)
     {
         BuildEvent evt;
         Action<BuildEvent>[] sinks;
@@ -64,8 +76,8 @@ public sealed class BuildLog : IBuildLog
                 Level = level,
                 Phase = Phase,
                 Message = message,
-                PlanId = PlanId,
-                LayerIndex = LayerIndex,
+                PlanId = planId ?? PlanId,
+                LayerIndex = layerIndex ?? LayerIndex,
                 Data = data,
             };
             _events.Add(evt);
