@@ -8,11 +8,9 @@ public sealed record ProcessRunResult(int ExitCode, string Output, string Error,
 }
 
 public sealed class ProcessRunOptions {
-    public string? WorkingDirectory { get; init; }
     public TimeSpan? Timeout { get; init; }
     public bool IgnoreExitCode { get; init; }
     public Action<string>? OnOutputLine { get; init; }
-    public Action<string>? OnErrorLine { get; init; }
 }
 
 /// <summary>Thrown when a native tool exits non-zero (and exit codes were not ignored).</summary>
@@ -44,7 +42,6 @@ public sealed class ProcessRunner : IProcessRunner {
         options ??= new ProcessRunOptions();
         var startInfo = new ProcessStartInfo {
             FileName = fileName,
-            WorkingDirectory = options.WorkingDirectory,
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -72,7 +69,7 @@ public sealed class ProcessRunner : IProcessRunner {
         // streams reaching EOF — unlike WaitForExitAsync alone (which never drains Begin*ReadLine
         // events), this cannot lose the tail of the output.
         var outputTask = ReadStreamAsync(process.StandardOutput, outputBuilder, options.OnOutputLine);
-        var errorTask = ReadStreamAsync(process.StandardError, errorBuilder, options.OnErrorLine);
+        var errorTask = ReadStreamAsync(process.StandardError, errorBuilder);
         var timeout = options.Timeout ?? Timeout.InfiniteTimeSpan;
         using var timeoutCts = new CancellationTokenSource(timeout);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
@@ -101,7 +98,7 @@ public sealed class ProcessRunner : IProcessRunner {
     }
 
     /// <summary>Drains a redirected stream line by line until EOF; single writer, no locking needed.</summary>
-    private static async Task ReadStreamAsync(StreamReader reader, StringBuilder builder, Action<string>? onLine) {
+    private static async Task ReadStreamAsync(StreamReader reader, StringBuilder builder, Action<string>? onLine = null) {
         while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line) {
             builder.AppendLine(line);
             onLine?.Invoke(line);

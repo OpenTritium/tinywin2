@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using TinyWin2.Core.Executers.Registry;
 using TinyWin2.Core.Logging;
 
 namespace TinyWin2.Core.Executers;
@@ -66,7 +67,7 @@ public sealed class ExecException(string message, Exception? inner = null)
 public sealed class ExecContext(
     string mountPath,
     BuildLog log,
-    Registry.RegistryHiveCache hives,
+    RegistryHiveCache hives,
     string? planAssetsRoot = null) {
     /// <summary>Drive letter root of the currently attached (mounted) image layer.</summary>
     public string MountPath { get; } = mountPath;
@@ -74,7 +75,7 @@ public sealed class ExecContext(
     public BuildLog Log { get; } = log;
 
     /// <summary>Offline registry hive sessions for the current layer; owned by the build engine.</summary>
-    public Registry.RegistryHiveCache Hives { get; } = hives;
+    public RegistryHiveCache Hives { get; } = hives;
 
     /// <summary>Root directory of the current plan's bundled assets (for fs.path present copies).</summary>
     public string? PlanAssetsRoot { get; } = planAssetsRoot;

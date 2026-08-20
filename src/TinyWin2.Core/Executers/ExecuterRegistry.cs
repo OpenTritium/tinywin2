@@ -27,12 +27,7 @@ public sealed class ExecuterRegistry {
         : this(CreateBuiltins(runner)) {
     }
 
-    /// <summary>For dependency-free environments (preview/testing): no native calls are made until run.</summary>
-    public ExecuterRegistry()
-        : this(new ProcessRunner()) {
-    }
-
-    public static IEnumerable<IExecuter> CreateBuiltins(IProcessRunner runner) {
+    private static IEnumerable<IExecuter> CreateBuiltins(IProcessRunner runner) {
         yield return new Registry.RegistryValueExecuter(runner);
         yield return new Registry.RegistryServiceExecuter(runner);
         yield return new FeatureExecuter(runner);
