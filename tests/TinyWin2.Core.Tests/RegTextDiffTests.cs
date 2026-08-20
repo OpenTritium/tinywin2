@@ -2,8 +2,7 @@ using TinyWin2.Core.Pipeline;
 
 namespace TinyWin2.Core.Tests;
 
-public sealed class RegTextDiffTests
-{
+public sealed class RegTextDiffTests {
     private const string Before = """
         Windows Registry Editor Version 5.00
 
@@ -31,8 +30,7 @@ public sealed class RegTextDiffTests
         """;
 
     [Test]
-    public async Task ParsesKeysAndValues()
-    {
+    public async Task ParsesKeysAndValues() {
         var parsed = LayerInspector.ParseRegText(Before);
 
         await Assert.That(parsed.ContainsKey("Services\\LanmanWorkstation")).IsTrue();
@@ -41,8 +39,7 @@ public sealed class RegTextDiffTests
     }
 
     [Test]
-    public async Task DiffsModifiedRemovedAdded()
-    {
+    public async Task DiffsModifiedRemovedAdded() {
         var diff = LayerInspector.RegTextDiff("system", Before, After);
 
         var start = diff.Single(d => d.ValueName == "Start");
@@ -64,8 +61,7 @@ public sealed class RegTextDiffTests
     }
 
     [Test]
-    public async Task IdenticalTextsProduceEmptyDiff()
-    {
+    public async Task IdenticalTextsProduceEmptyDiff() {
         var diff = LayerInspector.RegTextDiff("software", Before, Before);
 
         await Assert.That(diff.Count).IsEqualTo(0);

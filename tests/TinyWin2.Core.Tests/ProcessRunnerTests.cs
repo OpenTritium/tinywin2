@@ -2,8 +2,7 @@ using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Tests;
 
-public sealed class ProcessRunnerTests
-{
+public sealed class ProcessRunnerTests {
     private static string Shell => OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh";
 
     private static string EchoCommand(string text) =>
@@ -13,8 +12,7 @@ public sealed class ProcessRunnerTests
         OperatingSystem.IsWindows() ? "/c exit 3" : "-c 'exit 3'";
 
     [Test]
-    public async Task CapturesOutputAndExitCode()
-    {
+    public async Task CapturesOutputAndExitCode() {
         var runner = new ProcessRunner();
         var (exe, args) = SplitCommand(EchoCommand("hello-tinywin"));
 
@@ -26,8 +24,7 @@ public sealed class ProcessRunnerTests
     }
 
     [Test]
-    public async Task NonZeroExitThrowsWithOutput()
-    {
+    public async Task NonZeroExitThrowsWithOutput() {
         var runner = new ProcessRunner();
         var (exe, args) = SplitCommand(FailCommand());
 
@@ -38,8 +35,7 @@ public sealed class ProcessRunnerTests
     }
 
     [Test]
-    public async Task IgnoreExitCodeReturnsResult()
-    {
+    public async Task IgnoreExitCodeReturnsResult() {
         var runner = new ProcessRunner();
         var (exe, args) = SplitCommand(FailCommand());
 
@@ -49,8 +45,7 @@ public sealed class ProcessRunnerTests
     }
 
     [Test]
-    public async Task StreamsOutputLinesToCallback()
-    {
+    public async Task StreamsOutputLinesToCallback() {
         var runner = new ProcessRunner();
         var lines = new List<string>();
         var (exe, args) = SplitCommand(EchoCommand("streamed"));
@@ -62,8 +57,7 @@ public sealed class ProcessRunnerTests
     }
 
     [Test]
-    public async Task TimeoutKillsTheProcess()
-    {
+    public async Task TimeoutKillsTheProcess() {
         var runner = new ProcessRunner();
         // `pause` returns immediately once stdin closes; ping actually blocks for ~30s.
         var hangCommand = OperatingSystem.IsWindows()
@@ -76,14 +70,12 @@ public sealed class ProcessRunnerTests
     }
 
     [Test]
-    public async Task QuotesArgumentsWithSpacesInEcho()
-    {
+    public async Task QuotesArgumentsWithSpacesInEcho() {
         await Assert.That(ProcessRunner.QuoteIfNeeded("plain")).IsEqualTo("plain");
         await Assert.That(ProcessRunner.QuoteIfNeeded("with space")).IsEqualTo("\"with space\"");
     }
 
-    private static (string Exe, string[] Args) SplitCommand(string command)
-    {
+    private static (string Exe, string[] Args) SplitCommand(string command) {
         var parts = command.Split(' ');
         return (Shell, [.. parts]);
     }

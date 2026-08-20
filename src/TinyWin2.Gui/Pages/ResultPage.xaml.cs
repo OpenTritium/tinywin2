@@ -7,36 +7,29 @@ using Windows.Storage.Pickers;
 
 namespace TinyWin2.Gui.Pages;
 
-public sealed partial class ResultPage : Page
-{
-    public ResultPage()
-    {
+public sealed partial class ResultPage : Page {
+    public ResultPage() {
         InitializeComponent();
     }
 
     private WizardState State => WizardState.Current;
 
-    protected override void OnNavigatedTo(NavigationEventArgs e)
-    {
+    protected override void OnNavigatedTo(NavigationEventArgs e) {
         base.OnNavigatedTo(e);
         SuccessPanel.Visibility = State.BuildSucceeded ? Visibility.Visible : Visibility.Collapsed;
         FailurePanel.Visibility = State.BuildSucceeded ? Visibility.Collapsed : Visibility.Visible;
 
         var artifacts = new List<string>();
-        if (State.MediaPath.Length > 0)
-        {
+        if (State.MediaPath.Length > 0) {
             artifacts.Add("media:  " + State.MediaPath);
         }
-        if (State.IsoPath is not null)
-        {
+        if (State.IsoPath is not null) {
             artifacts.Add("ISO:    " + State.IsoPath);
         }
-        if (State.VhdxPath is not null)
-        {
+        if (State.VhdxPath is not null) {
             artifacts.Add("VHDX:   " + State.VhdxPath);
         }
-        if (State.ManifestPath.Length > 0)
-        {
+        if (State.ManifestPath.Length > 0) {
             artifacts.Add("清单:   " + State.ManifestPath);
         }
         ArtifactsText.Text = string.Join(Environment.NewLine, artifacts);
@@ -56,19 +49,16 @@ public sealed partial class ResultPage : Page
             """;
     }
 
-    private void OpenFolder(object sender, RoutedEventArgs e)
-    {
+    private void OpenFolder(object sender, RoutedEventArgs e) {
         var target = State.IsoPath is not null
             ? Path.GetDirectoryName(State.IsoPath)!
             : State.MediaPath;
-        if (Directory.Exists(target))
-        {
+        if (Directory.Exists(target)) {
             _ = Process.Start(new ProcessStartInfo { FileName = target, UseShellExecute = true });
         }
     }
 
-    private void CopyDiagnostics(object sender, RoutedEventArgs e)
-    {
+    private void CopyDiagnostics(object sender, RoutedEventArgs e) {
         var text = $"""
             TinyWin2 构建诊断
             成功: {State.BuildSucceeded}
@@ -84,8 +74,7 @@ public sealed partial class ResultPage : Page
         Clipboard.SetContent(package);
     }
 
-    private void Restart(object sender, RoutedEventArgs e)
-    {
+    private void Restart(object sender, RoutedEventArgs e) {
         State.CurrentPhase = "";
         State.Progress = 0;
         ((MainWindow)App.MainAppWindow!).GoTo(1);

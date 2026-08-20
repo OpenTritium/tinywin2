@@ -15,8 +15,7 @@ public sealed record ImageIndexInfo(
     long SizeBytes);
 
 /// <summary>A resolved installation media source: folder or mounted ISO.</summary>
-public sealed class SourceMedia : IAsyncDisposable
-{
+public sealed class SourceMedia : IAsyncDisposable {
     public required string RootPath { get; init; }
     public bool IsMountedIso { get; init; }
     public required string IsoPath { get; init; }
@@ -29,15 +28,11 @@ public sealed class SourceMedia : IAsyncDisposable
 }
 
 /// <summary>Resolves ISO/folder sources and inspects install-image indexes (read-only).</summary>
-public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog log)
-{
-    public async Task<SourceMedia> ResolveAsync(string sourcePath, CancellationToken ct)
-    {
+public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog log) {
+    public async Task<SourceMedia> ResolveAsync(string sourcePath, CancellationToken ct) {
         var fullPath = Path.GetFullPath(sourcePath);
-        if (Directory.Exists(fullPath))
-        {
-            var media = new SourceMedia
-            {
+        if (Directory.Exists(fullPath)) {
+            var media = new SourceMedia {
                 RootPath = fullPath,
                 IsMountedIso = false,
                 IsoPath = fullPath,
@@ -46,11 +41,9 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog
             Validate(media);
             return media;
         }
-        if (File.Exists(fullPath) && fullPath.EndsWith(".iso", StringComparison.OrdinalIgnoreCase))
-        {
+        if (File.Exists(fullPath) && fullPath.EndsWith(".iso", StringComparison.OrdinalIgnoreCase)) {
             var driveRoot = await MountIsoAsync(fullPath, ct);
-            var media = new SourceMedia
-            {
+            var media = new SourceMedia {
                 RootPath = driveRoot,
                 IsMountedIso = true,
                 IsoPath = fullPath,
@@ -62,33 +55,27 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog
         throw new FileNotFoundException($"source '{sourcePath}' is neither a folder nor an .iso file.");
     }
 
-    public async Task DismountIsoAsync(SourceMedia media, CancellationToken ct)
-    {
-        if (!media.IsMountedIso)
-        {
+    public async Task DismountIsoAsync(SourceMedia media, CancellationToken ct) {
+        if (!media.IsMountedIso) {
             return;
         }
         var result = await runner.RunAsync("pwsh.exe",
             ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", $"Dismount-DiskImage -ImagePath '{media.IsoPath}' | Out-Null; $?"],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
-        if (result.ExitCode != 0)
-        {
+        if (result.ExitCode != 0) {
             log.Warn($"could not dismount source ISO '{media.IsoPath}' (exit {result.ExitCode}).");
         }
     }
 
-    public async Task<IReadOnlyList<ImageIndexInfo>> GetIndexesAsync(string installImagePath, CancellationToken ct)
-    {
+    public async Task<IReadOnlyList<ImageIndexInfo>> GetIndexesAsync(string installImagePath, CancellationToken ct) {
         var indexes = await GetIndexSummaryAsync(installImagePath, ct);
         // The no-index listing only carries Index/Name/Description; details need per-index queries.
         var detailed = new List<ImageIndexInfo>();
-        foreach (var summary in indexes)
-        {
+        foreach (var summary in indexes) {
             var result = await runner.RunAsync("dism.exe",
                 ["/Get-WimInfo", $"/WimFile:{installImagePath}", $"/Index:{summary.Index}", "/English"],
                 new ProcessRunOptions { IgnoreExitCode = true }, ct);
-            if (result.ExitCode != 0)
-            {
+            if (result.ExitCode != 0) {
                 detailed.Add(summary);
                 continue;
             }
@@ -105,73 +92,59 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog
         return detailed;
     }
 
-    private async Task<List<ImageIndexInfo>> GetIndexSummaryAsync(string installImagePath, CancellationToken ct)
-    {
+    private async Task<List<ImageIndexInfo>> GetIndexSummaryAsync(string installImagePath, CancellationToken ct) {
         var result = await runner.RunAsync("dism.exe",
             ["/Get-WimInfo", $"/WimFile:{installImagePath}", "/English"],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
-        if (result.ExitCode != 0)
-        {
+        if (result.ExitCode != 0) {
             throw new InvalidOperationException($"dism.exe could not read image info from '{installImagePath}' (exit {result.ExitCode}).");
         }
 
         var indexes = new List<ImageIndexInfo>();
         ImageIndexInfo? current = null;
-        foreach (var rawLine in result.Output.Split('\n'))
-        {
+        foreach (var rawLine in result.Output.Split('\n')) {
             var line = rawLine.TrimEnd('\r').Trim();
-            if (line.Length == 0)
-            {
+            if (line.Length == 0) {
                 continue;
             }
             var separator = line.IndexOf(':', StringComparison.Ordinal);
-            if (separator <= 0)
-            {
+            if (separator <= 0) {
                 continue;
             }
             var key = line[..separator].Trim();
             var value = line[(separator + 1)..].Trim();
-            if (key.Equals("Index", StringComparison.Ordinal))
-            {
-                if (current is not null)
-                {
+            if (key.Equals("Index", StringComparison.Ordinal)) {
+                if (current is not null) {
                     indexes.Add(current);
                 }
                 current = new ImageIndexInfo(int.Parse(value), "", null, null, null, null, 0);
                 continue;
             }
-            if (current is null)
-            {
+            if (current is null) {
                 continue;
             }
-            current = key switch
-            {
+            current = key switch {
                 "Name" => current with { Name = value },
                 "Description" => current with { Description = value },
                 "Size" => current with { SizeBytes = long.TryParse(value.Replace(",", ""), out var size) ? size : 0 },
                 _ => current,
             };
         }
-        if (current is not null)
-        {
+        if (current is not null) {
             indexes.Add(current);
         }
         return indexes;
     }
 
-    internal static Dictionary<string, string> ParseKeyValueLines(string output)
-    {
+    internal static Dictionary<string, string> ParseKeyValueLines(string output) {
         var fields = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var line in output.Split('\n'))
-        {
+        foreach (var line in output.Split('\n')) {
             var trimmed = line.TrimEnd('\r').Trim();
-            if (trimmed.Length == 0)
-            {
+            if (trimmed.Length == 0) {
                 continue;
             }
             var separator = trimmed.IndexOf(':', StringComparison.Ordinal);
-            if (separator <= 0)
-            {
+            if (separator <= 0) {
                 continue;
             }
             fields[trimmed[..separator].Trim()] = trimmed[(separator + 1)..].Trim();
@@ -193,10 +166,8 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog
         int index,
         string targetWimPath,
         bool fast,
-        CancellationToken ct)
-    {
-        if (File.Exists(targetWimPath))
-        {
+        CancellationToken ct) {
+        if (File.Exists(targetWimPath)) {
             return targetWimPath;
         }
         var compress = fast ? "fast" : "max";
@@ -206,15 +177,13 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog
         return targetWimPath;
     }
 
-    private async Task<string> MountIsoAsync(string isoPath, CancellationToken ct)
-    {
+    private async Task<string> MountIsoAsync(string isoPath, CancellationToken ct) {
         var result = await runner.RunAsync("pwsh.exe",
             ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
              $"(Mount-DiskImage -ImagePath '{isoPath}' -PassThru | Get-Volume).DriveLetter"],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
         var letter = result.Output.Trim().LastOrDefault(char.IsLetter);
-        if (result.ExitCode != 0 || letter == default)
-        {
+        if (result.ExitCode != 0 || letter == default) {
             throw new IOException($"could not mount ISO '{isoPath}': {result.Output} {result.Error}");
         }
         var root = $"{letter}:\\";
@@ -222,25 +191,20 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog
         return root;
     }
 
-    private static string FindInstallImage(string root)
-    {
+    private static string FindInstallImage(string root) {
         var wim = Path.Combine(root, "sources", "install.wim");
-        if (File.Exists(wim))
-        {
+        if (File.Exists(wim)) {
             return wim;
         }
         var esd = Path.Combine(root, "sources", "install.esd");
-        if (File.Exists(esd))
-        {
+        if (File.Exists(esd)) {
             return esd;
         }
         throw new FileNotFoundException($"no sources\\install.wim or sources\\install.esd under '{root}'.");
     }
 
-    private void Validate(SourceMedia media)
-    {
-        if (!File.Exists(media.BootWimPath))
-        {
+    private void Validate(SourceMedia media) {
+        if (!File.Exists(media.BootWimPath)) {
             throw new FileNotFoundException($"sources\\boot.wim missing under '{media.RootPath}' — not a bootable media folder.");
         }
     }

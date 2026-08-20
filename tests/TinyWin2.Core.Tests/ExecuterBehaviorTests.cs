@@ -7,18 +7,15 @@ using TinyWin2.Core.Executers.Registry;
 
 namespace TinyWin2.Core.Tests;
 
-public sealed class FeatureExecuterTests : IDisposable
-{
+public sealed class FeatureExecuterTests : IDisposable {
     private readonly ExecuterTestHarness _harness = new();
     private readonly FeatureExecuter _executer;
 
-    public FeatureExecuterTests()
-    {
+    public FeatureExecuterTests() {
         _executer = new FeatureExecuter(_harness.Runner);
     }
 
-    private void SetupFeatures(params (string Name, string State)[] features)
-    {
+    private void SetupFeatures(params (string Name, string State)[] features) {
         var blocks = string.Join("\r\n\r\n", features.Select(f => $"Feature Name : {f.Name}\r\nState : {f.State}"));
         _harness.Runner.Handler = (_, args) => args.Contains("/Get-Features")
             ? FakeProcessRunner.Ok(blocks)
@@ -26,8 +23,7 @@ public sealed class FeatureExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task EnabledFeatureNeedsRemoval()
-    {
+    public async Task EnabledFeatureNeedsRemoval() {
         SetupFeatures(("Hyper-V", "Enabled"), ("NetFx3", "Disabled"));
 
         // removePayload defaults to true: a merely-Disabled feature still carries payload.
@@ -46,8 +42,7 @@ public sealed class FeatureExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task DisabledWithoutPayloadTargetIsSatisfied()
-    {
+    public async Task DisabledWithoutPayloadTargetIsSatisfied() {
         SetupFeatures(("NetFx3", "Disabled"));
 
         var diff = await _executer.InspectAsync(_harness.NewContext(),
@@ -58,8 +53,7 @@ public sealed class FeatureExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task ApplyDisablesWithRemoveFlag()
-    {
+    public async Task ApplyDisablesWithRemoveFlag() {
         SetupFeatures(("Hyper-V", "Enabled"));
 
         var result = await _executer.ApplyAsync(_harness.NewContext(),
@@ -73,8 +67,7 @@ public sealed class FeatureExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task PermanentFeatureIsSkippedNotFailed()
-    {
+    public async Task PermanentFeatureIsSkippedNotFailed() {
         SetupFeatures(("Permanent", "Enabled"));
         _harness.Runner.Handler = (_, args) => args.Contains("/Get-Features")
             ? FakeProcessRunner.Ok("Feature Name : Permanent\r\nState : Enabled")
@@ -89,8 +82,7 @@ public sealed class FeatureExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task ProviderUnavailableEditionSkipsEverything()
-    {
+    public async Task ProviderUnavailableEditionSkipsEverything() {
         _harness.Runner.Handler = (_, _) => FakeProcessRunner.Fail(50);
 
         var diff = await _executer.InspectAsync(_harness.NewContext(),
@@ -103,13 +95,11 @@ public sealed class FeatureExecuterTests : IDisposable
     public void Dispose() => _harness.Dispose();
 }
 
-public sealed class CapabilityAndPackageTests : IDisposable
-{
+public sealed class CapabilityAndPackageTests : IDisposable {
     private readonly ExecuterTestHarness _harness = new();
 
     [Test]
-    public async Task InstalledCapabilityIsRemoved()
-    {
+    public async Task InstalledCapabilityIsRemoved() {
         var capabilities = new CapabilityExecuter(_harness.Runner);
         _harness.Runner.Handler = (_, args) => args.Contains("/Get-Capabilities")
             ? FakeProcessRunner.Ok("Capability Identity : Language.OCR~~~zh-CN~0.0.1.0\r\nState : Installed")
@@ -130,8 +120,7 @@ public sealed class CapabilityAndPackageTests : IDisposable
     }
 
     [Test]
-    public async Task PermanentCapabilityIsSkipped()
-    {
+    public async Task PermanentCapabilityIsSkipped() {
         var capabilities = new CapabilityExecuter(_harness.Runner);
         _harness.Runner.Handler = (_, args) => args.Contains("/Get-Capabilities")
             ? FakeProcessRunner.Ok("Capability Identity : Cap1\r\nState : Installed")
@@ -146,8 +135,7 @@ public sealed class CapabilityAndPackageTests : IDisposable
     }
 
     [Test]
-    public async Task PackagesMatchedByRegexWithRemovableStates()
-    {
+    public async Task PackagesMatchedByRegexWithRemovableStates() {
         var packages = new PackageExecuter(_harness.Runner);
         _harness.Runner.Handler = (_, args) => args.Contains("/Get-Packages")
             ? FakeProcessRunner.Ok("""
@@ -172,19 +160,16 @@ public sealed class CapabilityAndPackageTests : IDisposable
     public void Dispose() => _harness.Dispose();
 }
 
-public sealed class ComponentStoreExecuterTests : IDisposable
-{
+public sealed class ComponentStoreExecuterTests : IDisposable {
     private readonly ExecuterTestHarness _harness = new();
     private readonly ComponentStoreExecuter _executer = new(new FakeProcessRunner());
 
-    public ComponentStoreExecuterTests()
-    {
+    public ComponentStoreExecuterTests() {
         _executer = new ComponentStoreExecuter(_harness.Runner);
     }
 
     [Test]
-    public async Task CleanupRunsAndApplies()
-    {
+    public async Task CleanupRunsAndApplies() {
         _harness.Runner.Handler = (_, _) => FakeProcessRunner.Ok();
 
         var result = await _executer.ApplyAsync(_harness.NewContext(),
@@ -195,8 +180,7 @@ public sealed class ComponentStoreExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task Error4350DowngradesToSkipped()
-    {
+    public async Task Error4350DowngradesToSkipped() {
         _harness.Runner.Handler = (_, _) => FakeProcessRunner.Fail(4350);
 
         var result = await _executer.ApplyAsync(_harness.NewContext(),
@@ -209,19 +193,16 @@ public sealed class ComponentStoreExecuterTests : IDisposable
     public void Dispose() => _harness.Dispose();
 }
 
-public sealed class AppxProvisionedExecuterTests : IDisposable
-{
+public sealed class AppxProvisionedExecuterTests : IDisposable {
     private readonly ExecuterTestHarness _harness = new();
     private readonly AppxProvisionedExecuter _executer;
 
-    public AppxProvisionedExecuterTests()
-    {
+    public AppxProvisionedExecuterTests() {
         _executer = new AppxProvisionedExecuter(_harness.Runner);
     }
 
     [Test]
-    public async Task WildcardsMatchDisplayNameAndRemove()
-    {
+    public async Task WildcardsMatchDisplayNameAndRemove() {
         _harness.Runner.Handler = (_, args) => args.Contains("/Get-ProvisionedAppxPackages")
             ? FakeProcessRunner.Ok("""
                 DisplayName : Microsoft.XboxApp
@@ -243,8 +224,7 @@ public sealed class AppxProvisionedExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task EditionWithoutAppxProviderSkips()
-    {
+    public async Task EditionWithoutAppxProviderSkips() {
         _harness.Runner.Handler = (_, _) => FakeProcessRunner.Fail(50);
 
         var diff = await _executer.InspectAsync(_harness.NewContext(),
@@ -257,19 +237,16 @@ public sealed class AppxProvisionedExecuterTests : IDisposable
     public void Dispose() => _harness.Dispose();
 }
 
-public sealed class FilesystemExecuterTests : IDisposable
-{
+public sealed class FilesystemExecuterTests : IDisposable {
     private readonly ExecuterTestHarness _harness = new();
     private readonly FsPathExecuter _executer;
 
-    public FilesystemExecuterTests()
-    {
+    public FilesystemExecuterTests() {
         _executer = new FsPathExecuter(_harness.Runner);
     }
 
     [Test]
-    public async Task AbsentDeletesExistingPath()
-    {
+    public async Task AbsentDeletesExistingPath() {
         var target = Path.Combine(_harness.MountPath, "Windows", "Web", "Wallpaper");
         Directory.CreateDirectory(target);
         File.WriteAllText(Path.Combine(target, "img.jpg"), "x");
@@ -283,8 +260,7 @@ public sealed class FilesystemExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task AbsentMissingPathSkips()
-    {
+    public async Task AbsentMissingPathSkips() {
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("fs.path", Ensure.Absent,
                 ("paths", new JsonArray("Does/Not/Exist"))), CancellationToken.None);
@@ -293,10 +269,8 @@ public sealed class FilesystemExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task RejectsTraversalAndRootedPaths()
-    {
-        foreach (var unsafePath in new[] { "..\\escape", "C:\\Windows", "a/../../b" })
-        {
+    public async Task RejectsTraversalAndRootedPaths() {
+        foreach (var unsafePath in new[] { "..\\escape", "C:\\Windows", "a/../../b" }) {
             var ex = Assert.Throws<ExecException>(() =>
                 FsPathExecuter.ResolveInsideMount(_harness.MountPath, unsafePath))!;
             await Assert.That(ex.Message).Contains("unsafe");
@@ -304,8 +278,7 @@ public sealed class FilesystemExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task PresentCopiesAssetDirectoryIntoImage()
-    {
+    public async Task PresentCopiesAssetDirectoryIntoImage() {
         var assets = Path.Combine(_harness.MountPath, "assets");
         Directory.CreateDirectory(Path.Combine(assets, "tools", "sub"));
         File.WriteAllText(Path.Combine(assets, "tools", "app.exe"), "bin");
@@ -326,29 +299,24 @@ public sealed class FilesystemExecuterTests : IDisposable
     public void Dispose() => _harness.Dispose();
 }
 
-public sealed class DriverStoreExecuterTests : IDisposable
-{
+public sealed class DriverStoreExecuterTests : IDisposable {
     private readonly ExecuterTestHarness _harness = new();
     private readonly DriverStoreExecuter _executer;
 
-    public DriverStoreExecuterTests()
-    {
+    public DriverStoreExecuterTests() {
         _executer = new DriverStoreExecuter(_harness.Runner);
     }
 
-    private string CreateRepository(params string[] directoryNames)
-    {
+    private string CreateRepository(params string[] directoryNames) {
         var root = Path.Combine(_harness.MountPath, "Windows", "System32", "DriverStore", "FileRepository");
-        foreach (var name in directoryNames)
-        {
+        foreach (var name in directoryNames) {
             Directory.CreateDirectory(Path.Combine(root, name));
         }
         return root;
     }
 
     [Test]
-    public async Task RemovesDirectoriesNamedAfterInf()
-    {
+    public async Task RemovesDirectoriesNamedAfterInf() {
         var root = CreateRepository("mdm.inf_amd64_1234abcd", "usb.inf_amd64_5678ef");
 
         var result = await _executer.ApplyAsync(_harness.NewContext(),
@@ -361,8 +329,7 @@ public sealed class DriverStoreExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task UnknownInfIsSkipped()
-    {
+    public async Task UnknownInfIsSkipped() {
         CreateRepository("usb.inf_amd64_5678ef");
 
         var result = await _executer.ApplyAsync(_harness.NewContext(),
@@ -373,8 +340,7 @@ public sealed class DriverStoreExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task InvalidInfNameRejected()
-    {
+    public async Task InvalidInfNameRejected() {
         var ex = Assert.Throws<ExecException>(() =>
             _executer.InspectAsync(_harness.NewContext(),
                 ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
@@ -386,26 +352,22 @@ public sealed class DriverStoreExecuterTests : IDisposable
     public void Dispose() => _harness.Dispose();
 }
 
-public sealed class ExecuterRegistryTests
-{
+public sealed class ExecuterRegistryTests {
     [Test]
-    public async Task RegistersAllBuiltInResources()
-    {
+    public async Task RegistersAllBuiltInResources() {
         var registry = new ExecuterRegistry(new FakeProcessRunner());
 
         foreach (var resource in new[]
                  {
                      "registry.value", "registry.service", "dism.feature", "dism.capability",
                      "dism.package", "dism.component-store", "appx.provisioned", "driver.store", "fs.path",
-                 })
-        {
+                 }) {
             await Assert.That(registry.Get(resource).Resource).IsEqualTo(resource);
         }
     }
 
     [Test]
-    public async Task UnknownResourceThrows()
-    {
+    public async Task UnknownResourceThrows() {
         var registry = new ExecuterRegistry(new FakeProcessRunner());
 
         var ex = Assert.Throws<ExecException>(() => registry.Get("nope.resource"))!;

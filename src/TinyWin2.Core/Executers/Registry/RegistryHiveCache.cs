@@ -8,8 +8,7 @@ namespace TinyWin2.Core.Executers.Registry;
 public sealed partial class RegistryHive(
     string hiveId,
     string hiveKey,
-    string hiveFilePath) : IAsyncDisposable
-{
+    string hiveFilePath) : IAsyncDisposable {
     public string HiveId { get; } = hiveId;
     /// <summary>Loaded key path, e.g. <c>HKLM\TinyWin2_build1_system</c>.</summary>
     public string HiveKey { get; } = hiveKey;
@@ -29,8 +28,7 @@ public sealed partial class RegistryHive(
 /// Loads offline registry hives on demand (reg.exe load) and unloads them all with retry,
 /// shared by every registry executer working against one mounted layer.
 /// </summary>
-public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? runner = null)
-{
+public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? runner = null) {
     private readonly object _gate = new();
     private readonly Dictionary<string, RegistryHive> _loaded = new(StringComparer.OrdinalIgnoreCase);
     private string _sessionPrefix = "TinyWin2";
@@ -39,8 +37,7 @@ public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? 
     public IProcessRunner Runner { get; internal set; } = runner ?? new ProcessRunner();
 
     /// <summary>Hive id → file path inside the image (v1 mapping + SECURITY/SAM).</summary>
-    public static readonly IReadOnlyDictionary<string, string> HiveFiles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-    {
+    public static readonly IReadOnlyDictionary<string, string> HiveFiles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
         ["software"] = @"Windows\System32\config\SOFTWARE",
         ["system"] = @"Windows\System32\config\SYSTEM",
         ["security"] = @"Windows\System32\config\SECURITY",
@@ -49,28 +46,22 @@ public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? 
         ["default-user"] = @"Users\Default\NTUSER.DAT",
     };
 
-    public void SetSessionPrefix(string prefix)
-    {
+    public void SetSessionPrefix(string prefix) {
         _sessionPrefix = prefix;
     }
 
-    public async Task<RegistryHive> GetAsync(string hiveId, IBuildLog log, CancellationToken ct)
-    {
-        if (!HiveFiles.TryGetValue(hiveId, out var relativePath))
-        {
+    public async Task<RegistryHive> GetAsync(string hiveId, IBuildLog log, CancellationToken ct) {
+        if (!HiveFiles.TryGetValue(hiveId, out var relativePath)) {
             throw new ExecException($"unknown registry hive '{hiveId}' (expected one of: {string.Join(", ", HiveFiles.Keys)}).");
         }
-        lock (_gate)
-        {
-            if (_loaded.TryGetValue(hiveId, out var hive) && hive.IsLoaded)
-            {
+        lock (_gate) {
+            if (_loaded.TryGetValue(hiveId, out var hive) && hive.IsLoaded) {
                 return hive;
             }
         }
 
         var hiveFilePath = Path.GetFullPath(Path.Combine(MountPath, relativePath));
-        if (!File.Exists(hiveFilePath))
-        {
+        if (!File.Exists(hiveFilePath)) {
             throw new ExecException($"offline registry hive '{hiveId}' was not found at '{hiveFilePath}'.");
         }
 
@@ -78,41 +69,32 @@ public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? 
         await Runner.RunAsync("reg.exe", ["load", hiveKey, hiveFilePath], cancellationToken: ct);
         log.Debug($"loaded offline hive '{hiveId}' at {hiveKey}");
 
-        lock (_gate)
-        {
+        lock (_gate) {
             _loaded[hiveId] = new RegistryHive(hiveId.ToLowerInvariant(), hiveKey, hiveFilePath) { IsLoaded = true };
             return _loaded[hiveId];
         }
     }
 
     /// <summary>Unloads every loaded hive; retries because handles may lag behind a moment.</summary>
-    public async Task UnloadAllAsync(IBuildLog log, CancellationToken ct)
-    {
+    public async Task UnloadAllAsync(IBuildLog log, CancellationToken ct) {
         List<RegistryHive> toUnload;
-        lock (_gate)
-        {
+        lock (_gate) {
             toUnload = [.. _loaded.Values.Where(h => h.IsLoaded)];
             _loaded.Clear();
         }
 
-        foreach (var hive in toUnload)
-        {
+        foreach (var hive in toUnload) {
             var unloaded = false;
-            for (var attempt = 1; attempt <= 5 && !unloaded; attempt++)
-            {
-                try
-                {
+            for (var attempt = 1; attempt <= 5 && !unloaded; attempt++) {
+                try {
                     await Runner.RunAsync("reg.exe", ["unload", hive.HiveKey], cancellationToken: ct);
                     unloaded = true;
                 }
-                catch (ProcessRunnerException)
-                {
-                    if (attempt == 5)
-                    {
+                catch (ProcessRunnerException) {
+                    if (attempt == 5) {
                         log.Warn($"could not unload offline hive '{hive.HiveId}' after {attempt} attempts; continuing.");
                     }
-                    else
-                    {
+                    else {
                         await Task.Delay(200 * attempt, ct);
                     }
                 }
@@ -123,24 +105,19 @@ public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? 
 }
 
 /// <summary>Parses and renders reg.exe query/add value representations.</summary>
-public static partial class RegValues
-{
+public static partial class RegValues {
     public sealed record RegValue(string Type, string Data);
 
     /// <summary>Extracts a named value from <c>reg query KEY /v NAME</c> output; null if absent.</summary>
-    public static RegValue? ParseQueryValue(string output, string valueName)
-    {
-        foreach (var rawLine in output.Split('\n'))
-        {
+    public static RegValue? ParseQueryValue(string output, string valueName) {
+        foreach (var rawLine in output.Split('\n')) {
             var line = rawLine.TrimEnd('\r');
             var match = ValueLine().Match(line);
-            if (!match.Success)
-            {
+            if (!match.Success) {
                 continue;
             }
             var name = match.Groups[1].Value.Trim();
-            if (string.Equals(name, valueName, StringComparison.OrdinalIgnoreCase))
-            {
+            if (string.Equals(name, valueName, StringComparison.OrdinalIgnoreCase)) {
                 return new RegValue(match.Groups[2].Value, match.Groups[3].Value);
             }
         }
@@ -148,10 +125,8 @@ public static partial class RegValues
     }
 
     /// <summary>Renders desired data for reg.exe /d for each supported type.</summary>
-    public static string RenderData(string type, System.Text.Json.Nodes.JsonNode? data)
-    {
-        switch (type)
-        {
+    public static string RenderData(string type, System.Text.Json.Nodes.JsonNode? data) {
+        switch (type) {
             case "REG_DWORD":
                 return $"0x{ToLong(data!):x8}";
             case "REG_QWORD":
@@ -169,16 +144,12 @@ public static partial class RegValues
     }
 
     /// <summary>JsonValue stores int/long/double depending on origin; accept any integral form.</summary>
-    private static long ToLong(System.Text.Json.Nodes.JsonNode data)
-    {
-        if (data is System.Text.Json.Nodes.JsonValue value)
-        {
-            if (value.TryGetValue<int>(out var i))
-            {
+    private static long ToLong(System.Text.Json.Nodes.JsonNode data) {
+        if (data is System.Text.Json.Nodes.JsonValue value) {
+            if (value.TryGetValue<int>(out var i)) {
                 return i;
             }
-            if (value.TryGetValue<long>(out var l))
-            {
+            if (value.TryGetValue<long>(out var l)) {
                 return l;
             }
         }
@@ -186,10 +157,8 @@ public static partial class RegValues
     }
 
     /// <summary>Normalizes queried data to the rendered form for comparison.</summary>
-    public static bool Equals(string type, string queriedData, string desiredData)
-    {
-        if (type is "REG_DWORD" or "REG_QWORD")
-        {
+    public static bool Equals(string type, string queriedData, string desiredData) {
+        if (type is "REG_DWORD" or "REG_QWORD") {
             // reg.exe prints 0x-prefixed hex; compare numerically so 0x1 == 0x00000001.
             return TryParseHex(queriedData, out var queried)
                    && TryParseHex(desiredData, out var desired)
@@ -198,8 +167,7 @@ public static partial class RegValues
         return string.Equals(queriedData.TrimEnd('\0'), desiredData, StringComparison.Ordinal);
     }
 
-    private static bool TryParseHex(string value, out long number)
-    {
+    private static bool TryParseHex(string value, out long number) {
         var trimmed = value.Trim().TrimStart("0x");
         return long.TryParse(trimmed, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out number);
     }

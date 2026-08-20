@@ -4,8 +4,7 @@ namespace TinyWin2.Core.Executers;
 /// An executer converges one resource type toward a desired state (DSC-style):
 /// add, modify and remove are all expressed as <see cref="Ensure"/> targets over the same resource.
 /// </summary>
-public interface IExecuter
-{
+public interface IExecuter {
     /// <summary>Resource id this executer owns, e.g. <c>registry.service</c>.</summary>
     string Resource { get; }
 

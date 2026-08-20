@@ -3,8 +3,7 @@ using TinyWin2.Core.Native;
 namespace TinyWin2.Core.Tests;
 
 /// <summary>Scriptable IProcessRunner: records every call, answers from a handler.</summary>
-public sealed class FakeProcessRunner : IProcessRunner
-{
+public sealed class FakeProcessRunner : IProcessRunner {
     public List<(string File, IReadOnlyList<string> Args)> Calls { get; } = [];
     public Func<string, IReadOnlyList<string>, ProcessRunResult>? Handler { get; set; }
 
@@ -12,17 +11,14 @@ public sealed class FakeProcessRunner : IProcessRunner
         string fileName,
         IReadOnlyList<string> arguments,
         ProcessRunOptions? options = null,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         Calls.Add((fileName, arguments));
         options?.OnOutputLine?.Invoke("");
-        if (Handler is null)
-        {
+        if (Handler is null) {
             return Task.FromResult(Ok());
         }
         var result = Handler(fileName, arguments);
-        foreach (var line in result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-        {
+        foreach (var line in result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries)) {
             options?.OnOutputLine?.Invoke(line.TrimEnd('\r'));
         }
         return Task.FromResult(result);

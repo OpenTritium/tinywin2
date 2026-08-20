@@ -99,6 +99,9 @@ tier 过滤/enum 参数下拉含风险徽章/Profile）→ 进度日志（彩色
 
 ## 工程约定
 
+- **代码风格**：K&R（`csharp_new_line_before_open_brace = none`）+ 120 列 + LF，见 `.editorconfig`；
+  `dotnet format` 格式化/校验，`EnforceCodeStyleInBuild` 构建期强制（风格违规 = 编译错误）。
+
 - **dism 一律 `/English`**：输出键名与宿主显示语言解耦（中文系统上"索引:"坑的根治）。
 - **VHD 后端优先 Hyper-V cmdlet**（New-VHD/Mount-VHD/Merge-VHD，即 Hyper-V 检查点同款机制），
   diskpart 作为零依赖后备；所有 diskpart 路径规范化（拒正斜杠）、attach 幂等自愈（残留挂载先 detach）。

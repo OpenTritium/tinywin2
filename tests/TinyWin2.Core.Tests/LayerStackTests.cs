@@ -8,64 +8,55 @@ using TinyWin2.Core.Plans;
 
 namespace TinyWin2.Core.Tests;
 
-public sealed class FakeLayerBackend : ILayerBackend
-{
+public sealed class FakeLayerBackend : ILayerBackend {
     public List<string> Calls { get; } = [];
     public int MergeDepth { get; private set; }
 
-    public Task CreateBaseAsync(string vhdxPath, long maximumMb, string volumeLabel, CancellationToken ct)
-    {
+    public Task CreateBaseAsync(string vhdxPath, long maximumMb, string volumeLabel, CancellationToken ct) {
         Calls.Add($"create-base:{Path.GetFileName(vhdxPath)}");
         Directory.CreateDirectory(Path.GetDirectoryName(vhdxPath)!);
         File.WriteAllText(vhdxPath, "base");
         return Task.CompletedTask;
     }
 
-    public Task CreateDiffAsync(string diffPath, string parentPath, CancellationToken ct)
-    {
+    public Task CreateDiffAsync(string diffPath, string parentPath, CancellationToken ct) {
         Calls.Add($"create-diff:{Path.GetFileName(diffPath)}<-{Path.GetFileName(parentPath)}");
         File.WriteAllText(diffPath, $"diff<-{Path.GetFileName(parentPath)}");
         return Task.CompletedTask;
     }
 
-    public Task<char> AttachAsync(string vhdxPath, CancellationToken ct)
-    {
+    public Task<char> AttachAsync(string vhdxPath, CancellationToken ct) {
         var letter = 'S';
         Calls.Add($"attach:{Path.GetFileName(vhdxPath)}:{letter}");
         return Task.FromResult(letter);
     }
 
-    public Task DetachAsync(string vhdxPath, CancellationToken ct)
-    {
+    public Task DetachAsync(string vhdxPath, CancellationToken ct) {
         Calls.Add($"detach:{Path.GetFileName(vhdxPath)}");
         return Task.CompletedTask;
     }
 
-    public Task MergeAsync(string vhdxPath, int depth, CancellationToken ct)
-    {
+    public Task MergeAsync(string vhdxPath, int depth, CancellationToken ct) {
         MergeDepth = depth;
         Calls.Add($"merge:{Path.GetFileName(vhdxPath)}:depth={depth}");
         return Task.CompletedTask;
     }
 }
 
-public sealed class VhdLayerStackTests : IDisposable
-{
+public sealed class VhdLayerStackTests : IDisposable {
     private readonly string _workDir = TestPlans.CreateTempDirectory();
     private readonly FakeLayerBackend _backend = new();
     private readonly BuildLog _log = new();
     private VhdLayerStack Stack => VhdLayerStack.Load(_workDir, _backend, _log);
 
-    private async Task<VhdLayerStack> CreateWithBaseAsync()
-    {
+    private async Task<VhdLayerStack> CreateWithBaseAsync() {
         var stack = Stack;
         await stack.EnsureBaseAsync(1000, "test", CancellationToken.None);
         return stack;
     }
 
     [Test]
-    public async Task BaseLayerIsLayerZeroAndLeaf()
-    {
+    public async Task BaseLayerIsLayerZeroAndLeaf() {
         var stack = await CreateWithBaseAsync();
 
         await Assert.That(stack.Records.Count).IsEqualTo(1);
@@ -75,8 +66,7 @@ public sealed class VhdLayerStackTests : IDisposable
     }
 
     [Test]
-    public async Task CommitLayerAdvancesLeafAndChain()
-    {
+    public async Task CommitLayerAdvancesLeafAndChain() {
         var stack = await CreateWithBaseAsync();
         var session = await stack.BeginLayerAsync("group:Apps", "Applications", null, CancellationToken.None);
         await stack.CommitLayerAsync(session, [], CancellationToken.None);
@@ -94,8 +84,7 @@ public sealed class VhdLayerStackTests : IDisposable
     }
 
     [Test]
-    public async Task DiscardLayerDeletesVhdxAndKeepsPreviousLeaf()
-    {
+    public async Task DiscardLayerDeletesVhdxAndKeepsPreviousLeaf() {
         var stack = await CreateWithBaseAsync();
         var session = await stack.BeginLayerAsync("step1", "S1", null, CancellationToken.None);
         await stack.DiscardLayerAsync(session, "boom", CancellationToken.None);
@@ -112,8 +101,7 @@ public sealed class VhdLayerStackTests : IDisposable
     }
 
     [Test]
-    public async Task ManifestRoundTripsAcrossLoads()
-    {
+    public async Task ManifestRoundTripsAcrossLoads() {
         var stack = await CreateWithBaseAsync();
         var session = await stack.BeginLayerAsync("step1", "S1", new JsonObject { ["mode"] = "safe" }, CancellationToken.None);
         await stack.CommitLayerAsync(session, new JsonArray(), CancellationToken.None);
@@ -128,11 +116,9 @@ public sealed class VhdLayerStackTests : IDisposable
     }
 
     [Test]
-    public async Task ConsolidateMergesWholeChainAndClearsDiffs()
-    {
+    public async Task ConsolidateMergesWholeChainAndClearsDiffs() {
         var stack = await CreateWithBaseAsync();
-        foreach (var title in new[] { "A", "B", "C" })
-        {
+        foreach (var title in new[] { "A", "B", "C" }) {
             var session = await stack.BeginLayerAsync(title, title, null, CancellationToken.None);
             await stack.CommitLayerAsync(session, [], CancellationToken.None);
         }
@@ -148,8 +134,7 @@ public sealed class VhdLayerStackTests : IDisposable
     }
 
     [Test]
-    public async Task VhdxForLayerRejectsUncommitted()
-    {
+    public async Task VhdxForLayerRejectsUncommitted() {
         var stack = await CreateWithBaseAsync();
         var session = await stack.BeginLayerAsync("step1", "S1", null, CancellationToken.None);
         await stack.DiscardLayerAsync(session, "x", CancellationToken.None);
@@ -157,23 +142,20 @@ public sealed class VhdLayerStackTests : IDisposable
         Assert.Throws<ArgumentException>(() => stack.VhdxForLayer(1));
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         try { Directory.Delete(_workDir, recursive: true); } catch { /* best effort */ }
     }
 }
 
 /// <summary>Fake executer registered under "test.noop" / "test.boom" for engine tests.</summary>
-public sealed class FakeExecuter(string resource, bool fail) : IExecuter
-{
+public sealed class FakeExecuter(string resource, bool fail) : IExecuter {
     public string Resource { get; } = resource;
     public int ApplyCount { get; private set; }
 
     public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) =>
         Task.FromResult(new ResourceDiff(false, [new ChangeItem(ChangeKind.Modified, Resource)]));
 
-    public Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct)
-    {
+    public Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
         ApplyCount++;
         return Task.FromResult(fail
             ? throw new ExecException("boom from " + Resource)
@@ -181,16 +163,12 @@ public sealed class FakeExecuter(string resource, bool fail) : IExecuter
     }
 }
 
-public sealed class BuildEngineDryRunTests : IDisposable
-{
+public sealed class BuildEngineDryRunTests : IDisposable {
     private readonly string _plansDir = TestPlans.CreateTempDirectory();
 
-    private PlanCatalog Catalog()
-    {
-        TestPlans.WritePlan(_plansDir, "engine.sample", o =>
-        {
-            o["execs"] = new JsonArray(new JsonObject
-            {
+    private PlanCatalog Catalog() {
+        TestPlans.WritePlan(_plansDir, "engine.sample", o => {
+            o["execs"] = new JsonArray(new JsonObject {
                 ["resource"] = "test.noop",
                 ["ensure"] = "absent",
                 ["with"] = new JsonObject(),
@@ -200,14 +178,12 @@ public sealed class BuildEngineDryRunTests : IDisposable
     }
 
     [Test]
-    public async Task DryRunResolvesAndTouchesNothing()
-    {
+    public async Task DryRunResolvesAndTouchesNothing() {
         var runner = new FakeProcessRunner();
         var executers = new ExecuterRegistry([new FakeExecuter("test.noop", fail: false)]);
         var engine = new BuildEngine(runner, executers, new FakeLayerBackend(), new BuildLog { EchoConsole = false });
 
-        var result = await engine.BuildAsync(new BuildOptions
-        {
+        var result = await engine.BuildAsync(new BuildOptions {
             SourcePath = @"C:\does\not\exist.iso",
             ImageIndex = 1,
             Selections = [new PlanSelection("engine.sample")],
@@ -220,8 +196,7 @@ public sealed class BuildEngineDryRunTests : IDisposable
         await Assert.That(runner.Calls.Count).IsEqualTo(0);
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         try { Directory.Delete(_plansDir, recursive: true); } catch { /* best effort */ }
     }
 }

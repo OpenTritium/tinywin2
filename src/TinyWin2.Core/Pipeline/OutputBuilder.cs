@@ -5,15 +5,13 @@ using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Pipeline;
 
-public enum ImageFormat
-{
+public enum ImageFormat {
     Wim,
     Esd,
 }
 
 /// <summary>Captures the final (or rolled-back) layer into WIM/ESD and packages media + ISO.</summary>
-public sealed class OutputBuilder(IProcessRunner runner, IBuildLog log)
-{
+public sealed class OutputBuilder(IProcessRunner runner, IBuildLog log) {
     /// <summary>Captures a mounted layer directory into a WIM or ESD.</summary>
     public async Task CaptureAsync(
         string mountPath,
@@ -22,10 +20,8 @@ public sealed class OutputBuilder(IProcessRunner runner, IBuildLog log)
         string? description,
         ImageFormat format,
         bool fast,
-        CancellationToken ct)
-    {
-        var compress = format switch
-        {
+        CancellationToken ct) {
+        var compress = format switch {
             ImageFormat.Esd => "recovery",
             _ => fast ? "fast" : "max",
         };
@@ -37,13 +33,11 @@ public sealed class OutputBuilder(IProcessRunner runner, IBuildLog log)
             $"/CaptureDir:{mountPath}",
             $"/Name:{imageName}",
         };
-        if (!string.IsNullOrEmpty(description))
-        {
+        if (!string.IsNullOrEmpty(description)) {
             args.Add($"/Description:{description}");
         }
         args.Add($"/Compress:{compress}");
-        if (!fast)
-        {
+        if (!fast) {
             args.Add("/Verify");
         }
         log.Info($"capturing {mountPath} → {Path.GetFileName(targetPath)} (compress={compress})");
@@ -57,26 +51,22 @@ public sealed class OutputBuilder(IProcessRunner runner, IBuildLog log)
         string mediaOutputPath,
         string capturedInstallImage,
         ImageFormat format,
-        CancellationToken ct)
-    {
+        CancellationToken ct) {
         Directory.CreateDirectory(mediaOutputPath);
         // robocopy: 0-7 are success codes (1 = files copied).
         var result = await runner.RunAsync("robocopy.exe",
             [sourceRoot, mediaOutputPath, "/E", "/MT:16", "/R:1", "/W:1", "/NFL", "/NDL", "/NJH", "/NJS",
              "/XF", "install.wim", "install.esd"],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
-        if (result.ExitCode >= 8)
-        {
+        if (result.ExitCode >= 8) {
             throw new IOException($"robocopy failed copying media (exit {result.ExitCode}).");
         }
 
         var sourcesDir = Path.Combine(mediaOutputPath, "sources");
         Directory.CreateDirectory(sourcesDir);
-        foreach (var stale in new[] { "install.wim", "install.esd", "install.staging.wim" })
-        {
+        foreach (var stale in new[] { "install.wim", "install.esd", "install.staging.wim" }) {
             var stalePath = Path.Combine(sourcesDir, stale);
-            if (File.Exists(stalePath))
-            {
+            if (File.Exists(stalePath)) {
                 File.Delete(stalePath);
             }
         }
@@ -92,14 +82,12 @@ public sealed class OutputBuilder(IProcessRunner runner, IBuildLog log)
         string mediaPath,
         string isoPath,
         string oscdimgPath,
-        CancellationToken ct)
-    {
+        CancellationToken ct) {
         var bootFolder = Path.Combine(mediaPath, "boot");
         var biosBoot = Path.Combine(bootFolder, "etfsboot.com");
         var efiBootNoPrompt = Path.Combine(mediaPath, "efi", "microsoft", "boot", "efisys_noprompt.bin");
         var efiBoot = Path.Combine(mediaPath, "efi", "microsoft", "boot", "efisys.bin");
-        if (!File.Exists(biosBoot) || (!File.Exists(efiBootNoPrompt) && !File.Exists(efiBoot)))
-        {
+        if (!File.Exists(biosBoot) || (!File.Exists(efiBootNoPrompt) && !File.Exists(efiBoot))) {
             throw new FileNotFoundException("boot files (etfsboot.com / efisys*.bin) missing from media folder.");
         }
         var efisys = File.Exists(efiBootNoPrompt) ? efiBootNoPrompt : efiBoot;
@@ -116,16 +104,14 @@ public sealed class OutputBuilder(IProcessRunner runner, IBuildLog log)
         VhdLayerStack stack,
         ILayerBackend backend,
         string targetPath,
-        CancellationToken ct)
-    {
+        CancellationToken ct) {
         await stack.ConsolidateAsync(ct);
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
         File.Copy(stack.BaseVhdxPath, targetPath, overwrite: true);
         return targetPath;
     }
 
-    public static async Task<string> ComputeSha256Async(string filePath, CancellationToken ct)
-    {
+    public static async Task<string> ComputeSha256Async(string filePath, CancellationToken ct) {
         await using var stream = File.OpenRead(filePath);
         var hash = await SHA256.HashDataAsync(stream, ct);
         return Convert.ToHexStringLower(hash);

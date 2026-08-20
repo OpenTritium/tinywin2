@@ -6,8 +6,7 @@ namespace TinyWin2.Core.Layers;
 /// preferred (it manages differencing chains exactly like production checkpoints);
 /// diskpart remains the zero-dependency fallback.
 /// </summary>
-public interface ILayerBackend
-{
+public interface ILayerBackend {
     /// <summary>Creates a fresh expandable VHDX with one formatted MBR partition (unattached).</summary>
     Task CreateBaseAsync(string vhdxPath, long maximumMb, string volumeLabel, CancellationToken ct);
 

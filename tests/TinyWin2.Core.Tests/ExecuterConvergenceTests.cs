@@ -6,47 +6,39 @@ using TinyWin2.Core.Logging;
 
 namespace TinyWin2.Core.Tests;
 
-public sealed class ExecuterTestHarness : IDisposable
-{
+public sealed class ExecuterTestHarness : IDisposable {
     public string MountPath { get; } = TestPlans.CreateTempDirectory();
     public FakeProcessRunner Runner { get; } = new();
     public BuildLog Log { get; } = new() { Phase = "test" };
 
-    public ExecContext NewContext(int layerIndex = 1) => new(MountPath, Log, layerIndex, fastMode: false)
-    {
+    public ExecContext NewContext(int layerIndex = 1) => new(MountPath, Log, layerIndex, fastMode: false) {
         Hives = new RegistryHiveCache(MountPath, Runner),
     };
 
     /// <summary>Creates the offline hive file the cache requires before loading.</summary>
-    public void CreateHiveFile(string hiveId = "software")
-    {
+    public void CreateHiveFile(string hiveId = "software") {
         var relative = RegistryHiveCache.HiveFiles[hiveId];
         var path = Path.Combine(MountPath, relative.Replace('\\', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllBytes(path, [0x51, 0x46, 0x49, 0x42]); // arbitrary non-empty content
     }
 
-    public static ExecSpec Spec(string resource, Ensure ensure, params (string Key, JsonNode? Value)[] desired)
-    {
+    public static ExecSpec Spec(string resource, Ensure ensure, params (string Key, JsonNode? Value)[] desired) {
         var obj = new JsonObject();
-        foreach (var (key, value) in desired)
-        {
+        foreach (var (key, value) in desired) {
             obj[key] = value?.DeepClone();
         }
         return new ExecSpec(resource, ensure, obj);
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         try { Directory.Delete(MountPath, recursive: true); } catch { /* best effort */ }
     }
 }
 
-public sealed class DismClassifierTests
-{
+public sealed class DismClassifierTests {
     [Test]
-    public async Task ClassifiesKnownCodes()
-    {
+    public async Task ClassifiesKnownCodes() {
         await Assert.That(DismErrors.Classify(0, "")).IsEqualTo(DismOutcome.Success);
         await Assert.That(DismErrors.Classify(3010, "")).IsEqualTo(DismOutcome.SuccessRebootRequired);
         await Assert.That(DismErrors.Classify(4350, "")).IsEqualTo(DismOutcome.ComponentCleanupUnsupported);
@@ -57,15 +49,13 @@ public sealed class DismClassifierTests
     }
 
     [Test]
-    public async Task FallsBackToTextHintsForProviderGaps()
-    {
+    public async Task FallsBackToTextHintsForProviderGaps() {
         await Assert.That(DismErrors.Classify(-1, "这个文件当前不能用于此计算机")).IsEqualTo(DismOutcome.ProviderUnavailable);
         await Assert.That(DismErrors.Classify(-1, "file cannot be used on this computer")).IsEqualTo(DismOutcome.ProviderUnavailable);
     }
 
     [Test]
-    public async Task ParsesFormatListBlocks()
-    {
+    public async Task ParsesFormatListBlocks() {
         const string output = """
             Deployment Image Servicing and Management tool
             Version: 10.0.1
@@ -86,13 +76,11 @@ public sealed class DismClassifierTests
     }
 }
 
-public sealed class RegistryValueExecuterTests : IDisposable
-{
+public sealed class RegistryValueExecuterTests : IDisposable {
     private readonly ExecuterTestHarness _harness = new();
     private readonly RegistryValueExecuter _executer = new(new FakeProcessRunner());
 
-    public RegistryValueExecuterTests()
-    {
+    public RegistryValueExecuterTests() {
         _executer = new RegistryValueExecuter(_harness.Runner);
         _harness.CreateHiveFile("software");
     }
@@ -101,8 +89,7 @@ public sealed class RegistryValueExecuterTests : IDisposable
         $"\r\nHKEY_LOCAL_MACHINE\\TinyWin2_software\\Policies\\Test\r\n    {valueName}    {type}    {data}\r\n";
 
     [Test]
-    public async Task InspectReportsCreatedWhenValueMissing()
-    {
+    public async Task InspectReportsCreatedWhenValueMissing() {
         _harness.Runner.Handler = (_, args) => args[0] == "query"
             ? FakeProcessRunner.Fail(1, "The system was unable to find the specified registry key or value.")
             : FakeProcessRunner.Ok();
@@ -121,8 +108,7 @@ public sealed class RegistryValueExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task InspectSatisfiedWhenValueMatches()
-    {
+    public async Task InspectSatisfiedWhenValueMatches() {
         _harness.Runner.Handler = (_, args) => args[0] == "query"
             ? FakeProcessRunner.Ok(QueryOutput("EnableSpyware", "REG_DWORD", "0x1"))
             : FakeProcessRunner.Ok();
@@ -136,8 +122,7 @@ public sealed class RegistryValueExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task ApplyPresentIssuesRegAddWithRenderedData()
-    {
+    public async Task ApplyPresentIssuesRegAddWithRenderedData() {
         _harness.Runner.Handler = (_, args) => args[0] == "query"
             ? FakeProcessRunner.Fail(1)
             : FakeProcessRunner.Ok();
@@ -154,8 +139,7 @@ public sealed class RegistryValueExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task ApplyAbsentDeletesValueOrKey()
-    {
+    public async Task ApplyAbsentDeletesValueOrKey() {
         _harness.Runner.Handler = (_, args) => args[0] == "query"
             ? FakeProcessRunner.Ok(QueryOutput("EnableSpyware", "REG_DWORD", "0x1"))
             : FakeProcessRunner.Ok();
@@ -175,8 +159,7 @@ public sealed class RegistryValueExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task IdempotentSecondApplySkips()
-    {
+    public async Task IdempotentSecondApplySkips() {
         var existing = QueryOutput("Value", "REG_SZ", "hello");
         _harness.Runner.Handler = (_, args) => args[0] == "query"
             ? FakeProcessRunner.Ok(existing)
@@ -196,37 +179,29 @@ public sealed class RegistryValueExecuterTests : IDisposable
     public void Dispose() => _harness.Dispose();
 }
 
-public sealed class RegistryServiceExecuterTests : IDisposable
-{
+public sealed class RegistryServiceExecuterTests : IDisposable {
     private readonly ExecuterTestHarness _harness = new();
     private readonly RegistryServiceExecuter _executer;
 
-    public RegistryServiceExecuterTests()
-    {
+    public RegistryServiceExecuterTests() {
         _executer = new RegistryServiceExecuter(_harness.Runner);
         _harness.CreateHiveFile("system");
     }
 
-    private void SetupServices(params (string Name, string Start, string? Delayed)[] services)
-    {
+    private void SetupServices(params (string Name, string Start, string? Delayed)[] services) {
         var hiveKey = "HKLM\\TinyWin2_system";
         var servicesRoot = $"{hiveKey}\\ControlSet001\\Services";
-        _harness.Runner.Handler = (_, args) =>
-        {
-            if (args[0] == "load" || args[0] == "add")
-            {
+        _harness.Runner.Handler = (_, args) => {
+            if (args[0] == "load" || args[0] == "add") {
                 return FakeProcessRunner.Ok();
             }
-            if (args[0] != "query")
-            {
+            if (args[0] != "query") {
                 return FakeProcessRunner.Ok();
             }
-            if (args.Count == 4 && args[1] == $"{hiveKey}\\Select" && args[2] == "/v")
-            {
+            if (args.Count == 4 && args[1] == $"{hiveKey}\\Select" && args[2] == "/v") {
                 return FakeProcessRunner.Ok($"\r\n    Current    REG_DWORD    0x1\r\n");
             }
-            if (args.Count == 2 && args[1] == servicesRoot)
-            {
+            if (args.Count == 2 && args[1] == servicesRoot) {
                 var lines = services.Select(s => $"{servicesRoot}\\{s.Name}");
                 return FakeProcessRunner.Ok($"\r\n{servicesRoot}\r\n" + string.Join("\r\n", lines) + "\r\n");
             }
@@ -234,8 +209,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable
             var key = args[1];
             var valueName = args[3];
             var service = services.FirstOrDefault(s => key.Equals($"{servicesRoot}\\{s.Name}", StringComparison.OrdinalIgnoreCase));
-            if (service.Name is null)
-            {
+            if (service.Name is null) {
                 return FakeProcessRunner.Fail(1);
             }
             var value = valueName == "Start" ? service.Start : service.Delayed;
@@ -246,8 +220,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task DetectsManualServiceNeedingDisable()
-    {
+    public async Task DetectsManualServiceNeedingDisable() {
         SetupServices(("LanmanWorkstation", "3", null));
 
         var diff = await _executer.InspectAsync(_harness.NewContext(),
@@ -261,8 +234,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task SatisfiedWhenAlreadyInDesiredMode()
-    {
+    public async Task SatisfiedWhenAlreadyInDesiredMode() {
         SetupServices(("Svc", "4", null));
 
         var diff = await _executer.InspectAsync(_harness.NewContext(),
@@ -273,8 +245,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task DelayedAutoRequiresBothValues()
-    {
+    public async Task DelayedAutoRequiresBothValues() {
         SetupServices(("Svc", "2", "1"));
 
         var satisfied = await _executer.InspectAsync(_harness.NewContext(),
@@ -289,8 +260,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task PatternsMatchWildcardServiceNames()
-    {
+    public async Task PatternsMatchWildcardServiceNames() {
         SetupServices(("WpnUserService_12345", "2", null), ("Other", "2", null));
 
         var diff = await _executer.InspectAsync(_harness.NewContext(),
@@ -303,8 +273,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable
     }
 
     [Test]
-    public async Task MissingServicesAreSkippedNotFailed()
-    {
+    public async Task MissingServicesAreSkippedNotFailed() {
         SetupServices(("Existing", "3", null));
 
         var result = await _executer.ApplyAsync(_harness.NewContext(),

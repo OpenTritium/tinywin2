@@ -3,8 +3,7 @@ using TinyWin2.Core.Native;
 namespace TinyWin2.Core.Executers.Dism;
 
 /// <summary>Shared plumbing for dism.exe-backed executers against the mounted image.</summary>
-public abstract class DismExecuterBase(IProcessRunner runner)
-{
+public abstract class DismExecuterBase(IProcessRunner runner) {
     protected IProcessRunner Runner { get; } = runner;
 
     /// <summary>
@@ -14,8 +13,7 @@ public abstract class DismExecuterBase(IProcessRunner runner)
     protected async Task<(int ExitCode, string Output)> RunDismAsync(
         ExecContext context,
         IReadOnlyList<string> arguments,
-        CancellationToken ct)
-    {
+        CancellationToken ct) {
         var fullArgs = new List<string> { $"/Image:{context.MountPath}", "/English" };
         fullArgs.AddRange(arguments);
         context.Log.Debug($"dism.exe {string.Join(" ", fullArgs)}");

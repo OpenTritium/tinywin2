@@ -20,8 +20,11 @@ trim_trailing_whitespace = false
 
 # ---- C# style ------------------------------------------------------------
 [*.cs]
+max_line_length = 120
 # dotnet format + EnforceCodeStyleInBuild enforce these at build time.
 csharp_style_namespace_declarations = file_scoped:warning
+# K&R: open braces stay on the same line (none = everywhere).
+csharp_new_line_before_open_brace = none
 csharp_style_var_when_type_is_apparent = true:warning
 csharp_style_var_elsewhere = true:suggestion
 csharp_prefer_braces = true:warning

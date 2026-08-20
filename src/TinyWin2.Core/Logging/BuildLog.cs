@@ -2,16 +2,14 @@ using System.Text.Json.Nodes;
 
 namespace TinyWin2.Core.Logging;
 
-public enum BuildEventLevel
-{
+public enum BuildEventLevel {
     Debug = 0,
     Info = 1,
     Warn = 2,
     Error = 3,
 }
 
-public interface IBuildLog
-{
+public interface IBuildLog {
     string Phase { get; set; }
     int? LayerIndex { get; set; }
     string? PlanId { get; set; }
@@ -27,8 +25,7 @@ public interface IBuildLog
 /// Central structured log. The engine writes through it; sinks (console echo,
 /// JSONL stream for the GUI, in-memory manifest log) subscribe via <see cref="Attach"/>.
 /// </summary>
-public sealed class BuildLog : IBuildLog
-{
+public sealed class BuildLog : IBuildLog {
     private readonly object _gate = new();
     private readonly List<BuildEvent> _events = [];
     private readonly List<Action<BuildEvent>> _sinks = [];
@@ -39,22 +36,17 @@ public sealed class BuildLog : IBuildLog
     public string? PlanId { get; set; }
     public bool EchoConsole { get; set; }
 
-    public IReadOnlyList<BuildEvent> Events
-    {
-        get
-        {
-            lock (_gate)
-            {
+    public IReadOnlyList<BuildEvent> Events {
+        get {
+            lock (_gate) {
                 return _events.ToArray();
             }
         }
     }
 
     /// <summary>Attaches a sink; dispose the token to detach. Sinks must not throw.</summary>
-    public IDisposable Attach(Action<BuildEvent> sink)
-    {
-        lock (_gate)
-        {
+    public IDisposable Attach(Action<BuildEvent> sink) {
+        lock (_gate) {
             _sinks.Add(sink);
         }
 
@@ -73,14 +65,11 @@ public sealed class BuildLog : IBuildLog
     public void Error(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null)
         => Write(BuildEventLevel.Error, message, planId, layerIndex, data);
 
-    public void Write(BuildEventLevel level, string message, string? planId = null, int? layerIndex = null, JsonObject? data = null)
-    {
+    public void Write(BuildEventLevel level, string message, string? planId = null, int? layerIndex = null, JsonObject? data = null) {
         BuildEvent evt;
         Action<BuildEvent>[] sinks;
-        lock (_gate)
-        {
-            evt = new BuildEvent
-            {
+        lock (_gate) {
+            evt = new BuildEvent {
                 Sequence = _sequence++,
                 Timestamp = DateTimeOffset.UtcNow,
                 Level = level,
@@ -94,30 +83,23 @@ public sealed class BuildLog : IBuildLog
             sinks = _sinks.ToArray();
         }
 
-        if (EchoConsole)
-        {
+        if (EchoConsole) {
             EchoToConsole(evt);
         }
-        foreach (var sink in sinks)
-        {
-            try
-            {
+        foreach (var sink in sinks) {
+            try {
                 sink(evt);
             }
-            catch
-            {
+            catch {
                 // A broken sink must never take down the build.
             }
         }
     }
 
-    private static void EchoToConsole(BuildEvent evt)
-    {
+    private static void EchoToConsole(BuildEvent evt) {
         var previous = Console.ForegroundColor;
-        try
-        {
-            Console.ForegroundColor = evt.Level switch
-            {
+        try {
+            Console.ForegroundColor = evt.Level switch {
                 BuildEventLevel.Warn => ConsoleColor.Yellow,
                 BuildEventLevel.Error => ConsoleColor.Red,
                 BuildEventLevel.Debug => ConsoleColor.DarkGray,
@@ -126,30 +108,24 @@ public sealed class BuildLog : IBuildLog
             var prefix = evt.PlanId is null ? "" : $"[{evt.PlanId}] ";
             Console.WriteLine($"{evt.Timestamp:HH:mm:ss} {evt.Level.ToString().ToUpperInvariant(),5} {prefix}{evt.Message}");
         }
-        finally
-        {
+        finally {
             Console.ForegroundColor = previous;
         }
     }
 
-    public IReadOnlyList<BuildEvent> Snapshot()
-    {
-        lock (_gate)
-        {
+    public IReadOnlyList<BuildEvent> Snapshot() {
+        lock (_gate) {
             return _events.ToArray();
         }
     }
 
-    private void Detach(Action<BuildEvent> sink)
-    {
-        lock (_gate)
-        {
+    private void Detach(Action<BuildEvent> sink) {
+        lock (_gate) {
             _sinks.Remove(sink);
         }
     }
 
-    private sealed class SinkToken(BuildLog owner, Action<BuildEvent> sink) : IDisposable
-    {
+    private sealed class SinkToken(BuildLog owner, Action<BuildEvent> sink) : IDisposable {
         public void Dispose() => owner.Detach(sink);
     }
 }

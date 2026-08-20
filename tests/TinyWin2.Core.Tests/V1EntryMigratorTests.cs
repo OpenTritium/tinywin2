@@ -3,12 +3,9 @@ using TinyWin2.Core.Plans;
 
 namespace TinyWin2.Core.Tests;
 
-public sealed class V1EntryMigratorTests
-{
-    private static JsonObject V1Entry(string id, string handler, JsonObject parameters, Action<JsonObject>? mutate = null)
-    {
-        var entry = new JsonObject
-        {
+public sealed class V1EntryMigratorTests {
+    private static JsonObject V1Entry(string id, string handler, JsonObject parameters, Action<JsonObject>? mutate = null) {
+        var entry = new JsonObject {
             ["schemaVersion"] = 1,
             ["id"] = id,
             ["version"] = "1.0.0",
@@ -25,8 +22,7 @@ public sealed class V1EntryMigratorTests
     }
 
     [Test]
-    public async Task MergesDisableAndConfigurePairsIntoEnumArgPlan()
-    {
+    public async Task MergesDisableAndConfigurePairsIntoEnumArgPlan() {
         var output = V1EntryMigrator.Migrate([
             ("a.json", V1Entry("registry.delay-workstation-service", "Registry.ConfigureOfflineService",
                 new JsonObject { ["services"] = new JsonArray("LanmanWorkstation"), ["startMode"] = "DelayedAuto" },
@@ -58,8 +54,7 @@ public sealed class V1EntryMigratorTests
     }
 
     [Test]
-    public async Task StandaloneDisableBecomesFixedDisabledPlan()
-    {
+    public async Task StandaloneDisableBecomesFixedDisabledPlan() {
         var output = V1EntryMigrator.Migrate([
             ("spooler.json", V1Entry("registry.disable-print-spooler", "Registry.DisableOfflineService",
                 new JsonObject { ["services"] = new JsonArray("Spooler") }, o => o["risk"] = "High")),
@@ -73,8 +68,7 @@ public sealed class V1EntryMigratorTests
     }
 
     [Test]
-    public async Task RegistryValueEntryConvertsHiveTypeAndData()
-    {
+    public async Task RegistryValueEntryConvertsHiveTypeAndData() {
         var output = V1EntryMigrator.Migrate([
             ("uac.json", V1Entry("registry.disable-uac", "Registry.SetOfflineValue", new JsonObject
             {
@@ -96,8 +90,7 @@ public sealed class V1EntryMigratorTests
     }
 
     [Test]
-    public async Task FeatureAndCapabilityEntriesSplitByPrefix()
-    {
+    public async Task FeatureAndCapabilityEntriesSplitByPrefix() {
         var output = V1EntryMigrator.Migrate([
             ("hv.json", V1Entry("dism.remove-hyper-v", "Dism.RemoveOptionalComponent", new JsonObject
             {
@@ -115,8 +108,7 @@ public sealed class V1EntryMigratorTests
     }
 
     [Test]
-    public async Task CrossPlanConflictsRewireToNewIds()
-    {
+    public async Task CrossPlanConflictsRewireToNewIds() {
         var output = V1EntryMigrator.Migrate([
             ("a.json", V1Entry("dism.remove-foo", "Dism.RemoveOptionalComponent",
                 new JsonObject { ["features"] = new JsonArray("FooFeature") },
@@ -130,8 +122,7 @@ public sealed class V1EntryMigratorTests
     }
 
     [Test]
-    public async Task MigratedPlansAllValidate()
-    {
+    public async Task MigratedPlansAllValidate() {
         var output = V1EntryMigrator.Migrate([
             ("x1.json", V1Entry("appx.remove-xbox", "Appx.RemoveProvisioned",
                 new JsonObject { ["patterns"] = new JsonArray("Microsoft.Xbox*") })),
@@ -145,8 +136,7 @@ public sealed class V1EntryMigratorTests
                 new JsonObject { ["packagePatterns"] = new JsonArray("^Foo-Package~") })),
         ]);
 
-        foreach (var plan in output.Plans)
-        {
+        foreach (var plan in output.Plans) {
             _ = PlanDefinition.FromJson(plan); // throws on invalid
         }
         await Assert.That(output.Plans.Count).IsEqualTo(5);

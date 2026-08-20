@@ -7,8 +7,7 @@ namespace TinyWin2.Core;
 /// One structured, serializable build event. The CLI streams these as JSONL
 /// (<c>--json-events</c>); the GUI renders them as the live progress/log feed.
 /// </summary>
-public sealed record BuildEvent
-{
+public sealed record BuildEvent {
     public int Sequence { get; init; }
     public DateTimeOffset Timestamp { get; init; }
     public BuildEventLevel Level { get; init; }
@@ -19,8 +18,7 @@ public sealed record BuildEvent
     public int? LayerIndex { get; init; }
     public JsonObject? Data { get; init; }
 
-    public JsonObject ToJson() => new()
-    {
+    public JsonObject ToJson() => new() {
         ["seq"] = Sequence,
         ["ts"] = Timestamp.ToString("O"),
         ["level"] = Level.ToString().ToLowerInvariant(),

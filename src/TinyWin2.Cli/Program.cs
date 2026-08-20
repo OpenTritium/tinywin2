@@ -2,25 +2,20 @@ using TinyWin2.Cli.Commands;
 
 namespace TinyWin2.Cli;
 
-internal static class Program
-{
+internal static class Program {
     private const string Version = "2.0.0-alpha1";
 
-    private static async Task<int> Main(string[] args)
-    {
+    private static async Task<int> Main(string[] args) {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
-        if (args.Length == 0)
-        {
+        if (args.Length == 0) {
             PrintUsage();
             return 0;
         }
 
-        try
-        {
+        try {
             var command = args[0].ToLowerInvariant();
             var rest = args[1..].ToList();
-            return command switch
-            {
+            return command switch {
                 "doctor" => DoctorCommand.Run(ToSingleOptions(ParseOptions(rest))),
                 "inspect" => await InspectCommand.RunAsync(rest),
                 "plan" => PlanCommand.Run(rest),
@@ -33,8 +28,7 @@ internal static class Program
                 _ => RunUnknown(command),
             };
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.Error.WriteLine($"error: {ex.Message}");
             Console.ResetColor();
@@ -43,33 +37,27 @@ internal static class Program
     }
 
     /// <summary>Parses <c>--key value</c> / <c>-k value</c> / flags; repeated keys accumulate.</summary>
-    internal static Dictionary<string, List<string>> ParseOptions(List<string> args)
-    {
+    internal static Dictionary<string, List<string>> ParseOptions(List<string> args) {
         var options = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-        for (var i = 0; i < args.Count; i++)
-        {
+        for (var i = 0; i < args.Count; i++) {
             var arg = args[i];
             var isLong = arg.StartsWith("--", StringComparison.Ordinal);
             var isShort = !isLong && arg.Length == 2 && arg[0] == '-' && char.IsLetter(arg[1]);
-            if (!isLong && !isShort)
-            {
+            if (!isLong && !isShort) {
                 continue;
             }
             var key = isLong ? arg[2..] : arg[1..].ToString();
             var value = "true";
-            if (i + 1 < args.Count)
-            {
+            if (i + 1 < args.Count) {
                 var next = args[i + 1];
                 var nextIsOption = next.StartsWith("--", StringComparison.Ordinal)
                     || (next.Length == 2 && next[0] == '-' && char.IsLetter(next[1]));
-                if (!nextIsOption)
-                {
+                if (!nextIsOption) {
                     value = next;
                     i++;
                 }
             }
-            if (!options.TryGetValue(key, out var values))
-            {
+            if (!options.TryGetValue(key, out var values)) {
                 options[key] = values = [];
             }
             values.Add(value);
@@ -81,27 +69,23 @@ internal static class Program
     internal static Dictionary<string, string> ToSingleOptions(Dictionary<string, List<string>> options) =>
         options.ToDictionary(kv => kv.Key, kv => kv.Value[^1], StringComparer.OrdinalIgnoreCase);
 
-    private static int RunVersion()
-    {
+    private static int RunVersion() {
         Console.WriteLine($"tinywin2 {Version}");
         return 0;
     }
 
     private static int RunHelp() => RunUnknown("help");
 
-    private static int RunUnknown(string command)
-    {
+    private static int RunUnknown(string command) {
         PrintUsage();
-        if (command != "help" && command != "--help" && command != "-h")
-        {
+        if (command != "help" && command != "--help" && command != "-h") {
             Console.Error.WriteLine($"unknown command: {command}");
             return 2;
         }
         return 0;
     }
 
-    private static void PrintUsage()
-    {
+    private static void PrintUsage() {
         Console.WriteLine($"""
             tinywin2 {Version} — layered Windows image slimming (VHDX differencing chains)
 

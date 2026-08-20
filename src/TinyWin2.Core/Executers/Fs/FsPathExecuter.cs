@@ -8,60 +8,47 @@ namespace TinyWin2.Core.Executers.Fs;
 /// present = copy files/directories from the plan's assets directory into the image.
 /// Desired absent: <c>{ paths:[...] }</c>; present: <c>{ path, source }</c>.
 /// </summary>
-public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter
-{
+public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
     public const string ResourceId = "fs.path";
     public string Resource => ResourceId;
 
-    public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct)
-    {
+    public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
         var differences = new List<ChangeItem>();
         var options = FsPathOptions.FromDesired(spec.Desired, spec.Ensure);
-        if (spec.Ensure == Ensure.Absent)
-        {
-            foreach (var relative in options.Paths)
-            {
+        if (spec.Ensure == Ensure.Absent) {
+            foreach (var relative in options.Paths) {
                 var target = ResolveInsideMount(context.MountPath, relative);
-                if (File.Exists(target) || Directory.Exists(target))
-                {
+                if (File.Exists(target) || Directory.Exists(target)) {
                     differences.Add(new ChangeItem(ChangeKind.Removed, relative));
                 }
             }
         }
-        else
-        {
+        else {
             _ = ResolveAssetSource(context, options.Source!);
             var target = ResolveInsideMount(context.MountPath, options.Path!);
-            if (!File.Exists(target) && !Directory.Exists(target))
-            {
+            if (!File.Exists(target) && !Directory.Exists(target)) {
                 differences.Add(new ChangeItem(ChangeKind.Created, options.Path!, After: options.Source));
             }
         }
         return Task.FromResult(new ResourceDiff(differences.Count == 0, differences));
     }
 
-    public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct)
-    {
+    public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
         var diff = await InspectAsync(context, spec, ct);
-        if (diff.Satisfied)
-        {
+        if (diff.Satisfied) {
             return ExecResult.Skipped("paths already in the desired state");
         }
         var options = FsPathOptions.FromDesired(spec.Desired, spec.Ensure);
 
-        if (spec.Ensure == Ensure.Absent)
-        {
+        if (spec.Ensure == Ensure.Absent) {
             var applied = new List<ChangeItem>();
-            foreach (var change in diff.Differences)
-            {
+            foreach (var change in diff.Differences) {
                 var target = ResolveInsideMount(context.MountPath, change.Target);
                 context.Log.Info($"removing image path: {change.Target}");
-                try
-                {
+                try {
                     Delete(target);
                 }
-                catch (UnauthorizedAccessException)
-                {
+                catch (UnauthorizedAccessException) {
                     await runner.RunAsync("takeown.exe", ["/F", target, "/A", "/R", "/D", "Y"], cancellationToken: ct);
                     await runner.RunAsync("icacls.exe", [target, "/grant", "*S-1-5-32-544:F", "/T"], cancellationToken: ct);
                     Delete(target);
@@ -73,15 +60,12 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter
 
         var assetPath = ResolveAssetSource(context, options.Source!);
         var destination = ResolveInsideMount(context.MountPath, options.Path!);
-        if (File.Exists(assetPath))
-        {
+        if (File.Exists(assetPath)) {
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
             File.Copy(assetPath, destination, overwrite: true);
         }
-        else
-        {
-            foreach (var file in Directory.EnumerateFiles(assetPath, "*", SearchOption.AllDirectories))
-            {
+        else {
+            foreach (var file in Directory.EnumerateFiles(assetPath, "*", SearchOption.AllDirectories)) {
                 var relativeToAsset = Path.GetRelativePath(assetPath, file);
                 var targetFile = Path.Combine(destination, relativeToAsset);
                 Directory.CreateDirectory(Path.GetDirectoryName(targetFile)!);
@@ -92,51 +76,41 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter
         return ExecResult.Applied(diff.Differences);
     }
 
-    private static void Delete(string target)
-    {
-        if (Directory.Exists(target))
-        {
+    private static void Delete(string target) {
+        if (Directory.Exists(target)) {
             Directory.Delete(target, recursive: true);
         }
-        else if (File.Exists(target))
-        {
+        else if (File.Exists(target)) {
             File.Delete(target);
         }
     }
 
     /// <summary>Rejects rooted paths, .. traversal, and anything escaping the mount root (v1 rules).</summary>
-    internal static string ResolveInsideMount(string mountPath, string relativePath)
-    {
+    internal static string ResolveInsideMount(string mountPath, string relativePath) {
         var normalized = relativePath.Replace('/', '\\').TrimStart('\\');
         if (string.IsNullOrWhiteSpace(normalized)
             || Path.IsPathRooted(relativePath)
-            || DotSegment().IsMatch(normalized))
-        {
+            || DotSegment().IsMatch(normalized)) {
             throw new ExecException($"unsafe relative path '{relativePath}'.");
         }
         var mountRoot = Path.GetFullPath(mountPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         var target = Path.GetFullPath(Path.Combine(mountRoot, normalized));
-        if (!target.StartsWith(mountRoot, StringComparison.OrdinalIgnoreCase))
-        {
+        if (!target.StartsWith(mountRoot, StringComparison.OrdinalIgnoreCase)) {
             throw new ExecException($"path '{relativePath}' resolved outside the mounted image.");
         }
         return target;
     }
 
-    private static string ResolveAssetSource(ExecContext context, string source)
-    {
-        if (context.PlanAssetsRoot is null)
-        {
+    private static string ResolveAssetSource(ExecContext context, string source) {
+        if (context.PlanAssetsRoot is null) {
             throw new ExecException("fs.path present requires a plan assets root, which this build did not provide.");
         }
         var assetRoot = Path.GetFullPath(context.PlanAssetsRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         var candidate = Path.GetFullPath(Path.Combine(assetRoot, source.Replace('/', '\\')));
-        if (!candidate.StartsWith(assetRoot, StringComparison.OrdinalIgnoreCase))
-        {
+        if (!candidate.StartsWith(assetRoot, StringComparison.OrdinalIgnoreCase)) {
             throw new ExecException($"asset source '{source}' resolved outside the plan assets directory.");
         }
-        if (!File.Exists(candidate) && !Directory.Exists(candidate))
-        {
+        if (!File.Exists(candidate) && !Directory.Exists(candidate)) {
             throw new ExecException($"asset source '{source}' was not found under '{context.PlanAssetsRoot}'.");
         }
         return candidate;

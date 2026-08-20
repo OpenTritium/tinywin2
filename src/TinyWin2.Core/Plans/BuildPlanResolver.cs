@@ -9,8 +9,7 @@ public sealed record PlanSelection(
     bool Enabled = true,
     IReadOnlyDictionary<string, JsonNode?>? Args = null);
 
-public enum LayerGranularity
-{
+public enum LayerGranularity {
     /// <summary>One VHDX layer per group (default; fewer, coarser layers).</summary>
     Group,
     /// <summary>One VHDX layer per plan (finest traceback).</summary>
@@ -32,8 +31,7 @@ public sealed record PlanStep(
     string Id,
     string Title,
     string Group,
-    IReadOnlyList<ResolvedPlan> Plans)
-{
+    IReadOnlyList<ResolvedPlan> Plans) {
     public bool IsComposite => Plans.Count > 1;
 }
 
@@ -44,13 +42,11 @@ public sealed record BuildPlan(
     LayerGranularity Granularity);
 
 public sealed class PlanResolutionException(IReadOnlyList<string> errors)
-    : Exception($"Build plan resolution failed:{Environment.NewLine}{string.Join(Environment.NewLine + "  - ", errors)}")
-{
+    : Exception($"Build plan resolution failed:{Environment.NewLine}{string.Join(Environment.NewLine + "  - ", errors)}") {
     public IReadOnlyList<string> Errors { get; } = errors;
 }
 
-public static class BuildPlanResolver
-{
+public static class BuildPlanResolver {
     /// <summary>
     /// Resolves selections against the catalog: expands requires (cycle-safe), rejects conflicts,
     /// validates/binds arguments, and produces the ordered sequence of atomic steps.
@@ -58,28 +54,22 @@ public static class BuildPlanResolver
     public static BuildPlan Resolve(
         PlanCatalog catalog,
         IReadOnlyList<PlanSelection> selections,
-        LayerGranularity granularity)
-    {
+        LayerGranularity granularity) {
         var errors = new List<string>();
         var requested = new List<string>();
         var explicitlyDisabled = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var selection in selections)
-        {
-            if (!catalog.ById.ContainsKey(selection.PlanId))
-            {
+        foreach (var selection in selections) {
+            if (!catalog.ById.ContainsKey(selection.PlanId)) {
                 errors.Add($"unknown plan id '{selection.PlanId}'.");
                 continue;
             }
-            if (selection.Enabled)
-            {
-                if (!requested.Contains(selection.PlanId, StringComparer.Ordinal))
-                {
+            if (selection.Enabled) {
+                if (!requested.Contains(selection.PlanId, StringComparer.Ordinal)) {
                     requested.Add(selection.PlanId);
                 }
             }
-            else
-            {
+            else {
                 explicitlyDisabled.Add(selection.PlanId);
             }
         }
@@ -88,33 +78,27 @@ public static class BuildPlanResolver
         var ordered = new List<string>();
         var visited = new HashSet<string>(StringComparer.Ordinal);
         var inProgress = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var planId in requested)
-        {
+        foreach (var planId in requested) {
             Visit(catalog, planId, ordered, visited, inProgress, explicitlyDisabled, errors);
         }
 
         // Conflict rejection over the final enabled set.
         var enabled = ordered.ToHashSet(StringComparer.Ordinal);
-        foreach (var planId in ordered)
-        {
-            foreach (var conflict in catalog.Get(planId).Conflicts)
-            {
-                if (enabled.Contains(conflict))
-                {
+        foreach (var planId in ordered) {
+            foreach (var conflict in catalog.Get(planId).Conflicts) {
+                if (enabled.Contains(conflict)) {
                     errors.Add($"plan '{planId}' conflicts with '{conflict}'.");
                 }
             }
         }
 
-        if (errors.Count > 0)
-        {
+        if (errors.Count > 0) {
             throw new PlanResolutionException(errors);
         }
 
         // Bind arguments and execs for every enabled plan.
         var resolvedById = new Dictionary<string, ResolvedPlan>(StringComparer.Ordinal);
-        foreach (var planId in ordered)
-        {
+        foreach (var planId in ordered) {
             var definition = catalog.Get(planId);
             var userArgs = selections.FirstOrDefault(s => s.PlanId == planId)?.Args;
             resolvedById[planId] = ResolvePlan(definition, userArgs);
@@ -134,22 +118,17 @@ public static class BuildPlanResolver
         HashSet<string> visited,
         HashSet<string> inProgress,
         HashSet<string> explicitlyDisabled,
-        List<string> errors)
-    {
-        if (visited.Contains(planId))
-        {
+        List<string> errors) {
+        if (visited.Contains(planId)) {
             return;
         }
-        if (!inProgress.Add(planId))
-        {
+        if (!inProgress.Add(planId)) {
             errors.Add($"dependency cycle detected at '{planId}'.");
             return;
         }
 
-        foreach (var required in catalog.Get(planId).Requires)
-        {
-            if (explicitlyDisabled.Contains(required))
-            {
+        foreach (var required in catalog.Get(planId).Requires) {
+            if (explicitlyDisabled.Contains(required)) {
                 errors.Add($"plan '{planId}' requires '{required}', which was explicitly disabled.");
                 continue;
             }
@@ -160,35 +139,28 @@ public static class BuildPlanResolver
         ordered.Add(planId);
     }
 
-    private static ResolvedPlan ResolvePlan(PlanDefinition definition, IReadOnlyDictionary<string, JsonNode?>? userArgs)
-    {
+    private static ResolvedPlan ResolvePlan(PlanDefinition definition, IReadOnlyDictionary<string, JsonNode?>? userArgs) {
         var errors = new List<string>();
         var values = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
 
         userArgs ??= new Dictionary<string, JsonNode?>();
-        foreach (var arg in definition.Arguments)
-        {
+        foreach (var arg in definition.Arguments) {
             JsonNode? value = arg.Default;
-            if (userArgs.TryGetValue(arg.Name, out var provided) && provided is not null)
-            {
+            if (userArgs.TryGetValue(arg.Name, out var provided) && provided is not null) {
                 value = provided;
             }
-            if (!ValidateValue(arg, value, out var reason))
-            {
+            if (!ValidateValue(arg, value, out var reason)) {
                 errors.Add($"argument '{arg.Name}': {reason}");
                 continue;
             }
             values[arg.Name] = value?.DeepClone();
         }
-        foreach (var name in userArgs.Keys)
-        {
-            if (definition.Arguments.All(a => a.Name != name))
-            {
+        foreach (var name in userArgs.Keys) {
+            if (definition.Arguments.All(a => a.Name != name)) {
                 errors.Add($"argument '{name}' is not declared by plan '{definition.Id}'.");
             }
         }
-        if (errors.Count > 0)
-        {
+        if (errors.Count > 0) {
             throw new PlanResolutionException(errors.Select(e => $"plan '{definition.Id}': {e}").ToArray());
         }
 
@@ -196,48 +168,40 @@ public static class BuildPlanResolver
             .Select(exec => new ExecSpec(exec.Resource, exec.Ensure, ArgBinder.BindExec(exec, values)))
             .ToArray();
         var boundArgs = new JsonObject();
-        foreach (var (name, value) in values)
-        {
+        foreach (var (name, value) in values) {
             boundArgs[name] = value?.DeepClone();
         }
         return new ResolvedPlan(definition, boundArgs, execs);
     }
 
-    private static bool ValidateValue(PlanArgument argument, JsonNode? value, out string reason)
-    {
+    private static bool ValidateValue(PlanArgument argument, JsonNode? value, out string reason) {
         reason = "";
-        if (value is null)
-        {
+        if (value is null) {
             reason = "no value and no default.";
             return false;
         }
-        switch (argument.Type)
-        {
+        switch (argument.Type) {
             case PlanArgumentType.Enum:
                 if (value is JsonValue text && text.TryGetValue<string>(out var option)
-                    && argument.Options.Any(o => string.Equals(o.Value, option, StringComparison.Ordinal)))
-                {
+                    && argument.Options.Any(o => string.Equals(o.Value, option, StringComparison.Ordinal))) {
                     return true;
                 }
                 reason = $"must be one of: {string.Join(", ", argument.Options.Select(o => o.Value))}.";
                 return false;
             case PlanArgumentType.Int:
-                if (value is JsonValue number && number.TryGetValue<int>(out _))
-                {
+                if (value is JsonValue number && number.TryGetValue<int>(out _)) {
                     return true;
                 }
                 reason = "must be an integer.";
                 return false;
             case PlanArgumentType.Bool:
-                if (value is JsonValue boolean && boolean.TryGetValue<bool>(out _))
-                {
+                if (value is JsonValue boolean && boolean.TryGetValue<bool>(out _)) {
                     return true;
                 }
                 reason = "must be a boolean.";
                 return false;
             case PlanArgumentType.String:
-                if (value is JsonValue s && s.TryGetValue<string>(out var str) && !string.IsNullOrWhiteSpace(str))
-                {
+                if (value is JsonValue s && s.TryGetValue<string>(out var str) && !string.IsNullOrWhiteSpace(str)) {
                     return true;
                 }
                 reason = "must be a non-empty string.";
@@ -252,8 +216,7 @@ public static class BuildPlanResolver
         IReadOnlyList<string> ordered,
         IReadOnlyDictionary<string, ResolvedPlan> resolvedById)
         => ordered
-            .Select(planId =>
-            {
+            .Select(planId => {
                 var resolved = resolvedById[planId];
                 return new PlanStep(planId, resolved.Definition.Title, resolved.Definition.Group, [resolved]);
             })
@@ -262,16 +225,13 @@ public static class BuildPlanResolver
     private static List<PlanStep> BuildGroupGranularitySteps(
         PlanCatalog catalog,
         IReadOnlyList<string> ordered,
-        IReadOnlyDictionary<string, ResolvedPlan> resolvedById)
-    {
+        IReadOnlyDictionary<string, ResolvedPlan> resolvedById) {
         // Group plans preserving plan topology; groups ordered by first appearance.
         var groupOrder = new List<string>();
         var groups = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-        foreach (var planId in ordered)
-        {
+        foreach (var planId in ordered) {
             var group = catalog.Get(planId).Group;
-            if (!groups.TryGetValue(group, out var members))
-            {
+            if (!groups.TryGetValue(group, out var members)) {
                 members = [];
                 groups[group] = members;
                 groupOrder.Add(group);
@@ -281,18 +241,14 @@ public static class BuildPlanResolver
 
         // Inter-group edges from requires: target's group must come before dependent's group.
         var dependsOn = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
-        foreach (var planId in ordered)
-        {
+        foreach (var planId in ordered) {
             var dependentGroup = catalog.Get(planId).Group;
-            foreach (var required in catalog.Get(planId).Requires)
-            {
+            foreach (var required in catalog.Get(planId).Requires) {
                 var requiredGroup = catalog.Get(required).Group;
-                if (requiredGroup == dependentGroup)
-                {
+                if (requiredGroup == dependentGroup) {
                     continue;
                 }
-                if (!dependsOn.TryGetValue(dependentGroup, out var deps))
-                {
+                if (!dependsOn.TryGetValue(dependentGroup, out var deps)) {
                     deps = [];
                     dependsOn[dependentGroup] = deps;
                 }
@@ -303,13 +259,11 @@ public static class BuildPlanResolver
         // Kahn's algorithm with first-appearance tiebreak; cyclic groups merge into one step.
         var pendingGroups = groupOrder.ToList();
         var steps = new List<PlanStep>();
-        while (pendingGroups.Count > 0)
-        {
+        while (pendingGroups.Count > 0) {
             var ready = pendingGroups
                 .Where(g => !dependsOn.TryGetValue(g, out var deps) || deps.All(d => !pendingGroups.Contains(d)))
                 .ToList();
-            if (ready.Count == 0)
-            {
+            if (ready.Count == 0) {
                 // Cycle across groups: merge everything still pending into one combined step,
                 // keeping plans in topological order so intra-step sequencing stays valid.
                 var mergedPlans = ordered
@@ -323,8 +277,7 @@ public static class BuildPlanResolver
                     mergedPlans));
                 break;
             }
-            foreach (var group in ready)
-            {
+            foreach (var group in ready) {
                 steps.Add(new PlanStep(
                     $"group:{group}",
                     group,

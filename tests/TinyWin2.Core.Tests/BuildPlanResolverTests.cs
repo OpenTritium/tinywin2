@@ -4,22 +4,18 @@ using TinyWin2.Core.Plans;
 
 namespace TinyWin2.Core.Tests;
 
-public sealed class BuildPlanResolverTests : IDisposable
-{
+public sealed class BuildPlanResolverTests : IDisposable {
     private readonly string _directory = TestPlans.CreateTempDirectory();
 
-    private PlanCatalog Catalog(params string[] ids)
-    {
-        foreach (var id in ids)
-        {
+    private PlanCatalog Catalog(params string[] ids) {
+        foreach (var id in ids) {
             TestPlans.WritePlan(_directory, id);
         }
         return PlanCatalog.LoadDirectory(_directory);
     }
 
     [Test]
-    public async Task PlanGranularityMakesOneStepPerPlan()
-    {
+    public async Task PlanGranularityMakesOneStepPerPlan() {
         var catalog = Catalog("a.one", "a.two", "b.three");
         var plan = BuildPlanResolver.Resolve(catalog,
             [new PlanSelection("a.one"), new PlanSelection("a.two"), new PlanSelection("b.three")],
@@ -31,8 +27,7 @@ public sealed class BuildPlanResolverTests : IDisposable
     }
 
     [Test]
-    public async Task GroupGranularityBundlesByGroupInFirstAppearanceOrder()
-    {
+    public async Task GroupGranularityBundlesByGroupInFirstAppearanceOrder() {
         var catalog = Catalog2(
             ("x.first", "GroupB"),
             ("x.second", "GroupA"),
@@ -51,8 +46,7 @@ public sealed class BuildPlanResolverTests : IDisposable
     }
 
     [Test]
-    public async Task RequiresArePulledInAndRunBeforeDependents()
-    {
+    public async Task RequiresArePulledInAndRunBeforeDependents() {
         var catalog = Catalog2(
             ("dep.dependent", "GroupA"),
             ("dep.base", "GroupB"));
@@ -70,8 +64,7 @@ public sealed class BuildPlanResolverTests : IDisposable
     }
 
     [Test]
-    public async Task DependencyCycleIsRejected()
-    {
+    public async Task DependencyCycleIsRejected() {
         TestPlans.WritePlan(_directory, "cyc.a", o => o["requires"] = new JsonArray("cyc.b"));
         TestPlans.WritePlan(_directory, "cyc.b", o => o["requires"] = new JsonArray("cyc.a"));
         var catalog = PlanCatalog.LoadDirectory(_directory);
@@ -83,8 +76,7 @@ public sealed class BuildPlanResolverTests : IDisposable
     }
 
     [Test]
-    public async Task ConflictsBetweenEnabledPlansAreRejected()
-    {
+    public async Task ConflictsBetweenEnabledPlansAreRejected() {
         TestPlans.WritePlan(_directory, "con.a", o => o["conflicts"] = new JsonArray("con.b"));
         TestPlans.WritePlan(_directory, "con.b");
         var catalog = PlanCatalog.LoadDirectory(_directory);
@@ -96,8 +88,7 @@ public sealed class BuildPlanResolverTests : IDisposable
     }
 
     [Test]
-    public async Task ExplicitlyDisabledDependencyIsRejected()
-    {
+    public async Task ExplicitlyDisabledDependencyIsRejected() {
         TestPlans.WritePlan(_directory, "dis.dependent", o => o["requires"] = new JsonArray("dis.dep"));
         TestPlans.WritePlan(_directory, "dis.dep");
         var catalog = PlanCatalog.LoadDirectory(_directory);
@@ -111,11 +102,9 @@ public sealed class BuildPlanResolverTests : IDisposable
     }
 
     [Test]
-    public async Task CrossGroupDependencyOrdersGroups()
-    {
+    public async Task CrossGroupDependencyOrdersGroups() {
         TestPlans.WritePlan(_directory, "g1.provider", o => o["group"] = "GroupLate");
-        TestPlans.WritePlan(_directory, "g2.consumer", o =>
-        {
+        TestPlans.WritePlan(_directory, "g2.consumer", o => {
             o["group"] = "GroupEarly";
             o["requires"] = new JsonArray("g1.provider");
         });
@@ -131,15 +120,12 @@ public sealed class BuildPlanResolverTests : IDisposable
     }
 
     [Test]
-    public async Task CrossGroupCycleMergesIntoSingleStep()
-    {
-        TestPlans.WritePlan(_directory, "m1.a", o =>
-        {
+    public async Task CrossGroupCycleMergesIntoSingleStep() {
+        TestPlans.WritePlan(_directory, "m1.a", o => {
             o["group"] = "GroupX";
             o["requires"] = new JsonArray("m2.b");
         });
-        TestPlans.WritePlan(_directory, "m2.b", o =>
-        {
+        TestPlans.WritePlan(_directory, "m2.b", o => {
             o["group"] = "GroupY";
             o["requires"] = new JsonArray("m1.a");
         });
@@ -153,12 +139,9 @@ public sealed class BuildPlanResolverTests : IDisposable
     }
 
     [Test]
-    public async Task ArgumentsValidateAgainstOptions()
-    {
-        TestPlans.WritePlan(_directory, "arg.plan", o =>
-        {
-            o["arguments"] = new JsonArray(new JsonObject
-            {
+    public async Task ArgumentsValidateAgainstOptions() {
+        TestPlans.WritePlan(_directory, "arg.plan", o => {
+            o["arguments"] = new JsonArray(new JsonObject {
                 ["name"] = "mode",
                 ["type"] = "enum",
                 ["default"] = "safe",
@@ -166,17 +149,13 @@ public sealed class BuildPlanResolverTests : IDisposable
                     new JsonObject { ["value"] = "safe", ["label"] = "安全" },
                     new JsonObject { ["value"] = "hard", ["label"] = "激进" }),
             });
-            o["execs"] = new JsonArray(new JsonObject
-            {
+            o["execs"] = new JsonArray(new JsonObject {
                 ["resource"] = "fs.path",
                 ["ensure"] = "absent",
-                ["with"] = new JsonObject
-                {
+                ["with"] = new JsonObject {
                     ["path"] = "X",
-                    ["level"] = new JsonObject
-                    {
-                        ["$map"] = new JsonObject
-                        {
+                    ["level"] = new JsonObject {
+                        ["$map"] = new JsonObject {
                             ["arg"] = "mode",
                             ["cases"] = new JsonObject { ["safe"] = 1, ["hard"] = 2 },
                         },
@@ -202,12 +181,9 @@ public sealed class BuildPlanResolverTests : IDisposable
     }
 
     [Test]
-    public async Task DefaultArgumentIsAppliedWhenUserOmitsIt()
-    {
-        TestPlans.WritePlan(_directory, "def.plan", o =>
-        {
-            o["arguments"] = new JsonArray(new JsonObject
-            {
+    public async Task DefaultArgumentIsAppliedWhenUserOmitsIt() {
+        TestPlans.WritePlan(_directory, "def.plan", o => {
+            o["arguments"] = new JsonArray(new JsonObject {
                 ["name"] = "mode",
                 ["type"] = "enum",
                 ["default"] = "safe",
@@ -215,8 +191,7 @@ public sealed class BuildPlanResolverTests : IDisposable
                     new JsonObject { ["value"] = "safe" },
                     new JsonObject { ["value"] = "hard" }),
             });
-            o["execs"] = new JsonArray(new JsonObject
-            {
+            o["execs"] = new JsonArray(new JsonObject {
                 ["resource"] = "fs.path",
                 ["ensure"] = "absent",
                 ["with"] = new JsonObject { ["p"] = new JsonObject { ["$arg"] = "mode" } },
@@ -230,8 +205,7 @@ public sealed class BuildPlanResolverTests : IDisposable
     }
 
     [Test]
-    public async Task UnknownArgumentNameIsRejected()
-    {
+    public async Task UnknownArgumentNameIsRejected() {
         TestPlans.WritePlan(_directory, "unk.plan");
         var catalog = PlanCatalog.LoadDirectory(_directory);
 
@@ -243,17 +217,14 @@ public sealed class BuildPlanResolverTests : IDisposable
         await Assert.That(ex.Message).Contains("not declared");
     }
 
-    private PlanCatalog Catalog2(params (string Id, string Group)[] entries)
-    {
-        foreach (var (id, group) in entries)
-        {
+    private PlanCatalog Catalog2(params (string Id, string Group)[] entries) {
+        foreach (var (id, group) in entries) {
             TestPlans.WritePlan(_directory, id, o => o["group"] = group);
         }
         return PlanCatalog.LoadDirectory(_directory);
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         try { Directory.Delete(_directory, recursive: true); } catch { /* best effort */ }
     }
 }

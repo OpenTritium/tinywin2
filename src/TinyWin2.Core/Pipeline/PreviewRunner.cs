@@ -8,8 +8,7 @@ using TinyWin2.Core.Plans;
 
 namespace TinyWin2.Core.Pipeline;
 
-public sealed record PreviewOptions
-{
+public sealed record PreviewOptions {
     public required string SourcePath { get; init; }
     public required int ImageIndex { get; init; }
     public required IReadOnlyList<PlanSelection> Selections { get; init; }
@@ -25,10 +24,8 @@ public sealed record PlanPreview(
     string Title,
     bool Satisfied,
     IReadOnlyList<ChangeItem> Differences,
-    IReadOnlyList<(string Resource, string SkipReason)> Notes)
-{
-    public JsonObject ToJson() => new()
-    {
+    IReadOnlyList<(string Resource, string SkipReason)> Notes) {
+    public JsonObject ToJson() => new() {
         ["planId"] = PlanId,
         ["title"] = Title,
         ["alreadyInDesiredState"] = Satisfied,
@@ -44,10 +41,8 @@ public sealed class PreviewRunner(
     IProcessRunner runner,
     ExecuterRegistry executers,
     ILayerBackend layerBackend,
-    BuildLog log)
-{
-    public async Task<IReadOnlyList<PlanPreview>> RunAsync(PreviewOptions options, CancellationToken ct)
-    {
+    BuildLog log) {
+    public async Task<IReadOnlyList<PlanPreview>> RunAsync(PreviewOptions options, CancellationToken ct) {
         var plan = BuildPlanResolver.Resolve(options.Catalog, options.Selections, options.Granularity);
         executers.ValidateBuildPlan(plan);
         log.Phase = "preview";
@@ -55,43 +50,35 @@ public sealed class PreviewRunner(
 
         var resolver = new SourceImageResolver(runner, log);
         var source = await resolver.ResolveAsync(options.SourcePath, ct);
-        try
-        {
+        try {
             Directory.CreateDirectory(options.WorkDirectory);
             var stagingWim = Path.Combine(options.WorkDirectory, "install.source.wim");
-            if (source.IsEsd)
-            {
+            if (source.IsEsd) {
                 await resolver.ExportIndexToWimAsync(source.InstallImagePath, options.ImageIndex, stagingWim, fast: true, ct);
             }
-            else
-            {
+            else {
                 File.Copy(source.InstallImagePath, stagingWim, overwrite: true);
             }
 
             var stack = VhdLayerStack.Load(options.WorkDirectory, layerBackend, log);
             await stack.EnsureBaseAsync(options.BaseVhdxMaximumMb, "TinyWin2-preview", ct);
             log.Info("applying source image into the preview base layer");
-            await stack.ApplyImageToBaseAsync(async (mount, token) =>
-            {
+            await stack.ApplyImageToBaseAsync(async (mount, token) => {
                 await runner.RunAsync("dism.exe",
                     ["/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}", $"/ApplyDir:{mount}"],
                     new ProcessRunOptions { Timeout = TimeSpan.FromHours(2) }, token);
             }, ct);
 
             var letter = await layerBackend.AttachAsync(stack.BaseVhdxPath, ct);
-            try
-            {
+            try {
                 var previews = new List<PlanPreview>();
                 var hiveCache = new Executers.Registry.RegistryHiveCache($"{letter}:\\", runner);
                 var context = new ExecContext($"{letter}:\\", log, 0, fastMode: true) { Hives = hiveCache };
-                foreach (var step in plan.Steps)
-                {
-                    foreach (var resolved in step.Plans)
-                    {
+                foreach (var step in plan.Steps) {
+                    foreach (var resolved in step.Plans) {
                         var differences = new List<ChangeItem>();
                         var notes = new List<(string, string)>();
-                        foreach (var exec in resolved.Execs)
-                        {
+                        foreach (var exec in resolved.Execs) {
                             var diff = await executers.Get(exec.Resource).InspectAsync(context, exec, ct);
                             differences.AddRange(diff.Differences.Where(d => d.Kind != ChangeKind.Skipped));
                             notes.AddRange(diff.Differences
@@ -109,13 +96,11 @@ public sealed class PreviewRunner(
                 await hiveCache.UnloadAllAsync(log, ct);
                 return previews;
             }
-            finally
-            {
+            finally {
                 await layerBackend.DetachAsync(stack.BaseVhdxPath, ct);
             }
         }
-        finally
-        {
+        finally {
             await resolver.DismountIsoAsync(source, ct);
         }
     }

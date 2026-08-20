@@ -5,12 +5,9 @@ using TinyWin2.Core.Plans;
 namespace TinyWin2.Tools.MigrateV1;
 
 /// <summary>One-shot migration: v1 entries/*.json → v2 plans/*.json + report.</summary>
-internal static class Program
-{
-    private static int Main(string[] args)
-    {
-        if (args.Length < 2)
-        {
+internal static class Program {
+    private static int Main(string[] args) {
+        if (args.Length < 2) {
             Console.Error.WriteLine("usage: tinywin2-migrate-v1 <v1-entries-dir> <v2-plans-dir> [--profile-out <file>]");
             return 2;
         }
@@ -24,11 +21,9 @@ internal static class Program
         Console.WriteLine($"migrating {files.Count} v1 entries from {entriesDir}");
 
         var entries = new List<(string, JsonObject)>();
-        foreach (var file in files)
-        {
+        foreach (var file in files) {
             var node = JsonNode.Parse(File.ReadAllText(file));
-            if (node is JsonObject obj)
-            {
+            if (node is JsonObject obj) {
                 entries.Add((Path.GetFileName(file), obj));
             }
         }
@@ -37,21 +32,18 @@ internal static class Program
 
         Directory.CreateDirectory(plansDir);
         var options = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-        foreach (var plan in output.Plans)
-        {
+        foreach (var plan in output.Plans) {
             var id = plan["id"]!.GetValue<string>();
             File.WriteAllText(Path.Combine(plansDir, id + ".json"), plan.ToJsonString(options));
         }
         Console.WriteLine($"wrote {output.Plans.Count} plans → {plansDir}");
 
-        foreach (var warning in output.Warnings)
-        {
+        foreach (var warning in output.Warnings) {
             Console.WriteLine($"  warn: {warning}");
         }
 
         // Migration report: old→new id mapping for traceability.
-        var report = new JsonObject
-        {
+        var report = new JsonObject {
             ["source"] = entriesDir,
             ["count"] = output.Plans.Count,
             ["map"] = new JsonObject(output.IdMap
@@ -64,19 +56,16 @@ internal static class Program
         Console.WriteLine($"report → {Path.GetFullPath(reportPath)}");
 
         // Optional: bundled profile selecting every Standard-tier plan (v1 常规档).
-        if (profileOut is not null)
-        {
+        if (profileOut is not null) {
             var standardPlans = output.Plans
                 .Where(p => p["tier"]?.GetValue<string>() == "Standard")
                 .Select(p => p["id"]!.GetValue<string>())
                 .ToList();
-            var profile = new JsonObject
-            {
+            var profile = new JsonObject {
                 ["schemaVersion"] = 1,
                 ["name"] = "standard-safe",
                 ["description"] = "v1 Standard tier equivalent: all low-risk common plans.",
-                ["selections"] = new JsonArray(standardPlans.Select(id => (JsonNode)new JsonObject
-                {
+                ["selections"] = new JsonArray(standardPlans.Select(id => (JsonNode)new JsonObject {
                     ["planId"] = id,
                     ["enabled"] = true,
                 }).ToArray()),

@@ -11,14 +11,11 @@ namespace TinyWin2.Core.Tests;
 /// Boundary validation: every malformed `with` payload is rejected at the single
 /// JsonNode→record edge, before any executer logic runs.
 /// </summary>
-public sealed class OptionsValidationTests
-{
+public sealed class OptionsValidationTests {
     [Test]
-    public async Task RegistryServiceRejectsUnknownStartMode()
-    {
+    public async Task RegistryServiceRejectsUnknownStartMode() {
         var ex = Assert.Throws<ExecException>(() =>
-            RegistryServiceOptions.FromDesired(new JsonObject
-            {
+            RegistryServiceOptions.FromDesired(new JsonObject {
                 ["services"] = new JsonArray("Svc"),
                 ["start"] = "sometimes",
             }))!;
@@ -27,8 +24,7 @@ public sealed class OptionsValidationTests
     }
 
     [Test]
-    public async Task RegistryServiceRequiresTargetList()
-    {
+    public async Task RegistryServiceRequiresTargetList() {
         var ex = Assert.Throws<ExecException>(() =>
             RegistryServiceOptions.FromDesired(new JsonObject { ["start"] = "auto" }))!;
 
@@ -36,11 +32,9 @@ public sealed class OptionsValidationTests
     }
 
     [Test]
-    public async Task RegistryServiceRejectsInvalidCharacters()
-    {
+    public async Task RegistryServiceRejectsInvalidCharacters() {
         var ex = Assert.Throws<ExecException>(() =>
-            RegistryServiceOptions.FromDesired(new JsonObject
-            {
+            RegistryServiceOptions.FromDesired(new JsonObject {
                 ["services"] = new JsonArray("Bad Service!"),
                 ["start"] = "auto",
             }))!;
@@ -49,10 +43,8 @@ public sealed class OptionsValidationTests
     }
 
     [Test]
-    public async Task RegistryServiceExposesStartDwordAndDelayedFlag()
-    {
-        var options = RegistryServiceOptions.FromDesired(new JsonObject
-        {
+    public async Task RegistryServiceExposesStartDwordAndDelayedFlag() {
+        var options = RegistryServiceOptions.FromDesired(new JsonObject {
             ["services"] = new JsonArray("Svc"),
             ["start"] = "delayedAuto",
         });
@@ -62,10 +54,8 @@ public sealed class OptionsValidationTests
     }
 
     [Test]
-    public async Task RegistryValueNormalizesSingleValueShorthand()
-    {
-        var options = RegistryValueOptions.FromDesired(new JsonObject
-        {
+    public async Task RegistryValueNormalizesSingleValueShorthand() {
+        var options = RegistryValueOptions.FromDesired(new JsonObject {
             ["hive"] = "software",
             ["key"] = "K",
             ["name"] = "V",
@@ -78,11 +68,9 @@ public sealed class OptionsValidationTests
     }
 
     [Test]
-    public async Task RegistryValueRejectsDeleteKeysInPresentMode()
-    {
+    public async Task RegistryValueRejectsDeleteKeysInPresentMode() {
         var ex = Assert.Throws<ExecException>(() =>
-            RegistryValueOptions.FromDesired(new JsonObject
-            {
+            RegistryValueOptions.FromDesired(new JsonObject {
                 ["hive"] = "software",
                 ["deleteKeys"] = new JsonArray("K"),
             }, Ensure.Present))!;
@@ -91,11 +79,9 @@ public sealed class OptionsValidationTests
     }
 
     [Test]
-    public async Task RegistryValueRejectsUnknownHive()
-    {
+    public async Task RegistryValueRejectsUnknownHive() {
         var ex = Assert.Throws<ExecException>(() =>
-            RegistryValueOptions.FromDesired(new JsonObject
-            {
+            RegistryValueOptions.FromDesired(new JsonObject {
                 ["hive"] = "hive_of_hades",
                 ["values"] = new JsonArray(),
             }, Ensure.Present))!;
@@ -104,10 +90,8 @@ public sealed class OptionsValidationTests
     }
 
     [Test]
-    public async Task FeatureDefaultsRemovePayloadAndValidatesList()
-    {
-        var options = FeatureOptions.FromDesired(new JsonObject
-        {
+    public async Task FeatureDefaultsRemovePayloadAndValidatesList() {
+        var options = FeatureOptions.FromDesired(new JsonObject {
             ["features"] = new JsonArray("Microsoft-Hyper-V"),
         });
         await Assert.That(options.RemovePayload).IsTrue();
@@ -118,10 +102,8 @@ public sealed class OptionsValidationTests
     }
 
     [Test]
-    public async Task PackagePrecompilesAndRejectsBadRegex()
-    {
-        var options = PackageOptions.FromDesired(new JsonObject
-        {
+    public async Task PackagePrecompilesAndRejectsBadRegex() {
+        var options = PackageOptions.FromDesired(new JsonObject {
             ["patterns"] = new JsonArray("^Foo~"),
         });
         await Assert.That(options.Patterns[0].IsMatch("Foo~123")).IsTrue();
@@ -132,11 +114,9 @@ public sealed class OptionsValidationTests
     }
 
     [Test]
-    public async Task DriverStoreRejectsPathedInfNames()
-    {
+    public async Task DriverStoreRejectsPathedInfNames() {
         var ex = Assert.Throws<ExecException>(() =>
-            DriverStoreOptions.FromDesired(new JsonObject
-            {
+            DriverStoreOptions.FromDesired(new JsonObject {
                 ["infNames"] = new JsonArray("C:\\evil\\path.inf"),
             }))!;
 
@@ -144,10 +124,8 @@ public sealed class OptionsValidationTests
     }
 
     [Test]
-    public async Task FsPathValidatesPerEnsureShape()
-    {
-        var absent = FsPathOptions.FromDesired(new JsonObject
-        {
+    public async Task FsPathValidatesPerEnsureShape() {
+        var absent = FsPathOptions.FromDesired(new JsonObject {
             ["paths"] = new JsonArray("inetpub"),
         }, Ensure.Absent);
         await Assert.That(absent.Paths.Count).IsEqualTo(1);

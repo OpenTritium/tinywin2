@@ -3,15 +3,12 @@ using TinyWin2.Core.Env;
 
 namespace TinyWin2.Cli.Commands;
 
-internal static class DoctorCommand
-{
-    public static int Run(Dictionary<string, string> options)
-    {
+internal static class DoctorCommand {
+    public static int Run(Dictionary<string, string> options) {
         var json = options.ContainsKey("json");
         var checks = EnvironmentDoctor.Check(options.TryGetValue("out", out var outDir) ? outDir : null);
 
-        if (json)
-        {
+        if (json) {
             var root = new JsonObject { ["checks"] = new JsonArray(checks.Select(c => (JsonNode)c.ToJson()).ToArray()) };
             Console.WriteLine(root.ToJsonString(JsonSerializerOptions));
             var failed = checks.Any(c => c.Required && !c.Ok);
@@ -19,8 +16,7 @@ internal static class DoctorCommand
         }
 
         var width = Math.Max("administrator".Length, checks.Max(c => c.Name.Length));
-        foreach (var check in checks)
-        {
+        foreach (var check in checks) {
             var marker = check.Ok ? "OK  " : check.Required ? "FAIL" : "WARN";
             var previous = Console.ForegroundColor;
             Console.ForegroundColor = check.Ok ? ConsoleColor.Green : check.Required ? ConsoleColor.Red : ConsoleColor.Yellow;
@@ -36,8 +32,7 @@ internal static class DoctorCommand
         return failedRequired == 0 ? 0 : 1;
     }
 
-    internal static readonly System.Text.Json.JsonSerializerOptions JsonSerializerOptions = new()
-    {
+    internal static readonly System.Text.Json.JsonSerializerOptions JsonSerializerOptions = new() {
         WriteIndented = true,
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };

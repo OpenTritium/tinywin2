@@ -6,8 +6,7 @@ namespace TinyWin2.Core.Executers;
 /// Classifies dism.exe outcomes by exit code (and, where needed, English/Chinese text hints),
 /// replacing v1's localized-regex error handling with stable numeric contracts.
 /// </summary>
-public enum DismOutcome
-{
+public enum DismOutcome {
     Success,
     SuccessRebootRequired,
     ProviderUnavailable,
@@ -17,8 +16,7 @@ public enum DismOutcome
     Fatal,
 }
 
-public static partial class DismErrors
-{
+public static partial class DismErrors {
     /// <summary>0x800F0813 — feature is permanent for this edition (v1: CBS_E_INVALID_INSTALL_STATE).</summary>
     public const int CbsEInvalidInstallState = unchecked((int)0x800F0813);
 
@@ -34,40 +32,32 @@ public static partial class DismErrors
     /// <summary>DISM success-with-reboot-required.</summary>
     public const int SuccessRebootRequired = 3010;
 
-    public static DismOutcome Classify(int exitCode, string output)
-    {
-        if (exitCode == 0)
-        {
+    public static DismOutcome Classify(int exitCode, string output) {
+        if (exitCode == 0) {
             return DismOutcome.Success;
         }
 
-        if (exitCode == SuccessRebootRequired)
-        {
+        if (exitCode == SuccessRebootRequired) {
             return DismOutcome.SuccessRebootRequired;
         }
 
-        if (exitCode == ComponentCleanup4350)
-        {
+        if (exitCode == ComponentCleanup4350) {
             return DismOutcome.ComponentCleanupUnsupported;
         }
 
-        if (exitCode == ErrorNotSupported)
-        {
+        if (exitCode == ErrorNotSupported) {
             return DismOutcome.ProviderUnavailable;
         }
 
-        if (exitCode == CbsEInvalidInstallState)
-        {
+        if (exitCode == CbsEInvalidInstallState) {
             return DismOutcome.InvalidInstallState;
         }
 
-        if (exitCode == CbsECannotUninstall)
-        {
+        if (exitCode == CbsECannotUninstall) {
             return DismOutcome.CannotUninstall;
         }
 
-        if (ProviderUnavailableText().IsMatch(output))
-        {
+        if (ProviderUnavailableText().IsMatch(output)) {
             return DismOutcome.ProviderUnavailable;
         }
 
@@ -80,22 +70,17 @@ public static partial class DismErrors
 }
 
 /// <summary>Parses dism.exe <c>/Format:List</c> output into records of key/value pairs.</summary>
-public static class DismListParser
-{
-    public static IReadOnlyList<Dictionary<string, string>> Parse(string output)
-    {
+public static class DismListParser {
+    public static IReadOnlyList<Dictionary<string, string>> Parse(string output) {
         var records = new List<Dictionary<string, string>>();
         Dictionary<string, string>? current = null;
-        foreach (var rawLine in output.Split('\n'))
-        {
+        foreach (var rawLine in output.Split('\n')) {
             var line = rawLine.TrimEnd('\r').Trim();
-            if (line.Length == 0)
-            {
+            if (line.Length == 0) {
                 continue;
             }
             var separator = line.IndexOf(':', StringComparison.Ordinal);
-            if (separator <= 0)
-            {
+            if (separator <= 0) {
                 continue;
             }
             var key = line[..separator].Trim();
@@ -103,14 +88,12 @@ public static class DismListParser
             if (key.Equals("Feature Name", StringComparison.OrdinalIgnoreCase)
                 || key.Equals("Capability Identity", StringComparison.OrdinalIgnoreCase)
                 || key.Equals("Package Identity", StringComparison.OrdinalIgnoreCase)
-                || key.Equals("DisplayName", StringComparison.OrdinalIgnoreCase))
-            {
+                || key.Equals("DisplayName", StringComparison.OrdinalIgnoreCase)) {
                 // These keys start a new record block.
                 current = [];
                 records.Add(current);
             }
-            if (current is null)
-            {
+            if (current is null) {
                 continue;
             }
             current[key] = value;

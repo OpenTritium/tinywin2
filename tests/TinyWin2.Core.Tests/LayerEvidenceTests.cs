@@ -2,13 +2,11 @@ using TinyWin2.Core.Layers;
 
 namespace TinyWin2.Core.Tests;
 
-public sealed class LayerEvidenceTests : IDisposable
-{
+public sealed class LayerEvidenceTests : IDisposable {
     private readonly string _root = TestPlans.CreateTempDirectory();
 
     [Test]
-    public async Task ManifestRoundTripsAndFiltersHiveTransactionNoise()
-    {
+    public async Task ManifestRoundTripsAndFiltersHiveTransactionNoise() {
         var imageDir = Path.Combine(_root, "image");
         Directory.CreateDirectory(Path.Combine(imageDir, "Windows", "System32", "config"));
         Directory.CreateDirectory(Path.Combine(imageDir, "inetpub", "wwwroot"));
@@ -35,8 +33,7 @@ public sealed class LayerEvidenceTests : IDisposable
         await Assert.That(loaded.ContainsKey("inetpub\\wwwroot")).IsFalse(); // directories are not listed
         await Assert.That(loaded.ContainsKey("Users\\All Users")).IsTrue(); // junction recorded as entry
         // hive transaction noise filtered out
-        foreach (var key in loaded.Keys)
-        {
+        foreach (var key in loaded.Keys) {
             await Assert.That(key.Contains("regtrans-ms")).IsFalse();
             await Assert.That(key.Contains(".TM.")).IsFalse();
             await Assert.That(key.EndsWith(".LOG1")).IsFalse();
@@ -44,8 +41,7 @@ public sealed class LayerEvidenceTests : IDisposable
     }
 
     [Test]
-    public async Task RegistrySnapshotSplitsByHive()
-    {
+    public async Task RegistrySnapshotSplitsByHive() {
         var snapshot = ";;hive software\r\nWindows Registry Editor Version 5.00\r\n[HKEY_LOCAL_MACHINE\\TinyWin\\K]\r\n\"A\"=dword:1\r\n" +
                        ";;hive system\r\n[HKEY_LOCAL_MACHINE\\TinyWin\\S]\r\n";
         var hives = LayerEvidence.SplitByHive(snapshot);
@@ -55,8 +51,7 @@ public sealed class LayerEvidenceTests : IDisposable
         await Assert.That(hives["system"]).Contains("HKEY_LOCAL_MACHINE");
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
     }
 }

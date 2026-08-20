@@ -11,33 +11,27 @@ public sealed record ProfileSelection(string PlanId, bool Enabled, JsonObject? A
 public sealed record Profile(
     string Name,
     string? Description,
-    IReadOnlyList<ProfileSelection> Selections)
-{
+    IReadOnlyList<ProfileSelection> Selections) {
     public const int CurrentSchemaVersion = 1;
 
-    public JsonObject ToJson() => new()
-    {
+    public JsonObject ToJson() => new() {
         ["schemaVersion"] = CurrentSchemaVersion,
         ["name"] = Name,
         ["description"] = Description,
-        ["selections"] = new JsonArray(Selections.Select(s => (JsonNode)new JsonObject
-        {
+        ["selections"] = new JsonArray(Selections.Select(s => (JsonNode)new JsonObject {
             ["planId"] = s.PlanId,
             ["enabled"] = s.Enabled,
             ["args"] = s.Args?.DeepClone(),
         }).ToArray()),
     };
 
-    public static Profile FromJson(JsonObject obj)
-    {
+    public static Profile FromJson(JsonObject obj) {
         var name = obj["name"]?.GetValue<string>()
                    ?? throw new JsonException("profile requires 'name'.");
         var description = obj["description"]?.GetValue<string>();
         var selections = new List<ProfileSelection>();
-        if (obj["selections"] is JsonArray array)
-        {
-            foreach (var node in array.OfType<JsonObject>())
-            {
+        if (obj["selections"] is JsonArray array) {
+            foreach (var node in array.OfType<JsonObject>()) {
                 var planId = node["planId"]?.GetValue<string>()
                              ?? throw new JsonException("profile selection requires 'planId'.");
                 selections.Add(new ProfileSelection(
@@ -50,20 +44,16 @@ public sealed record Profile(
     }
 }
 
-public static class ProfileStore
-{
-    public static Profile Load(string path)
-    {
+public static class ProfileStore {
+    public static Profile Load(string path) {
         var node = JsonNode.Parse(File.ReadAllText(path));
-        if (node is not JsonObject obj)
-        {
+        if (node is not JsonObject obj) {
             throw new JsonException($"profile '{path}' is not a JSON object.");
         }
         return Profile.FromJson(obj);
     }
 
-    public static void Save(Profile profile, string path)
-    {
+    public static void Save(Profile profile, string path) {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         File.WriteAllText(path, profile.ToJson().ToPrettyString());
     }
@@ -81,15 +71,12 @@ public static class ProfileStore
             .Distinct()
             .ToList();
 
-    private static IReadOnlyDictionary<string, JsonNode?>? ToStringMap(JsonObject? args)
-    {
-        if (args is null)
-        {
+    private static IReadOnlyDictionary<string, JsonNode?>? ToStringMap(JsonObject? args) {
+        if (args is null) {
             return null;
         }
         var map = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
-        foreach (var (key, value) in args)
-        {
+        foreach (var (key, value) in args) {
             map[key] = value?.DeepClone();
         }
         return map;

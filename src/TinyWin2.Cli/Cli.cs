@@ -8,28 +8,22 @@ using TinyWin2.Core.Plans;
 namespace TinyWin2.Cli;
 
 /// <summary>Shared CLI plumbing: repo/plans directory discovery, selection parsing, engine wiring.</summary>
-internal static class Cli
-{
-    public static string FindPlansDirectory(string? explicitPath)
-    {
-        if (explicitPath is not null)
-        {
+internal static class Cli {
+    public static string FindPlansDirectory(string? explicitPath) {
+        if (explicitPath is not null) {
             return Directory.Exists(explicitPath)
                 ? Path.GetFullPath(explicitPath)
                 : throw new DirectoryNotFoundException($"plans directory not found: {explicitPath}");
         }
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        for (var i = 0; i < 8 && directory is not null; i++, directory = directory.Parent)
-        {
+        for (var i = 0; i < 8 && directory is not null; i++, directory = directory.Parent) {
             var candidate = Path.Combine(directory.FullName, "plans");
-            if (Directory.Exists(candidate))
-            {
+            if (Directory.Exists(candidate)) {
                 return candidate;
             }
         }
         var fallback = Path.Combine(Environment.CurrentDirectory, "plans");
-        if (Directory.Exists(fallback))
-        {
+        if (Directory.Exists(fallback)) {
             return Path.GetFullPath(fallback);
         }
         throw new DirectoryNotFoundException(
@@ -37,18 +31,14 @@ internal static class Cli
     }
 
     /// <summary>Builds the effective selection list from --profile, --plan and --set options.</summary>
-    public static List<PlanSelection> BuildSelections(Dictionary<string, List<string>> options, PlanCatalog catalog)
-    {
+    public static List<PlanSelection> BuildSelections(Dictionary<string, List<string>> options, PlanCatalog catalog) {
         var selections = new List<PlanSelection>();
 
-        if (options.TryGetValue("profile", out var profilePaths))
-        {
-            foreach (var profilePath in profilePaths)
-            {
+        if (options.TryGetValue("profile", out var profilePaths)) {
+            foreach (var profilePath in profilePaths) {
                 var profile = Core.Profiles.ProfileStore.Load(profilePath);
                 var unknown = Core.Profiles.ProfileStore.UnknownPlans(profile, catalog);
-                if (unknown.Count > 0)
-                {
+                if (unknown.Count > 0) {
                     throw new InvalidOperationException(
                         $"profile '{profilePath}' references unknown plans: {string.Join(", ", unknown)}");
                 }
@@ -56,39 +46,30 @@ internal static class Cli
             }
         }
 
-        void EnsureSelected(string planId)
-        {
-            if (!catalog.ById.ContainsKey(planId))
-            {
+        void EnsureSelected(string planId) {
+            if (!catalog.ById.ContainsKey(planId)) {
                 throw new ArgumentException($"unknown plan '{planId}' (see: tinywin2 plan list)");
             }
-            if (selections.All(s => s.PlanId != planId))
-            {
+            if (selections.All(s => s.PlanId != planId)) {
                 selections.Add(new PlanSelection(planId));
             }
         }
 
-        if (options.TryGetValue("plan", out var planIds))
-        {
-            foreach (var planId in planIds)
-            {
+        if (options.TryGetValue("plan", out var planIds)) {
+            foreach (var planId in planIds) {
                 EnsureSelected(planId);
             }
         }
 
-        if (options.TryGetValue("set", out var sets))
-        {
-            foreach (var set in sets)
-            {
+        if (options.TryGetValue("set", out var sets)) {
+            foreach (var set in sets) {
                 var separator = set.IndexOf('=');
-                if (separator <= 0)
-                {
+                if (separator <= 0) {
                     throw new ArgumentException($"--set expects planId.arg=value, got '{set}'");
                 }
                 var target = set[..separator];
                 var dot = target.LastIndexOf('.');
-                if (dot <= 0)
-                {
+                if (dot <= 0) {
                     throw new ArgumentException($"--set expects planId.arg=value, got '{set}'");
                 }
                 var planId = target[..dot];
@@ -102,24 +83,21 @@ internal static class Cli
             }
         }
 
-        if (selections.Count == 0)
-        {
+        if (selections.Count == 0) {
             throw new ArgumentException("no plans selected: pass --profile, --plan and/or --set.");
         }
         return selections;
     }
 
     public static JsonNode ParseValue(string text) =>
-        text.Trim() switch
-        {
+        text.Trim() switch {
             "true" => JsonValue.Create(true),
             "false" => JsonValue.Create(false),
             _ when int.TryParse(text, out var number) => JsonValue.Create(number),
             _ => JsonValue.Create(text),
         };
 
-    public static (IProcessRunner Runner, ExecuterRegistry Executers, ILayerBackend Layers) CreateEngineParts()
-    {
+    public static (IProcessRunner Runner, ExecuterRegistry Executers, ILayerBackend Layers) CreateEngineParts() {
         var runner = new ProcessRunner();
         return (runner, new ExecuterRegistry(runner), LayerBackendFactory.Create(runner));
     }

@@ -9,8 +9,7 @@ using Windows.UI;
 
 namespace TinyWin2.Gui.Pages;
 
-public sealed class RowItem
-{
+public sealed class RowItem {
     public string? Header { get; init; }
     public string Count => Plans.Count > 0 ? $"({Plans.Count})" : "";
     public PlanItemViewModel? Plan { get; init; }
@@ -18,8 +17,7 @@ public sealed class RowItem
     public bool IsHeader => Plan is null;
 }
 
-public sealed class RowTemplateSelector : DataTemplateSelector
-{
+public sealed class RowTemplateSelector : DataTemplateSelector {
     public DataTemplate? HeaderTemplate { get; set; }
     public DataTemplate? PlanTemplate { get; set; }
 
@@ -27,12 +25,10 @@ public sealed class RowTemplateSelector : DataTemplateSelector
         item is RowItem { IsHeader: true } ? HeaderTemplate : PlanTemplate;
 }
 
-public sealed partial class ItemsPage : Page
-{
+public sealed partial class ItemsPage : Page {
     private readonly ObservableCollection<RowItem> _rows = [];
 
-    public ItemsPage()
-    {
+    public ItemsPage() {
         InitializeComponent();
         LoadCatalog();
         PlanList.ItemsSource = _rows;
@@ -40,26 +36,20 @@ public sealed partial class ItemsPage : Page
 
     private WizardState State => WizardState.Current;
 
-    private void LoadCatalog()
-    {
-        try
-        {
-            if (State.Catalog is null)
-            {
+    private void LoadCatalog() {
+        try {
+            if (State.Catalog is null) {
                 State.PlansDirectory = Services.RepositoryLocator.FindPlansDirectory();
                 State.Catalog = PlanCatalog.LoadDirectory(State.PlansDirectory);
-                foreach (var definition in State.Catalog.Plans)
-                {
+                foreach (var definition in State.Catalog.Plans) {
                     var item = new PlanItemViewModel(definition);
                     item.SelectedChanged += UpdateSelectionCount;
                     State.Plans.Add(item);
                 }
             }
         }
-        catch (Exception ex)
-        {
-            _ = new ContentDialog
-            {
+        catch (Exception ex) {
+            _ = new ContentDialog {
                 Title = "加载 plan 目录失败",
                 Content = ex.Message,
                 CloseButtonText = "确定",
@@ -70,8 +60,7 @@ public sealed partial class ItemsPage : Page
         RebuildRows();
     }
 
-    private void RebuildRows()
-    {
+    private void RebuildRows() {
         var search = (SearchBox.Text ?? "").Trim();
         var tier = (TierFilter.SelectedItem as ComboBoxItem)?.Tag as string ?? "all";
 
@@ -82,12 +71,10 @@ public sealed partial class ItemsPage : Page
                 || p.Id.Contains(search, StringComparison.OrdinalIgnoreCase));
 
         _rows.Clear();
-        foreach (var group in State.Plans.Where(Filter).GroupBy(p => p.Group).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
-        {
+        foreach (var group in State.Plans.Where(Filter).GroupBy(p => p.Group).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)) {
             var headerRow = new RowItem { Header = group.Key, Plans = [.. group] };
             _rows.Add(headerRow);
-            foreach (var plan in group)
-            {
+            foreach (var plan in group) {
                 _rows.Add(new RowItem { Plan = plan, Plans = [plan] });
             }
         }
@@ -98,38 +85,29 @@ public sealed partial class ItemsPage : Page
 
     private void TierChanged(object sender, SelectionChangedEventArgs e) => RebuildRows();
 
-    private void SelectStandard(object sender, RoutedEventArgs e)
-    {
-        foreach (var plan in State.Plans)
-        {
+    private void SelectStandard(object sender, RoutedEventArgs e) {
+        foreach (var plan in State.Plans) {
             plan.IsSelected = plan.Tier == "Standard";
         }
     }
 
-    private void SelectNone(object sender, RoutedEventArgs e)
-    {
-        foreach (var plan in State.Plans)
-        {
+    private void SelectNone(object sender, RoutedEventArgs e) {
+        foreach (var plan in State.Plans) {
             plan.IsSelected = false;
         }
     }
 
-    private void GroupCheckChanged(object sender, RoutedEventArgs e)
-    {
-        if (sender is CheckBox { Tag: string header, IsChecked: { } checkedState } && State.Catalog is not null)
-        {
-            foreach (var plan in State.Plans.Where(p => p.Group == header))
-            {
+    private void GroupCheckChanged(object sender, RoutedEventArgs e) {
+        if (sender is CheckBox { Tag: string header, IsChecked: { } checkedState } && State.Catalog is not null) {
+            foreach (var plan in State.Plans.Where(p => p.Group == header)) {
                 plan.IsSelected = checkedState;
             }
         }
         UpdateSelectionCount();
     }
 
-    private void PlanSelected(object sender, SelectionChangedEventArgs e)
-    {
-        if (PlanList.SelectedItem is not RowItem { Plan: { } plan })
-        {
+    private void PlanSelected(object sender, SelectionChangedEventArgs e) {
+        if (PlanList.SelectedItem is not RowItem { Plan: { } plan }) {
             return;
         }
         DetailTitle.Text = plan.Title;
@@ -137,30 +115,24 @@ public sealed partial class ItemsPage : Page
         DetailDescription.Text = plan.Description;
 
         ArgumentPanel.Children.Clear();
-        foreach (var argument in plan.Arguments)
-        {
+        foreach (var argument in plan.Arguments) {
             var header = new TextBlock { Text = argument.Label, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
             ArgumentPanel.Children.Add(header);
-            if (argument.Type == "enum" && argument.Options.Count > 0)
-            {
+            if (argument.Type == "enum" && argument.Options.Count > 0) {
                 var combo = new ComboBox { Width = 260 };
-                foreach (var option in argument.Options)
-                {
+                foreach (var option in argument.Options) {
                     combo.Items.Add($"{option.Label}（风险 {option.Risk ?? "?"}）|{option.Value}");
                 }
                 var current = argument.Options.ToList().FindIndex(o => o.Value == argument.SelectedValue);
                 combo.SelectedIndex = current >= 0 ? current : 0;
-                combo.SelectionChanged += (_, _) =>
-                {
-                    if (combo.SelectedItem is string selected)
-                    {
+                combo.SelectionChanged += (_, _) => {
+                    if (combo.SelectedItem is string selected) {
                         argument.SelectedValue = selected.Split('|')[^1];
                     }
                 };
                 ArgumentPanel.Children.Add(combo);
             }
-            else
-            {
+            else {
                 var box = new TextBox { Width = 260, Text = argument.SelectedValue };
                 box.TextChanged += (_, _) => argument.SelectedValue = box.Text;
                 ArgumentPanel.Children.Add(box);
@@ -168,55 +140,44 @@ public sealed partial class ItemsPage : Page
         }
     }
 
-    private async void ImportProfile(object sender, RoutedEventArgs e)
-    {
+    private async void ImportProfile(object sender, RoutedEventArgs e) {
         var picker = new Windows.Storage.Pickers.FileOpenPicker { FileTypeFilter = { ".json" } };
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!));
         var file = await picker.PickSingleFileAsync();
-        if (file is null)
-        {
+        if (file is null) {
             return;
         }
         var dialog = new { FileName = file.Path };
-        try
-        {
+        try {
             var profile = ProfileStore.Load(dialog.FileName);
             var unknown = ProfileStore.UnknownPlans(profile, State.Catalog!);
-            foreach (var plan in State.Plans)
-            {
+            foreach (var plan in State.Plans) {
                 plan.IsSelected = false;
             }
             var applied = 0;
-            foreach (var selection in profile.Selections.Where(s => s.Enabled))
-            {
+            foreach (var selection in profile.Selections.Where(s => s.Enabled)) {
                 var item = State.Plans.FirstOrDefault(p => p.Id == selection.PlanId);
-                if (item is null)
-                {
+                if (item is null) {
                     continue;
                 }
                 item.IsSelected = true;
                 applied++;
-                foreach (var argument in item.Arguments)
-                {
-                    if (selection.Args is not null && selection.Args.TryGetPropertyValue(argument.Name, out var value) && value is not null)
-                    {
+                foreach (var argument in item.Arguments) {
+                    if (selection.Args is not null && selection.Args.TryGetPropertyValue(argument.Name, out var value) && value is not null) {
                         argument.SelectedValue = value.ToString() ?? "";
                     }
                 }
             }
             var warning = unknown.Count > 0 ? $"\n\n缺失 {unknown.Count} 个 plan: {string.Join(", ", unknown.Take(5))}" : "";
-            await new ContentDialog
-            {
+            await new ContentDialog {
                 Title = "Profile 已导入",
                 Content = $"已启用 {applied} 个精简项。{warning}",
                 CloseButtonText = "确定",
                 XamlRoot = XamlRoot,
             }.ShowAsync();
         }
-        catch (Exception ex)
-        {
-            await new ContentDialog
-            {
+        catch (Exception ex) {
+            await new ContentDialog {
                 Title = "导入失败",
                 Content = ex.Message,
                 CloseButtonText = "确定",
@@ -225,27 +186,22 @@ public sealed partial class ItemsPage : Page
         }
     }
 
-    private async void ExportProfile(object sender, RoutedEventArgs e)
-    {
-        var picker = new Windows.Storage.Pickers.FileSavePicker
-        {
+    private async void ExportProfile(object sender, RoutedEventArgs e) {
+        var picker = new Windows.Storage.Pickers.FileSavePicker {
             SuggestedFileName = "my-profile",
             FileTypeChoices = { ["TinyWin2 Profile"] = new List<string> { ".json" } },
         };
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!));
         var file = await picker.PickSaveFileAsync();
-        if (file is null)
-        {
+        if (file is null) {
             return;
         }
         var dialog = new { FileName = file.Path };
         var selections = State.Plans
             .Where(p => p.IsSelected)
-            .Select(p =>
-            {
+            .Select(p => {
                 var args = new JsonObject();
-                foreach (var argument in p.Arguments)
-                {
+                foreach (var argument in p.Arguments) {
                     args[argument.Name] = JsonValue.Create(argument.SelectedValue);
                 }
                 return new ProfileSelection(p.Id, true, args);
@@ -262,12 +218,9 @@ public sealed partial class ItemsPage : Page
 
     private void GoBack(object sender, RoutedEventArgs e) => ((MainWindow)App.MainAppWindow!).GoTo(1);
 
-    private void StartBuild(object sender, RoutedEventArgs e)
-    {
-        if (State.Plans.All(p => !p.IsSelected))
-        {
-            _ = new ContentDialog
-            {
+    private void StartBuild(object sender, RoutedEventArgs e) {
+        if (State.Plans.All(p => !p.IsSelected)) {
+            _ = new ContentDialog {
                 Title = "尚未选择任何精简项",
                 Content = "至少勾选一项，或导入一个 Profile。",
                 CloseButtonText = "确定",
