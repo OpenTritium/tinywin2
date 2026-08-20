@@ -17,7 +17,6 @@ internal static class InspectCommand {
         var media = await resolver.ResolveAsync(source, CancellationToken.None);
         var indexes = await resolver.GetIndexesAsync(media.InstallImagePath, CancellationToken.None);
         await resolver.DismountIsoAsync(media, CancellationToken.None);
-
         if (options.ContainsKey("json")) {
             var root = new JsonObject {
                 ["source"] = source,
@@ -36,7 +35,6 @@ internal static class InspectCommand {
             Console.WriteLine(root.ToJsonString(DoctorCommand.JsonSerializerOptions));
             return 0;
         }
-
         Console.WriteLine($"source: {source}");
         Console.WriteLine($"install image: {media.InstallImagePath} ({(media.IsEsd ? "ESD" : "WIM")})");
         Console.WriteLine();

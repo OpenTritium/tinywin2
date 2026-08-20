@@ -15,14 +15,12 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
         if (spec.Ensure == Ensure.Present) {
             throw new ExecException("driver.store present (driver integration) is not implemented yet.");
         }
-
         var options = DriverStoreOptions.FromDesired(spec.Desired);
         var repositoryRoot = Path.GetFullPath(Path.Combine(
             context.MountPath, "Windows", "System32", "DriverStore", "FileRepository"));
         if (!Directory.Exists(repositoryRoot)) {
             throw new ExecException($"Driver Store was not found at '{repositoryRoot}'.");
         }
-
         var differences = new List<ChangeItem>();
         foreach (var infName in options.InfNames) {
             var matches = Directory.EnumerateDirectories(repositoryRoot, $"{infName}_*", SearchOption.TopDirectoryOnly)
@@ -46,7 +44,6 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
             return ExecResult.Skipped("no matching Driver Store packages",
                 diff.Differences.Where(d => d.Kind == ChangeKind.Skipped).ToArray());
         }
-
         var applied = new List<ChangeItem>();
         foreach (var change in diff.Differences.Where(d => d.Kind != ChangeKind.Skipped)) {
             var directory = Path.GetFullPath(Path.Combine(context.MountPath, change.Target));
@@ -55,7 +52,6 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
             if (!directory.StartsWith(repositoryRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) {
                 throw new ExecException($"Driver Store package '{change.Target}' resolved outside FileRepository.");
             }
-
             context.Log.Warn($"removing Driver Store package directory: {change.Target}");
             try {
                 TryDelete(directory);

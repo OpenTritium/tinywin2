@@ -49,7 +49,6 @@ public sealed class BuildLog : IBuildLog {
         lock (_gate) {
             _sinks.Add(sink);
         }
-
         return new SinkToken(this, sink);
     }
 
@@ -82,7 +81,6 @@ public sealed class BuildLog : IBuildLog {
             _events.Add(evt);
             sinks = _sinks.ToArray();
         }
-
         if (EchoConsole) {
             EchoToConsole(evt);
         }

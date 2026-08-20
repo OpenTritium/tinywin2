@@ -18,7 +18,6 @@ public sealed partial class ResultPage : Page {
         base.OnNavigatedTo(e);
         SuccessPanel.Visibility = State.BuildSucceeded ? Visibility.Visible : Visibility.Collapsed;
         FailurePanel.Visibility = State.BuildSucceeded ? Visibility.Collapsed : Visibility.Visible;
-
         var artifacts = new List<string>();
         if (State.MediaPath.Length > 0) {
             artifacts.Add("media:  " + State.MediaPath);
@@ -34,7 +33,6 @@ public sealed partial class ResultPage : Page {
         }
         ArtifactsText.Text = string.Join(Environment.NewLine, artifacts);
         LayerSummaryText.Text = State.LayerCount > 0 ? $"层链：{State.LayerCount} 个已提交层（详见 manifest）" : "";
-
         var workspace = State.WorkspacePath.Length > 0
             ? State.WorkspacePath
             : Path.Combine(string.IsNullOrEmpty(State.OutputRoot) ? "out" : State.OutputRoot, "work");

@@ -70,27 +70,22 @@ public sealed class BuildEngine(
         var buildId = DateTimeOffset.UtcNow.ToString("yyyyMMddTHHmmss");
         log.Phase = "prepare";
         log.Info($"build {buildId} starting (granularity={options.Granularity}, out={options.OutputMode}, fast={options.Fast})");
-
         var plan = BuildPlanResolver.Resolve(options.Catalog, options.Selections, options.Granularity);
         executers.ValidateBuildPlan(plan);
         log.Info($"resolved {plan.PlanIds.Count} plans into {plan.Steps.Count} atomic steps");
         foreach (var step in plan.Steps) {
             log.Info($"  step {step.Id}: {step.Plans.Count} plan(s) [{string.Join(", ", step.Plans.Select(p => p.Definition.Id))}]");
         }
-
         if (options.DryRun) {
             log.Info("dry run: no mutations performed");
             return DryRunResult(buildId, options);
         }
-
         RunDoctor(options);
-
         var outputRoot = Path.GetFullPath(options.OutputRoot);
         var workspace = Path.Combine(outputRoot, "work", buildId);
         var mediaPath = Path.Combine(outputRoot, $"TinyWin2-{buildId}");
         var resolver = new SourceImageResolver(runner, log);
         var builder = new OutputBuilder(runner, log);
-
         SourceMedia? source = null;
         var failedSteps = new List<(string StepId, int LayerIndex, string Error)>();
         try {
@@ -98,7 +93,6 @@ public sealed class BuildEngine(
             source = await resolver.ResolveAsync(options.SourcePath, ct);
             log.Phase = "media";
             log.Info($"source media: {source.RootPath} ({(source.IsEsd ? "ESD" : "WIM")} install image)", data: new JsonObject { ["progress"] = 10 });
-
             var indexes = await resolver.GetIndexesAsync(source.InstallImagePath, ct);
             var sourceIndex = indexes.FirstOrDefault(i => i.Index == options.ImageIndex)
                               ?? throw new InvalidOperationException(
@@ -113,7 +107,6 @@ public sealed class BuildEngine(
             else {
                 File.Copy(source.InstallImagePath, stagingWim, overwrite: true);
             }
-
             log.Phase = "base-layer";
             var stack = VhdLayerStack.Load(workspace, layerBackend, log);
             await stack.EnsureBaseAsync(options.BaseVhdxMaximumMb, $"TinyWin2-{buildId}", ct);
@@ -125,7 +118,6 @@ public sealed class BuildEngine(
                 log.Info("capturing base-layer evidence snapshots (file manifest + registry)");
                 await Layers.LayerEvidence.CaptureAsync(mount, workspace, 0, runner, log, token);
             }, ct);
-
             log.Phase = "plan";
             var stepNumber = 0;
             foreach (var step in plan.Steps) {
@@ -133,7 +125,6 @@ public sealed class BuildEngine(
                 stepNumber++;
                 log.Info($"step {stepNumber}/{plan.Steps.Count}: '{step.Title}'",
                     data: new JsonObject { ["progress"] = ProgressAfterBase + (int)(PlanWeight * stepNumber / (double)plan.Steps.Count) });
-
                 var session = await stack.BeginLayerAsync(step.Id, step.Title, null, ct);
                 var execResults = new JsonArray();
                 try {
@@ -155,7 +146,6 @@ public sealed class BuildEngine(
                     }
                 }
             }
-
             log.Phase = "capture";
             var format = options.OutputMode switch {
                 OutputMode.Wim => ImageFormat.Wim,
@@ -186,11 +176,9 @@ public sealed class BuildEngine(
             finally {
                 try { await layerBackend.DetachAsync(leaf, ct); } catch { /* already detached */ }
             }
-
             log.Phase = "package";
             log.Info("rebuilding installation media folder", data: new JsonObject { ["progress"] = 90 });
             var finalInstall = await builder.RebuildMediaAsync(source.RootPath, mediaPath, installPath, format, ct);
-
             string? isoPath = null;
             if (options.OutputMode is OutputMode.Iso or OutputMode.IsoAndVhdx) {
                 var oscdimg = options.OscdimgPath
@@ -199,15 +187,12 @@ public sealed class BuildEngine(
                 isoPath = Path.Combine(outputRoot, $"TinyWin2-{buildId}.iso");
                 await builder.CreateIsoAsync(mediaPath, isoPath, oscdimg, ct);
             }
-
             string? vhdxPath = null;
             if (options.OutputMode == OutputMode.IsoAndVhdx) {
                 vhdxPath = Path.Combine(outputRoot, $"TinyWin2-{buildId}.vhdx");
                 await OutputBuilder.ExportMergedVhdxAsync(stack, layerBackend, vhdxPath, ct);
             }
-
             var manifestPath = await WriteManifestAsync(buildId, options, plan, stack, mediaPath, finalInstall, isoPath, vhdxPath, sourceIndex, failedSteps, ct);
-
             log.Phase = "done";
             log.Info($"build complete: {mediaPath}", data: new JsonObject { ["progress"] = 100 });
             if (isoPath is not null) {
@@ -216,7 +201,6 @@ public sealed class BuildEngine(
             foreach (var (failedStepId, failedLayerIdx, _) in failedSteps) {
                 log.Warn($"completed with skipped failed step '{failedStepId}' (layer {failedLayerIdx:000} discarded)");
             }
-
             if (!options.KeepLayers) {
                 await TryDeleteDirectoryAsync(workspace);
             }

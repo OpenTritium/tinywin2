@@ -20,7 +20,6 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismExecute
         if (exitCode != 0 && exitCode != DismErrors.SuccessRebootRequired) {
             throw new ExecException($"dism.exe failed to list provisioned appx packages (exit {exitCode}).", exitCode);
         }
-
         var differences = new List<ChangeItem>();
         foreach (var record in ParseList(output)) {
             var displayName = DismListParser.Get(record, "DisplayName");
@@ -39,12 +38,10 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismExecute
         if (spec.Ensure == Ensure.Present) {
             throw new ExecException("appx.provisioned present is not implemented.");
         }
-
         var diff = await InspectAsync(context, spec, ct);
         if (diff.Satisfied) {
             return ExecResult.Skipped("no provisioned appx packages matched");
         }
-
         var applied = new List<ChangeItem>();
         foreach (var change in diff.Differences) {
             var packageName = change.Before!;

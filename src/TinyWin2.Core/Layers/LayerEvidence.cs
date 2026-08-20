@@ -30,7 +30,6 @@ public static partial class LayerEvidence {
         CancellationToken ct) {
         var snapshotsRoot = SnapshotsRoot(workDirectory);
         Directory.CreateDirectory(snapshotsRoot);
-
         await CaptureFileManifestAsync(mountPath, ManifestPathFor(snapshotsRoot, index), ct);
         await CaptureRegistryAsync(mountPath, RegistryPathFor(snapshotsRoot, index), runner, log, ct);
         log.Debug($"captured layer {index:000} evidence snapshots", layerIndex: index);

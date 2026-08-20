@@ -26,7 +26,6 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             .Select(l => l[(servicesRoot.Length + 1)..])
             .Where(n => !n.Contains('\\'))
             .ToList();
-
         var resolved = new List<string>(options.Services);
         foreach (var pattern in options.ServicePatterns) {
             var regex = LikeToRegex(pattern);
@@ -36,7 +35,6 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             }
             resolved.AddRange(matches);
         }
-
         var differences = new List<ChangeItem>();
         foreach (var service in resolved.Distinct(StringComparer.OrdinalIgnoreCase)) {
             var serviceKey = $"{servicesRoot}\\{service}";
@@ -46,7 +44,6 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
                 differences.Add(new ChangeItem(ChangeKind.Skipped, service, "service not present"));
                 continue;
             }
-
             var existingDelayed = await ReadDwordAsync(serviceKey, "DelayedAutoStart", ct) ?? 0;
             var satisfied = existingStart == options.StartDword && existingDelayed == (options.IsDelayed ? 1 : 0);
             if (!satisfied) {
@@ -55,7 +52,6 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
                     After: Describe(options.StartDword, options.IsDelayed ? 1 : 0)));
             }
         }
-
         return new ResourceDiff(differences.All(d => d.Kind == ChangeKind.Skipped), differences);
     }
 
@@ -65,12 +61,10 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             return ExecResult.Skipped("services already in the desired start mode",
                 diff.Differences.Where(d => d.Kind == ChangeKind.Skipped).ToArray());
         }
-
         var options = RegistryServiceOptions.FromDesired(spec.Desired);
         var hive = await context.Hives.GetAsync("system", context.Log, ct);
         var controlSet = await ResolveControlSetAsync(hive, ct);
         var applied = new List<ChangeItem>();
-
         foreach (var change in diff.Differences) {
             if (change.Kind == ChangeKind.Skipped) {
                 continue;
@@ -81,7 +75,6 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             context.Log.Info($"service {change.Target} → {change.After}");
             applied.Add(change);
         }
-
         return ExecResult.Applied(applied);
     }
 

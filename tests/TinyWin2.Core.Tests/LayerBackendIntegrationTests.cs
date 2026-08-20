@@ -23,16 +23,13 @@ public sealed class LayerBackendIntegrationTests {
         if (!Enabled) {
             return; // integration tests gated behind TINYWIN2_IT=1
         }
-
         var runner = new ProcessRunner();
         var backend = new DiskPartVhdBackend(runner);
         var directory = TestPlans.CreateTempDirectory();
         try {
             var baseVhdx = Path.Combine(directory, "base.vhdx");
             await backend.CreateBaseAsync(baseVhdx, 512, "tinywin2-it", CancellationToken.None);
-
             await Assert.That(File.Exists(baseVhdx)).IsTrue();
-
             var letter = await backend.AttachAsync(baseVhdx, CancellationToken.None);
             try {
                 var probe = $"{letter}:\\probe.txt";
@@ -75,12 +72,10 @@ public sealed class LayerBackendIntegrationTests {
         if (!Enabled || !File.Exists(TestIso)) {
             return; // needs TINYWIN2_IT=1 and TINYWIN2_TEST_ISO
         }
-
         var runner = new ProcessRunner();
         var executers = new ExecuterRegistry(runner);
         var backend = new DiskPartVhdBackend(runner);
         var outputRoot = Path.Combine(Path.GetTempPath(), "tinywin2-it-" + Guid.NewGuid().ToString("N"));
-
         var plansDir = TestPlans.CreateTempDirectory();
         TestPlans.WritePlan(plansDir, "it.registry-probe", o => {
             o["execs"] = new System.Text.Json.Nodes.JsonArray(new System.Text.Json.Nodes.JsonObject {
@@ -96,7 +91,6 @@ public sealed class LayerBackendIntegrationTests {
             });
         });
         var catalog = Plans.PlanCatalog.LoadDirectory(plansDir);
-
         var engine = new Pipeline.BuildEngine(runner, executers, backend,
             new Logging.BuildLog { EchoConsole = true });
         var result = await engine.BuildAsync(new Pipeline.BuildOptions {
@@ -110,7 +104,6 @@ public sealed class LayerBackendIntegrationTests {
             PlansDirectory = plansDir,
             BaseVhdxMaximumMb = 8_192,
         }, CancellationToken.None);
-
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(File.Exists(result.InstallImagePath)).IsTrue();
     }

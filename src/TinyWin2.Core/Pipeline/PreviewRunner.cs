@@ -47,7 +47,6 @@ public sealed class PreviewRunner(
         executers.ValidateBuildPlan(plan);
         log.Phase = "preview";
         log.Info($"preview: {plan.PlanIds.Count} plans resolved into {plan.Steps.Count} steps");
-
         var resolver = new SourceImageResolver(runner, log);
         var source = await resolver.ResolveAsync(options.SourcePath, ct);
         try {
@@ -59,7 +58,6 @@ public sealed class PreviewRunner(
             else {
                 File.Copy(source.InstallImagePath, stagingWim, overwrite: true);
             }
-
             var stack = VhdLayerStack.Load(options.WorkDirectory, layerBackend, log);
             await stack.EnsureBaseAsync(options.BaseVhdxMaximumMb, "TinyWin2-preview", ct);
             log.Info("applying source image into the preview base layer");
@@ -68,7 +66,6 @@ public sealed class PreviewRunner(
                     ["/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}", $"/ApplyDir:{mount}"],
                     new ProcessRunOptions { Timeout = TimeSpan.FromHours(2) }, token);
             }, ct);
-
             var letter = await layerBackend.AttachAsync(stack.BaseVhdxPath, ct);
             try {
                 var previews = new List<PlanPreview>();

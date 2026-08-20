@@ -21,18 +21,15 @@ public sealed class PlanCatalog {
         if (!Directory.Exists(directory)) {
             throw new DirectoryNotFoundException($"Plans directory not found: {directory}");
         }
-
         var files = Directory.EnumerateFiles(directory, "*.json", SearchOption.TopDirectoryOnly)
             .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
             .ToArray();
         if (files.Length == 0) {
             throw new InvalidOperationException($"No plan definitions (*.json) found in {directory}.");
         }
-
         var plans = new List<PlanDefinition>();
         var errors = new List<string>();
         var seenIds = new Dictionary<string, string>(StringComparer.Ordinal);
-
         foreach (var file in files) {
             PlanDefinition? plan;
             var sha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(file)));
@@ -51,7 +48,6 @@ public sealed class PlanCatalog {
                 errors.Add(ex.Message);
                 continue;
             }
-
             if (seenIds.TryGetValue(plan.Id, out var otherFile)) {
                 errors.Add($"duplicate plan id '{plan.Id}' in '{Path.GetFileName(otherFile)}' and '{Path.GetFileName(file)}'.");
                 continue;
@@ -59,7 +55,6 @@ public sealed class PlanCatalog {
             seenIds[plan.Id] = file;
             plans.Add(plan with { Sha256 = sha256 });
         }
-
         foreach (var plan in plans) {
             foreach (var required in plan.Requires) {
                 if (!seenIds.ContainsKey(required)) {
@@ -75,7 +70,6 @@ public sealed class PlanCatalog {
                 errors.Add($"plan '{plan.Id}' cannot conflict with itself.");
             }
         }
-
         if (errors.Count > 0) {
             throw new PlanValidationException(directory, errors);
         }

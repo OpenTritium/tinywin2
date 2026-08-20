@@ -23,11 +23,9 @@ public sealed class LayerEvidenceTests : IDisposable {
         Directory.CreateSymbolicLink(
             Path.Combine(imageDir, "Users", "All Users"),
             Path.Combine(imageDir, "Users"));
-
         var manifest = LayerEvidence.ManifestPathFor(LayerEvidence.SnapshotsRoot(_root), 0);
         await LayerEvidence.CaptureAsync(imageDir, _root, 0, new FakeProcessRunner(),
             new Core.Logging.BuildLog { EchoConsole = false }, CancellationToken.None);
-
         var loaded = LayerEvidence.LoadManifest(manifest);
         await Assert.That(loaded.ContainsKey("Windows\\notepad.exe")).IsTrue();
         await Assert.That(loaded.ContainsKey("inetpub\\wwwroot")).IsFalse(); // directories are not listed
@@ -45,7 +43,6 @@ public sealed class LayerEvidenceTests : IDisposable {
         var snapshot = ";;hive software\r\nWindows Registry Editor Version 5.00\r\n[HKEY_LOCAL_MACHINE\\TinyWin\\K]\r\n\"A\"=dword:1\r\n" +
                        ";;hive system\r\n[HKEY_LOCAL_MACHINE\\TinyWin\\S]\r\n";
         var hives = LayerEvidence.SplitByHive(snapshot);
-
         await Assert.That(hives.Count).IsEqualTo(2);
         await Assert.That(hives["software"]).Contains("\"A\"=dword:1");
         await Assert.That(hives["system"]).Contains("HKEY_LOCAL_MACHINE");

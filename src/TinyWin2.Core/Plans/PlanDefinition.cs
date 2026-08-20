@@ -64,17 +64,14 @@ public sealed partial record PlanDefinition {
         if (schemaVersion is not null && schemaVersion != CurrentSchemaVersion) {
             errors.Add($"schemaVersion must be {CurrentSchemaVersion}.");
         }
-
         var id = ReadString(obj, "id", errors);
         if (id is not null && !IdPattern().IsMatch(id)) {
             errors.Add($"id '{id}' does not match required pattern.");
         }
-
         var version = ReadString(obj, "version", errors);
         if (version is not null && !VersionPattern().IsMatch(version)) {
             errors.Add($"version '{version}' is not semver (x.y.z).");
         }
-
         var title = ReadString(obj, "title", errors);
         var description = ReadString(obj, "description", errors);
         var group = ReadString(obj, "group", errors);
@@ -83,21 +80,16 @@ public sealed partial record PlanDefinition {
         if (risk is not null && !RiskLevels.Contains(risk)) {
             errors.Add($"risk '{risk}' invalid (Low|Medium|High).");
         }
-
         if (tier is not null && !Tiers.Contains(tier)) {
             errors.Add($"tier '{tier}' invalid (Standard|Expert|Experimental).");
         }
-
         var requires = ReadStringArray(obj, "requires", errors);
         var conflicts = ReadStringArray(obj, "conflicts", errors);
-
         var arguments = ReadArguments(obj, errors);
         var execs = ReadExecs(obj, errors);
-
         if (errors.Count > 0) {
             throw new PlanValidationException(sourceFile ?? "<memory>", errors);
         }
-
         return new PlanDefinition {
             SchemaVersion = CurrentSchemaVersion,
             Id = id!,
@@ -123,7 +115,6 @@ public sealed partial record PlanDefinition {
             if (required) {
                 errors.Add($"'{name}' is required.");
             }
-
             return [];
         }
         if (node is not JsonArray array) {
@@ -147,7 +138,6 @@ public sealed partial record PlanDefinition {
             if (required) {
                 errors.Add($"'{name}' is required.");
             }
-
             return null;
         }
         if (node is JsonValue value && value.TryGetValue<string>(out var text)) {
@@ -166,7 +156,6 @@ public sealed partial record PlanDefinition {
             if (required) {
                 errors.Add($"'{name}' is required.");
             }
-
             return null;
         }
         if (node is JsonValue value && value.TryGetValue<int>(out var number)) {
@@ -184,7 +173,6 @@ public sealed partial record PlanDefinition {
             errors.Add("'arguments' must be an array.");
             return [];
         }
-
         var result = new List<PlanArgument>();
         var seenNames = new HashSet<string>();
         foreach (var item in array) {
@@ -192,7 +180,6 @@ public sealed partial record PlanDefinition {
                 errors.Add("'arguments' entries must be objects.");
                 continue;
             }
-
             var inner = new List<string>();
             var name = ReadString(argumentObj, "name", inner);
             var typeText = ReadString(argumentObj, "type", inner);
@@ -218,7 +205,6 @@ public sealed partial record PlanDefinition {
                     options.Add(new PlanArgumentOption(value!, optionLabel!, optionRisk));
                 }
             }
-
             if (type == PlanArgumentType.Enum && options.Count == 0) {
                 inner.Add("enum argument requires at least one option.");
             }
@@ -228,12 +214,10 @@ public sealed partial record PlanDefinition {
             if (name is not null && !seenNames.Add(name)) {
                 inner.Add($"duplicate argument name '{name}'.");
             }
-
             if (inner.Count > 0) {
                 errors.AddRange(inner.Select(e => $"arguments[{result.Count}]: {e}"));
                 continue;
             }
-
             var defaultNode = argumentObj["default"]?.DeepClone();
             if (type == PlanArgumentType.Enum) {
                 var defaultText = defaultNode is JsonValue dv && dv.TryGetValue<string>(out var s) ? s : null;
@@ -248,7 +232,6 @@ public sealed partial record PlanDefinition {
             else if (type == PlanArgumentType.Bool && defaultNode is null) {
                 defaultNode = false;
             }
-
             result.Add(new PlanArgument(name!, type, label!, defaultNode, options));
         }
         return result;
@@ -263,7 +246,6 @@ public sealed partial record PlanDefinition {
             errors.Add("'execs' must be an array.");
             return [];
         }
-
         var result = new List<PlanExec>();
         foreach (var item in array) {
             if (item is not JsonObject execObj) {

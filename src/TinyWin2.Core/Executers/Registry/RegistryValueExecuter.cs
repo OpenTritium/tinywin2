@@ -14,14 +14,12 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
     public async Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
         var options = RegistryValueOptions.FromDesired(spec.Desired, spec.Ensure);
         var hive = await context.Hives.GetAsync(options.Hive, context.Log, ct);
-
         var differences = new List<ChangeItem>();
         foreach (var value in options.Values) {
             var keyPath = hive.KeyUnderHive(value.Key);
             var result = await runner.RunAsync("reg.exe",
                 string.IsNullOrEmpty(value.Name) ? ["query", keyPath, "/ve"] : ["query", keyPath, "/v", value.Name],
                 new ProcessRunOptions { IgnoreExitCode = true }, ct);
-
             var existing = result.ExitCode == 0 ? RegValues.ParseQueryValue(result.Output, string.IsNullOrEmpty(value.Name) ? "(Default)" : value.Name) : null;
             if (spec.Ensure == Ensure.Absent) {
                 if (existing is not null) {
@@ -30,7 +28,6 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
                 }
                 continue;
             }
-
             var desiredData = RegValues.RenderData(value.RegType, value.Data);
             if (existing is null) {
                 differences.Add(new ChangeItem(ChangeKind.Created, hive.ValueUnderHive(value.Key, value.Name),
@@ -43,7 +40,6 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
                     After: $"{value.RegType} {desiredData}"));
             }
         }
-
         if (spec.Ensure == Ensure.Absent) {
             foreach (var key in options.DeleteKeys) {
                 var result = await runner.RunAsync("reg.exe", ["query", hive.KeyUnderHive(key)],
@@ -53,7 +49,6 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
                 }
             }
         }
-
         return new ResourceDiff(differences.Count == 0, differences);
     }
 
@@ -62,10 +57,8 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
         if (diff.Satisfied) {
             return ExecResult.Skipped("registry values already in the desired state");
         }
-
         var options = RegistryValueOptions.FromDesired(spec.Desired, spec.Ensure);
         var hive = await context.Hives.GetAsync(options.Hive, context.Log, ct);
-
         foreach (var change in diff.Differences) {
             if (change.Kind == ChangeKind.Removed && change.Target.EndsWith(" (key)")) {
                 var keyPath = change.Target[..^" (key)".Length][(hive.HiveId.Length + 1)..];
@@ -73,7 +66,6 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
                 context.Log.Info($"deleted registry key {hive.HiveId}\\{keyPath}");
                 continue;
             }
-
             var target = options.Values.First(v => hive.ValueUnderHive(v.Key, v.Name) == change.Target);
             if (spec.Ensure == Ensure.Absent) {
                 var args = string.IsNullOrEmpty(target.Name)
@@ -99,7 +91,6 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
                 context.Log.Info($"set registry value {change.Target} = {target.RegType}");
             }
         }
-
         return ExecResult.Applied(diff.Differences);
     }
 }

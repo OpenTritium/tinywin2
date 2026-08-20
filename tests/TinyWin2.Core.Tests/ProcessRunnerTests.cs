@@ -15,9 +15,7 @@ public sealed class ProcessRunnerTests {
     public async Task CapturesOutputAndExitCode() {
         var runner = new ProcessRunner();
         var (exe, args) = SplitCommand(EchoCommand("hello-tinywin"));
-
         var result = await runner.RunAsync(exe, args);
-
         await Assert.That(result.ExitCode).IsEqualTo(0);
         await Assert.That(result.Output.Trim()).IsEqualTo("hello-tinywin");
         await Assert.That(result.CommandLine).Contains(exe);
@@ -27,10 +25,8 @@ public sealed class ProcessRunnerTests {
     public async Task NonZeroExitThrowsWithOutput() {
         var runner = new ProcessRunner();
         var (exe, args) = SplitCommand(FailCommand());
-
         var ex = Assert.Throws<ProcessRunnerException>(
             () => runner.RunAsync(exe, args, new ProcessRunOptions { Timeout = TimeSpan.FromSeconds(10) }).GetAwaiter().GetResult())!;
-
         await Assert.That(ex.Result.ExitCode).IsEqualTo(3);
     }
 
@@ -38,9 +34,7 @@ public sealed class ProcessRunnerTests {
     public async Task IgnoreExitCodeReturnsResult() {
         var runner = new ProcessRunner();
         var (exe, args) = SplitCommand(FailCommand());
-
         var result = await runner.RunAsync(exe, args, new ProcessRunOptions { IgnoreExitCode = true });
-
         await Assert.That(result.ExitCode).IsEqualTo(3);
     }
 
@@ -49,9 +43,7 @@ public sealed class ProcessRunnerTests {
         var runner = new ProcessRunner();
         var lines = new List<string>();
         var (exe, args) = SplitCommand(EchoCommand("streamed"));
-
         await runner.RunAsync(exe, args, new ProcessRunOptions { OnOutputLine = lines.Add });
-
         await Assert.That(lines.Count).IsEqualTo(1);
         await Assert.That(lines[0].Trim()).IsEqualTo("streamed");
     }
@@ -64,7 +56,6 @@ public sealed class ProcessRunnerTests {
             ? "/c ping -n 30 127.0.0.1 > nul"
             : "-c 'sleep 30'";
         var (exe, args) = SplitCommand(hangCommand);
-
         await Assert.ThrowsAsync<TimeoutException>(
             () => runner.RunAsync(exe, args, new ProcessRunOptions { Timeout = TimeSpan.FromSeconds(1) }));
     }

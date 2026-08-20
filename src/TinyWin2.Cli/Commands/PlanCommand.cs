@@ -7,7 +7,6 @@ internal static class PlanCommand {
     public static int Run(List<string> args) {
         var options = Program.ParseOptions(args);
         var catalog = PlanCatalog.LoadDirectory(Cli.FindPlansDirectory(options.GetValueOrDefault("plans")?.FirstOrDefault()));
-
         if (args.Count > 0 && !args[0].StartsWith("--")) {
             return args[0] switch {
                 "list" => List(catalog, options),
@@ -24,7 +23,6 @@ internal static class PlanCommand {
             .Where(p => groupFilter is null || string.Equals(p.Group, groupFilter, StringComparison.OrdinalIgnoreCase))
             .OrderBy(p => p.Group, StringComparer.OrdinalIgnoreCase)
             .ThenBy(p => p.Id, StringComparer.OrdinalIgnoreCase);
-
         if (options.ContainsKey("json")) {
             var root = new JsonObject {
                 ["plans"] = new JsonArray(plans.Select(p => (JsonNode)new JsonObject {
@@ -41,7 +39,6 @@ internal static class PlanCommand {
             Console.WriteLine(root.ToJsonString(DoctorCommand.JsonSerializerOptions));
             return 0;
         }
-
         string? currentGroup = null;
         foreach (var plan in plans) {
             if (currentGroup != plan.Group) {

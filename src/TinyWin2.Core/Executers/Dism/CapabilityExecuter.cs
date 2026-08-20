@@ -16,12 +16,10 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismExecuterBase
         if (DismErrors.Classify(exitCode, output) == DismOutcome.ProviderUnavailable) {
             return new ResourceDiff(true, []);
         }
-
         var states = ParseList(output).ToDictionary(
             r => DismListParser.Get(r, "Capability Identity") ?? "",
             r => DismListParser.Get(r, "State") ?? "",
             StringComparer.OrdinalIgnoreCase);
-
         var differences = new List<ChangeItem>();
         foreach (var capability in options.Capabilities) {
             if (!states.TryGetValue(capability, out var state)) {
@@ -40,13 +38,11 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismExecuterBase
         if (spec.Ensure == Ensure.Present) {
             throw new ExecException("dism.capability present is not implemented yet.");
         }
-
         var diff = await InspectAsync(context, spec, ct);
         if (diff.Satisfied) {
             return ExecResult.Skipped("capabilities already absent or unavailable",
                 diff.Differences.Where(d => d.Kind == ChangeKind.Skipped).ToArray());
         }
-
         var applied = new List<ChangeItem>();
         foreach (var change in diff.Differences.Where(d => d.Kind != ChangeKind.Skipped)) {
             var (exitCode, output) = await RunDismAsync(context, ["/Remove-Capability", $"/CapabilityName:{change.Target}"], ct);

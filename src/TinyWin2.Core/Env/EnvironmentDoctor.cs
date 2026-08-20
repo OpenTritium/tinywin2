@@ -33,7 +33,6 @@ public static class EnvironmentDoctor {
         if (outputDirectoryHint is not null) {
             results.Add(CheckFreeSpace(outputDirectoryHint, MinimumFreeBytes));
         }
-
         return results;
     }
 

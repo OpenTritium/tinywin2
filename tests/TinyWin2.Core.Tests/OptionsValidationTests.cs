@@ -19,7 +19,6 @@ public sealed class OptionsValidationTests {
                 ["services"] = new JsonArray("Svc"),
                 ["start"] = "sometimes",
             }))!;
-
         await Assert.That(ex.Message).Contains("auto|delayedAuto|manual|disabled");
     }
 
@@ -27,7 +26,6 @@ public sealed class OptionsValidationTests {
     public async Task RegistryServiceRequiresTargetList() {
         var ex = Assert.Throws<ExecException>(() =>
             RegistryServiceOptions.FromDesired(new JsonObject { ["start"] = "auto" }))!;
-
         await Assert.That(ex.Message).Contains("'services' or 'servicePatterns'");
     }
 
@@ -38,7 +36,6 @@ public sealed class OptionsValidationTests {
                 ["services"] = new JsonArray("Bad Service!"),
                 ["start"] = "auto",
             }))!;
-
         await Assert.That(ex.Message).Contains("invalid service name or pattern");
     }
 
@@ -48,7 +45,6 @@ public sealed class OptionsValidationTests {
             ["services"] = new JsonArray("Svc"),
             ["start"] = "delayedAuto",
         });
-
         await Assert.That(options.StartDword).IsEqualTo(2);
         await Assert.That(options.IsDelayed).IsTrue();
     }
@@ -62,7 +58,6 @@ public sealed class OptionsValidationTests {
             ["type"] = "dword",
             ["data"] = 1,
         }, Ensure.Present);
-
         await Assert.That(options.Values.Count).IsEqualTo(1);
         await Assert.That(options.Values[0].RegType).IsEqualTo("REG_DWORD");
     }
@@ -74,7 +69,6 @@ public sealed class OptionsValidationTests {
                 ["hive"] = "software",
                 ["deleteKeys"] = new JsonArray("K"),
             }, Ensure.Present))!;
-
         await Assert.That(ex.Message).Contains("only valid with ensure: absent");
     }
 
@@ -85,7 +79,6 @@ public sealed class OptionsValidationTests {
                 ["hive"] = "hive_of_hades",
                 ["values"] = new JsonArray(),
             }, Ensure.Present))!;
-
         await Assert.That(ex.Message).Contains("unsupported registry hive");
     }
 
@@ -95,7 +88,6 @@ public sealed class OptionsValidationTests {
             ["features"] = new JsonArray("Microsoft-Hyper-V"),
         });
         await Assert.That(options.RemovePayload).IsTrue();
-
         var ex = Assert.Throws<ExecException>(() =>
             FeatureOptions.FromDesired(new JsonObject()))!;
         await Assert.That(ex.Message).Contains("'features'");
@@ -107,7 +99,6 @@ public sealed class OptionsValidationTests {
             ["patterns"] = new JsonArray("^Foo~"),
         });
         await Assert.That(options.Patterns[0].IsMatch("Foo~123")).IsTrue();
-
         var ex = Assert.Throws<ExecException>(() =>
             PackageOptions.FromDesired(new JsonObject { ["patterns"] = new JsonArray("(unclosed") }))!;
         await Assert.That(ex.Message).Contains("invalid package pattern");
@@ -119,7 +110,6 @@ public sealed class OptionsValidationTests {
             DriverStoreOptions.FromDesired(new JsonObject {
                 ["infNames"] = new JsonArray("C:\\evil\\path.inf"),
             }))!;
-
         await Assert.That(ex.Message).Contains("invalid driver INF name");
     }
 
@@ -129,7 +119,6 @@ public sealed class OptionsValidationTests {
             ["paths"] = new JsonArray("inetpub"),
         }, Ensure.Absent);
         await Assert.That(absent.Paths.Count).IsEqualTo(1);
-
         var ex = Assert.Throws<ExecException>(() =>
             FsPathOptions.FromDesired(new JsonObject { ["paths"] = new JsonArray("x") }, Ensure.Present))!;
         await Assert.That(ex.Message).Contains("'path'");

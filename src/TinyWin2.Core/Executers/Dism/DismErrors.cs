@@ -36,31 +36,24 @@ public static partial class DismErrors {
         if (exitCode == 0) {
             return DismOutcome.Success;
         }
-
         if (exitCode == SuccessRebootRequired) {
             return DismOutcome.SuccessRebootRequired;
         }
-
         if (exitCode == ComponentCleanup4350) {
             return DismOutcome.ComponentCleanupUnsupported;
         }
-
         if (exitCode == ErrorNotSupported) {
             return DismOutcome.ProviderUnavailable;
         }
-
         if (exitCode == CbsEInvalidInstallState) {
             return DismOutcome.InvalidInstallState;
         }
-
         if (exitCode == CbsECannotUninstall) {
             return DismOutcome.CannotUninstall;
         }
-
         if (ProviderUnavailableText().IsMatch(output)) {
             return DismOutcome.ProviderUnavailable;
         }
-
         return DismOutcome.Fatal;
     }
 

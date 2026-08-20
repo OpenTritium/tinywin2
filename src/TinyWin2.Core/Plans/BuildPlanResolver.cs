@@ -58,7 +58,6 @@ public static class BuildPlanResolver {
         var errors = new List<string>();
         var requested = new List<string>();
         var explicitlyDisabled = new HashSet<string>(StringComparer.Ordinal);
-
         foreach (var selection in selections) {
             if (!catalog.ById.ContainsKey(selection.PlanId)) {
                 errors.Add($"unknown plan id '{selection.PlanId}'.");
@@ -91,7 +90,6 @@ public static class BuildPlanResolver {
                 }
             }
         }
-
         if (errors.Count > 0) {
             throw new PlanResolutionException(errors);
         }
@@ -103,11 +101,9 @@ public static class BuildPlanResolver {
             var userArgs = selections.FirstOrDefault(s => s.PlanId == planId)?.Args;
             resolvedById[planId] = ResolvePlan(definition, userArgs);
         }
-
         var steps = granularity == LayerGranularity.Plan
             ? BuildPlanGranularitySteps(ordered, resolvedById)
             : BuildGroupGranularitySteps(catalog, ordered, resolvedById);
-
         return new BuildPlan(steps, ordered, granularity);
     }
 
@@ -126,7 +122,6 @@ public static class BuildPlanResolver {
             errors.Add($"dependency cycle detected at '{planId}'.");
             return;
         }
-
         foreach (var required in catalog.Get(planId).Requires) {
             if (explicitlyDisabled.Contains(required)) {
                 errors.Add($"plan '{planId}' requires '{required}', which was explicitly disabled.");
@@ -142,7 +137,6 @@ public static class BuildPlanResolver {
     private static ResolvedPlan ResolvePlan(PlanDefinition definition, IReadOnlyDictionary<string, JsonNode?>? userArgs) {
         var errors = new List<string>();
         var values = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
-
         userArgs ??= new Dictionary<string, JsonNode?>();
         foreach (var arg in definition.Arguments) {
             JsonNode? value = arg.Default;
@@ -163,7 +157,6 @@ public static class BuildPlanResolver {
         if (errors.Count > 0) {
             throw new PlanResolutionException(errors.Select(e => $"plan '{definition.Id}': {e}").ToArray());
         }
-
         var execs = definition.Execs
             .Select(exec => new ExecSpec(exec.Resource, exec.Ensure, ArgBinder.BindExec(exec, values)))
             .ToArray();

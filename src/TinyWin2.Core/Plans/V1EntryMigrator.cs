@@ -27,7 +27,6 @@ public static class V1EntryMigrator {
         var serviceEntries = materialized
             .Where(e => e.Entry["handler"]?.GetValue<string>() is "Registry.DisableOfflineService" or "Registry.ConfigureOfflineService")
             .ToList();
-
         foreach (var group in serviceEntries.GroupBy(e => ServiceSignature(e.Entry), StringComparer.Ordinal)) {
             if (group.Key.Length == 0) {
                 warnings.Add("a service entry had no services/servicePatterns; skipped.");
@@ -68,7 +67,6 @@ public static class V1EntryMigrator {
         foreach (var plan in plans) {
             RewireReferences(plan, idMap, warnings);
         }
-
         return new MigrationOutput(plans, idMap, warnings);
     }
 
@@ -80,12 +78,10 @@ public static class V1EntryMigrator {
             g.Entry["handler"]!.GetValue<string>() == "Registry.ConfigureOfflineService");
         var disable = group.FirstOrDefault(g =>
             g.Entry["handler"]!.GetValue<string>() == "Registry.DisableOfflineService");
-
         var template = configure.Entry ?? disable.Entry;
         var parameters = template["parameters"]!.AsObject();
         var oldId = template["id"]!.GetValue<string>();
         var newId = UniqueId(usedIds, "service." + SlugFromOldId(oldId));
-
         var with = new JsonObject();
         if (parameters["services"] is { } services) {
             with["services"] = services.DeepClone();
@@ -93,7 +89,6 @@ public static class V1EntryMigrator {
         if (parameters["servicePatterns"] is { } patterns) {
             with["servicePatterns"] = patterns.DeepClone();
         }
-
         JsonObject plan;
         if (configure.Entry is not null && disable.Entry is not null) {
             // Merged pair: enum argument over start modes.
@@ -196,7 +191,6 @@ public static class V1EntryMigrator {
         var parameters = entry["parameters"]!.AsObject();
         var oldId = entry["id"]!.GetValue<string>();
         var slug = SlugFromOldId(oldId);
-
         var execs = new JsonArray();
         string prefix;
         if (parameters["features"] is JsonArray features && features.Count > 0) {

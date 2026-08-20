@@ -14,9 +14,7 @@ public sealed class ArgBinderTests {
             ["path"] = new JsonObject { ["$arg"] = "targetPath" },
         };
         var planExec = new PlanExec("fs.path", Ensure.Absent, with);
-
         var bound = ArgBinder.BindExec(planExec, Args(("targetPath", "Windows/Foo")));
-
         await Assert.That(bound["path"]!.GetValue<string>()).IsEqualTo("Windows/Foo");
     }
 
@@ -32,10 +30,8 @@ public sealed class ArgBinderTests {
             },
         };
         var planExec = new PlanExec("registry.service", Ensure.Present, with);
-
         var delayed = ArgBinder.BindExec(planExec, Args(("startMode", "delayed")));
         var unknown = ArgBinder.BindExec(planExec, Args(("startMode", "unexpected")));
-
         await Assert.That(delayed["start"]!.GetValue<string>()).IsEqualTo("delayedAuto");
         await Assert.That(unknown["start"]!.GetValue<string>()).IsEqualTo("manual");
     }
@@ -51,9 +47,7 @@ public sealed class ArgBinderTests {
             },
         };
         var planExec = new PlanExec("registry.service", Ensure.Present, with);
-
         var ex = Assert.Throws<ArgBindException>(() => ArgBinder.BindExec(planExec, Args(("startMode", "manual"))))!;
-
         await Assert.That(ex.Message).Contains("no case for argument 'startMode' value 'manual'");
     }
 
@@ -64,9 +58,7 @@ public sealed class ArgBinderTests {
             ["nested"] = new JsonObject { ["deep"] = new JsonArray(new JsonObject { ["$arg"] = "mode" }) },
         };
         var planExec = new PlanExec("registry.service", Ensure.Present, with);
-
         var bound = ArgBinder.BindExec(planExec, Args(("extra", "B"), ("mode", "auto")));
-
         await Assert.That(bound["services"]![1]!.GetValue<string>()).IsEqualTo("B");
         await Assert.That(bound["nested"]!["deep"]![0]!.GetValue<string>()).IsEqualTo("auto");
     }
@@ -75,9 +67,7 @@ public sealed class ArgBinderTests {
     public async Task UnknownArgReferenceThrows() {
         var with = new JsonObject { ["x"] = new JsonObject { ["$arg"] = "nope" } };
         var planExec = new PlanExec("fs.path", Ensure.Absent, with);
-
         var ex = Assert.Throws<ArgBindException>(() => ArgBinder.BindExec(planExec, Args()))!;
-
         await Assert.That(ex.Message).Contains("unknown argument 'nope'");
     }
 
@@ -85,9 +75,7 @@ public sealed class ArgBinderTests {
     public async Task BindingDoesNotMutateTheOriginal() {
         var with = new JsonObject { ["x"] = new JsonObject { ["$arg"] = "mode" } };
         var planExec = new PlanExec("fs.path", Ensure.Absent, with);
-
         ArgBinder.BindExec(planExec, Args(("mode", "auto")));
-
         await Assert.That(with["x"]!.AsObject().ContainsKey("$arg")).IsTrue();
     }
 }

@@ -19,7 +19,6 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismExecuterBase(ru
         if (DismErrors.Classify(exitCode, output) == DismOutcome.ProviderUnavailable) {
             return new ResourceDiff(true, []);
         }
-
         var records = ParseList(output);
         var regexes = options.Patterns;
         var differences = new List<ChangeItem>();
@@ -44,13 +43,11 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismExecuterBase(ru
         if (spec.Ensure == Ensure.Present) {
             throw new ExecException("dism.package present is not implemented.");
         }
-
         var diff = await InspectAsync(context, spec, ct);
         if (diff.Satisfied) {
             return ExecResult.Skipped("no removable CBS packages matched",
                 diff.Differences.Where(d => d.Kind == ChangeKind.Skipped).ToArray());
         }
-
         var applied = new List<ChangeItem>();
         foreach (var change in diff.Differences.Where(d => d.Kind != ChangeKind.Skipped)) {
             var (exitCode, output) = await RunDismAsync(context, ["/Remove-Package", $"/PackageName:{change.Target}", "/NoRestart"], ct);

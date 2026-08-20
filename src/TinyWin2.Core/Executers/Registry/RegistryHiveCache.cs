@@ -59,16 +59,13 @@ public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? 
                 return hive;
             }
         }
-
         var hiveFilePath = Path.GetFullPath(Path.Combine(MountPath, relativePath));
         if (!File.Exists(hiveFilePath)) {
             throw new ExecException($"offline registry hive '{hiveId}' was not found at '{hiveFilePath}'.");
         }
-
         var hiveKey = $"HKLM\\{_sessionPrefix}_{hiveId.ToLowerInvariant()}";
         await Runner.RunAsync("reg.exe", ["load", hiveKey, hiveFilePath], cancellationToken: ct);
         log.Debug($"loaded offline hive '{hiveId}' at {hiveKey}");
-
         lock (_gate) {
             _loaded[hiveId] = new RegistryHive(hiveId.ToLowerInvariant(), hiveKey, hiveFilePath) { IsLoaded = true };
             return _loaded[hiveId];
@@ -82,7 +79,6 @@ public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? 
             toUnload = [.. _loaded.Values.Where(h => h.IsLoaded)];
             _loaded.Clear();
         }
-
         foreach (var hive in toUnload) {
             var unloaded = false;
             for (var attempt = 1; attempt <= 5 && !unloaded; attempt++) {

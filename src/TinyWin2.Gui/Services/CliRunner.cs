@@ -68,19 +68,16 @@ public sealed class CliRunner {
         foreach (var argument in arguments) {
             startInfo.ArgumentList.Add(argument);
         }
-
         using var process = new Process { StartInfo = startInfo };
         var queue = System.Threading.Channels.Channel.CreateUnbounded<string>();
         process.OutputDataReceived += (_, e) => { if (e.Data is not null) { _ = queue.Writer.WriteAsync(e.Data); } };
         process.ErrorDataReceived += (_, e) => { if (e.Data is not null) { _ = queue.Writer.WriteAsync(e.Data); } };
-
         try {
             if (!process.Start()) {
                 throw new InvalidOperationException("无法启动 tinywin2.exe");
             }
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
-
             var reading = Task.Run(async () => {
                 await foreach (var line in queue.Reader.ReadAllAsync(cancellationToken)) {
                     onRawLine(line);
@@ -96,7 +93,6 @@ public sealed class CliRunner {
                     }
                 }
             }, cancellationToken);
-
             try {
                 await process.WaitForExitAsync(cancellationToken);
             }

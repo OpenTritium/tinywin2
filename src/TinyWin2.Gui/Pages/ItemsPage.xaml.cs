@@ -63,13 +63,11 @@ public sealed partial class ItemsPage : Page {
     private void RebuildRows() {
         var search = (SearchBox.Text ?? "").Trim();
         var tier = (TierFilter.SelectedItem as ComboBoxItem)?.Tag as string ?? "all";
-
         bool Filter(PlanItemViewModel p) =>
             (tier == "all" || p.Tier == tier)
             && (search.Length == 0
                 || p.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
                 || p.Id.Contains(search, StringComparison.OrdinalIgnoreCase));
-
         _rows.Clear();
         foreach (var group in State.Plans.Where(Filter).GroupBy(p => p.Group).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)) {
             var headerRow = new RowItem { Header = group.Key, Plans = [.. group] };
@@ -113,7 +111,6 @@ public sealed partial class ItemsPage : Page {
         DetailTitle.Text = plan.Title;
         DetailId.Text = $"{plan.Id} · {plan.Group} · 风险 {plan.Risk} · 档位 {plan.Tier}";
         DetailDescription.Text = plan.Description;
-
         ArgumentPanel.Children.Clear();
         foreach (var argument in plan.Arguments) {
             var header = new TextBlock { Text = argument.Label, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };

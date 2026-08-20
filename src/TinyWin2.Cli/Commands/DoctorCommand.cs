@@ -7,14 +7,12 @@ internal static class DoctorCommand {
     public static int Run(Dictionary<string, string> options) {
         var json = options.ContainsKey("json");
         var checks = EnvironmentDoctor.Check(options.TryGetValue("out", out var outDir) ? outDir : null);
-
         if (json) {
             var root = new JsonObject { ["checks"] = TinyWin2.Core.Json.ToNode(checks) };
             Console.WriteLine(root.ToJsonString(JsonSerializerOptions));
             var failed = checks.Any(c => c.Required && !c.Ok);
             return failed ? 1 : 0;
         }
-
         var width = Math.Max("administrator".Length, checks.Max(c => c.Name.Length));
         foreach (var check in checks) {
             var marker = check.Ok ? "OK  " : check.Required ? "FAIL" : "WARN";
@@ -24,7 +22,6 @@ internal static class DoctorCommand {
             Console.ForegroundColor = previous;
             Console.WriteLine($"{check.Name.PadRight(width)}  {check.Detail}{(check.Required ? "" : "  (optional)")}");
         }
-
         var failedRequired = checks.Count(c => c.Required && !c.Ok);
         Console.WriteLine(failedRequired == 0
             ? "environment is ready."

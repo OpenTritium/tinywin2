@@ -30,14 +30,12 @@ public static class SerilogBuildLogExtensions {
                 outputTemplate: "{Timestamp:HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}");
         }
         var logger = configuration.CreateLogger();
-
         LogEventLevel ToSerilogLevel(BuildEventLevel level) => level switch {
             BuildEventLevel.Debug => LogEventLevel.Debug,
             BuildEventLevel.Info => LogEventLevel.Information,
             BuildEventLevel.Warn => LogEventLevel.Warning,
             _ => LogEventLevel.Error,
         };
-
         var token = log.Attach(evt => {
             var level = ToSerilogLevel(evt.Level);
             if (!logger.IsEnabled(level)) {

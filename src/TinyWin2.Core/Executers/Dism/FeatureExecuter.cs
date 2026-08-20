@@ -23,12 +23,10 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismExecuterBase(ru
         if (DismErrors.Classify(exitCode, output) == DismOutcome.ProviderUnavailable) {
             return new ResourceDiff(true, []);
         }
-
         var states = ParseList(output).ToDictionary(
             r => DismListParser.Get(r, "Feature Name") ?? "",
             r => DismListParser.Get(r, "State") ?? "",
             StringComparer.OrdinalIgnoreCase);
-
         var differences = new List<ChangeItem>();
         foreach (var feature in options.Features) {
             if (!states.TryGetValue(feature, out var state)) {
@@ -49,13 +47,11 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismExecuterBase(ru
         if (spec.Ensure == Ensure.Present) {
             throw new ExecException("dism.feature present (enable) is not implemented yet.");
         }
-
         var diff = await InspectAsync(context, spec, ct);
         if (diff.Satisfied) {
             return ExecResult.Skipped("features already absent or unavailable",
                 diff.Differences.Where(d => d.Kind == ChangeKind.Skipped).ToArray());
         }
-
         var options = FeatureOptions.FromDesired(spec.Desired);
         var applied = new List<ChangeItem>();
         foreach (var change in diff.Differences.Where(d => d.Kind != ChangeKind.Skipped)) {

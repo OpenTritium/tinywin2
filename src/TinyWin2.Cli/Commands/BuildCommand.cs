@@ -11,7 +11,6 @@ internal static class BuildCommand {
     public static async Task<int> RunAsync(List<string> args) {
         var options = Program.ParseOptions(args);
         var get = (string name) => options.GetValueOrDefault(name)?.FirstOrDefault();
-
         var sourcePath = get("s") ?? get("source")
             ?? throw new ArgumentException("missing --s <iso|folder>");
         if (!int.TryParse(get("i") ?? get("index"), out var imageIndex)) {
@@ -30,11 +29,9 @@ internal static class BuildCommand {
             "plan" => LayerGranularity.Plan,
             var unknown => throw new ArgumentException($"unknown --granularity '{unknown}' (group|plan)"),
         };
-
         var plansDir = Cli.FindPlansDirectory(get("plans"));
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var selections = Cli.BuildSelections(options, catalog);
-
         var jsonEvents = options.ContainsKey("json-events");
         // Serilog owns console + file output; the JSONL event stream owns stdout in --json-events mode.
         var log = new BuildLog { EchoConsole = false };
@@ -45,17 +42,14 @@ internal static class BuildCommand {
         Directory.CreateDirectory(logDirectory);
         var logFilePath = Path.Combine(logDirectory, $"tinywin2-{DateTimeOffset.UtcNow:yyyyMMddTHHmmss}.log");
         using var serilog = log.UseSerilog(logFilePath, echoConsole: !jsonEvents);
-
         var (runner, executers, layers) = Cli.CreateEngineParts();
         var engine = new BuildEngine(runner, executers, layers, log);
-
         using var cts = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) => {
             e.Cancel = true;
             log.Warn("cancellation requested; rolling back the current layer…");
             cts.Cancel();
         };
-
         try {
             var result = await engine.BuildAsync(new BuildOptions {
                 SourcePath = sourcePath,
@@ -72,7 +66,6 @@ internal static class BuildCommand {
                 OscdimgPath = get("oscdimg"),
                 PlansDirectory = plansDir,
             }, cts.Token);
-
             if (jsonEvents) {
                 Console.Out.WriteLine(new JsonObject {
                     ["seq"] = -1,
@@ -98,11 +91,9 @@ internal static class BuildCommand {
                 if (result.IsoPath is not null) {
                     Console.WriteLine($"  ISO:       {result.IsoPath}");
                 }
-
                 if (result.VhdxPath is not null) {
                     Console.WriteLine($"  VHDX:      {result.VhdxPath}");
                 }
-
                 Console.WriteLine($"  manifest:  {result.ManifestPath}");
                 Console.WriteLine($"  日志:      {logFilePath}");
                 Console.WriteLine($"  layers:    {result.LayerCount}");
@@ -135,7 +126,6 @@ internal static class PreviewCommand {
         var plansDir = Cli.FindPlansDirectory(get("plans"));
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var selections = Cli.BuildSelections(options, catalog);
-
         var json = options.ContainsKey("json");
         var log = new BuildLog { EchoConsole = false };
         var (runner, executers, layers) = Cli.CreateEngineParts();
@@ -146,7 +136,6 @@ internal static class PreviewCommand {
         using var previewSerilog = log.UseSerilog(
             Path.Combine(previewLogDirectory, $"tinywin2-preview-{DateTimeOffset.UtcNow:yyyyMMddTHHmmss}.log"),
             echoConsole: !json);
-
         var previews = await previewer.RunAsync(new PreviewOptions {
             SourcePath = sourcePath,
             ImageIndex = imageIndex,
@@ -155,7 +144,6 @@ internal static class PreviewCommand {
             Catalog = catalog,
             PlansDirectory = plansDir,
         }, CancellationToken.None);
-
         if (json) {
             Console.WriteLine(new JsonObject {
                 ["plans"] = new JsonArray(previews.Select(p => (JsonNode)p.ToJson()).ToArray()),
@@ -174,7 +162,6 @@ internal static class PreviewCommand {
                 }
             }
         }
-
         try { Directory.Delete(workDirectory, recursive: true); }
         catch { /* the preview base layer may be worth keeping; ignore */ }
         return 0;
@@ -198,7 +185,6 @@ internal static class LayerCommand {
         var log = new BuildLog { EchoConsole = false };
         var (runner, _, layers) = Cli.CreateEngineParts();
         var inspector = new LayerInspector(runner, layers, log);
-
         switch (positional[0]) {
             case "list":
                 return List(workDirectory, options.ContainsKey("json"));
@@ -220,13 +206,11 @@ internal static class LayerCommand {
                         if (report.Files.Count > 40) {
                             Console.WriteLine($"  … {report.Files.Count - 40} more");
                         }
-
                         foreach (var entry in report.Registry.Take(40)) {
                             Console.WriteLine($"  [{entry.Kind,-8}] {entry.Hive}\\{entry.Key}\\{entry.ValueName}");
                             if (entry.Before is not null) {
                                 Console.WriteLine($"              - {entry.Before}");
                             }
-
                             if (entry.After is not null) {
                                 Console.WriteLine($"              + {entry.After}");
                             }

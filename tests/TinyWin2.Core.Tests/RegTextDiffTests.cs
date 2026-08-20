@@ -32,7 +32,6 @@ public sealed class RegTextDiffTests {
     [Test]
     public async Task ParsesKeysAndValues() {
         var parsed = LayerInspector.ParseRegText(Before);
-
         await Assert.That(parsed.ContainsKey("Services\\LanmanWorkstation")).IsTrue();
         await Assert.That(parsed["Services\\LanmanWorkstation"]["Start"]).IsEqualTo("\"Start\"=dword:00000003");
         await Assert.That(parsed.ContainsKey("Policies")).IsTrue();
@@ -41,21 +40,16 @@ public sealed class RegTextDiffTests {
     [Test]
     public async Task DiffsModifiedRemovedAdded() {
         var diff = LayerInspector.RegTextDiff("system", Before, After);
-
         var start = diff.Single(d => d.ValueName == "Start");
         await Assert.That(start.Kind).IsEqualTo("modified");
         await Assert.That(start.Before).Contains("00000003");
         await Assert.That(start.After).Contains("00000004");
-
         var delayed = diff.Single(d => d.ValueName == "DelayedAutoStart");
         await Assert.That(delayed.Kind).IsEqualTo("removed");
-
         var added = diff.Single(d => d.ValueName == "New");
         await Assert.That(added.Kind).IsEqualTo("added");
-
         var policy = diff.Single(d => d.ValueName == "Policy");
         await Assert.That(policy.Kind).IsEqualTo("removed");
-
         var defaultValue = diff.Single(d => d.ValueName == "(Default)");
         await Assert.That(defaultValue.Kind).IsEqualTo("added");
     }
@@ -63,7 +57,6 @@ public sealed class RegTextDiffTests {
     [Test]
     public async Task IdenticalTextsProduceEmptyDiff() {
         var diff = LayerInspector.RegTextDiff("software", Before, Before);
-
         await Assert.That(diff.Count).IsEqualTo(0);
     }
 }

@@ -39,7 +39,6 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
             return ExecResult.Skipped("paths already in the desired state");
         }
         var options = FsPathOptions.FromDesired(spec.Desired, spec.Ensure);
-
         if (spec.Ensure == Ensure.Absent) {
             var applied = new List<ChangeItem>();
             foreach (var change in diff.Differences) {
@@ -57,7 +56,6 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
             }
             return ExecResult.Applied(applied);
         }
-
         var assetPath = ResolveAssetSource(context, options.Source!);
         var destination = ResolveInsideMount(context.MountPath, options.Path!);
         if (File.Exists(assetPath)) {

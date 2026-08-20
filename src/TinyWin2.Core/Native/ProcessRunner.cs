@@ -46,7 +46,6 @@ public sealed class ProcessRunner : IProcessRunner {
         ProcessRunOptions? options = null,
         CancellationToken cancellationToken = default) {
         options ??= new ProcessRunOptions();
-
         var startInfo = new ProcessStartInfo {
             FileName = fileName,
             WorkingDirectory = options.WorkingDirectory,
@@ -64,35 +63,28 @@ public sealed class ProcessRunner : IProcessRunner {
         foreach (var argument in arguments) {
             startInfo.ArgumentList.Add(argument);
         }
-
         var commandLine = BuildCommandLineEcho(fileName, arguments);
         using var process = new Process { StartInfo = startInfo };
         var outputBuilder = new StringBuilder();
         var errorBuilder = new StringBuilder();
-
         process.OutputDataReceived += (_, e) => {
             if (e.Data is null) {
                 return;
             }
-
             lock (outputBuilder) {
                 outputBuilder.AppendLine(e.Data);
             }
-
             options.OnOutputLine?.Invoke(e.Data);
         };
         process.ErrorDataReceived += (_, e) => {
             if (e.Data is null) {
                 return;
             }
-
             lock (errorBuilder) {
                 errorBuilder.AppendLine(e.Data);
             }
-
             options.OnErrorLine?.Invoke(e.Data);
         };
-
         if (!process.Start()) {
             throw new ProcessRunnerException(fileName,
                 new ProcessRunResult(-1, "", $"Failed to start '{fileName}'.", commandLine));
@@ -100,11 +92,9 @@ public sealed class ProcessRunner : IProcessRunner {
         process.StandardInput.Close();
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
-
         var timeout = options.Timeout ?? Timeout.InfiniteTimeSpan;
         using var timeoutCts = new CancellationTokenSource(timeout);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-
         try {
             await process.WaitForExitAsync(linked.Token).ConfigureAwait(false);
         }
@@ -116,19 +106,15 @@ public sealed class ProcessRunner : IProcessRunner {
             KillTree(process);
             throw;
         }
-
         string output;
         string error;
         lock (outputBuilder) {
             output = outputBuilder.ToString();
         }
-
         lock (errorBuilder) {
             error = errorBuilder.ToString();
         }
-
         var result = new ProcessRunResult(process.ExitCode, output, error, commandLine);
-
         if (process.ExitCode != 0 && !options.IgnoreExitCode) {
             throw new ProcessRunnerException(fileName, result);
         }

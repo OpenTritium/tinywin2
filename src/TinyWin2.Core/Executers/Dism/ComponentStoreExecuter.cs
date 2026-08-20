@@ -23,7 +23,6 @@ public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuter
         if (resetBase) {
             context.Log.Warn("ResetBase is enabled; installed updates cannot be uninstalled from the resulting image.");
         }
-
         var args = new List<string> { "/Cleanup-Image", "/StartComponentCleanup" };
         if (resetBase) {
             args.Add("/ResetBase");

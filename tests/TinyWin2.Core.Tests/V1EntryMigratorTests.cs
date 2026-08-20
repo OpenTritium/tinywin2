@@ -31,13 +31,11 @@ public sealed class V1EntryMigratorTests {
                 new JsonObject { ["services"] = new JsonArray("LanmanWorkstation") },
                 o => { o["risk"] = "High"; o["selectionTier"] = "Expert"; })),
         ]);
-
         await Assert.That(output.Plans.Count).IsEqualTo(1);
         var plan = output.Plans[0];
         await Assert.That(plan["id"]!.GetValue<string>()).IsEqualTo("service.workstation");
         await Assert.That(output.IdMap["registry.disable-workstation-service"]).IsEqualTo("service.workstation");
         await Assert.That(output.IdMap["registry.delay-workstation-service"]).IsEqualTo("service.workstation");
-
         var argument = plan["arguments"]![0]!.AsObject();
         await Assert.That(argument["default"]!.GetValue<string>()).IsEqualTo("delayed");
         var options = argument["options"]!.AsArray();
@@ -59,7 +57,6 @@ public sealed class V1EntryMigratorTests {
             ("spooler.json", V1Entry("registry.disable-print-spooler", "Registry.DisableOfflineService",
                 new JsonObject { ["services"] = new JsonArray("Spooler") }, o => o["risk"] = "High")),
         ]);
-
         var plan = output.Plans[0];
         await Assert.That(plan["id"]!.GetValue<string>()).IsEqualTo("service.print-spooler");
         await Assert.That(plan["tier"]!.GetValue<string>()).IsEqualTo("Expert"); // High risk → Expert (v1 rule baked in)
@@ -79,7 +76,6 @@ public sealed class V1EntryMigratorTests {
                 ["value"] = 0,
             }, o => o["risk"] = "High")),
         ]);
-
         var plan = output.Plans[0];
         await Assert.That(plan["id"]!.GetValue<string>()).IsEqualTo("registry.uac");
         var with = plan["execs"]![0]!["with"]!.AsObject();
@@ -102,7 +98,6 @@ public sealed class V1EntryMigratorTests {
                 ["capabilities"] = new JsonArray("Language.OCR~~~zh-CN~0.0.1.0"),
             })),
         ]);
-
         await Assert.That(output.Plans[0]["id"]!.GetValue<string>()).IsEqualTo("feature.hyper-v");
         await Assert.That(output.Plans[1]["id"]!.GetValue<string>()).IsEqualTo("capability.chinese-ocr");
     }
@@ -116,7 +111,6 @@ public sealed class V1EntryMigratorTests {
             ("b.json", V1Entry("dism.remove-bar", "Dism.RemoveOptionalComponent",
                 new JsonObject { ["features"] = new JsonArray("BarFeature") })),
         ]);
-
         var plan = output.Plans[0];
         await Assert.That(plan["conflicts"]![0]!.GetValue<string>()).IsEqualTo("feature.bar");
     }
@@ -135,7 +129,6 @@ public sealed class V1EntryMigratorTests {
             ("x5.json", V1Entry("dism.remove-pkg", "Dism.RemovePackage",
                 new JsonObject { ["packagePatterns"] = new JsonArray("^Foo-Package~") })),
         ]);
-
         foreach (var plan in output.Plans) {
             _ = PlanDefinition.FromJson(plan); // throws on invalid
         }

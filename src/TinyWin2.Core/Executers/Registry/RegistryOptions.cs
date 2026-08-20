@@ -14,7 +14,6 @@ public sealed record RegistryValueOptions {
         if (!RegistryHiveCache.HiveFiles.ContainsKey(hive)) {
             throw new ExecException($"{context} uses unsupported registry hive '{hive}' (expected one of: {string.Join(", ", RegistryHiveCache.HiveFiles.Keys)}).");
         }
-
         var targets = new List<RegistryValueTarget>();
         var declared = false;
         foreach (var raw in Desired.ObjectArray(desired, "values")) {
@@ -26,7 +25,6 @@ public sealed record RegistryValueOptions {
             targets.Add(RegistryValueTarget.FromDesired(desired, ensure));
             declared = true;
         }
-
         var deleteKeys = Desired.OptionalStringArray(desired, "deleteKeys") ?? [];
         if (ensure == Ensure.Present && deleteKeys.Count > 0) {
             throw new ExecException("'deleteKeys' is only valid with ensure: absent.");

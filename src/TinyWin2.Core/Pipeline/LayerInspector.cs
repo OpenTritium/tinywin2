@@ -57,11 +57,9 @@ public sealed partial class LayerInspector(
                 $"layer evidence snapshots missing for {fromIndex:000}/{toIndex:000} under '{snapshotsRoot}' " +
                 "(rebuild with a current engine version, which captures evidence at commit time).");
         }
-
         log.Info($"diffing layer {fromIndex:000} → {toIndex:000} via evidence snapshots");
         var before = Layers.LayerEvidence.LoadManifest(fromManifest);
         var after = Layers.LayerEvidence.LoadManifest(toManifest);
-
         var files = new List<FileDiffEntry>();
         foreach (var (path, oldEntry) in before.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)) {
             if (!after.TryGetValue(path, out var newEntry)) {
@@ -76,7 +74,6 @@ public sealed partial class LayerInspector(
                 files.Add(new FileDiffEntry(path, "added", 0, entry.Size));
             }
         }
-
         var registry = new List<RegistryDiffEntry>();
         var fromRegistryPath = Layers.LayerEvidence.RegistryPathFor(snapshotsRoot, fromIndex);
         var toRegistryPath = Layers.LayerEvidence.RegistryPathFor(snapshotsRoot, toIndex);
@@ -102,13 +99,11 @@ public sealed partial class LayerInspector(
         var before = ParseRegText(beforeText);
         var after = ParseRegText(afterText);
         var result = new List<RegistryDiffEntry>();
-
         foreach (var key in before.Keys.Union(after.Keys).OrderBy(k => k, StringComparer.OrdinalIgnoreCase)) {
             before.TryGetValue(key, out var oldValues);
             after.TryGetValue(key, out var newValues);
             oldValues ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             newValues ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
             foreach (var name in oldValues.Keys.Union(newValues.Keys)) {
                 oldValues.TryGetValue(name, out var oldValue);
                 newValues.TryGetValue(name, out var newValue);

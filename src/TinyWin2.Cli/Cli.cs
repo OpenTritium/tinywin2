@@ -33,7 +33,6 @@ internal static class Cli {
     /// <summary>Builds the effective selection list from --profile, --plan and --set options.</summary>
     public static List<PlanSelection> BuildSelections(Dictionary<string, List<string>> options, PlanCatalog catalog) {
         var selections = new List<PlanSelection>();
-
         if (options.TryGetValue("profile", out var profilePaths)) {
             foreach (var profilePath in profilePaths) {
                 var profile = Core.Profiles.ProfileStore.Load(profilePath);
@@ -45,7 +44,6 @@ internal static class Cli {
                 selections.AddRange(Core.Profiles.ProfileStore.ToPlanSelections(profile).Where(s => s.Enabled));
             }
         }
-
         void EnsureSelected(string planId) {
             if (!catalog.ById.ContainsKey(planId)) {
                 throw new ArgumentException($"unknown plan '{planId}' (see: tinywin2 plan list)");
@@ -54,13 +52,11 @@ internal static class Cli {
                 selections.Add(new PlanSelection(planId));
             }
         }
-
         if (options.TryGetValue("plan", out var planIds)) {
             foreach (var planId in planIds) {
                 EnsureSelected(planId);
             }
         }
-
         if (options.TryGetValue("set", out var sets)) {
             foreach (var set in sets) {
                 var separator = set.IndexOf('=');
@@ -82,7 +78,6 @@ internal static class Cli {
                 selections[index] = selections[index] with { Args = (IReadOnlyDictionary<string, JsonNode?>?)args };
             }
         }
-
         if (selections.Count == 0) {
             throw new ArgumentException("no plans selected: pass --profile, --plan and/or --set.");
         }

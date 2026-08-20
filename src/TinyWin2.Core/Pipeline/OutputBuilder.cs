@@ -61,7 +61,6 @@ public sealed class OutputBuilder(IProcessRunner runner, IBuildLog log) {
         if (result.ExitCode >= 8) {
             throw new IOException($"robocopy failed copying media (exit {result.ExitCode}).");
         }
-
         var sourcesDir = Path.Combine(mediaOutputPath, "sources");
         Directory.CreateDirectory(sourcesDir);
         foreach (var stale in new[] { "install.wim", "install.esd", "install.staging.wim" }) {
@@ -92,7 +91,6 @@ public sealed class OutputBuilder(IProcessRunner runner, IBuildLog log) {
         }
         var efisys = File.Exists(efiBootNoPrompt) ? efiBootNoPrompt : efiBoot;
         var bootData = $"2#p0,e,b{biosBoot}#pEF,e,b{efisys}";
-
         log.Info($"creating bootable ISO {isoPath}");
         await runner.RunAsync(oscdimgPath,
             ["-m", "-o", "-u2", "-udfver102", $"-bootdata:{bootData}", mediaPath, isoPath],

@@ -72,7 +72,6 @@ public sealed partial class ProgressPage : Page {
         State.LogLines.Clear();
         var dispatcher = DispatcherQueue;
         var arguments = BuildArguments();
-
         void HandleEvent(JsonObject evt) {
             dispatcher.TryEnqueue(() => {
                 var phase = evt["phase"]?.GetValue<string>();
@@ -103,7 +102,6 @@ public sealed partial class ProgressPage : Page {
                 LogList.ScrollIntoView(LogList.Items.LastOrDefault());
             });
         }
-
         var exitCode = await new CliRunner().RunAsync(
             arguments,
             HandleEvent,
@@ -114,7 +112,6 @@ public sealed partial class ProgressPage : Page {
                 Message = "CLI 运行失败: " + ex.Message,
             })),
             ct);
-
         _finished = true;
         State.BuildSucceeded = exitCode == 0 && State.BuildSucceeded;
         dispatcher.TryEnqueue(() => ((MainWindow)App.MainAppWindow!).GoTo(4));

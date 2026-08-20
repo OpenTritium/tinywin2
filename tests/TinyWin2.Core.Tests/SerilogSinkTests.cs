@@ -15,7 +15,6 @@ public sealed class SerilogSinkTests : IDisposable {
             log.Warn("no services matched pattern 'X_*' in ControlSet001; skipping.");
             log.Error("boom");
         }
-
         var content = await File.ReadAllTextAsync(logFile);
         await Assert.That(content).Contains("step 1/3");
         await Assert.That(content).Contains("no services matched");

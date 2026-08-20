@@ -16,10 +16,8 @@ internal static class Program {
         var profileOut = args.Skip(2).ToList().IndexOf("--profile-out") is { } index && index >= 0 && index + 3 <= args.Length
             ? args[index + 3]
             : null;
-
         var files = Directory.GetFiles(entriesDir, "*.json").OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToList();
         Console.WriteLine($"migrating {files.Count} v1 entries from {entriesDir}");
-
         var entries = new List<(string, JsonObject)>();
         foreach (var file in files) {
             var node = JsonNode.Parse(File.ReadAllText(file));
@@ -27,9 +25,7 @@ internal static class Program {
                 entries.Add((Path.GetFileName(file), obj));
             }
         }
-
         var output = V1EntryMigrator.Migrate(entries);
-
         Directory.CreateDirectory(plansDir);
         var options = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
         foreach (var plan in output.Plans) {
@@ -37,7 +33,6 @@ internal static class Program {
             File.WriteAllText(Path.Combine(plansDir, id + ".json"), plan.ToJsonString(options));
         }
         Console.WriteLine($"wrote {output.Plans.Count} plans → {plansDir}");
-
         foreach (var warning in output.Warnings) {
             Console.WriteLine($"  warn: {warning}");
         }

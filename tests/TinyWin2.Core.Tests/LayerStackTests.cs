@@ -58,7 +58,6 @@ public sealed class VhdLayerStackTests : IDisposable {
     [Test]
     public async Task BaseLayerIsLayerZeroAndLeaf() {
         var stack = await CreateWithBaseAsync();
-
         await Assert.That(stack.Records.Count).IsEqualTo(1);
         await Assert.That(stack.Records[0].Index).IsEqualTo(0);
         await Assert.That(stack.Records[0].Status).IsEqualTo(LayerStatus.Committed);
@@ -70,9 +69,7 @@ public sealed class VhdLayerStackTests : IDisposable {
         var stack = await CreateWithBaseAsync();
         var session = await stack.BeginLayerAsync("group:Apps", "Applications", null, CancellationToken.None);
         await stack.CommitLayerAsync(session, [], CancellationToken.None);
-
         var second = await stack.BeginLayerAsync("group:Net", "Networking", null, CancellationToken.None);
-
         await Assert.That(session.Record.Index).IsEqualTo(1);
         await Assert.That(second.Record.Index).IsEqualTo(2);
         await Assert.That(_backend.Calls).Contains("create-diff:L001.vhdx<-base.vhdx");
@@ -88,7 +85,6 @@ public sealed class VhdLayerStackTests : IDisposable {
         var stack = await CreateWithBaseAsync();
         var session = await stack.BeginLayerAsync("step1", "S1", null, CancellationToken.None);
         await stack.DiscardLayerAsync(session, "boom", CancellationToken.None);
-
         await Assert.That(File.Exists(session.VhdxPath)).IsFalse();
         await Assert.That(stack.LeafVhdxPath).EndsWith("base.vhdx");
         await Assert.That(stack.Records[1].Status).IsEqualTo(LayerStatus.Discarded);
@@ -106,9 +102,7 @@ public sealed class VhdLayerStackTests : IDisposable {
         var session = await stack.BeginLayerAsync("step1", "S1", new JsonObject { ["mode"] = "safe" }, CancellationToken.None);
         await stack.CommitLayerAsync(session, new JsonArray(), CancellationToken.None);
         stack.Save();
-
         var reloaded = Stack;
-
         await Assert.That(reloaded.Records.Count).IsEqualTo(2);
         await Assert.That(reloaded.Records[1].Status).IsEqualTo(LayerStatus.Committed);
         await Assert.That(reloaded.Records[1].BoundArgs!["mode"]!.GetValue<string>()).IsEqualTo("safe");
@@ -122,9 +116,7 @@ public sealed class VhdLayerStackTests : IDisposable {
             var session = await stack.BeginLayerAsync(title, title, null, CancellationToken.None);
             await stack.CommitLayerAsync(session, [], CancellationToken.None);
         }
-
         await stack.ConsolidateAsync(CancellationToken.None);
-
         await Assert.That(_backend.MergeDepth).IsEqualTo(3);
         await Assert.That(File.Exists(Path.Combine(_workDir, "L001.vhdx"))).IsFalse();
         await Assert.That(File.Exists(Path.Combine(_workDir, "L003.vhdx"))).IsFalse();
@@ -138,7 +130,6 @@ public sealed class VhdLayerStackTests : IDisposable {
         var stack = await CreateWithBaseAsync();
         var session = await stack.BeginLayerAsync("step1", "S1", null, CancellationToken.None);
         await stack.DiscardLayerAsync(session, "x", CancellationToken.None);
-
         Assert.Throws<ArgumentException>(() => stack.VhdxForLayer(1));
     }
 
@@ -182,7 +173,6 @@ public sealed class BuildEngineDryRunTests : IDisposable {
         var runner = new FakeProcessRunner();
         var executers = new ExecuterRegistry([new FakeExecuter("test.noop", fail: false)]);
         var engine = new BuildEngine(runner, executers, new FakeLayerBackend(), new BuildLog { EchoConsole = false });
-
         var result = await engine.BuildAsync(new BuildOptions {
             SourcePath = @"C:\does\not\exist.iso",
             ImageIndex = 1,
@@ -191,7 +181,6 @@ public sealed class BuildEngineDryRunTests : IDisposable {
             Catalog = Catalog(),
             DryRun = true,
         }, CancellationToken.None);
-
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(runner.Calls.Count).IsEqualTo(0);
     }

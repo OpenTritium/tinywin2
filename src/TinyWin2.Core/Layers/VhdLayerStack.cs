@@ -194,7 +194,6 @@ public sealed class VhdLayerStack(
         var parent = LeafVhdxPath;
         log.Info($"creating layer {index:000} '{title}' on {Path.GetFileName(parent)}", layerIndex: index);
         await backend.CreateDiffAsync(vhdxPath, parent, ct);
-
         char letter;
         try {
             letter = await backend.AttachAsync(vhdxPath, ct);
@@ -203,7 +202,6 @@ public sealed class VhdLayerStack(
             TryDelete(vhdxPath);
             throw;
         }
-
         var record = new LayerRecord {
             Index = index,
             StepId = stepId,
@@ -216,7 +214,6 @@ public sealed class VhdLayerStack(
         lock (_gate) {
             _records.Add(record);
         }
-
         Save();
         return new LayerSession { Record = record, VhdxPath = vhdxPath, MountPath = $"{letter}:\\", DriveLetter = letter };
     }
@@ -236,7 +233,6 @@ public sealed class VhdLayerStack(
         Save();
         log.Info($"layer {session.Record.Index:000} committed ({new FileInfo(session.VhdxPath).Length / 1024.0 / 1024:F1} MB)",
             layerIndex: session.Record.Index);
-
         if (CommittedDepth > ConsolidateThreshold) {
             await ConsolidateAsync(ct);
         }

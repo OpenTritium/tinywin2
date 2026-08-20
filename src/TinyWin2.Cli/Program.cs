@@ -11,7 +11,6 @@ internal static class Program {
             PrintUsage();
             return 0;
         }
-
         try {
             var command = args[0].ToLowerInvariant();
             var rest = args[1..].ToList();

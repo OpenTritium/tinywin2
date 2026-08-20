@@ -61,7 +61,6 @@ public static class ArgBinder {
         }
         var source = ResolveArg(argValues, argName, path);
         var sourceKey = source is JsonValue sv && sv.TryGetValue<string>(out var s) ? s : source?.ToJsonString();
-
         if (map["cases"] is JsonObject cases && sourceKey is not null && cases.TryGetPropertyValue(sourceKey, out var mapped)) {
             return mapped;
         }

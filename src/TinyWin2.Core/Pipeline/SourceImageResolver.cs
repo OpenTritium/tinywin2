@@ -99,7 +99,6 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog
         if (result.ExitCode != 0) {
             throw new InvalidOperationException($"dism.exe could not read image info from '{installImagePath}' (exit {result.ExitCode}).");
         }
-
         var indexes = new List<ImageIndexInfo>();
         ImageIndexInfo? current = null;
         foreach (var rawLine in result.Output.Split('\n')) {
