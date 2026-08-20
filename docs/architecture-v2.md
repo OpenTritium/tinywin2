@@ -105,6 +105,9 @@ tier 过滤/enum 参数下拉含风险徽章/Profile）→ 进度日志（彩色
 - 错误分类用 HRESULT/退出码（CBS_E_INVALID_INSTALL_STATE = -2146498541 等），
   弃用 v1 的中英文正则；zh-CN 提示仅作 provider 缺失的兜底。
 - 一切 JSON 输出 CJK 友好（UnsafeRelaxedJsonEscaping）。
+- **日志 = 双通道**：`BuildEvent`（强类型领域事件，承载 `--json-events` JSONL 进程协议与 manifest）+
+  **Serilog**（标准输出通道：彩色控制台 + `out/logs/tinywin2-*.log` UTF-8 文件，phase/planId/layerIndex
+  作为结构化属性；`--json-events` 模式下自动关闭控制台 sink 避免污染 JSONL 流）。GUI 场景日志文件同样生成。
 - 测试：TUnit，83 个单元/收敛语义/层栈状态机/迁移 golden 测试；
   `TINYWIN2_IT=1` 门控真实 diskpart 集成测试。
 - v1 → v2 迁移：`tools/migrate-v1`（156 条 → 152 plan；disable/configure 对合并为

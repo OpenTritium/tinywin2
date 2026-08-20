@@ -41,11 +41,16 @@ internal static class BuildCommand
         var selections = Cli.BuildSelections(options, catalog);
 
         var jsonEvents = options.ContainsKey("json-events");
-        var log = new BuildLog { EchoConsole = !jsonEvents };
+        // Serilog owns console + file output; the JSONL event stream owns stdout in --json-events mode.
+        var log = new BuildLog { EchoConsole = false };
         if (jsonEvents)
         {
             _ = log.Attach(evt => Console.Out.WriteLine(evt.ToJson().ToCompactString()));
         }
+        var logDirectory = Path.Combine(outputRoot, "logs");
+        Directory.CreateDirectory(logDirectory);
+        var logFilePath = Path.Combine(logDirectory, $"tinywin2-{DateTimeOffset.UtcNow:yyyyMMddTHHmmss}.log");
+        using var serilog = log.UseSerilog(logFilePath, echoConsole: !jsonEvents);
 
         var (runner, executers, layers) = Cli.CreateEngineParts();
         var engine = new BuildEngine(runner, executers, layers, log);
@@ -106,6 +111,7 @@ internal static class BuildCommand
                 if (result.IsoPath is not null) Console.WriteLine($"  ISO:       {result.IsoPath}");
                 if (result.VhdxPath is not null) Console.WriteLine($"  VHDX:      {result.VhdxPath}");
                 Console.WriteLine($"  manifest:  {result.ManifestPath}");
+                Console.WriteLine($"  日志:      {logFilePath}");
                 Console.WriteLine($"  layers:    {result.LayerCount}");
             }
             return 0;
@@ -144,10 +150,15 @@ internal static class PreviewCommand
         var selections = Cli.BuildSelections(options, catalog);
 
         var json = options.ContainsKey("json");
-        var log = new BuildLog { EchoConsole = !json };
+        var log = new BuildLog { EchoConsole = false };
         var (runner, executers, layers) = Cli.CreateEngineParts();
         var previewer = new PreviewRunner(runner, executers, layers, log);
         var workDirectory = Path.Combine(Path.GetFullPath(get("o") ?? "out"), "work", "preview");
+        var previewLogDirectory = Path.Combine(Path.GetDirectoryName(workDirectory)!, "logs");
+        Directory.CreateDirectory(previewLogDirectory);
+        using var previewSerilog = log.UseSerilog(
+            Path.Combine(previewLogDirectory, $"tinywin2-preview-{DateTimeOffset.UtcNow:yyyyMMddTHHmmss}.log"),
+            echoConsole: !json);
 
         var previews = await previewer.RunAsync(new PreviewOptions
         {
