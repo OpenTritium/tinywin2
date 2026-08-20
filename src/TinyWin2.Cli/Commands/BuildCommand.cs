@@ -10,26 +10,26 @@ namespace TinyWin2.Cli.Commands;
 internal static class BuildCommand {
     public static async Task<int> RunAsync(List<string> args) {
         var options = Program.ParseOptions(args);
-        var get = (string name) => options.GetValueOrDefault(name)?.FirstOrDefault();
-        var sourcePath = get("s") ?? get("source")
+        string? Get(string name) => options.GetValueOrDefault(name)?.FirstOrDefault();
+        var sourcePath = Get("s") ?? Get("source")
             ?? throw new ArgumentException("missing --s <iso|folder>");
-        if (!int.TryParse(get("i") ?? get("index"), out var imageIndex)) {
+        if (!int.TryParse(Get("i") ?? Get("index"), out var imageIndex)) {
             throw new ArgumentException("missing --i <image index> (see: tinywin2 inspect)");
         }
-        var outputRoot = Path.GetFullPath(get("o") ?? get("out-dir") ?? "out");
-        var outputMode = (get("out") ?? get("out-mode") ?? "iso").ToLowerInvariant() switch {
+        var outputRoot = Path.GetFullPath(Get("o") ?? Get("out-dir") ?? "out");
+        var outputMode = (Get("out") ?? Get("out-mode") ?? "iso").ToLowerInvariant() switch {
             "wim" => OutputMode.Wim,
             "esd" => OutputMode.Esd,
             "iso" => OutputMode.Iso,
             "iso+vhdx" or "iso-vhdx" => OutputMode.IsoAndVhdx,
             var unknown => throw new ArgumentException($"unknown --out-mode '{unknown}' (wim|esd|iso|iso+vhdx)"),
         };
-        var granularity = (get("granularity") ?? "group").ToLowerInvariant() switch {
+        var granularity = (Get("granularity") ?? "group").ToLowerInvariant() switch {
             "group" => LayerGranularity.Group,
             "plan" => LayerGranularity.Plan,
             var unknown => throw new ArgumentException($"unknown --granularity '{unknown}' (group|plan)"),
         };
-        var plansDir = Cli.FindPlansDirectory(get("plans"));
+        var plansDir = Cli.FindPlansDirectory(Get("plans"));
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var selections = Cli.BuildSelections(options, catalog);
         var jsonEvents = options.ContainsKey("json-events");
@@ -45,11 +45,7 @@ internal static class BuildCommand {
         var (runner, executers, layers) = Cli.CreateEngineParts();
         var engine = new BuildEngine(runner, executers, layers, log);
         using var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) => {
-            e.Cancel = true;
-            log.Warn("cancellation requested; rolling back the current layer…");
-            cts.Cancel();
-        };
+        Console.CancelKeyPress += OnCancel;
         try {
             var result = await engine.BuildAsync(new BuildOptions {
                 SourcePath = sourcePath,
@@ -63,7 +59,7 @@ internal static class BuildCommand {
                 ContinueOnError = options.ContainsKey("continue-on-error"),
                 KeepLayers = options.ContainsKey("keep-layers"),
                 DryRun = options.ContainsKey("dry-run"),
-                OscdimgPath = get("oscdimg"),
+                OscdimgPath = Get("oscdimg"),
                 PlansDirectory = plansDir,
             }, cts.Token);
             if (jsonEvents) {
@@ -71,7 +67,7 @@ internal static class BuildCommand {
                     ["seq"] = -1,
                     ["ts"] = DateTimeOffset.UtcNow.ToString("O"),
                     ["level"] = "info",
-                    ["phase"] = "result",
+                    ["phase"] = BuildPhases.Result,
                     ["message"] = "build finished",
                     ["data"] = new JsonObject {
                         ["succeeded"] = result.Succeeded,
@@ -112,25 +108,34 @@ internal static class BuildCommand {
             Console.Error.WriteLine("cancelled.");
             return 130;
         }
+        finally {
+            Console.CancelKeyPress -= OnCancel; // the handler outlives the disposed cts otherwise
+        }
+
+        void OnCancel(object? sender, ConsoleCancelEventArgs e) {
+            e.Cancel = true;
+            log.Warn("cancellation requested; rolling back the current layer…");
+            cts.Cancel();
+        }
     }
 }
 
 internal static class PreviewCommand {
     public static async Task<int> RunAsync(List<string> args) {
         var options = Program.ParseOptions(args);
-        var get = (string name) => options.GetValueOrDefault(name)?.FirstOrDefault();
-        var sourcePath = get("s") ?? get("source") ?? throw new ArgumentException("missing --s <iso|folder>");
-        if (!int.TryParse(get("i") ?? get("index"), out var imageIndex)) {
+        string? Get(string name) => options.GetValueOrDefault(name)?.FirstOrDefault();
+        var sourcePath = Get("s") ?? Get("source") ?? throw new ArgumentException("missing --s <iso|folder>");
+        if (!int.TryParse(Get("i") ?? Get("index"), out var imageIndex)) {
             throw new ArgumentException("missing --i <image index>");
         }
-        var plansDir = Cli.FindPlansDirectory(get("plans"));
+        var plansDir = Cli.FindPlansDirectory(Get("plans"));
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var selections = Cli.BuildSelections(options, catalog);
         var json = options.ContainsKey("json");
         var log = new BuildLog();
         var (runner, executers, layers) = Cli.CreateEngineParts();
         var previewer = new PreviewRunner(runner, executers, layers, log);
-        var workDirectory = Path.Combine(Path.GetFullPath(get("o") ?? "out"), "work", "preview");
+        var workDirectory = Path.Combine(Path.GetFullPath(Get("o") ?? "out"), "work", "preview");
         var previewLogDirectory = Path.Combine(Path.GetDirectoryName(workDirectory)!, "logs");
         Directory.CreateDirectory(previewLogDirectory);
         using var previewSerilog = log.UseSerilog(

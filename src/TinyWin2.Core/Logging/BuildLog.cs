@@ -42,7 +42,7 @@ public sealed record BuildEvent {
 /// pushed to sinks only — nothing is buffered, so a long build costs no memory.
 /// </summary>
 public sealed class BuildLog {
-    private readonly object _gate = new();
+    private readonly Lock _gate = new();
     private readonly List<Action<BuildEvent>> _sinks = [];
     private int _sequence;
 

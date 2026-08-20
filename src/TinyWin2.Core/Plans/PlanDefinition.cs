@@ -40,7 +40,7 @@ public sealed record PlanExec(string Resource, Ensure Ensure, JsonObject With);
 
 /// <summary>A leaf plan definition loaded from <c>plans/*.json</c>.</summary>
 public sealed partial record PlanDefinition {
-    public const int CurrentSchemaVersion = 2;
+    private const int CurrentSchemaVersion = 2;
 
     public required int SchemaVersion { get; init; }
     public required string Id { get; init; }
@@ -76,10 +76,10 @@ public sealed partial record PlanDefinition {
         var group = ReadString(obj, "group", errors);
         var risk = ReadString(obj, "risk", errors) ?? "Medium";
         var tier = ReadString(obj, "tier", errors) ?? "Standard";
-        if (risk is not null && !RiskLevels.Contains(risk)) {
+        if (!RiskLevels.Contains(risk)) {
             errors.Add($"risk '{risk}' invalid (Low|Medium|High).");
         }
-        if (tier is not null && !Tiers.Contains(tier)) {
+        if (!Tiers.Contains(tier)) {
             errors.Add($"tier '{tier}' invalid (Standard|Expert|Experimental).");
         }
         var requires = ReadStringArray(obj, "requires", errors);
@@ -105,10 +105,10 @@ public sealed partial record PlanDefinition {
         };
     }
 
-    internal static readonly string[] RiskLevels = ["Low", "Medium", "High"];
-    internal static readonly string[] Tiers = ["Standard", "Expert", "Experimental"];
+    private static readonly string[] RiskLevels = ["Low", "Medium", "High"];
+    private static readonly string[] Tiers = ["Standard", "Expert", "Experimental"];
 
-    internal static IReadOnlyList<string> ReadStringArray(JsonObject obj, string name, List<string> errors, bool required = false) {
+    private static IReadOnlyList<string> ReadStringArray(JsonObject obj, string name, List<string> errors, bool required = false) {
         if (obj[name] is not { } node) {
             if (required) {
                 errors.Add($"'{name}' is required.");
@@ -131,7 +131,7 @@ public sealed partial record PlanDefinition {
         return values;
     }
 
-    internal static string? ReadString(JsonObject obj, string name, List<string> errors, bool required = true) {
+    private static string? ReadString(JsonObject obj, string name, List<string> errors, bool required = true) {
         if (obj[name] is not { } node) {
             if (required) {
                 errors.Add($"'{name}' is required.");
@@ -149,7 +149,7 @@ public sealed partial record PlanDefinition {
         return null;
     }
 
-    internal static int? ReadInt(JsonObject obj, string name, List<string> errors, bool required = true) {
+    private static int? ReadInt(JsonObject obj, string name, List<string> errors, bool required = true) {
         if (obj[name] is not { } node) {
             if (required) {
                 errors.Add($"'{name}' is required.");
@@ -283,6 +283,4 @@ public sealed partial record PlanDefinition {
 }
 
 public sealed class PlanValidationException(string source, IReadOnlyList<string> errors)
-    : Exception($"Invalid plan '{source}':{Environment.NewLine}{string.Join(Environment.NewLine + "  - ", errors)}") {
-    public IReadOnlyList<string> Errors { get; } = errors;
-}
+    : Exception($"Invalid plan '{source}':{Environment.NewLine}{string.Join(Environment.NewLine + "  - ", errors)}");

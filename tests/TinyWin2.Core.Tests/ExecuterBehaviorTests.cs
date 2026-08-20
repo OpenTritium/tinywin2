@@ -145,7 +145,7 @@ public sealed class CapabilityAndPackageTests : IDisposable {
 
 public sealed class ComponentStoreExecuterTests : IDisposable {
     private readonly ExecuterTestHarness _harness = new();
-    private readonly ComponentStoreExecuter _executer = new(new FakeProcessRunner());
+    private readonly ComponentStoreExecuter _executer;
 
     public ComponentStoreExecuterTests() {
         _executer = new ComponentStoreExecuter(_harness.Runner);
@@ -245,7 +245,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
     public async Task RejectsTraversalAndRootedPaths() {
         foreach (var unsafePath in new[] { "..\\escape", "C:\\Windows", "a/../../b" }) {
             var ex = Assert.Throws<ExecException>(() =>
-                FsPathExecuter.ResolveInsideMount(_harness.MountPath, unsafePath))!;
+                FsPathExecuter.ResolveInsideMount(_harness.MountPath, unsafePath));
             await Assert.That(ex.Message).Contains("unsafe");
         }
     }
@@ -313,7 +313,7 @@ public sealed class DriverStoreExecuterTests : IDisposable {
             _executer.InspectAsync(_harness.NewContext(),
                     ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
                         ("infNames", new JsonArray("C:\\evil\\path.inf"))), CancellationToken.None).GetAwaiter()
-                .GetResult())!;
+                .GetResult());
         await Assert.That(ex.Message).Contains("invalid driver INF name");
     }
 
@@ -335,7 +335,7 @@ public sealed class ExecuterRegistryTests {
     [Test]
     public async Task UnknownResourceThrows() {
         var registry = new ExecuterRegistry(new FakeProcessRunner());
-        var ex = Assert.Throws<ExecException>(() => registry.Get("nope.resource"))!;
+        var ex = Assert.Throws<ExecException>(() => registry.Get("nope.resource"));
         await Assert.That(ex.Message).Contains("no executer registered");
     }
 }

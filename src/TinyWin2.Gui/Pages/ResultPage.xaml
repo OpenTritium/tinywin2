@@ -7,7 +7,7 @@
     <ScrollViewer>
         <StackPanel Spacing="12" Padding="24,8,24,24" MaxWidth="820" HorizontalAlignment="Left">
             <StackPanel x:Name="SuccessPanel" Spacing="10">
-                <TextBlock x:Name="SuccessTitle" Text="✔ 构建完成" Style="{ThemeResource TitleTextBlockStyle}" Foreground="DarkGreen"/>
+                <TextBlock Text="✔ 构建完成" Style="{ThemeResource TitleTextBlockStyle}" Foreground="DarkGreen"/>
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button Content="打开输出文件夹" Click="OpenFolder"/>
                     <Button Content="复制诊断信息" Click="CopyDiagnostics"/>

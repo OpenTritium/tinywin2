@@ -4,7 +4,7 @@ namespace TinyWin2.Core.Executers.Dism;
 
 /// <summary>Converges CBS packages by regex pattern. absent = remove matching installed/staged packages.</summary>
 public sealed class PackageExecuter(IProcessRunner runner) : DismRemoveExecuterBase(runner) {
-    public const string ResourceId = "dism.package";
+    internal const string ResourceId = "dism.package";
     public override string Resource => ResourceId;
 
     private static readonly string[] RemovableStates = ["Installed", "Staged", "InstallPending"];

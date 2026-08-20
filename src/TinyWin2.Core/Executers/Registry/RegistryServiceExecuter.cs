@@ -8,7 +8,7 @@ namespace TinyWin2.Core.Executers.Registry;
 /// ConfigureOfflineService: every start mode is present-with-a-value.
 /// </summary>
 public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IExecuter {
-    public const string ResourceId = "registry.service";
+    internal const string ResourceId = "registry.service";
     public string Resource => ResourceId;
 
     /// <summary>

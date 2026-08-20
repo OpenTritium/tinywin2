@@ -8,7 +8,7 @@ namespace TinyWin2.Core.Executers.Dism;
 /// Desired: <c>{ resetBase:bool }</c>.
 /// </summary>
 public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuterBase(runner), IExecuter {
-    public const string ResourceId = "dism.component-store";
+    internal const string ResourceId = "dism.component-store";
     public string Resource => ResourceId;
 
     public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {

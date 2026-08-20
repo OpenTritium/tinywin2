@@ -77,7 +77,7 @@ internal static class Cli {
         return selections;
     }
 
-    public static JsonNode ParseValue(string text) =>
+    private static JsonNode ParseValue(string text) =>
         text.Trim() switch {
             "true" => JsonValue.Create(true),
             "false" => JsonValue.Create(false),

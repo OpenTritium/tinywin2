@@ -44,7 +44,7 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
             $"(Mount-VHD -Path {PsQuote(vhdxPath)} -PassThru | Get-Partition | Get-Volume | Where-Object DriveLetter | Select-Object -First 1).DriveLetter");
         var output = await RunPsAsync(ps, ct);
         var letter = output.Trim().LastOrDefault(char.IsLetter);
-        if (letter == default) {
+        if (letter == '\0') {
             throw new IOException($"mounted '{vhdxPath}' but could not resolve its drive letter.");
         }
 
@@ -57,7 +57,7 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
     public Task MergeAsync(string vhdxPath, int depth, CancellationToken ct) =>
         RunPsAsync($"$ErrorActionPreference = 'Stop'\nMerge-VHD -Path {PsQuote(vhdxPath)} -Depth {depth}", ct);
 
-    private static readonly object _probeGate = new();
+    private static readonly Lock ProbeGate = new();
     private static bool? _available;
 
     /// <summary>
@@ -67,14 +67,14 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
     /// wait is bounded by the 30s probe timeout and happens at most once.
     /// </summary>
     public static bool IsAvailable(IProcessRunner? probeRunner = null) {
-        lock (_probeGate) {
+        lock (ProbeGate) {
             _available ??= Probe(probeRunner ?? new ProcessRunner());
             return _available.Value;
         }
     }
 
     internal static void ResetAvailabilityCache() {
-        lock (_probeGate) {
+        lock (ProbeGate) {
             _available = null;
         }
     }

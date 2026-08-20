@@ -31,8 +31,8 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
     private readonly Dictionary<string, RegistryHive> _loaded = new(StringComparer.OrdinalIgnoreCase);
     private string _sessionPrefix = "TinyWin2";
 
-    public string MountPath { get; } = mountPath;
-    public IProcessRunner Runner { get; } = runner;
+    private string MountPath { get; } = mountPath;
+    private IProcessRunner Runner { get; } = runner;
 
     /// <summary>Hive id → file path inside the image (v1 mapping + SECURITY/SAM).</summary>
     public static readonly IReadOnlyDictionary<string, string> HiveFiles =

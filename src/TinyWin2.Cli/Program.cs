@@ -45,7 +45,7 @@ internal static class Program {
             if (!isLong && !isShort) {
                 continue;
             }
-            var key = isLong ? arg[2..] : arg[1..].ToString();
+            var key = isLong ? arg[2..] : arg[1..];
             var value = "true";
             if (i + 1 < args.Count) {
                 var next = args[i + 1];

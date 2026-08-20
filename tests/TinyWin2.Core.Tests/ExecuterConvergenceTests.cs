@@ -19,7 +19,7 @@ public sealed class ExecuterTestHarness : IDisposable {
         var relative = RegistryHiveCache.HiveFiles[hiveId];
         var path = Path.Combine(MountPath, relative.Replace('\\', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllBytes(path, [0x51, 0x46, 0x49, 0x42]); // arbitrary non-empty content
+        File.WriteAllBytes(path, "QFIB"u8); // arbitrary non-empty content
     }
 
     public static ExecSpec Spec(string resource, Ensure ensure, params (string Key, JsonNode? Value)[] desired) {
@@ -84,7 +84,7 @@ public sealed class DismClassifierTests {
 
 public sealed class RegistryValueExecuterTests : IDisposable {
     private readonly ExecuterTestHarness _harness = new();
-    private readonly RegistryValueExecuter _executer = new(new FakeProcessRunner());
+    private readonly RegistryValueExecuter _executer;
 
     public RegistryValueExecuterTests() {
         _executer = new RegistryValueExecuter(_harness.Runner);
@@ -195,7 +195,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
                 return FakeProcessRunner.Ok();
             }
 
-            if (args.Count == 4 && args[1] == $"{hiveKey}\\Select" && args[2] == "/v") {
+            if (args.Count == 4 && args[1] == hiveKey + "\\Select" && args[2] == "/v") {
                 return FakeProcessRunner.Ok($"\r\n    Current    REG_DWORD    0x1\r\n");
             }
 

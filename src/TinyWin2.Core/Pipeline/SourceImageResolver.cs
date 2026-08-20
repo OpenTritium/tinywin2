@@ -26,7 +26,7 @@ public sealed class SourceMedia {
 }
 
 /// <summary>Resolves ISO/folder sources and inspects install-image indexes (read-only).</summary>
-public sealed partial class SourceImageResolver(IProcessRunner runner, BuildLog log) {
+public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
     public async Task<SourceMedia> ResolveAsync(string sourcePath, CancellationToken ct) {
         var fullPath = Path.GetFullPath(sourcePath);
         if (Directory.Exists(fullPath)) {
@@ -190,7 +190,7 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, BuildLog 
              $"(Mount-DiskImage -ImagePath '{isoPath}' -PassThru | Get-Volume).DriveLetter"],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
         var letter = result.Output.Trim().LastOrDefault(char.IsLetter);
-        if (result.ExitCode != 0 || letter == default) {
+        if (result.ExitCode != 0 || letter == '\0') {
             throw new IOException($"could not mount ISO '{isoPath}': {result.Output} {result.Error}");
         }
         var root = $"{letter}:\\";

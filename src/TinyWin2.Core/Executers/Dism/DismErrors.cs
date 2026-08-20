@@ -24,13 +24,13 @@ public static partial class DismErrors {
     public const int CbsECannotUninstall = unchecked((int)0x800F0825);
 
     /// <summary>Win32 ERROR_NOT_SUPPORTED — the edition exposes no servicing provider for this operation.</summary>
-    public const int ErrorNotSupported = 50;
+    private const int ErrorNotSupported = 50;
 
     /// <summary>DISM error 4350 — some Server 2025 images reject offline StartComponentCleanup.</summary>
-    public const int ComponentCleanup4350 = 4350;
+    private const int ComponentCleanup4350 = 4350;
 
     /// <summary>DISM success-with-reboot-required.</summary>
-    public const int SuccessRebootRequired = 3010;
+    private const int SuccessRebootRequired = 3010;
 
     public static DismOutcome Classify(int exitCode, string output) {
         return exitCode switch {

@@ -16,7 +16,7 @@ public partial class PlanItemViewModel : ObservableObject {
         }
     }
 
-    public PlanDefinition Definition { get; }
+    private PlanDefinition Definition { get; }
     public string Id => Definition.Id;
     public string Title => Definition.Title;
     public string Group => Definition.Group;
@@ -62,7 +62,7 @@ public partial class ArgumentViewModel : ObservableObject {
         }
     }
 
-    public PlanArgument Argument { get; }
+    private PlanArgument Argument { get; }
     public string Name => Argument.Name;
     public string Label => Argument.Label;
     public string Type => Argument.Type.ToString().ToLowerInvariant();
@@ -99,7 +99,6 @@ public sealed class WizardState {
     public bool Fast { get; set; }
 
     public ObservableCollection<PlanItemViewModel> Plans { get; } = [];
-    public ObservableCollection<PlanItemViewModel> VisiblePlans { get; } = [];
 
     // Progress + result state filled by the CLI event stream on ProgressPage.
     public string CurrentPhase { get; set; } = "";

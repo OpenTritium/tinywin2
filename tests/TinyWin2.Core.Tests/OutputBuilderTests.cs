@@ -44,7 +44,7 @@ public sealed class OutputBuilderTests : IDisposable {
         _runner.Handler = (_, _) => FakeProcessRunner.Fail(8);
         var ex = Assert.Throws<IOException>(() => _builder.RebuildMediaAsync(
             source, Path.Combine(_root, "out2"), "captured.wim", ImageFormat.Wim, CancellationToken.None)
-            .GetAwaiter().GetResult())!;
+            .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("robocopy failed");
     }
 
@@ -75,7 +75,7 @@ public sealed class OutputBuilderTests : IDisposable {
         var media = Path.Combine(_root, "media");
         Directory.CreateDirectory(media);
         var ex = Assert.Throws<FileNotFoundException>(() => _builder.CreateIsoAsync(
-            media, Path.Combine(_root, "x.iso"), "oscdimg.exe", CancellationToken.None).GetAwaiter().GetResult())!;
+            media, Path.Combine(_root, "x.iso"), "oscdimg.exe", CancellationToken.None).GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("boot files");
     }
 

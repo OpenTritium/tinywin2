@@ -80,7 +80,7 @@ public sealed class PlanDefinitionTests {
             ["version"] = "1.0.0",
             // title/description/group/execs missing
         };
-        var ex = Assert.Throws<PlanValidationException>(() => PlanDefinition.FromJson(obj))!;
+        var ex = Assert.Throws<PlanValidationException>(() => PlanDefinition.FromJson(obj));
         await Assert.That(ex.Message).Contains("'title'");
         await Assert.That(ex.Message).Contains("'execs'");
     }
@@ -88,7 +88,7 @@ public sealed class PlanDefinitionTests {
     [Test]
     public async Task RejectsWrongSchemaVersion() {
         var obj = new JsonObject { ["schemaVersion"] = 1, ["id"] = "a.b", ["version"] = "1.0.0" };
-        var ex = Assert.Throws<PlanValidationException>(() => PlanDefinition.FromJson(obj))!;
+        var ex = Assert.Throws<PlanValidationException>(() => PlanDefinition.FromJson(obj));
         await Assert.That(ex.Message).Contains("schemaVersion");
     }
 
@@ -108,7 +108,7 @@ public sealed class PlanDefinitionTests {
             }),
             ["execs"] = new JsonArray(),
         };
-        var ex = Assert.Throws<PlanValidationException>(() => PlanDefinition.FromJson(obj))!;
+        var ex = Assert.Throws<PlanValidationException>(() => PlanDefinition.FromJson(obj));
         await Assert.That(ex.Message).Contains("enum argument requires at least one option");
     }
 
@@ -129,7 +129,7 @@ public sealed class PlanDefinitionTests {
                 ["options"] = new JsonArray(new JsonObject { ["value"] = "yes" }),
             }),
         };
-        var ex = Assert.Throws<PlanValidationException>(() => PlanDefinition.FromJson(obj))!;
+        var ex = Assert.Throws<PlanValidationException>(() => PlanDefinition.FromJson(obj));
         await Assert.That(ex.Message).Contains("not one of the declared options");
     }
 }
@@ -144,7 +144,7 @@ public sealed class PlanCatalogTests : IDisposable {
         var catalog = PlanCatalog.LoadDirectory(_directory);
         await Assert.That(catalog.Plans.Count).IsEqualTo(2);
         await Assert.That(catalog.ById.ContainsKey("alpha.two")).IsTrue();
-        await Assert.That(string.IsNullOrEmpty(catalog.Get("alpha.one").Sha256!)).IsFalse();
+        await Assert.That(string.IsNullOrEmpty(catalog.Get("alpha.one").Sha256)).IsFalse();
     }
 
     [Test]
@@ -156,14 +156,14 @@ public sealed class PlanCatalogTests : IDisposable {
             Path.Combine(_directory, "dup_thing.json"),
             Path.Combine(_directory, "dup_thing_copy.json"));
         TestPlans.WritePlan(_directory, "dup.thing", o => o["group"] = "B");
-        var ex = Assert.Throws<PlanValidationException>(() => PlanCatalog.LoadDirectory(_directory))!;
+        var ex = Assert.Throws<PlanValidationException>(() => PlanCatalog.LoadDirectory(_directory));
         await Assert.That(ex.Message).Contains("duplicate plan id 'dup.thing'");
     }
 
     [Test]
     public async Task UnknownRequiresAreRejected() {
         TestPlans.WritePlan(_directory, "dep.user", o => o["requires"] = new JsonArray("missing.dep"));
-        var ex = Assert.Throws<PlanValidationException>(() => PlanCatalog.LoadDirectory(_directory))!;
+        var ex = Assert.Throws<PlanValidationException>(() => PlanCatalog.LoadDirectory(_directory));
         await Assert.That(ex.Message).Contains("unknown plan 'missing.dep'");
     }
 

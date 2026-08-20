@@ -64,7 +64,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
         TestPlans.WritePlan(_directory, "cyc.b", o => o["requires"] = new JsonArray("cyc.a"));
         var catalog = PlanCatalog.LoadDirectory(_directory);
         var ex = Assert.Throws<PlanResolutionException>(
-            () => BuildPlanResolver.Resolve(catalog, [new PlanSelection("cyc.a")], LayerGranularity.Plan))!;
+            () => BuildPlanResolver.Resolve(catalog, [new PlanSelection("cyc.a")], LayerGranularity.Plan));
         await Assert.That(ex.Message).Contains("cycle");
     }
 
@@ -74,7 +74,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
         TestPlans.WritePlan(_directory, "con.b");
         var catalog = PlanCatalog.LoadDirectory(_directory);
         var ex = Assert.Throws<PlanResolutionException>(
-            () => BuildPlanResolver.Resolve(catalog, [new PlanSelection("con.a"), new PlanSelection("con.b")], LayerGranularity.Plan))!;
+            () => BuildPlanResolver.Resolve(catalog, [new PlanSelection("con.a"), new PlanSelection("con.b")], LayerGranularity.Plan));
         await Assert.That(ex.Message).Contains("conflicts with");
     }
 
@@ -86,7 +86,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
         var ex = Assert.Throws<PlanResolutionException>(
             () => BuildPlanResolver.Resolve(catalog,
                 [new PlanSelection("dis.dependent"), new PlanSelection("dis.dep", Enabled: false)],
-                LayerGranularity.Plan))!;
+                LayerGranularity.Plan));
         await Assert.That(ex.Message).Contains("explicitly disabled");
     }
 
@@ -120,7 +120,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
 
         // The plan-level cycle is itself invalid; resolver must reject it clearly.
         var ex = Assert.Throws<PlanResolutionException>(
-            () => BuildPlanResolver.Resolve(catalog, [new PlanSelection("m1.a")], LayerGranularity.Group))!;
+            () => BuildPlanResolver.Resolve(catalog, [new PlanSelection("m1.a")], LayerGranularity.Group));
         await Assert.That(ex.Message).Contains("cycle");
     }
 
@@ -153,7 +153,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
         var bad = Assert.Throws<PlanResolutionException>(
             () => BuildPlanResolver.Resolve(catalog,
                 [new PlanSelection("arg.plan", Args: new Dictionary<string, JsonNode?> { ["mode"] = "bogus" })],
-                LayerGranularity.Plan))!;
+                LayerGranularity.Plan));
         await Assert.That(bad.Message).Contains("argument 'mode'");
         var plan = BuildPlanResolver.Resolve(catalog,
             [new PlanSelection("arg.plan", Args: new Dictionary<string, JsonNode?> { ["mode"] = "hard" })],
@@ -191,7 +191,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
         var ex = Assert.Throws<PlanResolutionException>(
             () => BuildPlanResolver.Resolve(catalog,
                 [new PlanSelection("unk.plan", Args: new Dictionary<string, JsonNode?> { ["nope"] = "x" })],
-                LayerGranularity.Plan))!;
+                LayerGranularity.Plan));
         await Assert.That(ex.Message).Contains("not declared");
     }
 

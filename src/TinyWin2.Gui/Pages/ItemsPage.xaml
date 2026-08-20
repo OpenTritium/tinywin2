@@ -67,8 +67,8 @@
                 <TextBlock x:Name="DetailDescription" TextWrapping="Wrap"/>
                 <StackPanel x:Name="ArgumentPanel" Spacing="12" Margin="0,8,0,0"/>
                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,20,0,0">
-                    <Button x:Name="BackButton" Content="← 上一步" Click="GoBack"/>
-                    <Button x:Name="StartButton" Content="开始构建 →" Style="{ThemeResource AccentButtonStyle}" Click="StartBuild"/>
+                    <Button Content="← 上一步" Click="GoBack"/>
+                    <Button Content="开始构建 →" Style="{ThemeResource AccentButtonStyle}" Click="StartBuild"/>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

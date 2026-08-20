@@ -83,8 +83,8 @@ public sealed class BuildEngine(
     ExecuterRegistry executers,
     ILayerBackend layerBackend,
     BuildLog log) {
-    internal const int ProgressAfterBase = 40;
-    internal const int ProgressPlanWeight = 40;
+    private const int ProgressAfterBase = 40;
+    private const int ProgressPlanWeight = 40;
     private const int ProgressMedia = 10;
     private const int ProgressPackage = 90;
     private const int ProgressComplete = 100;
@@ -110,13 +110,12 @@ public sealed class BuildEngine(
         var resolver = new SourceImageResolver(runner, log);
         var builder = new OutputBuilder(runner, log);
         SourceMedia? source = null;
-        var failedSteps = new List<(string StepId, int LayerIndex, string Error)>();
         try {
             Directory.CreateDirectory(workspace);
             var (resolvedSource, stagingWim, sourceIndex) = await PrepareSourceAsync(options, workspace, resolver, ct);
             source = resolvedSource;
             var stack = await ApplyBaseAsync(options, buildId, workspace, stagingWim, sourceIndex, ct);
-            failedSteps = await RunStepsAsync(options, plan, stack, workspace, ct);
+            var failedSteps = await RunStepsAsync(options, plan, stack, workspace, ct);
             var installPath = await CaptureInstallImageAsync(options, workspace, stack, builder, sourceIndex, ct);
             var (finalInstall, isoPath, vhdxPath) =
                 await PackageOutputAsync(options, buildId, source, mediaPath, installPath, stack, builder, ct);
@@ -212,7 +211,7 @@ public sealed class BuildEngine(
             var execResults = new JsonArray();
             try {
                 foreach (var resolved in step.Plans) {
-                    await RunPlanInLayerAsync(resolved, session, execResults, workspace, options, ct);
+                    await RunPlanInLayerAsync(resolved, session, execResults, options, ct);
                 }
                 if (!options.Fast) {
                     await CheckLayerHealthAsync(session, ct);
@@ -293,7 +292,6 @@ public sealed class BuildEngine(
         ResolvedPlan resolved,
         LayerSession session,
         JsonArray execResults,
-        string workspace,
         BuildOptions options,
         CancellationToken ct) {
         var hiveCache = new RegistryHiveCache(session.MountPath, runner);

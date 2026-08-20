@@ -62,21 +62,21 @@ public sealed class SourceImageResolverTests : IDisposable {
     [Test]
     public async Task FolderSourceWithoutInstallImageThrows() {
         var media = CreateMediaFolder(installWim: false, installEsd: false);
-        var ex = Assert.Throws<FileNotFoundException>(() => _resolver.ResolveAsync(media, CancellationToken.None).GetAwaiter().GetResult())!;
+        var ex = Assert.Throws<FileNotFoundException>(() => _resolver.ResolveAsync(media, CancellationToken.None).GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("install.wim");
     }
 
     [Test]
     public async Task FolderSourceWithoutBootWimIsRejected() {
         var media = CreateMediaFolder(installWim: true, installEsd: false, bootWim: false);
-        var ex = Assert.Throws<FileNotFoundException>(() => _resolver.ResolveAsync(media, CancellationToken.None).GetAwaiter().GetResult())!;
+        var ex = Assert.Throws<FileNotFoundException>(() => _resolver.ResolveAsync(media, CancellationToken.None).GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("boot.wim");
     }
 
     [Test]
     public async Task SourceThatIsNeitherFolderNorIsoThrows() {
         var ex = Assert.Throws<FileNotFoundException>(() =>
-            _resolver.ResolveAsync(Path.Combine(_root, "ghost.iso"), CancellationToken.None).GetAwaiter().GetResult())!;
+            _resolver.ResolveAsync(Path.Combine(_root, "ghost.iso"), CancellationToken.None).GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("neither a folder nor an .iso");
     }
 
@@ -132,7 +132,7 @@ public sealed class SourceImageResolverTests : IDisposable {
     public async Task GetIndexesThrowsWhenDismCannotReadImage() {
         _runner.Handler = (_, _) => FakeProcessRunner.Fail(2);
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            _resolver.GetIndexesAsync(Path.Combine(_root, "install.wim"), CancellationToken.None).GetAwaiter().GetResult())!;
+            _resolver.GetIndexesAsync(Path.Combine(_root, "install.wim"), CancellationToken.None).GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("could not read image info");
     }
 

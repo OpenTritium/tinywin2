@@ -47,7 +47,7 @@ public sealed class ArgBinderTests {
             },
         };
         var planExec = new PlanExec("registry.service", Ensure.Present, with);
-        var ex = Assert.Throws<ArgBindException>(() => ArgBinder.BindExec(planExec, Args(("startMode", "manual"))))!;
+        var ex = Assert.Throws<ArgBindException>(() => ArgBinder.BindExec(planExec, Args(("startMode", "manual"))));
         await Assert.That(ex.Message).Contains("no case for argument 'startMode' value 'manual'");
     }
 
@@ -67,7 +67,7 @@ public sealed class ArgBinderTests {
     public async Task UnknownArgReferenceThrows() {
         var with = new JsonObject { ["x"] = new JsonObject { ["$arg"] = "nope" } };
         var planExec = new PlanExec("fs.path", Ensure.Absent, with);
-        var ex = Assert.Throws<ArgBindException>(() => ArgBinder.BindExec(planExec, Args()))!;
+        var ex = Assert.Throws<ArgBindException>(() => ArgBinder.BindExec(planExec, Args()));
         await Assert.That(ex.Message).Contains("unknown argument 'nope'");
     }
 

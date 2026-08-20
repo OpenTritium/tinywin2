@@ -44,7 +44,7 @@ internal static class Program {
             ["map"] = new JsonObject(output.IdMap
                 .OrderBy(kv => kv.Key, StringComparer.Ordinal)
                 .Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))),
-            ["warnings"] = new JsonArray(output.Warnings.Select(w => (JsonNode)w!).ToArray()),
+            ["warnings"] = new JsonArray(output.Warnings.Select(w => (JsonNode)w).ToArray()),
         };
         var reportPath = Path.Combine(plansDir, "..", "migration-report.json");
         File.WriteAllText(reportPath, report.ToJsonString(options));

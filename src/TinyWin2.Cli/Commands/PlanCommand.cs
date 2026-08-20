@@ -10,7 +10,7 @@ internal static class PlanCommand {
         if (args.Count > 0 && !args[0].StartsWith("--")) {
             return args[0] switch {
                 "list" => List(catalog, options),
-                "show" => Show(catalog, args.Skip(1).ToList(), options),
+                "show" => Show(catalog, args.Skip(1).ToList()),
                 _ => Unknown(args[0]),
             };
         }
@@ -31,8 +31,8 @@ internal static class PlanCommand {
                     ["group"] = p.Group,
                     ["risk"] = p.Risk,
                     ["tier"] = p.Tier,
-                    ["requires"] = new JsonArray(p.Requires.Select(r => (JsonNode)r!).ToArray()),
-                    ["conflicts"] = new JsonArray(p.Conflicts.Select(c => (JsonNode)c!).ToArray()),
+                    ["requires"] = new JsonArray(p.Requires.Select(r => (JsonNode)r).ToArray()),
+                    ["conflicts"] = new JsonArray(p.Conflicts.Select(c => (JsonNode)c).ToArray()),
                     ["arguments"] = new JsonArray(p.Arguments.Select(a => (JsonNode)a.ToJson()).ToArray()),
                 }).ToArray()),
             };
@@ -59,7 +59,7 @@ internal static class PlanCommand {
         return 0;
     }
 
-    private static int Show(PlanCatalog catalog, List<string> args, Dictionary<string, List<string>> options) {
+    private static int Show(PlanCatalog catalog, List<string> args) {
         if (args.Count == 0) {
             Console.Error.WriteLine("usage: tinywin2 plan show <id>");
             return 2;
@@ -73,8 +73,8 @@ internal static class PlanCommand {
             ["group"] = plan.Group,
             ["risk"] = plan.Risk,
             ["tier"] = plan.Tier,
-            ["requires"] = new JsonArray(plan.Requires.Select(r => (JsonNode)r!).ToArray()),
-            ["conflicts"] = new JsonArray(plan.Conflicts.Select(c => (JsonNode)c!).ToArray()),
+            ["requires"] = new JsonArray(plan.Requires.Select(r => (JsonNode)r).ToArray()),
+            ["conflicts"] = new JsonArray(plan.Conflicts.Select(c => (JsonNode)c).ToArray()),
             ["arguments"] = new JsonArray(plan.Arguments.Select(a => (JsonNode)a.ToJson()).ToArray()),
             ["execs"] = new JsonArray(plan.Execs.Select(e => (JsonNode)new JsonObject {
                 ["resource"] = e.Resource,

@@ -104,7 +104,7 @@ public sealed partial class ProgressPage : Page {
         var exitCode = await new CliRunner().RunAsync(
             arguments,
             HandleEvent,
-            rawLine => { },
+            _ => { },
             ex => dispatcher.TryEnqueue(() => _lines.Add(new ColoredLogLine {
                 Timestamp = DateTimeOffset.Now,
                 Level = "error",

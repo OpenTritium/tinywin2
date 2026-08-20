@@ -38,10 +38,8 @@ public static partial class LayerEvidence {
     /// <summary>Jump-safe full-tree manifest: size \t mtimeUtc \t relativePath.</summary>
     private static async Task CaptureFileManifestAsync(string mountPath, string outputFile, CancellationToken ct) {
         var builder = new StringBuilder(1 << 20);
-        var count = 0;
         Enumerate(mountPath.TrimEnd('\\') + "\\", "", (size, writeUtc, relative) => {
             builder.Append(size).Append('\t').Append(writeUtc.Ticks).Append('\t').Append(relative).Append('\n');
-            count++;
         }, ct);
         await File.WriteAllTextAsync(outputFile, builder.ToString(), ct);
     }

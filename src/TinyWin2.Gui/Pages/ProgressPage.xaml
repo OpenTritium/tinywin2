@@ -15,7 +15,7 @@
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="local:ColoredLogLine">
                     <TextBlock Text="{x:Bind Display}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"
-                               Foreground="{x:Bind Brush, Mode=OneTime}"/>
+                               Foreground="{x:Bind Brush}"/>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>

@@ -17,14 +17,14 @@ public sealed class RegistryHiveCacheTests : IDisposable {
     [Test]
     public async Task UnknownHiveIdThrows() {
         var ex = Assert.Throws<ExecException>(() =>
-            _cache.GetAsync("bogus", new BuildLog(), CancellationToken.None).GetAwaiter().GetResult())!;
+            _cache.GetAsync("bogus", new BuildLog(), CancellationToken.None).GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("unknown registry hive");
     }
 
     [Test]
     public async Task MissingHiveFileThrows() {
         var ex = Assert.Throws<ExecException>(() =>
-            _cache.GetAsync("software", new BuildLog(), CancellationToken.None).GetAwaiter().GetResult())!;
+            _cache.GetAsync("software", new BuildLog(), CancellationToken.None).GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("was not found at");
     }
 

@@ -19,7 +19,6 @@ public enum LayerGranularity {
 /// <summary>A plan with arguments resolved and execs bound to pure data.</summary>
 public sealed record ResolvedPlan(
     PlanDefinition Definition,
-    JsonObject BoundArgs,
     IReadOnlyList<ExecSpec> Execs);
 
 /// <summary>
@@ -30,7 +29,6 @@ public sealed record ResolvedPlan(
 public sealed record PlanStep(
     string Id,
     string Title,
-    string Group,
     IReadOnlyList<ResolvedPlan> Plans) {
     public bool IsComposite => Plans.Count > 1;
 }
@@ -38,13 +36,10 @@ public sealed record PlanStep(
 /// <summary>The fully resolved, ordered build plan. Pure data; no I/O.</summary>
 public sealed record BuildPlan(
     IReadOnlyList<PlanStep> Steps,
-    IReadOnlyList<string> PlanIds,
-    LayerGranularity Granularity);
+    IReadOnlyList<string> PlanIds);
 
 public sealed class PlanResolutionException(IReadOnlyList<string> errors)
-    : Exception($"Build plan resolution failed:{Environment.NewLine}{string.Join(Environment.NewLine + "  - ", errors)}") {
-    public IReadOnlyList<string> Errors { get; } = errors;
-}
+    : Exception($"Build plan resolution failed:{Environment.NewLine}{string.Join(Environment.NewLine + "  - ", errors)}");
 
 public static class BuildPlanResolver {
     /// <summary>
@@ -104,7 +99,7 @@ public static class BuildPlanResolver {
         var steps = granularity == LayerGranularity.Plan
             ? BuildPlanGranularitySteps(ordered, resolvedById)
             : BuildGroupGranularitySteps(catalog, ordered, resolvedById);
-        return new BuildPlan(steps, ordered, granularity);
+        return new BuildPlan(steps, ordered);
     }
 
     private static void Visit(
@@ -139,7 +134,7 @@ public static class BuildPlanResolver {
         var values = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
         userArgs ??= new Dictionary<string, JsonNode?>();
         foreach (var arg in definition.Arguments) {
-            JsonNode? value = arg.Default;
+            var value = arg.Default;
             if (userArgs.TryGetValue(arg.Name, out var provided) && provided is not null) {
                 value = provided;
             }
@@ -160,11 +155,7 @@ public static class BuildPlanResolver {
         var execs = definition.Execs
             .Select(exec => new ExecSpec(exec.Resource, exec.Ensure, ArgBinder.BindExec(exec, values)))
             .ToArray();
-        var boundArgs = new JsonObject();
-        foreach (var (name, value) in values) {
-            boundArgs[name] = value?.DeepClone();
-        }
-        return new ResolvedPlan(definition, boundArgs, execs);
+        return new ResolvedPlan(definition, execs);
     }
 
     private static bool ValidateValue(PlanArgument argument, JsonNode? value, out string reason) {
@@ -211,7 +202,7 @@ public static class BuildPlanResolver {
         => ordered
             .Select(planId => {
                 var resolved = resolvedById[planId];
-                return new PlanStep(planId, resolved.Definition.Title, resolved.Definition.Group, [resolved]);
+                return new PlanStep(planId, resolved.Definition.Title, [resolved]);
             })
             .ToList();
 
@@ -266,14 +257,12 @@ public static class BuildPlanResolver {
                 steps.Add(new PlanStep(
                     "group:merged",
                     string.Join(" + ", pendingGroups),
-                    "merged",
                     mergedPlans));
                 break;
             }
             foreach (var group in ready) {
                 steps.Add(new PlanStep(
                     $"group:{group}",
-                    group,
                     group,
                     groups[group].Select(id => resolvedById[id]).ToArray()));
                 pendingGroups.Remove(group);

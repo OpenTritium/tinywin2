@@ -8,7 +8,7 @@ namespace TinyWin2.Core.Executers.Fs;
 /// asset (file or directory) into the image.
 /// </summary>
 public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
-    public const string ResourceId = "fs.path";
+    internal const string ResourceId = "fs.path";
     public string Resource => ResourceId;
 
     /// <summary>

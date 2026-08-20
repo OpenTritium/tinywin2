@@ -32,7 +32,7 @@ public static class V1EntryMigrator {
                 warnings.Add("a service entry had no services/servicePatterns; skipped.");
                 continue;
             }
-            var (plan, newId) = BuildServicePlan(group.ToList(), usedIds, warnings);
+            var (plan, newId) = BuildServicePlan(group.ToList(), usedIds);
             foreach (var entry in group) {
                 idMap[entry.Entry["id"]!.GetValue<string>()] = newId;
             }
@@ -72,8 +72,7 @@ public static class V1EntryMigrator {
 
     private static (JsonObject Plan, string NewId) BuildServicePlan(
         List<(string FileName, JsonObject Entry)> group,
-        HashSet<string> usedIds,
-        List<string> warnings) {
+        HashSet<string> usedIds) {
         var configure = group.FirstOrDefault(g =>
             g.Entry["handler"]!.GetValue<string>() == "Registry.ConfigureOfflineService");
         var disable = group.FirstOrDefault(g =>
@@ -347,7 +346,7 @@ public static class V1EntryMigrator {
         return array;
     }
 
-    internal static string ServiceSignature(JsonObject entry) {
+    private static string ServiceSignature(JsonObject entry) {
         var parameters = entry["parameters"]!.AsObject();
         var targets = new List<string>();
         if (parameters["services"] is JsonArray services) {

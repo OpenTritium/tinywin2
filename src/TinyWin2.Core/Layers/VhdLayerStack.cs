@@ -17,7 +17,6 @@ public enum LayerStatus {
     Pending,
     Committed,
     Discarded,
-    Failed,
     Merged,
 }
 
@@ -73,7 +72,7 @@ public sealed class VhdLayerStack(
     private readonly object _gate = new();
     private readonly List<LayerRecord> _records = [];
 
-    public string WorkDirectory { get; } = workDirectory;
+    private string WorkDirectory { get; } = workDirectory;
     public string BaseVhdxPath => Path.Combine(WorkDirectory, BaseFileName);
     private string ManifestPath => Path.Combine(WorkDirectory, ManifestFileName);
 
@@ -303,11 +302,10 @@ public sealed class VhdLayerStack(
 
     /// <summary>Consolidates the chain and copies the merged base to <paramref name="targetPath"/>
     /// (a boot-testable VHDX artifact).</summary>
-    public async Task<string> ExportMergedVhdxAsync(string targetPath, CancellationToken ct) {
+    public async Task ExportMergedVhdxAsync(string targetPath, CancellationToken ct) {
         await ConsolidateAsync(ct);
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
         File.Copy(BaseVhdxPath, targetPath, overwrite: true);
-        return targetPath;
     }
 
     /// <summary>Replaces one record in place (caller must hold <see cref="_gate"/>).</summary>

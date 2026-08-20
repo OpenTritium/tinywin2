@@ -46,7 +46,7 @@ public sealed class DiskPartVhdBackend(IProcessRunner runner) : ILayerBackend {
             throw new FileNotFoundException($"layer VHDX not found: {vhdxPath}");
         }
         var letter = FreeDriveLetters().FirstOrDefault(l => l is >= 'S' and <= 'Z');
-        if (letter == default) {
+        if (letter == '\0') {
             throw new IOException("no free drive letter in S..Z for layer attach");
         }
         await AttachWithRecoveryAsync(vhdxPath, letter, ct);

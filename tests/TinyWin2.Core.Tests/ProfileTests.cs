@@ -28,7 +28,7 @@ public sealed class ProfileTests : IDisposable {
 
     [Test]
     public async Task MissingNameThrows() {
-        var ex = Assert.Throws<JsonException>(() => Profile.FromJson([]))!;
+        var ex = Assert.Throws<JsonException>(() => Profile.FromJson([]));
         await Assert.That(ex.Message).Contains("'name'");
     }
 
@@ -38,7 +38,7 @@ public sealed class ProfileTests : IDisposable {
             ["name"] = "p",
             ["selections"] = new JsonArray(new JsonObject { ["enabled"] = true }),
         };
-        var ex = Assert.Throws<JsonException>(() => Profile.FromJson(obj))!;
+        var ex = Assert.Throws<JsonException>(() => Profile.FromJson(obj));
         await Assert.That(ex.Message).Contains("'planId'");
     }
 
@@ -70,7 +70,7 @@ public sealed class ProfileTests : IDisposable {
     public async Task LoadRejectsNonObjectJson() {
         var path = Path.Combine(_root, "bad.json");
         await File.WriteAllTextAsync(path, "[1,2,3]");
-        var ex = Assert.Throws<JsonException>(() => ProfileStore.Load(path))!;
+        var ex = Assert.Throws<JsonException>(() => ProfileStore.Load(path));
         await Assert.That(ex.Message).Contains("not a JSON object");
     }
 

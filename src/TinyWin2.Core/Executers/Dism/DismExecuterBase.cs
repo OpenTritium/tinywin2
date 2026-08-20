@@ -4,7 +4,7 @@ namespace TinyWin2.Core.Executers.Dism;
 
 /// <summary>Shared plumbing for dism.exe-backed executers against the mounted image.</summary>
 public abstract class DismExecuterBase(IProcessRunner runner) {
-    protected IProcessRunner Runner { get; } = runner;
+    private IProcessRunner Runner { get; } = runner;
 
     /// <summary>
     /// Runs dism.exe with /English (stable output keys regardless of host display language);

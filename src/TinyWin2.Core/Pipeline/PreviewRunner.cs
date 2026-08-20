@@ -15,18 +15,17 @@ public sealed record PreviewOptions {
     public required IReadOnlyList<PlanSelection> Selections { get; init; }
     public required string WorkDirectory { get; init; }
     public required PlanCatalog Catalog { get; init; }
-    public LayerGranularity Granularity { get; init; } = LayerGranularity.Group;
+    public LayerGranularity Granularity { get; } = LayerGranularity.Group;
     /// <summary>Plans directory: fs.path-present previews need each plan's assets root.</summary>
     public string? PlansDirectory { get; init; }
-    public long BaseVhdxMaximumMb { get; init; } = BuildOptions.DefaultBaseVhdxMaximumMb;
+    public long BaseVhdxMaximumMb { get; } = BuildOptions.DefaultBaseVhdxMaximumMb;
 }
 
 public sealed record PlanPreview(
     string PlanId,
     string Title,
     bool Satisfied,
-    IReadOnlyList<ChangeItem> Differences,
-    IReadOnlyList<(string Resource, string SkipReason)> Notes) {
+    IReadOnlyList<ChangeItem> Differences) {
     public JsonObject ToJson() => new() {
         ["planId"] = PlanId,
         ["title"] = Title,
@@ -72,14 +71,10 @@ public sealed class PreviewRunner(
                         var context = new ExecContext($"{letter}:\\", log, hiveCache,
                             ResolveAssetsRoot(options.PlansDirectory, resolved.Definition.Id));
                         var differences = new List<ChangeItem>();
-                        var notes = new List<(string, string)>();
                         try {
                             foreach (var exec in resolved.Execs) {
                                 var diff = await executers.Get(exec.Resource).InspectAsync(context, exec, ct);
                                 differences.AddRange(diff.Differences.Where(d => d.Kind != ChangeKind.Skipped));
-                                notes.AddRange(diff.Differences
-                                    .Where(d => d.Kind == ChangeKind.Skipped)
-                                    .Select(d => (exec.Resource, d.Before ?? "not present")));
                             }
                         }
                         finally {
@@ -89,8 +84,7 @@ public sealed class PreviewRunner(
                             resolved.Definition.Id,
                             resolved.Definition.Title,
                             differences.Count == 0,
-                            differences,
-                            notes));
+                            differences));
                     }
                 }
                 return previews;

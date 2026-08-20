@@ -86,8 +86,8 @@ public sealed partial class SourcePage : Page {
         var lines = new List<string>();
         var exit = await new CliRunner().RunAsync(
             ["inspect", source, "--json"],
-            evt => { },
-            line => lines.Add(line),
+            _ => { },
+            lines.Add,
             _ => { },
             CancellationToken.None);
         var text = string.Join(Environment.NewLine, lines).Trim();

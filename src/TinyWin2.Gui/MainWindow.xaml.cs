@@ -19,7 +19,7 @@ public sealed partial class MainWindow : Window {
         InitializeComponent();
         Title = "TinyWin2 — 分层镜像精简";
         RootFrame.Navigate(typeof(SourcePage));
-        UpdateSteps(1, canGoBack: false);
+        UpdateSteps(1);
     }
 
     public void GoTo(int step) {
@@ -30,10 +30,10 @@ public sealed partial class MainWindow : Window {
             4 => RootFrame.Navigate(typeof(ResultPage)),
             _ => false,
         };
-        UpdateSteps(step, canGoBack: false);
+        UpdateSteps(step);
     }
 
-    private void UpdateSteps(int current, bool canGoBack) {
+    private void UpdateSteps(int current) {
         SetStep(Step1, current switch { 1 => StepState.Active, > 1 => StepState.Done, _ => StepState.Idle });
         SetStep(Step2, current switch { 2 => StepState.Active, > 2 => StepState.Done, _ => StepState.Idle });
         SetStep(Step3, current switch { 3 => StepState.Active, > 3 => StepState.Done, _ => StepState.Idle });

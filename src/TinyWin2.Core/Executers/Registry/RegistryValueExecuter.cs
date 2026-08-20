@@ -7,7 +7,7 @@ namespace TinyWin2.Core.Executers.Registry;
 /// present = create/modify values; absent = delete values or whole keys.
 /// </summary>
 public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
-    public const string ResourceId = "registry.value";
+    internal const string ResourceId = "registry.value";
     public string Resource => ResourceId;
 
     /// <summary>One structured difference: exactly one of Value/DeleteKey is set.</summary>

@@ -26,7 +26,7 @@ public sealed class ProcessRunnerTests {
         var runner = new ProcessRunner();
         var (exe, args) = SplitCommand(FailCommand());
         var ex = Assert.Throws<ProcessRunnerException>(
-            () => runner.RunAsync(exe, args, new ProcessRunOptions { Timeout = TimeSpan.FromSeconds(10) }).GetAwaiter().GetResult())!;
+            () => runner.RunAsync(exe, args, new ProcessRunOptions { Timeout = TimeSpan.FromSeconds(10) }).GetAwaiter().GetResult());
         await Assert.That(ex.Result.ExitCode).IsEqualTo(3);
     }
 
