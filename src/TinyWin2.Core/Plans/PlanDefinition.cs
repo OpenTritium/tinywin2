@@ -55,7 +55,6 @@ public sealed partial record PlanDefinition {
     public IReadOnlyList<string> Conflicts { get; init; } = [];
     public IReadOnlyList<PlanArgument> Arguments { get; init; } = [];
     public IReadOnlyList<PlanExec> Execs { get; init; } = [];
-    public string? SourceFile { get; init; }
     public string? Sha256 { get; init; }
 
     public static PlanDefinition FromJson(JsonObject obj, string? sourceFile = null) {
@@ -103,7 +102,6 @@ public sealed partial record PlanDefinition {
             Conflicts = conflicts,
             Arguments = arguments,
             Execs = execs,
-            SourceFile = sourceFile,
         };
     }
 
@@ -286,6 +284,5 @@ public sealed partial record PlanDefinition {
 
 public sealed class PlanValidationException(string source, IReadOnlyList<string> errors)
     : Exception($"Invalid plan '{source}':{Environment.NewLine}{string.Join(Environment.NewLine + "  - ", errors)}") {
-    public string Source2 { get; } = source;
     public IReadOnlyList<string> Errors { get; } = errors;
 }

@@ -114,30 +114,20 @@ public static class V1EntryMigrator {
                     Option(configureMode, ModeLabel(configureMode), configureRisk),
                     Option("disabled", "禁用", disableRisk)),
             });
-            plan["execs"] = new JsonArray(new JsonObject {
-                ["resource"] = "registry.service",
-                ["ensure"] = "present",
-                ["with"] = with,
-            });
         }
         else if (configure.Entry is not null) {
             with["start"] = parameters["startMode"]!.GetValue<string>();
             plan = BasePlan(newId, template);
-            plan["execs"] = new JsonArray(new JsonObject {
-                ["resource"] = "registry.service",
-                ["ensure"] = "present",
-                ["with"] = with,
-            });
         }
         else {
             with["start"] = "disabled";
             plan = BasePlan(newId, disable.Entry!);
-            plan["execs"] = new JsonArray(new JsonObject {
-                ["resource"] = "registry.service",
-                ["ensure"] = "present",
-                ["with"] = with,
-            });
         }
+        plan["execs"] = new JsonArray(new JsonObject {
+            ["resource"] = "registry.service",
+            ["ensure"] = "present",
+            ["with"] = with,
+        });
         return (plan, newId);
     }
 

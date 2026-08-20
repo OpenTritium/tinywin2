@@ -72,6 +72,4 @@ public static class ArgBinder {
 }
 
 public sealed class ArgBindException(string path, string message)
-    : Exception($"Argument binding failed at '{path}': {message}") {
-    public string Path2 { get; } = path;
-}
+    : Exception($"Argument binding failed at '{path}': {message}");
