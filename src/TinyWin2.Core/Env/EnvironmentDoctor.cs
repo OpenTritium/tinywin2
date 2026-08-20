@@ -30,14 +30,12 @@ public static class EnvironmentDoctor {
         var results = new List<CheckResult> {
             new("administrator", elevated, true, elevated ? "running elevated" : "must run as administrator"),
         };
-        foreach (var tool in Tools) {
-            var path = tool.IsSystemTool && File.Exists(Path.Combine(Environment.SystemDirectory, tool.Tool))
+        results.AddRange(from tool in Tools
+            let path = tool.IsSystemTool && File.Exists(Path.Combine(Environment.SystemDirectory, tool.Tool))
                 ? Path.Combine(Environment.SystemDirectory, tool.Tool)
-                : ToolLocator.Locate(tool.Tool);
-            results.Add(new CheckResult(tool.Tool, path is not null, tool.Required,
+                : ToolLocator.Locate(tool.Tool)
+            select new CheckResult(tool.Tool, path is not null, tool.Required,
                 path ?? "not found on PATH or System32"));
-        }
-
         if (outputDirectoryHint is not null) {
             results.Add(CheckFreeSpace(outputDirectoryHint, MinimumFreeBytes));
         }
@@ -50,7 +48,7 @@ public static class EnvironmentDoctor {
             var full = Path.GetFullPath(pathHint);
             if (full.StartsWith(@"\\", StringComparison.Ordinal)) {
                 // The whole pipeline (diskpart VHDX attach, dism apply) needs a local disk.
-                return new CheckResult("free-space", false, true,
+                return new("free-space", false, true,
                     $"'{pathHint}' is a network path; VHDX layers require a local disk");
             }
 
@@ -63,7 +61,7 @@ public static class EnvironmentDoctor {
                 $"{drive.Name} {free / BytesInGb:F1} GB free (need {minimumBytes / BytesInGb:F0} GB)");
         }
         catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException) {
-            return new CheckResult("free-space", false, true, $"cannot inspect '{pathHint}': {ex.Message}");
+            return new("free-space", false, true, $"cannot inspect '{pathHint}': {ex.Message}");
         }
     }
 }
