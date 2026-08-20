@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Executers.Dism;
@@ -27,6 +26,7 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismRemoveExecuterB
             if (identity is null || !options.Patterns.Any(p => p.IsMatch(identity))) {
                 continue;
             }
+
             if (RemovableStates.Any(s => state.Equals(s, StringComparison.OrdinalIgnoreCase))) {
                 yield return new DismRemovalTarget(identity, Before: state);
             }

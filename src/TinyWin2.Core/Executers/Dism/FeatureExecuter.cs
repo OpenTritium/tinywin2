@@ -25,14 +25,14 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterB
         foreach (var feature in options.Features) {
             if (!states.TryGetValue(feature, out var state)) {
                 context.Log.Info($"feature '{feature}' is not present in this image; skipping.");
-                yield return new DismRemovalTarget(feature, SkipReason: "feature not present in image");
+                yield return new(feature, SkipReason: "feature not present in image");
             }
             else if (state.Contains("Removed", StringComparison.OrdinalIgnoreCase)
                      || (state.Contains("Disabled", StringComparison.OrdinalIgnoreCase) && !options.RemovePayload)) {
                 // Already in the desired state: no difference entry at all.
             }
             else {
-                yield return new DismRemovalTarget(feature, Before: state);
+                yield return new(feature, Before: state);
             }
         }
     }
@@ -42,6 +42,7 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterB
         if (FeatureOptions.FromDesired(spec.Desired).RemovePayload) {
             args.Add("/Remove");
         }
+
         return args;
     }
 }

@@ -99,11 +99,9 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
 
         var mountRoot = Path.GetFullPath(mountPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         var target = Path.GetFullPath(Path.Combine(mountRoot, normalized));
-        if (!target.StartsWith(mountRoot, StringComparison.OrdinalIgnoreCase)) {
-            throw new ExecException($"path '{relativePath}' resolved outside the mounted image.");
-        }
-
-        return target;
+        return !target.StartsWith(mountRoot, StringComparison.OrdinalIgnoreCase)
+            ? throw new ExecException($"path '{relativePath}' resolved outside the mounted image.")
+            : target;
     }
 
     private static string ResolveAssetSource(ExecContext context, string source) {

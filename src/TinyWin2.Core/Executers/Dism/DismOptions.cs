@@ -21,11 +21,9 @@ public sealed record CapabilityOptions {
 
     public static CapabilityOptions FromDesired(JsonObject desired) {
         var capabilities = Desired.RequiredStringArray(desired, "capabilities", "dism.capability");
-        if (capabilities.Count == 0) {
-            throw new ExecException("dism.capability requires at least one capability name.");
-        }
-
-        return new CapabilityOptions { Capabilities = capabilities };
+        return capabilities.Count == 0
+            ? throw new ExecException("dism.capability requires at least one capability name.")
+            : new CapabilityOptions { Capabilities = capabilities };
     }
 }
 
@@ -41,14 +39,14 @@ public sealed record PackageOptions {
         var compiled = new List<Regex>();
         foreach (var pattern in raw) {
             try {
-                compiled.Add(new Regex(pattern, RegexOptions.CultureInvariant));
+                compiled.Add(new(pattern, RegexOptions.CultureInvariant));
             }
             catch (ArgumentException ex) {
                 throw new ExecException($"invalid package pattern '{pattern}': {ex.Message}");
             }
         }
 
-        return new PackageOptions { Patterns = compiled };
+        return new() { Patterns = compiled };
     }
 }
 
@@ -64,10 +62,8 @@ public sealed record AppxOptions {
 
     public static AppxOptions FromDesired(JsonObject desired) {
         var patterns = Desired.RequiredStringArray(desired, "patterns", "appx.provisioned");
-        if (patterns.Count == 0) {
-            throw new ExecException("appx.provisioned requires at least one pattern.");
-        }
-
-        return new AppxOptions { Patterns = patterns };
+        return patterns.Count == 0
+            ? throw new ExecException("appx.provisioned requires at least one pattern.")
+            : new AppxOptions { Patterns = patterns };
     }
 }

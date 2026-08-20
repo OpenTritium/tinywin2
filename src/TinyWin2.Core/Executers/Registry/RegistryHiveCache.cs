@@ -7,14 +7,11 @@ namespace TinyWin2.Core.Executers.Registry;
 /// <summary>One offline registry hive loaded under HKLM\&lt;sessionPrefix&gt;_&lt;hive&gt;.</summary>
 public sealed class RegistryHive(
     string hiveId,
-    string hiveKey,
-    string hiveFilePath) : IAsyncDisposable {
+    string hiveKey) {
     public string HiveId { get; } = hiveId;
 
     /// <summary>Loaded key path, e.g. <c>HKLM\TinyWin2_build1_system</c>.</summary>
     public string HiveKey { get; } = hiveKey;
-
-    public string HiveFilePath { get; } = hiveFilePath;
     public bool IsLoaded { get; internal set; }
 
     internal string KeyUnderHive(string keyPath) =>
@@ -22,16 +19,14 @@ public sealed class RegistryHive(
 
     internal string ValueUnderHive(string keyPath, string valueName) =>
         $"{HiveId}\\{keyPath.Trim('\\')}\\{valueName}";
-
-    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
 
 /// <summary>
 /// Loads offline registry hives on demand (reg.exe load) and unloads them all with retry,
 /// shared by every registry executer working against one mounted layer.
 /// </summary>
-public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? runner = null) {
-    private readonly object _gate = new();
+public sealed class RegistryHiveCache(string mountPath, IProcessRunner? runner = null) {
+    private readonly Lock _gate = new();
     private readonly Dictionary<string, RegistryHive> _loaded = new(StringComparer.OrdinalIgnoreCase);
     private string _sessionPrefix = "TinyWin2";
 
@@ -49,9 +44,7 @@ public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? 
             ["default-user"] = @"Users\Default\NTUSER.DAT",
         };
 
-    public void SetSessionPrefix(string prefix) {
-        _sessionPrefix = prefix;
-    }
+    public void SetSessionPrefix(string prefix) => _sessionPrefix = prefix;
 
     public async Task<RegistryHive> GetAsync(string hiveId, IBuildLog log, CancellationToken ct) {
         if (!HiveFiles.TryGetValue(hiveId, out var relativePath)) {
@@ -74,7 +67,7 @@ public sealed partial class RegistryHiveCache(string mountPath, IProcessRunner? 
         await Runner.RunAsync("reg.exe", ["load", hiveKey, hiveFilePath], cancellationToken: ct);
         log.Debug($"loaded offline hive '{hiveId}' at {hiveKey}");
         lock (_gate) {
-            _loaded[hiveId] = new RegistryHive(hiveId.ToLowerInvariant(), hiveKey, hiveFilePath) { IsLoaded = true };
+            _loaded[hiveId] = new RegistryHive(hiveId.ToLowerInvariant(), hiveKey) { IsLoaded = true };
             return _loaded[hiveId];
         }
     }

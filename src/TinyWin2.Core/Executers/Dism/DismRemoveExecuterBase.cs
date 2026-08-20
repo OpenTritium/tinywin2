@@ -36,11 +36,13 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
         if (spec.Ensure == Ensure.Present) {
             throw new ExecException($"{Resource} present is not implemented yet.");
         }
+
         var (exitCode, output) = await RunDismAsync(context, [.. ListArguments], ct);
         var outcome = DismErrors.Classify(exitCode, output);
         if (outcome == DismOutcome.ProviderUnavailable) {
-            return new ResourceDiff(true, []);
+            return new(true, []);
         }
+
         if (outcome is not (DismOutcome.Success or DismOutcome.SuccessRebootRequired)) {
             throw new ExecException($"dism.exe failed to list {Resource} targets (exit {exitCode}).");
         }
@@ -57,7 +59,7 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
         var diff = await InspectAsync(context, spec, ct);
         if (diff.Satisfied) {
             return ExecResult.Skipped(SatisfiedSkipReason,
-                diff.Differences.Where(d => d.Kind == ChangeKind.Skipped).ToArray());
+                [.. diff.Differences.Where(d => d.Kind == ChangeKind.Skipped)]);
         }
 
         var applied = new List<ChangeItem>();
@@ -74,9 +76,11 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
                 applied.Add(change);
             }
             else {
-                throw new ExecException($"dism.exe failed to remove {Resource} target '{change.Target}' (exit {exitCode}).");
+                throw new ExecException(
+                    $"dism.exe failed to remove {Resource} target '{change.Target}' (exit {exitCode}).");
             }
         }
+
         return ExecResult.Applied(applied);
     }
 }
