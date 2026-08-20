@@ -3,19 +3,14 @@ using System.Text;
 
 namespace TinyWin2.Core.Native;
 
-/// <summary>Outcome of one native tool invocation.</summary>
 public sealed record ProcessRunResult(int ExitCode, string Output, string Error, string CommandLine) {
     public bool Success => ExitCode == 0;
 }
 
-/// <summary>Options for a native tool invocation.</summary>
 public sealed class ProcessRunOptions {
     public string? WorkingDirectory { get; init; }
     public TimeSpan? Timeout { get; init; }
-
-    /// <summary>When false (default), a non-zero exit code throws <see cref="ProcessRunnerException"/>.</summary>
     public bool IgnoreExitCode { get; init; }
-
     public IReadOnlyDictionary<string, string>? Environment { get; init; }
     public Action<string>? OnOutputLine { get; init; }
     public Action<string>? OnErrorLine { get; init; }
@@ -74,24 +69,20 @@ public sealed class ProcessRunner : IProcessRunner {
         process.StartInfo = startInfo;
         var outputBuilder = new StringBuilder();
         var errorBuilder = new StringBuilder();
-
         if (!process.Start()) {
             throw new ProcessRunnerException(fileName,
                 new ProcessRunResult(-1, "", $"Failed to start '{fileName}'.", commandLine));
         }
 
         process.StandardInput.Close();
-
         // Read each stream in its own async loop. WhenAll below waits for process exit AND both
         // streams reaching EOF — unlike WaitForExitAsync alone (which never drains Begin*ReadLine
         // events), this cannot lose the tail of the output.
         var outputTask = ReadStreamAsync(process.StandardOutput, outputBuilder, options.OnOutputLine);
         var errorTask = ReadStreamAsync(process.StandardError, errorBuilder, options.OnErrorLine);
-
         var timeout = options.Timeout ?? Timeout.InfiniteTimeSpan;
         using var timeoutCts = new CancellationTokenSource(timeout);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-
         try {
             // Note: tying completion to stream EOF means a grandchild process holding the pipe
             // write-end would stall this even after exit — none of our tools spawn such children.
