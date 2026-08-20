@@ -20,8 +20,8 @@ internal static class BuildCommand
         {
             throw new ArgumentException("missing --i <image index> (see: tinywin2 inspect)");
         }
-        var outputRoot = Path.GetFullPath(get("o") ?? get("out") ?? "out");
-        var outputMode = (get("out-mode") ?? get("mode") ?? "iso").ToLowerInvariant() switch
+        var outputRoot = Path.GetFullPath(get("o") ?? get("out-dir") ?? "out");
+        var outputMode = (get("out") ?? get("out-mode") ?? "iso").ToLowerInvariant() switch
         {
             "wim" => OutputMode.Wim,
             "esd" => OutputMode.Esd,
@@ -280,7 +280,7 @@ internal static class LayerCommand
     private static int List(string workDirectory, bool json)
     {
         var log = new BuildLog { EchoConsole = false };
-        var stack = VhdLayerStack.Load(workDirectory, new DiskPartVhdBackend(new Core.Native.ProcessRunner()), log);
+        var stack = VhdLayerStack.Load(workDirectory, Core.Layers.LayerBackendFactory.Create(), log);
         if (json)
         {
             Console.WriteLine(new JsonObject

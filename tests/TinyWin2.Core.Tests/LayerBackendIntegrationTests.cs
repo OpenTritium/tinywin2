@@ -37,8 +37,7 @@ public sealed class LayerBackendIntegrationTests
 
             await Assert.That(File.Exists(baseVhdx)).IsTrue();
 
-            var letter = DiskPartVhdBackend.FreeDriveLetters().First();
-            await backend.AttachAsync(baseVhdx, letter.ToString(), CancellationToken.None);
+            var letter = await backend.AttachAsync(baseVhdx, CancellationToken.None);
             try
             {
                 var probe = $"{letter}:\\probe.txt";
@@ -53,7 +52,7 @@ public sealed class LayerBackendIntegrationTests
             // Differencing layer sees the base content.
             var diff = Path.Combine(directory, "L001.vhdx");
             await backend.CreateDiffAsync(diff, baseVhdx, CancellationToken.None);
-            await backend.AttachAsync(diff, letter.ToString(), CancellationToken.None);
+            letter = await backend.AttachAsync(diff, CancellationToken.None);
             try
             {
                 await Assert.That(File.Exists($"{letter}:\\probe.txt")).IsTrue();
@@ -65,7 +64,7 @@ public sealed class LayerBackendIntegrationTests
             }
 
             // Base must be untouched by the layer write.
-            await backend.AttachAsync(baseVhdx, letter.ToString(), CancellationToken.None);
+            letter = await backend.AttachAsync(baseVhdx, CancellationToken.None);
             try
             {
                 await Assert.That(File.Exists($"{letter}:\\probe.txt")).IsTrue();

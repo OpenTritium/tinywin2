@@ -28,10 +28,11 @@ public sealed class FakeLayerBackend : ILayerBackend
         return Task.CompletedTask;
     }
 
-    public Task AttachAsync(string vhdxPath, string driveLetter, CancellationToken ct)
+    public Task<char> AttachAsync(string vhdxPath, CancellationToken ct)
     {
-        Calls.Add($"attach:{Path.GetFileName(vhdxPath)}:{driveLetter}");
-        return Task.CompletedTask;
+        var letter = 'S';
+        Calls.Add($"attach:{Path.GetFileName(vhdxPath)}:{letter}");
+        return Task.FromResult(letter);
     }
 
     public Task DetachAsync(string vhdxPath, CancellationToken ct)

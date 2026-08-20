@@ -132,8 +132,10 @@ public sealed class BuildEngine(
             await stack.ApplyImageToBaseAsync(async (mount, token) =>
             {
                 await runner.RunAsync("dism.exe",
-                    ["/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}", $"/ApplyDir:{mount}"],
+                    ["/English", "/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}", $"/ApplyDir:{mount}"],
                     new ProcessRunOptions { Timeout = TimeSpan.FromHours(2) }, token);
+                log.Info("capturing base-layer evidence snapshots (file manifest + registry)");
+                await Layers.LayerEvidence.CaptureAsync(mount, workspace, 0, runner, log, token);
             }, ct);
 
             log.Phase = "plan";
@@ -157,6 +159,7 @@ public sealed class BuildEngine(
                     {
                         await CheckLayerHealthAsync(session, ct);
                     }
+                    await Layers.LayerEvidence.CaptureAsync(session.MountPath, workspace, session.Record.Index, runner, log, ct);
                     await stack.CommitLayerAsync(session, execResults, ct);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
@@ -178,9 +181,8 @@ public sealed class BuildEngine(
                 _ => ImageFormat.Esd,
             };
             var capturedWim = Path.Combine(workspace, "install.captured.wim");
-            var letter = Layers.DiskPartVhdBackend.FreeDriveLetters().First(l => l is >= 'S' and <= 'Z');
             var leaf = stack.LeafVhdxPath;
-            await layerBackend.AttachAsync(leaf, letter.ToString(), ct);
+            var letter = await layerBackend.AttachAsync(leaf, ct);
             string installPath;
             try
             {
@@ -192,7 +194,7 @@ public sealed class BuildEngine(
                     await layerBackend.DetachAsync(leaf, ct);
                     installPath = Path.Combine(workspace, "install.esd");
                     await runner.RunAsync("dism.exe",
-                        ["/Export-Image", $"/SourceImageFile:{intermediate}", "/SourceIndex:1",
+                        ["/English", "/Export-Image", $"/SourceImageFile:{intermediate}", "/SourceIndex:1",
                          $"/DestinationImageFile:{installPath}", "/Compress:recovery"],
                         new ProcessRunOptions { Timeout = TimeSpan.FromHours(3) }, ct);
                 }

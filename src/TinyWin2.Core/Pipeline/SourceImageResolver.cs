@@ -79,8 +79,36 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog
 
     public async Task<IReadOnlyList<ImageIndexInfo>> GetIndexesAsync(string installImagePath, CancellationToken ct)
     {
+        var indexes = await GetIndexSummaryAsync(installImagePath, ct);
+        // The no-index listing only carries Index/Name/Description; details need per-index queries.
+        var detailed = new List<ImageIndexInfo>();
+        foreach (var summary in indexes)
+        {
+            var result = await runner.RunAsync("dism.exe",
+                ["/Get-WimInfo", $"/WimFile:{installImagePath}", $"/Index:{summary.Index}", "/English"],
+                new ProcessRunOptions { IgnoreExitCode = true }, ct);
+            if (result.ExitCode != 0)
+            {
+                detailed.Add(summary);
+                continue;
+            }
+            var fields = ParseKeyValueLines(result.Output);
+            detailed.Add(new ImageIndexInfo(
+                summary.Index,
+                fields.GetValueOrDefault("Name", summary.Name),
+                fields.GetValueOrDefault("Description", summary.Description ?? ""),
+                fields.GetValueOrDefault("Architecture", summary.Architecture ?? ""),
+                fields.GetValueOrDefault("Version", summary.Version ?? ""),
+                fields.GetValueOrDefault("Edition ID", fields.GetValueOrDefault("EditionId", summary.EditionId ?? "")),
+                ParseByteSize(fields.GetValueOrDefault("Size"), summary.SizeBytes)));
+        }
+        return detailed;
+    }
+
+    private async Task<List<ImageIndexInfo>> GetIndexSummaryAsync(string installImagePath, CancellationToken ct)
+    {
         var result = await runner.RunAsync("dism.exe",
-            ["/Get-WimInfo", $"/WimFile:{installImagePath}"],
+            ["/Get-WimInfo", $"/WimFile:{installImagePath}", "/English"],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
         if (result.ExitCode != 0)
         {
@@ -120,9 +148,6 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog
             {
                 "Name" => current with { Name = value },
                 "Description" => current with { Description = value },
-                "Architecture" => current with { Architecture = value },
-                "Version" => current with { Version = value },
-                "Edition ID" or "EditionId" => current with { EditionId = value },
                 "Size" => current with { SizeBytes = long.TryParse(value.Replace(",", ""), out var size) ? size : 0 },
                 _ => current,
             };
@@ -133,6 +158,34 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog
         }
         return indexes;
     }
+
+    internal static Dictionary<string, string> ParseKeyValueLines(string output)
+    {
+        var fields = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var line in output.Split('\n'))
+        {
+            var trimmed = line.TrimEnd('\r').Trim();
+            if (trimmed.Length == 0)
+            {
+                continue;
+            }
+            var separator = trimmed.IndexOf(':', StringComparison.Ordinal);
+            if (separator <= 0)
+            {
+                continue;
+            }
+            fields[trimmed[..separator].Trim()] = trimmed[(separator + 1)..].Trim();
+        }
+        return fields;
+    }
+
+    /// <summary>"11,831,247,965 bytes" → 11831247965; falls back when unparsable.</summary>
+    internal static long ParseByteSize(string? sizeText, long fallback) =>
+        sizeText is not null
+        && System.Text.RegularExpressions.Regex.Match(sizeText.Replace(",", ""), @"\d+").Value is { Length: > 0 } digits
+        && long.TryParse(digits, out var size)
+            ? size
+            : fallback;
 
     /// <summary>Exports one index from an ESD into a WIM (dism cannot apply every ESD directly).</summary>
     public async Task<string> ExportIndexToWimAsync(
@@ -148,7 +201,7 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog
         }
         var compress = fast ? "fast" : "max";
         await runner.RunAsync("dism.exe",
-            ["/Export-Image", $"/SourceImageFile:{sourceImagePath}", $"/SourceIndex:{index}",
+            ["/English", "/Export-Image", $"/SourceImageFile:{sourceImagePath}", $"/SourceIndex:{index}",
              $"/DestinationImageFile:{targetWimPath}", $"/Compress:{compress}"], cancellationToken: ct);
         return targetWimPath;
     }

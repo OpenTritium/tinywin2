@@ -78,8 +78,7 @@ public sealed class PreviewRunner(
                     new ProcessRunOptions { Timeout = TimeSpan.FromHours(2) }, token);
             }, ct);
 
-            var letter = Layers.DiskPartVhdBackend.FreeDriveLetters().First(l => l is >= 'S' and <= 'Z');
-            await layerBackend.AttachAsync(stack.BaseVhdxPath, letter.ToString(), ct);
+            var letter = await layerBackend.AttachAsync(stack.BaseVhdxPath, ct);
             try
             {
                 var previews = new List<PlanPreview>();

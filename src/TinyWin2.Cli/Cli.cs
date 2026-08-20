@@ -118,6 +118,9 @@ internal static class Cli
             _ => JsonValue.Create(text),
         };
 
-    public static (IProcessRunner Runner, ExecuterRegistry Executers, ILayerBackend Layers) CreateEngineParts() =>
-        (new ProcessRunner(), new ExecuterRegistry(new ProcessRunner()), new DiskPartVhdBackend(new ProcessRunner()));
+    public static (IProcessRunner Runner, ExecuterRegistry Executers, ILayerBackend Layers) CreateEngineParts()
+    {
+        var runner = new ProcessRunner();
+        return (runner, new ExecuterRegistry(runner), LayerBackendFactory.Create(runner));
+    }
 }

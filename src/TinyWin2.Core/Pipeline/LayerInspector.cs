@@ -49,173 +49,67 @@ public sealed partial class LayerInspector(
     ILayerBackend backend,
     IBuildLog log)
 {
-    /// <summary>Reads a layer's file tree without keeping it attached.</summary>
-    private async Task<Dictionary<string, (long Size, DateTime WriteUtc)>> SnapshotTreeAsync(string vhdxPath, CancellationToken ct)
+    /// <summary>
+    /// Diffs two layers via their commit-time evidence snapshots (file manifests + registry
+    /// exports) — no VHDX re-attach needed, which some Windows builds reject after a build.
+    /// </summary>
+    public Task<LayerDiffReport> DiffAsync(string workDirectory, int fromIndex, int toIndex, bool deep, CancellationToken ct)
     {
-        var letter = FreeDriveLetter();
-        await backend.AttachAsync(vhdxPath, letter.ToString(), ct);
-        try
+        var snapshotsRoot = Layers.LayerEvidence.SnapshotsRoot(workDirectory);
+        var fromManifest = Layers.LayerEvidence.ManifestPathFor(snapshotsRoot, fromIndex);
+        var toManifest = Layers.LayerEvidence.ManifestPathFor(snapshotsRoot, toIndex);
+        if (!File.Exists(fromManifest) || !File.Exists(toManifest))
         {
-            var root = $"{letter}:\\";
-            var snapshot = new Dictionary<string, (long, DateTime)>(StringComparer.OrdinalIgnoreCase);
-            foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
-            {
-                ct.ThrowIfCancellationRequested();
-                var info = new FileInfo(file);
-                snapshot[info.FullName[(root.Length)..]] = (info.Length, info.LastWriteTimeUtc);
-            }
-            return snapshot;
+            throw new FileNotFoundException(
+                $"layer evidence snapshots missing for {fromIndex:000}/{toIndex:000} under '{snapshotsRoot}' " +
+                "(rebuild with a current engine version, which captures evidence at commit time).");
         }
-        finally
-        {
-            await backend.DetachAsync(vhdxPath, ct);
-        }
-    }
 
-    public async Task<LayerDiffReport> DiffAsync(string workDirectory, int fromIndex, int toIndex, bool deep, CancellationToken ct)
-    {
-        var stack = VhdLayerStack.Load(workDirectory, backend, log);
-        var fromVhdx = stack.VhdxForLayer(fromIndex);
-        var toVhdx = stack.VhdxForLayer(toIndex);
-
-        log.Info($"diffing layer {fromIndex:000} → {toIndex:000}");
-        var before = await SnapshotTreeAsync(fromVhdx, ct);
-        var after = await SnapshotTreeAsync(toVhdx, ct);
+        log.Info($"diffing layer {fromIndex:000} → {toIndex:000} via evidence snapshots");
+        var before = Layers.LayerEvidence.LoadManifest(fromManifest);
+        var after = Layers.LayerEvidence.LoadManifest(toManifest);
 
         var files = new List<FileDiffEntry>();
-        foreach (var (path, _) in before.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
+        foreach (var (path, oldEntry) in before.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
         {
-            if (!after.TryGetValue(path, out var newValue))
+            if (!after.TryGetValue(path, out var newEntry))
             {
-                files.Add(new FileDiffEntry(path, "removed", before[path].Size, 0));
+                files.Add(new FileDiffEntry(path, "removed", oldEntry.Size, 0));
             }
-            else if (newValue.Size != before[path].Size || newValue.WriteUtc != before[path].WriteUtc)
+            else if (newEntry.Size != oldEntry.Size || newEntry.WriteTicks != oldEntry.WriteTicks)
             {
-                files.Add(new FileDiffEntry(path, "modified", before[path].Size, newValue.Size));
+                files.Add(new FileDiffEntry(path, "modified", oldEntry.Size, newEntry.Size));
             }
         }
-        foreach (var (path, value) in after.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
+        foreach (var (path, entry) in after.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
         {
             if (!before.ContainsKey(path))
             {
-                files.Add(new FileDiffEntry(path, "added", 0, value.Size));
+                files.Add(new FileDiffEntry(path, "added", 0, entry.Size));
             }
         }
 
-        if (deep)
+        var registry = new List<RegistryDiffEntry>();
+        var fromRegistryPath = Layers.LayerEvidence.RegistryPathFor(snapshotsRoot, fromIndex);
+        var toRegistryPath = Layers.LayerEvidence.RegistryPathFor(snapshotsRoot, toIndex);
+        if (File.Exists(fromRegistryPath) && File.Exists(toRegistryPath))
         {
-            await HashVerifyAsync(files, fromVhdx, toVhdx, ct);
-        }
-
-        var registry = await DiffRegistryAsync(fromVhdx, toVhdx, ct);
-        return new LayerDiffReport(fromIndex, toIndex, files, registry);
-    }
-
-    /// <summary>Second pass for same-size modified candidates: hash both copies.</summary>
-    private async Task HashVerifyAsync(List<FileDiffEntry> files, string fromVhdx, string toVhdx, CancellationToken ct)
-    {
-        var candidates = files.Where(f => f.Kind == "modified").Select(f => f.RelativePath).ToList();
-        if (candidates.Count == 0)
-        {
-            return;
-        }
-        var fromHashes = await HashFilesAsync(fromVhdx, candidates, ct);
-        var toHashes = await HashFilesAsync(toVhdx, candidates, ct);
-        files.RemoveAll(f => f.Kind == "modified"
-                             && fromHashes.TryGetValue(f.RelativePath, out var a)
-                             && toHashes.TryGetValue(f.RelativePath, out var b)
-                             && a == b);
-    }
-
-    private async Task<Dictionary<string, string>> HashFilesAsync(string vhdxPath, List<string> paths, CancellationToken ct)
-    {
-        var letter = FreeDriveLetter();
-        await backend.AttachAsync(vhdxPath, letter.ToString(), ct);
-        try
-        {
-            var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var path in paths)
+            var fromHives = Layers.LayerEvidence.SplitByHive(File.ReadAllText(fromRegistryPath));
+            var toHives = Layers.LayerEvidence.SplitByHive(File.ReadAllText(toRegistryPath));
+            foreach (var hiveId in fromHives.Keys.Union(toHives.Keys))
             {
-                var full = $"{letter}:\\{path}";
-                if (File.Exists(full))
+                fromHives.TryGetValue(hiveId, out var beforeText);
+                toHives.TryGetValue(hiveId, out var afterText);
+                if (beforeText is null || afterText is null)
                 {
-                    hashes[path] = Convert.ToHexStringLower(await System.Security.Cryptography.SHA256.HashDataAsync(File.OpenRead(full), ct));
+                    registry.Add(new RegistryDiffEntry(hiveId, "(hive)", "(whole file)",
+                        beforeText is null ? "added" : "removed", null, null));
+                    continue;
                 }
-            }
-            return hashes;
-        }
-        finally
-        {
-            await backend.DetachAsync(vhdxPath, ct);
-        }
-    }
-
-    private async Task<List<RegistryDiffEntry>> DiffRegistryAsync(string fromVhdx, string toVhdx, CancellationToken ct)
-    {
-        var result = new List<RegistryDiffEntry>();
-        foreach (var (hiveId, relativePath) in RegistryHiveCache.HiveFiles)
-        {
-            var before = await ExportHiveAsync(fromVhdx, relativePath, ct);
-            var after = await ExportHiveAsync(toVhdx, relativePath, ct);
-            if (before is null && after is null)
-            {
-                continue;
-            }
-            if (before is null || after is null)
-            {
-                result.Add(new RegistryDiffEntry(hiveId, "(hive)", "(whole file)", before is null ? "added" : "removed", null, null));
-                continue;
-            }
-            result.AddRange(RegTextDiff(hiveId, before, after));
-        }
-        return result;
-    }
-
-    /// <summary>Loads the hive (reg load) and exports it as .reg text; null when the hive file is absent.</summary>
-    private async Task<string?> ExportHiveAsync(string vhdxPath, string hiveRelativePath, CancellationToken ct)
-    {
-        var letter = FreeDriveLetter();
-        await backend.AttachAsync(vhdxPath, letter.ToString(), ct);
-        try
-        {
-            var hiveFile = $"{letter}:\\{hiveRelativePath.Replace('\\', Path.DirectorySeparatorChar)}";
-            if (!File.Exists(hiveFile))
-            {
-                return null;
-            }
-            var tempKey = $"HKLM\\TinyWin2Diff_{Guid.NewGuid():N}";
-            var exportFile = Path.GetTempFileName();
-            try
-            {
-                await runner.RunAsync("reg.exe", ["load", tempKey, hiveFile], cancellationToken: ct);
-                try
-                {
-                    await runner.RunAsync("reg.exe", ["export", tempKey, exportFile, "/y"], cancellationToken: ct);
-                }
-                finally
-                {
-                    for (var attempt = 0; attempt < 5; attempt++)
-                    {
-                        var unload = await runner.RunAsync("reg.exe", ["unload", tempKey],
-                            new ProcessRunOptions { IgnoreExitCode = true }, ct);
-                        if (unload.ExitCode == 0)
-                        {
-                            break;
-                        }
-                        await Task.Delay(200, ct);
-                    }
-                }
-                return File.Exists(exportFile) ? await File.ReadAllTextAsync(exportFile, ct) : null;
-            }
-            finally
-            {
-                try { File.Delete(exportFile); } catch { /* best effort */ }
+                registry.AddRange(RegTextDiff(hiveId, beforeText, afterText));
             }
         }
-        finally
-        {
-            await backend.DetachAsync(vhdxPath, ct);
-        }
+        return Task.FromResult(new LayerDiffReport(fromIndex, toIndex, files, registry));
     }
 
     /// <summary>Parses .reg text into key→(name→raw value line) and diffs both sides.</summary>
@@ -319,8 +213,7 @@ public sealed partial class LayerInspector(
     {
         var stack = VhdLayerStack.Load(workDirectory, backend, log);
         var vhdxPath = stack.VhdxForLayer(layerIndex);
-        var letter = FreeDriveLetter();
-        await backend.AttachAsync(vhdxPath, letter.ToString(), ct);
+        var letter = await backend.AttachAsync(vhdxPath, ct);
         try
         {
             var source = $"{letter}:\\{imageRelativePath.Replace('/', '\\')}";
@@ -349,8 +242,7 @@ public sealed partial class LayerInspector(
     {
         var stack = VhdLayerStack.Load(workDirectory, backend, log);
         var vhdxPath = stack.VhdxForLayer(layerIndex);
-        var letter = FreeDriveLetter();
-        await backend.AttachAsync(vhdxPath, letter.ToString(), ct);
+        var letter = await backend.AttachAsync(vhdxPath, ct);
         try
         {
             var name = $"TinyWin2 layer {layerIndex:000}";
@@ -361,7 +253,7 @@ public sealed partial class LayerInspector(
                 {
                     await new OutputBuilder(runner, log).CaptureAsync($"{letter}:\\", intermediate, name, null, ImageFormat.Wim, fast, ct);
                     await runner.RunAsync("dism.exe",
-                        ["/Export-Image", $"/SourceImageFile:{intermediate}", "/SourceIndex:1",
+                        ["/English", "/Export-Image", $"/SourceImageFile:{intermediate}", "/SourceIndex:1",
                          $"/DestinationImageFile:{destinationPath}", "/Compress:recovery"], cancellationToken: ct);
                 }
                 finally
@@ -381,11 +273,4 @@ public sealed partial class LayerInspector(
         }
     }
 
-    private static char FreeDriveLetter()
-    {
-        var letter = DiskPartVhdBackend.FreeDriveLetters().FirstOrDefault(l => l is >= 'S' and <= 'Z');
-        return letter != default
-            ? letter
-            : throw new IOException("no free drive letter in S..Z for layer inspection");
-    }
 }

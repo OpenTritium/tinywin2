@@ -4,6 +4,18 @@ using TinyWin2.Core.Logging;
 
 namespace TinyWin2.Core.Layers;
 
+/// <summary>Picks the Hyper-V cmdlet backend when available, diskpart otherwise.</summary>
+public static class LayerBackendFactory
+{
+    public static ILayerBackend Create(TinyWin2.Core.Native.IProcessRunner? runner = null)
+    {
+        runner ??= new TinyWin2.Core.Native.ProcessRunner();
+        return HyperVhdBackend.IsAvailable()
+            ? new HyperVhdBackend(runner)
+            : new DiskPartVhdBackend(runner);
+    }
+}
+
 public enum LayerStatus
 {
     Pending,
@@ -182,8 +194,7 @@ public sealed class VhdLayerStack(
 
     public async Task ApplyImageToBaseAsync(Func<string, CancellationToken, Task> applyAsync, CancellationToken ct)
     {
-        var letter = FreeDriveLetter();
-        await backend.AttachAsync(BaseVhdxPath, letter.ToString(), ct);
+        var letter = await backend.AttachAsync(BaseVhdxPath, ct);
         try
         {
             await applyAsync($"{letter}:\\", ct);
@@ -204,10 +215,10 @@ public sealed class VhdLayerStack(
         log.Info($"creating layer {index:000} '{title}' on {Path.GetFileName(parent)}", layerIndex: index);
         await backend.CreateDiffAsync(vhdxPath, parent, ct);
 
-        var letter = FreeDriveLetter();
+        char letter;
         try
         {
-            await backend.AttachAsync(vhdxPath, letter.ToString(), ct);
+            letter = await backend.AttachAsync(vhdxPath, ct);
         }
         catch
         {
@@ -321,14 +332,6 @@ public sealed class VhdLayerStack(
                 ? record.VhdxPath
                 : BaseVhdxPath; // merged-away layer: its content is in the base
         }
-    }
-
-    private static char FreeDriveLetter()
-    {
-        var letter = DiskPartVhdBackend.FreeDriveLetters().FirstOrDefault(l => l is >= 'S' and <= 'Z');
-        return letter != default
-            ? letter
-            : throw new IOException("no free drive letter in S..Z for layer attach");
     }
 
     private static void TryDelete(string path)

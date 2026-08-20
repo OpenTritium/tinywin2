@@ -31,6 +31,7 @@ public sealed class OutputBuilder(IProcessRunner runner, IBuildLog log)
         };
         var args = new List<string>
         {
+            "/English",
             "/Capture-Image",
             $"/ImageFile:{targetPath}",
             $"/CaptureDir:{mountPath}",
