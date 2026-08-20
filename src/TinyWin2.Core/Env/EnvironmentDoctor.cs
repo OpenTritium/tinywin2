@@ -1,15 +1,11 @@
 using System.Security.Principal;
-using System.Text.Json.Nodes;
 using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Env;
 
-/// <summary>One environment check outcome. Serialized via <see cref="Json.Records"/> (camelCase).</summary>
 public sealed record CheckResult(string Name, bool Ok, bool Required, string Detail);
 
-/// <summary>Probes the host for everything the build pipeline needs. Read-only; never mutates.</summary>
 public static class EnvironmentDoctor {
-    /// <summary>Tools required on PATH; System32 is always on PATH, so no extra probe directories.</summary>
     private static readonly (string Tool, bool Required)[] Tools = [
         ("dism.exe", true),
         ("reg.exe", true),
@@ -37,6 +33,7 @@ public static class EnvironmentDoctor {
         if (outputDirectoryHint is not null) {
             results.Add(CheckFreeSpace(outputDirectoryHint, MinimumFreeBytes));
         }
+
         return results;
     }
 

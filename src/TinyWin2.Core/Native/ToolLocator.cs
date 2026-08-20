@@ -1,33 +1,21 @@
 namespace TinyWin2.Core.Native;
 
-/// <summary>Locates native tools on PATH or in well-known directories.</summary>
+/// <summary>Locates a native tool on PATH. Callers pass full file names ("dism.exe").</summary>
 public static class ToolLocator {
-    public static string? Locate(string fileName, params string[] extraDirectories) {
+    public static string? Locate(string fileName) {
         if (Path.IsPathRooted(fileName)) {
             return File.Exists(fileName) ? fileName : null;
         }
 
-        foreach (var directory in extraDirectories) {
-            var candidate = Path.Combine(directory, fileName);
-            if (File.Exists(candidate)) {
-                return Path.GetFullPath(candidate);
-            }
+        var path = Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrEmpty(path)) {
+            return null;
         }
-
-        var pathVariable = Environment.GetEnvironmentVariable("PATH");
-        if (!string.IsNullOrEmpty(pathVariable)) {
-            foreach (var directory in pathVariable.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) {
-                try {
-                    var candidate = Path.Combine(directory, fileName);
-                    if (File.Exists(candidate)) {
-                        return Path.GetFullPath(candidate);
-                    }
-                }
-                catch (Exception ex) when (ex is ArgumentException or NotSupportedException) {
-                    // Malformed PATH entries are skipped, not fatal.
-                }
-            }
-        }
-        return null;
+        // File.Exists never throws (malformed PATH entries simply miss), so no try/catch.
+        var found = path
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(directory => Path.Combine(directory, fileName))
+            .FirstOrDefault(File.Exists);
+        return found is null ? null : Path.GetFullPath(found);
     }
 }
