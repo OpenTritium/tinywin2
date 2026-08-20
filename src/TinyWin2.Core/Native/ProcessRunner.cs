@@ -9,7 +9,8 @@ public sealed record ProcessRunResult(int ExitCode, string Output, string Error,
 }
 
 /// <summary>Options for a native tool invocation.</summary>
-public sealed class ProcessRunOptions {
+public sealed class ProcessRunOptions
+{
     public string? WorkingDirectory { get; init; }
     public TimeSpan? Timeout { get; init; }
     /// <summary>When false (default), a non-zero exit code throws <see cref="ProcessRunnerException"/>.</summary>
@@ -23,11 +24,13 @@ public sealed class ProcessRunOptions {
 public sealed class ProcessRunnerException(
     string fileName,
     ProcessRunResult result) : Exception(
-        $"'{fileName}' exited with code {result.ExitCode}.{Environment.NewLine}Command line: {result.CommandLine}{Environment.NewLine}{result.Output}{Environment.NewLine}{result.Error}") {
+        $"'{fileName}' exited with code {result.ExitCode}.{Environment.NewLine}Command line: {result.CommandLine}{Environment.NewLine}{result.Output}{Environment.NewLine}{result.Error}")
+{
     public ProcessRunResult Result { get; } = result;
 }
 
-public interface IProcessRunner {
+public interface IProcessRunner
+{
     Task<ProcessRunResult> RunAsync(
         string fileName,
         IReadOnlyList<string> arguments,
@@ -39,14 +42,17 @@ public interface IProcessRunner {
 /// Runs external tools (dism.exe, reg.exe, diskpart, oscdimg, ...) with streamed output capture,
 /// timeout and cancellation support. The single boundary between the engine and native tooling.
 /// </summary>
-public sealed class ProcessRunner : IProcessRunner {
+public sealed class ProcessRunner : IProcessRunner
+{
     public async Task<ProcessRunResult> RunAsync(
         string fileName,
         IReadOnlyList<string> arguments,
         ProcessRunOptions? options = null,
-        CancellationToken cancellationToken = default) {
+        CancellationToken cancellationToken = default)
+    {
         options ??= new ProcessRunOptions();
-        var startInfo = new ProcessStartInfo {
+        var startInfo = new ProcessStartInfo
+        {
             FileName = fileName,
             WorkingDirectory = options.WorkingDirectory,
             UseShellExecute = false,
@@ -55,77 +61,82 @@ public sealed class ProcessRunner : IProcessRunner {
             RedirectStandardInput = true, // stdin closed below: some tools wait on it
             CreateNoWindow = true,
         };
-        if (options.Environment is not null) {
-            foreach (var (key, value) in options.Environment) {
+        if (options.Environment is not null)
+        {
+            foreach (var (key, value) in options.Environment)
+            {
                 startInfo.Environment[key] = value;
             }
         }
-        foreach (var argument in arguments) {
+        foreach (var argument in arguments)
+        {
             startInfo.ArgumentList.Add(argument);
         }
         var commandLine = BuildCommandLineEcho(fileName, arguments);
         using var process = new Process { StartInfo = startInfo };
         var outputBuilder = new StringBuilder();
         var errorBuilder = new StringBuilder();
-        process.OutputDataReceived += (_, e) => {
-            if (e.Data is null) {
-                return;
-            }
-            lock (outputBuilder) {
-                outputBuilder.AppendLine(e.Data);
-            }
-            options.OnOutputLine?.Invoke(e.Data);
-        };
-        process.ErrorDataReceived += (_, e) => {
-            if (e.Data is null) {
-                return;
-            }
-            lock (errorBuilder) {
-                errorBuilder.AppendLine(e.Data);
-            }
-            options.OnErrorLine?.Invoke(e.Data);
-        };
-        if (!process.Start()) {
+
+        if (!process.Start())
+        {
             throw new ProcessRunnerException(fileName,
                 new ProcessRunResult(-1, "", $"Failed to start '{fileName}'.", commandLine));
         }
         process.StandardInput.Close();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
+
+        // Read each stream in its own async loop. WhenAll below waits for process exit AND both
+        // streams reaching EOF — unlike WaitForExitAsync alone (which never drains Begin*ReadLine
+        // events), this cannot lose the tail of the output.
+        var outputTask = ReadStreamAsync(process.StandardOutput, outputBuilder, options.OnOutputLine);
+        var errorTask = ReadStreamAsync(process.StandardError, errorBuilder, options.OnErrorLine);
+
         var timeout = options.Timeout ?? Timeout.InfiniteTimeSpan;
         using var timeoutCts = new CancellationTokenSource(timeout);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-        try {
-            await process.WaitForExitAsync(linked.Token).ConfigureAwait(false);
+
+        try
+        {
+            // Note: tying completion to stream EOF means a grandchild process holding the pipe
+            // write-end would stall this even after exit — none of our tools spawn such children.
+            await Task.WhenAll(process.WaitForExitAsync(linked.Token), outputTask, errorTask).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested) {
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
             KillTree(process);
             throw new TimeoutException($"'{fileName}' timed out after {timeout}. Command line: {commandLine}");
         }
-        catch (OperationCanceledException) {
+        catch (OperationCanceledException)
+        {
             KillTree(process);
             throw;
         }
-        string output;
-        string error;
-        lock (outputBuilder) {
-            output = outputBuilder.ToString();
-        }
-        lock (errorBuilder) {
-            error = errorBuilder.ToString();
-        }
-        var result = new ProcessRunResult(process.ExitCode, output, error, commandLine);
-        if (process.ExitCode != 0 && !options.IgnoreExitCode) {
+
+        var result = new ProcessRunResult(process.ExitCode, outputBuilder.ToString(), errorBuilder.ToString(), commandLine);
+        if (process.ExitCode != 0 && !options.IgnoreExitCode)
+        {
             throw new ProcessRunnerException(fileName, result);
         }
         return result;
     }
 
-    private static void KillTree(Process process) {
-        try {
+    /// <summary>Drains a redirected stream line by line until EOF; single writer, no locking needed.</summary>
+    private static async Task ReadStreamAsync(StreamReader reader, StringBuilder builder, Action<string>? onLine)
+    {
+        while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line)
+        {
+            builder.AppendLine(line);
+            onLine?.Invoke(line);
+        }
+    }
+
+    private static void KillTree(Process process)
+    {
+        try
+        {
             process.Kill(entireProcessTree: true);
         }
-        catch {
+        catch
+        {
             // The process may already have exited between the cancellation and the kill.
         }
     }
@@ -134,7 +145,7 @@ public sealed class ProcessRunner : IProcessRunner {
         => fileName + (arguments.Count == 0 ? "" : " " + string.Join(" ", arguments.Select(QuoteIfNeeded)));
 
     internal static string QuoteIfNeeded(string value)
-        => value.Length != 0 && !value.Contains(' ') && !value.Contains('"')
+        => value.Length != 0 && !value.Contains(' ') && !value.Contains('\t') && !value.Contains('"')
             ? value
             : $"\"{value.Replace("\"", "\\\"")}\"";
 }
