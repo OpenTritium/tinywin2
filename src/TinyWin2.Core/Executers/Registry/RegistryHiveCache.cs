@@ -26,13 +26,13 @@ public sealed class RegistryHive(
 /// Loads offline registry hives on demand (reg.exe load) and unloads them all with retry,
 /// shared by every registry executer working against one mounted layer.
 /// </summary>
-public sealed class RegistryHiveCache(string mountPath, IProcessRunner? runner = null) {
+public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
     private readonly Lock _gate = new();
     private readonly Dictionary<string, RegistryHive> _loaded = new(StringComparer.OrdinalIgnoreCase);
     private string _sessionPrefix = "TinyWin2";
 
     public string MountPath { get; } = mountPath;
-    public IProcessRunner Runner { get; } = runner ?? new ProcessRunner();
+    public IProcessRunner Runner { get; } = runner;
 
     /// <summary>Hive id → file path inside the image (v1 mapping + SECURITY/SAM).</summary>
     public static readonly IReadOnlyDictionary<string, string> HiveFiles =

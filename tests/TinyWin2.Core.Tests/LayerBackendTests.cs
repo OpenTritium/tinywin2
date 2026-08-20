@@ -148,6 +148,42 @@ public sealed class LayerBackendTests : IDisposable {
     // ---- ExecuterRegistry validation ----------------------------------------
 
     [Test]
+    public async Task HyperVhdAvailabilityProbeIsInjectableAndCached() {
+        HyperVhdBackend.ResetAvailabilityCache();
+        var probes = 0;
+        var runner = new FakeProcessRunner {
+            Handler = (_, _) => {
+                probes++;
+                return FakeProcessRunner.Ok("True");
+            },
+        };
+        try {
+            await Assert.That(HyperVhdBackend.IsAvailable(runner)).IsTrue();
+            await Assert.That(HyperVhdBackend.IsAvailable(runner)).IsTrue();
+            await Assert.That(probes).IsEqualTo(1); // second call served from the cache
+        }
+        finally {
+            HyperVhdBackend.ResetAvailabilityCache();
+        }
+    }
+
+    [Test]
+    public async Task LoadRejectsCorruptLayerManifestsWithARecoveryHint() {
+        var directory = TestPlans.CreateTempDirectory();
+        try {
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(Path.Combine(directory, "layers.json"), "{ not json");
+            var ex = Assert.Throws<IOException>(() =>
+                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog()))!;
+            await Assert.That(ex.Message).Contains("is corrupt");
+            await Assert.That(ex.Message).Contains("delete the workspace");
+        }
+        finally {
+            try { Directory.Delete(directory, recursive: true); } catch { /* best effort */ }
+        }
+    }
+
+    [Test]
     public async Task DuplicateRegistrationIsRejected() {
         var ex = Assert.Throws<InvalidOperationException>(() =>
             new ExecuterRegistry([new FakeExecuter("dup.resource", fail: false), new FakeExecuter("dup.resource", fail: false)]))!;

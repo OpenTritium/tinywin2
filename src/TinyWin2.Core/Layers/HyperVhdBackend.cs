@@ -57,12 +57,33 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
     public Task MergeAsync(string vhdxPath, int depth, CancellationToken ct) =>
         RunPsAsync($"$ErrorActionPreference = 'Stop'\nMerge-VHD -Path {PsQuote(vhdxPath)} -Depth {depth}", ct);
 
-    public static bool IsAvailable() {
+    private static readonly object _probeGate = new();
+    private static bool? _available;
+
+    /// <summary>
+    /// Probes the Hyper-V module once per process (cached — the pwsh round-trip is slow and
+    /// <see cref="LayerBackendFactory"/> asks on every engine wiring). The probe runner is
+    /// injectable for tests. Stays sync because the factory contract is sync; the blocking
+    /// wait is bounded by the 30s probe timeout and happens at most once.
+    /// </summary>
+    public static bool IsAvailable(IProcessRunner? probeRunner = null) {
+        lock (_probeGate) {
+            _available ??= Probe(probeRunner ?? new ProcessRunner());
+            return _available.Value;
+        }
+    }
+
+    internal static void ResetAvailabilityCache() {
+        lock (_probeGate) {
+            _available = null;
+        }
+    }
+
+    private static bool Probe(IProcessRunner probe) {
         if (!OperatingSystem.IsWindows()) {
             return false;
         }
 
-        var probe = new ProcessRunner();
         try {
             var result = probe.RunAsync("pwsh.exe",
                 [

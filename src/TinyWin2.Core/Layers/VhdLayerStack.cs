@@ -27,6 +27,7 @@ public sealed record LayerRecord {
     public string? StepId { get; init; }
     public string? Title { get; init; }
     public string VhdxFileName { get; init; } = "";
+    public string? VhdxPath { get; init; }
     public LayerStatus Status { get; init; } = LayerStatus.Pending;
     public DateTimeOffset StartedUtc { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? EndedUtc { get; init; }
@@ -34,8 +35,6 @@ public sealed record LayerRecord {
     public JsonArray? ExecResults { get; init; }
     public string? Error { get; init; }
     public long SizeBytes => VhdxPath is { } path && File.Exists(path) ? new FileInfo(path).Length : 0;
-
-    public string? VhdxPath { get; init; }
 
     public JsonObject ToJson() => new() {
         ["index"] = Index,
@@ -56,7 +55,6 @@ public sealed class LayerSession {
     public required LayerRecord Record { get; init; }
     public required string VhdxPath { get; init; }
     public required string MountPath { get; init; }
-    public required char DriveLetter { get; init; }
 }
 
 /// <summary>
@@ -129,24 +127,33 @@ public sealed class VhdLayerStack(
     public static VhdLayerStack Load(string workDirectory, ILayerBackend backend, BuildLog log) {
         var stack = new VhdLayerStack(workDirectory, backend, log);
         if (File.Exists(stack.ManifestPath)) {
-            var root = JsonNode.Parse(File.ReadAllText(stack.ManifestPath))?["layers"] as JsonArray ?? [];
-            foreach (var node in root.OfType<JsonObject>()) {
-                var record = new LayerRecord {
-                    Index = node["index"]!.GetValue<int>(),
-                    StepId = node["stepId"]?.GetValue<string>(),
-                    Title = node["title"]?.GetValue<string>(),
-                    VhdxFileName = node["vhdx"]!.GetValue<string>(),
-                    Status = Enum.Parse<LayerStatus>(node["status"]!.GetValue<string>(), ignoreCase: true),
-                    StartedUtc = DateTimeOffset.Parse(node["startedUtc"]!.GetValue<string>()),
-                    EndedUtc = node["endedUtc"] is { } e ? DateTimeOffset.Parse(e.GetValue<string>()) : null,
-                    BoundArgs = node["boundArgs"] as JsonObject,
-                    ExecResults = node["execResults"] as JsonArray,
-                    Error = node["error"]?.GetValue<string>(),
-                    VhdxPath = Path.Combine(workDirectory, node["vhdx"]!.GetValue<string>()),
-                };
-                lock (stack._gate) {
-                    stack._records.Add(record);
+            try {
+                var root = JsonNode.Parse(File.ReadAllText(stack.ManifestPath))?["layers"] as JsonArray ?? [];
+                foreach (var node in root.OfType<JsonObject>()) {
+                    var record = new LayerRecord {
+                        Index = node["index"]!.GetValue<int>(),
+                        StepId = node["stepId"]?.GetValue<string>(),
+                        Title = node["title"]?.GetValue<string>(),
+                        VhdxFileName = node["vhdx"]!.GetValue<string>(),
+                        Status = Enum.Parse<LayerStatus>(node["status"]!.GetValue<string>(), ignoreCase: true),
+                        StartedUtc = DateTimeOffset.Parse(node["startedUtc"]!.GetValue<string>()),
+                        EndedUtc = node["endedUtc"] is { } e ? DateTimeOffset.Parse(e.GetValue<string>()) : null,
+                        BoundArgs = node["boundArgs"] as JsonObject,
+                        ExecResults = node["execResults"] as JsonArray,
+                        Error = node["error"]?.GetValue<string>(),
+                        VhdxPath = Path.Combine(workDirectory, node["vhdx"]!.GetValue<string>()),
+                    };
+                    lock (stack._gate) {
+                        stack._records.Add(record);
+                    }
                 }
+            }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException or ArgumentException or FormatException) {
+                // A manifest we cannot read is not resumable: fail with the recovery hint
+                // instead of a raw parser stack trace.
+                throw new IOException(
+                    $"layer manifest '{stack.ManifestPath}' is corrupt ({ex.Message}); delete the workspace and rebuild.",
+                    ex);
             }
         }
         return stack;
@@ -228,20 +235,18 @@ public sealed class VhdLayerStack(
             _records.Add(record);
         }
         Save();
-        return new LayerSession { Record = record, VhdxPath = vhdxPath, MountPath = $"{letter}:\\", DriveLetter = letter };
+        return new LayerSession { Record = record, VhdxPath = vhdxPath, MountPath = $"{letter}:\\" };
     }
 
     /// <summary>Detaches and keeps the layer (plan succeeded).</summary>
     public async Task CommitLayerAsync(LayerSession session, JsonArray? execResults, CancellationToken ct) {
         await backend.DetachAsync(session.VhdxPath, ct);
         lock (_gate) {
-            var record = _records.First(r => r.Index == session.Record.Index);
-            var updated = record with {
+            UpdateRecord(session.Record.Index, record => record with {
                 Status = LayerStatus.Committed,
                 EndedUtc = DateTimeOffset.UtcNow,
                 ExecResults = execResults ?? record.ExecResults,
-            };
-            _records[_records.IndexOf(record)] = updated;
+            });
         }
         Save();
         log.Info($"layer {session.Record.Index:000} committed ({new FileInfo(session.VhdxPath).Length / 1024.0 / 1024:F1} MB)",
@@ -261,12 +266,11 @@ public sealed class VhdLayerStack(
         }
         TryDelete(session.VhdxPath, strict: false);
         lock (_gate) {
-            var record = _records.First(r => r.Index == session.Record.Index);
-            _records[_records.IndexOf(record)] = record with {
+            UpdateRecord(session.Record.Index, record => record with {
                 Status = LayerStatus.Discarded,
                 EndedUtc = DateTimeOffset.UtcNow,
                 Error = error,
-            };
+            });
         }
         Save();
         log.Warn($"layer {session.Record.Index:000} discarded; image state unchanged", layerIndex: session.Record.Index);
@@ -288,8 +292,10 @@ public sealed class VhdLayerStack(
         foreach (var diff in diffs) {
             TryDelete(diff.VhdxPath!, strict: true);
             lock (_gate) {
-                var record = _records.First(r => r.Index == diff.Index);
-                _records[_records.IndexOf(record)] = record with { Status = LayerStatus.Merged, EndedUtc = DateTimeOffset.UtcNow };
+                UpdateRecord(diff.Index, record => record with {
+                    Status = LayerStatus.Merged,
+                    EndedUtc = DateTimeOffset.UtcNow,
+                });
             }
         }
         Save();
@@ -302,6 +308,12 @@ public sealed class VhdLayerStack(
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
         File.Copy(BaseVhdxPath, targetPath, overwrite: true);
         return targetPath;
+    }
+
+    /// <summary>Replaces one record in place (caller must hold <see cref="_gate"/>).</summary>
+    private void UpdateRecord(int index, Func<LayerRecord, LayerRecord> update) {
+        var position = _records.FindIndex(r => r.Index == index);
+        _records[position] = update(_records[position]);
     }
 
     /// <summary>The VHDX to capture output from when rolling back to a given layer index.</summary>
