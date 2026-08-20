@@ -82,7 +82,7 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         var result = await runner.RunAsync("reg.exe", ["query", $"{hive.HiveKey}\\Select", "/v", "Current"],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
         var match = Regex.Match(result.Output, "0x([0-9A-Fa-f]+)");
-        if (result.ExitCode != 0 || !match.Success) {
+        if (!result.Success || !match.Success) {
             throw new ExecException("could not resolve the active control set from the offline SYSTEM hive.");
         }
         return $"ControlSet{Convert.ToInt32(match.Groups[1].Value, 16):D3}";

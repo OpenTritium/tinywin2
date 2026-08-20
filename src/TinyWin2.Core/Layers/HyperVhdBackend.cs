@@ -64,7 +64,7 @@ public sealed partial class HyperVhdBackend(IProcessRunner runner) : ILayerBacke
                 ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "[bool](Get-Command New-VHD -ErrorAction SilentlyContinue)"],
                 new ProcessRunOptions { IgnoreExitCode = true, Timeout = TimeSpan.FromSeconds(30) },
                 CancellationToken.None).GetAwaiter().GetResult();
-            return result.ExitCode == 0 && result.Output.Trim().EndsWith("True", StringComparison.OrdinalIgnoreCase);
+            return result.Success && result.Output.Trim().EndsWith("True", StringComparison.OrdinalIgnoreCase);
         }
         catch {
             return false;

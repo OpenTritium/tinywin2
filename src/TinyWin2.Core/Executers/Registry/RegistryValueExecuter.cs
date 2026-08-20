@@ -20,7 +20,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
             var result = await runner.RunAsync("reg.exe",
                 string.IsNullOrEmpty(value.Name) ? ["query", keyPath, "/ve"] : ["query", keyPath, "/v", value.Name],
                 new ProcessRunOptions { IgnoreExitCode = true }, ct);
-            var existing = result.ExitCode == 0 ? RegValues.ParseQueryValue(result.Output, string.IsNullOrEmpty(value.Name) ? "(Default)" : value.Name) : null;
+            var existing = result.Success ? RegValues.ParseQueryValue(result.Output, string.IsNullOrEmpty(value.Name) ? "(Default)" : value.Name) : null;
             if (spec.Ensure == Ensure.Absent) {
                 if (existing is not null) {
                     differences.Add(new ChangeItem(ChangeKind.Removed, hive.ValueUnderHive(value.Key, value.Name),
@@ -44,7 +44,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
             foreach (var key in options.DeleteKeys) {
                 var result = await runner.RunAsync("reg.exe", ["query", hive.KeyUnderHive(key)],
                     new ProcessRunOptions { IgnoreExitCode = true }, ct);
-                if (result.ExitCode == 0) {
+                if (result.Success) {
                     differences.Add(new ChangeItem(ChangeKind.Removed, $"{hive.HiveId}\\{key.Trim('\\')} (key)"));
                 }
             }

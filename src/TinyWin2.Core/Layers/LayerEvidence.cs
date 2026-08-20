@@ -82,7 +82,7 @@ public static partial class LayerEvidence {
                     for (var attempt = 0; attempt < 5; attempt++) {
                         var unload = await runner.RunAsync("reg.exe", ["unload", tempKey],
                             new ProcessRunOptions { IgnoreExitCode = true }, ct);
-                        if (unload.ExitCode == 0) {
+                        if (unload.Success) {
                             break;
                         }
                         await Task.Delay(200, ct);

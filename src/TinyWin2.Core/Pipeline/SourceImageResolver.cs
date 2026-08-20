@@ -62,7 +62,7 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog
         var result = await runner.RunAsync("pwsh.exe",
             ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", $"Dismount-DiskImage -ImagePath '{media.IsoPath}' | Out-Null; $?"],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
-        if (result.ExitCode != 0) {
+        if (!result.Success) {
             log.Warn($"could not dismount source ISO '{media.IsoPath}' (exit {result.ExitCode}).");
         }
     }
@@ -75,7 +75,7 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog
             var result = await runner.RunAsync("dism.exe",
                 ["/Get-WimInfo", $"/WimFile:{installImagePath}", $"/Index:{summary.Index}", "/English"],
                 new ProcessRunOptions { IgnoreExitCode = true }, ct);
-            if (result.ExitCode != 0) {
+            if (!result.Success) {
                 detailed.Add(summary);
                 continue;
             }
@@ -96,7 +96,7 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, IBuildLog
         var result = await runner.RunAsync("dism.exe",
             ["/Get-WimInfo", $"/WimFile:{installImagePath}", "/English"],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
-        if (result.ExitCode != 0) {
+        if (!result.Success) {
             throw new InvalidOperationException($"dism.exe could not read image info from '{installImagePath}' (exit {result.ExitCode}).");
         }
         var indexes = new List<ImageIndexInfo>();
