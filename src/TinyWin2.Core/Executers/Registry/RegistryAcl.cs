@@ -33,10 +33,14 @@ internal static class RegistryAcl {
             $tok = [IntPtr]::Zero
             [Win32.Priv]::OpenProcessToken($proc.Handle, 0x28, [ref]$tok) | Out-Null
             foreach ($name in 'SeTakeOwnershipPrivilege', 'SeRestorePrivilege') {
+                # [ref] on a struct FIELD does not propagate in PowerShell - take the LUID
+                # into a plain long first, then copy it into the struct (live-diagnosed).
+                $luid = 0L
+                [Win32.Priv]::LookupPrivilegeValue($null, $name, [ref]$luid) | Out-Null
                 $tp = New-Object Win32.Priv+TOKEN_PRIVILEGES
                 $tp.PrivilegeCount = 1
+                $tp.Luid = $luid
                 $tp.Attributes = 2
-                [Win32.Priv]::LookupPrivilegeValue($null, $name, [ref]$tp.Luid) | Out-Null
                 [Win32.Priv]::AdjustTokenPrivileges($tok, $false, [ref]$tp, 0, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
             }
             $path = '{{hklmSubKeyPath.Replace("'", "''")}}'

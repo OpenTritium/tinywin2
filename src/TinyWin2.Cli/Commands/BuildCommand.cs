@@ -58,6 +58,7 @@ internal static class BuildCommand {
                 Granularity = granularity,
                 Fast = options.ContainsKey("fast"),
                 ContinueOnError = options.ContainsKey("continue-on-error"),
+                NoLayers = options.ContainsKey("no-layers"),
                 KeepLayers = options.ContainsKey("keep-layers"),
                 DryRun = options.ContainsKey("dry-run"),
                 ResumeWorkspace = resume,
