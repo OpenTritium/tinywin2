@@ -51,8 +51,8 @@
 ## 五、桌面版 vs Core 版配方差异
 
 - **桌面版必须保留**：`TextInputManagementService`（TSF）、`camsvc`（AppX/ms-settings 激活）；VM ≥ 4GB。
-- **桌面版可禁用**（已验证）：edgeupdate/edgeupdatem、音频（Audiosrv/AudioEndpointBuilder）、蓝牙/生物（BTAGService/bthserv/BluetoothUserService/DeviceAssociationService/WbioSrvc）、MSDTC、tapisrv、NcbService。
-- **服务禁用类 plan 只在 Core 版放开**；桌面版 profile 排除含 camsvc/TSF 的 plan（`extreme-desktop-profile.json`，173→152）。
+- **桌面版可禁用**（已验证）：edgeupdate/edgeupdatem、音频（Audiosrv/AudioEndpointBuilder）、蓝牙/生物（BTAGService/bthserv/BluetoothUserService/DeviceAssociationService/WbioSrvc）、MSDTC、tapisrv、NcbService，以及 `RemoteRegistry`、`WinRM`、`LanmanServer`、`WSAIFabricSvc`、`DPS`、`WdiSystemHost`。这些条目均保持为原子 plan。
+- `WdiServiceHost` 目前仅提供手动启动 plan，未纳入禁用验证。桌面版仍必须保留 `camsvc`、TSF、FontCache 等关键依赖；禁用服务类 plan 只能按已验证清单选择。
 - 首次部署后前 1~2 次登录可能有初始化窗口（TiWorker/AppX），之后永久稳定——可接受，或构建后做"预初始化"（自动登录跑 2 次再捕获 WIM）。
 
 ## 六、Hyper-V 冒烟工具（F:\hyperv-smoke2）

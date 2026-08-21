@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
-  "id": "service.diagnostic-policy",
-  "version": "3.0.0",
-  "title": "将 Diagnostic Policy Service 改为按需启动",
-  "description": "将 Diagnostic Policy Service（DPS）改为手动启动；保留需要时的故障诊断触发能力，减少开机常驻。WdiServiceHost 和 WdiSystemHost 已拆分为独立 plan。",
+  "id": "service.wdi-system-host",
+  "version": "1.0.0",
+  "title": "配置系统诊断主机启动方式",
+  "description": "配置 WdiSystemHost 的启动方式。禁用模式已在 Desktop Experience Hyper-V VM 中完成重启和桌面功能验证；默认仍为手动以保持通用 profile 保守。",
   "group": "Diagnostics",
   "risk": "Medium",
   "tier": "Standard",
@@ -33,7 +33,7 @@
       "ensure": "present",
       "with": {
         "services": [
-          "DPS"
+          "WdiSystemHost"
         ],
         "start": {
           "$map": {

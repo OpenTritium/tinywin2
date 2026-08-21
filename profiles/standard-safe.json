@@ -88,6 +88,14 @@
       "enabled": true
     },
     {
+      "planId": "service.wdi-service-host",
+      "enabled": true
+    },
+    {
+      "planId": "service.wdi-system-host",
+      "enabled": true
+    },
+    {
       "planId": "service.windows-error-reporting",
       "enabled": true
     },
