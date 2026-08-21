@@ -9,12 +9,14 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterB
 
     protected override IReadOnlyList<string> ListArguments => ["/Get-Features", "/Format:List"];
 
+    protected override string RecordStartKey => "Feature Name";
+
     protected override DismOutcome? DowngradeOutcome => DismOutcome.InvalidInstallState;
 
     protected override string SatisfiedSkipReason => "features already absent or unavailable";
 
     protected override IEnumerable<DismRemovalTarget> SelectTargets(
-        IReadOnlyList<Dictionary<string, string>> records,
+        IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
         ExecSpec spec) {
         var options = FeatureOptions.FromDesired(spec.Desired);

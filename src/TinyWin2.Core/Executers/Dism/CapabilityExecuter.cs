@@ -9,12 +9,14 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismRemoveExecut
 
     protected override IReadOnlyList<string> ListArguments => ["/Get-Capabilities", "/Format:List"];
 
+    protected override string RecordStartKey => "Capability Identity";
+
     protected override DismOutcome? DowngradeOutcome => DismOutcome.CannotUninstall;
 
     protected override string SatisfiedSkipReason => "capabilities already absent or unavailable";
 
     protected override IEnumerable<DismRemovalTarget> SelectTargets(
-        IReadOnlyList<Dictionary<string, string>> records,
+        IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
         ExecSpec spec) {
         var options = CapabilityOptions.FromDesired(spec.Desired);

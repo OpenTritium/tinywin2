@@ -10,6 +10,8 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismRemoveE
 
     protected override IReadOnlyList<string> ListArguments => ["/Get-ProvisionedAppxPackages", "/Format:List"];
 
+    protected override string RecordStartKey => "DisplayName";
+
     /// <summary>Server editions without appx provisioning answer ERROR_INVALID_PARAMETER —
     /// there is simply nothing provisioned, so the resource is satisfied.</summary>
     protected override FrozenSet<int> InapplicableExitCodes => [87];
@@ -17,7 +19,7 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismRemoveE
     protected override string SatisfiedSkipReason => "no provisioned appx packages matched";
 
     protected override IEnumerable<DismRemovalTarget> SelectTargets(
-        IReadOnlyList<Dictionary<string, string>> records,
+        IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
         ExecSpec spec) {
         var options = AppxOptions.FromDesired(spec.Desired);
@@ -25,8 +27,8 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismRemoveE
             var displayName = DismListParser.Get(record, "DisplayName");
             // RemoveKey is the dism Package Name; DisplayName is what patterns match and logs show.
             if (displayName is null
-                || DismListParser.Get(record, "Package Name") is not { } packageName
-                || !options.Patterns.Any(p => LikePattern.ToRegex(p).IsMatch(displayName))) {
+                || DismListParser.Get(record, "PackageName") is not { } packageName
+                || !options.Patterns.Any(p => p.IsMatch(displayName))) {
                 continue;
             }
 

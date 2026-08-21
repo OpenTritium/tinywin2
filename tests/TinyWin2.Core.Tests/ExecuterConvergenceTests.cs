@@ -76,7 +76,7 @@ public sealed class DismClassifierTests {
                               State : Disabled
 
                               """;
-        var records = DismListParser.Parse(output);
+        var records = DismListParser.Parse(output, "Feature Name");
         await Assert.That(records.Count).IsEqualTo(2);
         await Assert.That(DismListParser.Get(records[0], "State")).IsEqualTo("Enabled");
         await Assert.That(DismListParser.Get(records[1], "Feature Name")).IsEqualTo("NetFx3");

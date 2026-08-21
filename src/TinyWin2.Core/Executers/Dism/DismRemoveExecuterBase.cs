@@ -20,9 +20,11 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
 
     protected abstract IReadOnlyList<string> ListArguments { get; }
 
+    protected abstract string RecordStartKey { get; }
+
     /// <summary>Maps one /Format:List record to a removal target; may log skips.</summary>
     protected abstract IEnumerable<DismRemovalTarget> SelectTargets(
-        IReadOnlyList<Dictionary<string, string>> records,
+        IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
         ExecSpec spec);
 
@@ -53,7 +55,7 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
             throw new ExecException($"dism.exe failed to list {Resource} targets (exit {exitCode}).");
         }
 
-        var differences = SelectTargets(ParseList(output), context, spec)
+        var differences = SelectTargets(DismListParser.Parse(output, RecordStartKey), context, spec)
             .Select(t => t.SkipReason is not null
                 ? new ChangeItem(ChangeKind.Skipped, t.RemoveKey, t.SkipReason)
                 : new ChangeItem(ChangeKind.Removed, t.RemoveKey, Before: t.Before))
@@ -68,7 +70,9 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
                 [.. diff.Differences.Where(d => d.Kind == ChangeKind.Skipped)]);
         }
 
-        var applied = new List<ChangeItem>();
+        var applied = diff.Differences
+            .Where(d => d.Kind == ChangeKind.Skipped)
+            .ToList();
         foreach (var change in diff.Differences.Where(d => d.Kind != ChangeKind.Skipped)) {
             var (exitCode, output) = await RunDismAsync(context,
                 RemoveArguments(new DismRemovalTarget(change.Target, change.Before), spec), ct);

@@ -21,6 +21,4 @@ public abstract class DismExecuterBase(IProcessRunner runner) {
             new ProcessRunOptions { IgnoreExitCode = true, OnOutputLine = null }, ct);
         return (result.ExitCode, result.Output + result.Error);
     }
-
-    protected static IReadOnlyList<Dictionary<string, string>> ParseList(string output) => DismListParser.Parse(output);
 }

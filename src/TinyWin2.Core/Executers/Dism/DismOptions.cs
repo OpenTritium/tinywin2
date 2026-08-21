@@ -58,12 +58,12 @@ public sealed record ComponentStoreOptions {
 }
 
 public sealed record AppxOptions {
-    public required IReadOnlyList<string> Patterns { get; init; }
+    public required IReadOnlyList<Regex> Patterns { get; init; }
 
     public static AppxOptions FromDesired(JsonObject desired) {
-        var patterns = Desired.RequiredStringArray(desired, "patterns", "appx.provisioned");
-        return patterns.Count == 0
+        var raw = Desired.RequiredStringArray(desired, "patterns", "appx.provisioned");
+        return raw.Count == 0
             ? throw new ExecException("appx.provisioned requires at least one pattern.")
-            : new AppxOptions { Patterns = patterns };
+            : new AppxOptions { Patterns = raw.Select(LikePattern.ToRegex).ToArray() };
     }
 }

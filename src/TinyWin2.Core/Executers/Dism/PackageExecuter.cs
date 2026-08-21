@@ -7,14 +7,16 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismRemoveExecuterB
     private const string ResourceId = "dism.package";
     public override string Resource => ResourceId;
 
-    private static readonly string[] RemovableStates = ["Installed", "Staged", "InstallPending"];
+    private static readonly string[] RemovableStates = ["Installed", "Staged", "Install Pending"];
 
     protected override IReadOnlyList<string> ListArguments => ["/Get-Packages", "/Format:List"];
+
+    protected override string RecordStartKey => "Package Identity";
 
     protected override string SatisfiedSkipReason => "no removable CBS packages matched";
 
     protected override IEnumerable<DismRemovalTarget> SelectTargets(
-        IReadOnlyList<Dictionary<string, string>> records,
+        IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
         ExecSpec spec) {
         var options = PackageOptions.FromDesired(spec.Desired);

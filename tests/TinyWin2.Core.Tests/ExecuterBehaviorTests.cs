@@ -129,15 +129,34 @@ public sealed class CapabilityAndPackageTests : IDisposable {
 
                                    Package Identity : Microsoft-Windows-Bar-Package~31bf3856ad364e35~amd64~~10.0.1
                                    State : Superseded
+
+                                   Package Identity : Microsoft-Windows-Pending-Package~31bf3856ad364e35~amd64~~10.0.1
+                                   State : Install Pending
                                    """)
             : FakeProcessRunner.Ok();
         var diff = await packages.InspectAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("dism.package", Ensure.Absent,
-                ("patterns", new JsonArray("^Microsoft-Windows-(Foo|Bar)-Package~"))), CancellationToken.None);
+                ("patterns", new JsonArray("^Microsoft-Windows-(Foo|Bar|Pending)-Package~"))), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsFalse();
-        await Assert.That(diff.Differences.Count).IsEqualTo(2);
+        await Assert.That(diff.Differences.Count).IsEqualTo(3);
         await Assert.That(diff.Differences.Count(d => d.Kind == ChangeKind.Skipped)).IsEqualTo(1);
-        await Assert.That(diff.Differences.Count(d => d.Kind == ChangeKind.Removed)).IsEqualTo(1);
+        await Assert.That(diff.Differences.Count(d => d.Kind == ChangeKind.Removed)).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task ApplyPreservesSkippedTargetsWhenSomePackagesAreRemoved() {
+        var packages = new PackageExecuter(_harness.Runner);
+        _harness.Runner.Handler = (_, args) => args.Contains("/Get-Packages")
+            ? FakeProcessRunner.Ok("Package Identity : Microsoft-Windows-Foo-Package~1\r\nState : Installed\r\n\r\n"
+                                   + "Package Identity : Microsoft-Windows-Bar-Package~1\r\nState : Superseded")
+            : FakeProcessRunner.Ok();
+        var result = await packages.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("dism.package", Ensure.Absent,
+                ("patterns", new JsonArray("^Microsoft-Windows-(Foo|Bar)-Package~"))), CancellationToken.None);
+        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.Changes.Count).IsEqualTo(2);
+        await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Skipped)).IsEqualTo(1);
+        await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Removed)).IsEqualTo(1);
     }
 
     public void Dispose() => _harness.Dispose();
@@ -170,6 +189,16 @@ public sealed class ComponentStoreExecuterTests : IDisposable {
         await Assert.That(result.SkipReason).Contains("4350");
     }
 
+    [Test]
+    public async Task PresentEnsureIsRejected() {
+        var ex = Assert.Throws<ExecException>(() =>
+            _executer.ApplyAsync(_harness.NewContext(),
+                ExecuterTestHarness.Spec("dism.component-store", Ensure.Present), CancellationToken.None)
+                .GetAwaiter().GetResult());
+        await Assert.That(ex.Message).Contains("present is not implemented");
+        await Assert.That(_harness.Runner.Calls).IsEmpty();
+    }
+
     public void Dispose() => _harness.Dispose();
 }
 
@@ -186,10 +215,10 @@ public sealed class AppxProvisionedExecuterTests : IDisposable {
         _harness.Runner.Handler = (_, args) => args.Contains("/Get-ProvisionedAppxPackages")
             ? FakeProcessRunner.Ok("""
                                    DisplayName : Microsoft.XboxApp
-                                   Package Name : Microsoft.XboxApp_48.48.48.0_x64__8wekyb3d8bbwe
+                                   PackageName : Microsoft.XboxApp_48.48.48.0_x64__8wekyb3d8bbwe
 
                                    DisplayName : Microsoft.WindowsCalculator
-                                   Package Name : Microsoft.WindowsCalculator_11.0_x64__8wekyb3d8bbwe
+                                   PackageName : Microsoft.WindowsCalculator_11.0_x64__8wekyb3d8bbwe
                                    """)
             : FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(_harness.NewContext(),
@@ -209,6 +238,20 @@ public sealed class AppxProvisionedExecuterTests : IDisposable {
             ExecuterTestHarness.Spec("appx.provisioned", Ensure.Absent,
                 ("patterns", new JsonArray("Microsoft.Xbox*"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
+    }
+
+    [Test]
+    public async Task UsesRealDismPackageNameField() {
+        _harness.Runner.Handler = (_, args) => args.Contains("/Get-ProvisionedAppxPackages")
+            ? FakeProcessRunner.Ok("DisplayName : Microsoft.WindowsCalculator\r\n"
+                                   + "PackageName : Microsoft.WindowsCalculator_1.0.0.0_neutral_~_8wekyb3d8bbwe")
+            : FakeProcessRunner.Ok();
+        var diff = await _executer.InspectAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("appx.provisioned", Ensure.Absent,
+                ("patterns", new JsonArray("Microsoft.WindowsCalculator"))), CancellationToken.None);
+        await Assert.That(diff.Satisfied).IsFalse();
+        await Assert.That(diff.Differences[0].Target)
+            .IsEqualTo("Microsoft.WindowsCalculator_1.0.0.0_neutral_~_8wekyb3d8bbwe");
     }
 
     [Test]
