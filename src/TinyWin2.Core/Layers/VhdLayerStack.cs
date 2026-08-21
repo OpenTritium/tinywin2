@@ -32,6 +32,8 @@ public sealed record LayerRecord {
     public DateTimeOffset? EndedUtc { get; init; }
     public JsonObject? BoundArgs { get; init; }
     public JsonArray? ExecResults { get; init; }
+    /// <summary>Sha256 of the step's exec specs — lets a resumed build tell a reusable layer from a diverged one.</summary>
+    public string? StepFingerprint { get; init; }
     public string? Error { get; init; }
     public long SizeBytes => VhdxPath is { } path && File.Exists(path) ? new FileInfo(path).Length : 0;
 
@@ -45,6 +47,7 @@ public sealed record LayerRecord {
         ["endedUtc"] = EndedUtc?.ToString("O"),
         ["boundArgs"] = BoundArgs?.DeepClone(),
         ["execResults"] = ExecResults?.DeepClone(),
+        ["stepFingerprint"] = StepFingerprint,
         ["error"] = Error,
     };
 }
@@ -141,6 +144,7 @@ public sealed class VhdLayerStack(
                         BoundArgs = node["boundArgs"] as JsonObject,
                         ExecResults = node["execResults"] as JsonArray,
                         Error = node["error"]?.GetValue<string>(),
+                        StepFingerprint = node["stepFingerprint"]?.GetValue<string>(),
                         VhdxPath = Path.Combine(workDirectory, node["vhdx"]!.GetValue<string>()),
                     };
                     lock (stack._gate) {
@@ -216,7 +220,8 @@ public sealed class VhdLayerStack(
     }
 
     /// <summary>Creates + attaches a fresh differencing layer for one plan step.</summary>
-    public async Task<LayerSession> BeginLayerAsync(string stepId, string title, JsonObject? boundArgs, CancellationToken ct) {
+    public async Task<LayerSession> BeginLayerAsync(string stepId, string title, JsonObject? boundArgs, CancellationToken ct,
+        string? stepFingerprint = null) {
         var index = 1 + Math.Max(0, Records.Count > 0 ? Records.Max(r => r.Index) : 0);
         var fileName = $"L{index:D3}.vhdx";
         var vhdxPath = Path.Combine(WorkDirectory, fileName);
@@ -239,6 +244,7 @@ public sealed class VhdLayerStack(
             Status = LayerStatus.Pending,
             BoundArgs = boundArgs,
             VhdxPath = vhdxPath,
+            StepFingerprint = stepFingerprint,
         };
         lock (_gate) {
             _records.Add(record);
@@ -285,6 +291,28 @@ public sealed class VhdLayerStack(
         }
         Save();
         log.Warn($"layer {session.Record.Index:000} discarded; image state unchanged", layerIndex: session.Record.Index);
+    }
+
+    /// <summary>
+    /// Resume support: deletes every diff layer above <paramref name="keepIndex"/> (files + records) so the
+    /// chain ends at a known checkpoint. The common prefix stays byte-identical; new layers branch on top.
+    /// </summary>
+    public async Task TruncateToAsync(int keepIndex, CancellationToken ct) {
+        List<LayerRecord> drop;
+        lock (_gate) {
+            drop = [.. _records.Where(r => r.Index > keepIndex)];
+            _records.RemoveAll(r => r.Index > keepIndex);
+        }
+        foreach (var record in drop.Where(r => r.Status is LayerStatus.Committed or LayerStatus.Merged && r.VhdxFileName != BaseFileName)) {
+            if (record.VhdxPath is { } path) {
+                TryDelete(path, strict: false);
+            }
+        }
+        await Task.CompletedTask;
+        Save();
+        if (drop.Count > 0) {
+            log.Info($"resume: truncated {drop.Count} diverged layer(s) above index {keepIndex:000}");
+        }
     }
 
     /// <summary>Merges every committed layer into the base and clears the diff files (chain-depth guard).</summary>

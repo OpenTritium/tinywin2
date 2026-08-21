@@ -49,6 +49,8 @@ public sealed record BuildOptions {
     public bool DryRun { get; init; }
     public string? OscdimgPath { get; init; }
     public string? PlansDirectory { get; init; }
+    /// <summary>Existing workspace to resume from: committed layers whose step fingerprint still matches are reused as-is.</summary>
+    public string? ResumeWorkspace { get; init; }
     public long BaseVhdxMaximumMb { get; init; } = DefaultBaseVhdxMaximumMb;
 }
 
@@ -104,16 +106,25 @@ public sealed class BuildEngine(
         }
         RunDoctor(options);
         var outputRoot = Path.GetFullPath(options.OutputRoot);
-        var workspace = Path.Combine(outputRoot, "work", buildId);
+        var workspace = options.ResumeWorkspace ?? Path.Combine(outputRoot, "work", buildId);
         var mediaPath = Path.Combine(outputRoot, $"TinyWin2-{buildId}");
         var resolver = new SourceImageResolver(runner, log);
         var builder = new OutputBuilder(runner, log);
         SourceMedia? source = null;
         try {
             Directory.CreateDirectory(workspace);
-            var (resolvedSource, stagingWim, sourceIndex) = await PrepareSourceAsync(options, workspace, resolver, ct);
+            var stack = VhdLayerStack.Load(workspace, layerBackend, log);
+            var baseReady = options.ResumeWorkspace is not null
+                && File.Exists(stack.BaseVhdxPath)
+                && stack.Records.Any(r => r.Index == 0 && r.Status is LayerStatus.Committed or LayerStatus.Merged);
+            var (resolvedSource, stagingWim, sourceIndex) = await PrepareSourceAsync(options, workspace, resolver, ct, stageWim: !baseReady);
             source = resolvedSource;
-            var stack = await ApplyBaseAsync(options, buildId, workspace, stagingWim, sourceIndex, ct);
+            if (baseReady) {
+                log.Info("resume: reusing the existing base layer (image apply skipped)");
+            }
+            else {
+                await ApplyBaseAsync(stack, options, buildId, workspace, stagingWim, sourceIndex, ct);
+            }
             var failedSteps = await RunStepsAsync(options, plan, stack, workspace, ct);
             var installPath = await CaptureInstallImageAsync(options, workspace, stack, builder, sourceIndex, ct);
             var (finalInstall, isoPath, vhdxPath) =
@@ -158,7 +169,7 @@ public sealed class BuildEngine(
 
     /// <summary>Resolves the source, picks the image index, and stages it as a plain WIM.</summary>
     private async Task<(SourceMedia Source, string StagingWim, ImageIndexInfo SourceIndex)> PrepareSourceAsync(
-        BuildOptions options, string workspace, SourceImageResolver resolver, CancellationToken ct) {
+        BuildOptions options, string workspace, SourceImageResolver resolver, CancellationToken ct, bool stageWim = true) {
         log.Phase = BuildPhases.Media;
         var source = await resolver.ResolveAsync(options.SourcePath, ct);
         log.Info($"source media: {source.RootPath} ({(source.IsEsd ? "ESD" : "WIM")} install image)",
@@ -168,19 +179,20 @@ public sealed class BuildEngine(
                           ?? throw new InvalidOperationException(
                               $"image index {options.ImageIndex} not found (available: {string.Join(", ", indexes.Select(i => i.Index))}).");
         var stagingWim = Path.Combine(workspace, "install.source.wim");
-        if (source.IsEsd) {
-            log.Info("source uses ESD; exporting selected index to WIM first");
+        if (stageWim) {
+            if (source.IsEsd) {
+                log.Info("source uses ESD; exporting selected index to WIM first");
+            }
+            await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, options.Fast, ct);
         }
-        await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, options.Fast, ct);
         return (source, stagingWim, sourceIndex);
     }
 
     /// <summary>Creates (or reuses) the base layer and applies the staged image into it.</summary>
-    private async Task<VhdLayerStack> ApplyBaseAsync(
-        BuildOptions options, string buildId, string workspace, string stagingWim, ImageIndexInfo sourceIndex,
+    private async Task ApplyBaseAsync(
+        VhdLayerStack stack, BuildOptions options, string buildId, string workspace, string stagingWim, ImageIndexInfo sourceIndex,
         CancellationToken ct) {
         log.Phase = BuildPhases.BaseLayer;
-        var stack = VhdLayerStack.Load(workspace, layerBackend, log);
         await stack.EnsureBaseAsync(options.BaseVhdxMaximumMb, $"TinyWin2-{buildId}", ct);
         log.Info($"applying '{sourceIndex.Name}' (index {sourceIndex.Index}) into the base layer");
         await stack.ApplyImageToBaseAsync(async (mount, token) => {
@@ -190,7 +202,6 @@ public sealed class BuildEngine(
             log.Info("capturing base-layer evidence snapshots (file manifest + registry)");
             await LayerEvidence.CaptureAsync(mount, workspace, 0, runner, log, token);
         }, ct);
-        return stack;
     }
 
     /// <summary>Runs every plan step as one atomic layer; returns the failed ones (ContinueOnError).</summary>
@@ -198,15 +209,19 @@ public sealed class BuildEngine(
         BuildOptions options, BuildPlan plan, VhdLayerStack stack, string workspace, CancellationToken ct) {
         log.Phase = BuildPhases.Plan;
         var failedSteps = new List<(string, int, string)>();
-        var stepNumber = 0;
-        foreach (var step in plan.Steps) {
+        var skipCount = 0;
+        if (options.ResumeWorkspace is not null) {
+            skipCount = await ResumePrefixAsync(plan, stack, ct);
+        }
+        var stepNumber = skipCount;
+        foreach (var step in plan.Steps.Skip(skipCount)) {
             ct.ThrowIfCancellationRequested();
             stepNumber++;
             log.Info($"step {stepNumber}/{plan.Steps.Count}: '{step.Title}'",
                 data: new JsonObject {
                     ["progress"] = ProgressAfterBase + (int)(ProgressPlanWeight * stepNumber / (double)plan.Steps.Count),
                 });
-            var session = await stack.BeginLayerAsync(step.Id, step.Title, null, ct);
+            var session = await stack.BeginLayerAsync(step.Id, step.Title, null, ct, Fingerprint(step));
             var execResults = new JsonArray();
             try {
                 foreach (var resolved in step.Plans) {
@@ -287,6 +302,46 @@ public sealed class BuildEngine(
             await stack.ExportMergedVhdxAsync(vhdxPath, ct);
         }
         return (finalInstall, isoPath, vhdxPath);
+    }
+
+    /// <summary>
+    /// Longest common prefix of the new plan against the committed chain, by step id AND exec
+    /// fingerprint. Everything above it is diverged work and gets truncated; the prefix is reused
+    /// byte-identically (that is the whole point of differencing layers acting as checkpoints).
+    /// </summary>
+    private async Task<int> ResumePrefixAsync(BuildPlan plan, VhdLayerStack stack, CancellationToken ct) {
+        var committed = stack.Records
+            .Where(r => r.Status is LayerStatus.Committed or LayerStatus.Merged && r.VhdxFileName != "base.vhdx"
+                        && r.VhdxPath is not null && File.Exists(r.VhdxPath))
+            .OrderBy(r => r.Index)
+            .ToList();
+        var reused = 0;
+        while (reused < committed.Count && reused < plan.Steps.Count
+               && committed[reused].StepId == plan.Steps[reused].Id
+               && string.Equals(committed[reused].StepFingerprint, Fingerprint(plan.Steps[reused]), StringComparison.Ordinal)) {
+            reused++;
+        }
+        var diverged = committed.Count - reused;
+        log.Info($"resume: {reused} committed layer(s) match the new plan; {diverged} diverged");
+        if (reused > 0 || committed.Count > 0) {
+            var keepIndex = reused > 0 ? committed[reused - 1].Index : 0;
+            await stack.TruncateToAsync(keepIndex, ct);
+        }
+        return reused;
+    }
+
+    /// <summary>Content hash of one step: plan ids + every exec's resource/ensure/desired payload.</summary>
+    private static string Fingerprint(PlanStep step) {
+        var builder = new System.Text.StringBuilder();
+        foreach (var resolved in step.Plans) {
+            builder.Append(resolved.Definition.Id).Append((char)10);
+            foreach (var exec in resolved.Execs) {
+                builder.Append(exec.Resource).Append('|').Append(exec.Ensure).Append('|')
+                    .Append(exec.Desired.ToJsonString()).Append((char)10);
+            }
+        }
+        return Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(builder.ToString())));
     }
 
     private async Task RunPlanInLayerAsync(

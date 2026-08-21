@@ -159,6 +159,23 @@ public sealed class VhdLayerStackTests : IDisposable {
     }
 
     [Test]
+    public async Task TruncateToDropsDivergedLayersAndKeepsThePrefix() {
+        var stack = await CreateWithBaseAsync();
+        var sessions = new List<LayerSession>();
+        foreach (var title in new[] { "A", "B", "C" }) {
+            var session = await stack.BeginLayerAsync(title, title, null, CancellationToken.None);
+            await stack.CommitLayerAsync(session, [], CancellationToken.None);
+            sessions.Add(session);
+        }
+        await stack.TruncateToAsync(sessions[0].Record.Index, CancellationToken.None);
+        var records = stack.Records.Where(r => r.VhdxFileName != "base.vhdx").ToList();
+        await Assert.That(records.Count).IsEqualTo(1);            // only layer A survives
+        await Assert.That(File.Exists(sessions[1].VhdxPath)).IsFalse();
+        await Assert.That(File.Exists(sessions[2].VhdxPath)).IsFalse();
+        await Assert.That(stack.LeafVhdxPath).IsEqualTo(sessions[0].VhdxPath);
+    }
+
+    [Test]
     public async Task AutoConsolidationGuardTracksLiveChainDepth() {
         var stack = await CreateWithBaseAsync();
         for (var i = 0; i < 31; i++) { // crosses the chain-depth threshold of 30

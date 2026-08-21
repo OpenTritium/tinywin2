@@ -38,6 +38,7 @@ internal static class BuildCommand {
         if (jsonEvents) {
             _ = log.Attach(evt => Console.Out.WriteLine(evt.ToJson().ToCompactString()));
         }
+        var resume = FindResumeWorkspace(options, outputRoot);
         var logDirectory = Path.Combine(outputRoot, "logs");
         Directory.CreateDirectory(logDirectory);
         var logFilePath = Path.Combine(logDirectory, $"tinywin2-{DateTimeOffset.UtcNow:yyyyMMddTHHmmss}.log");
@@ -59,6 +60,7 @@ internal static class BuildCommand {
                 ContinueOnError = options.ContainsKey("continue-on-error"),
                 KeepLayers = options.ContainsKey("keep-layers"),
                 DryRun = options.ContainsKey("dry-run"),
+                ResumeWorkspace = resume,
                 OscdimgPath = Get("oscdimg"),
                 PlansDirectory = plansDir,
             }, cts.Token);
@@ -122,6 +124,27 @@ internal static class BuildCommand {
                 // the build finished between the keypress and the handler deregistration
             }
         }
+    }
+}
+
+    /// <summary>--resume: reuse the newest workspace whose layer chain survived (--keep-layers), or an explicit path.</summary>
+    private static string? FindResumeWorkspace(Dictionary<string, List<string>> options, string outputRoot) {
+        if (!options.TryGetValue("resume", out var values)) {
+            return null;
+        }
+        var explicitPath = values.FirstOrDefault();
+        if (explicitPath is not null && File.Exists(Path.Combine(explicitPath, "layers.json"))) {
+            return Path.GetFullPath(explicitPath);
+        }
+        var workRoot = Path.Combine(outputRoot, "work");
+        var candidate = new DirectoryInfo(workRoot)
+            .GetDirectories()
+            .Where(d => File.Exists(Path.Combine(d.FullName, "layers.json")))
+            .OrderByDescending(d => d.CreationTimeUtc)
+            .FirstOrDefault();
+        return candidate?.FullName
+               ?? throw new DirectoryNotFoundException(
+                   $"no resumable workspace under '{workRoot}' (builds must keep layers: add --keep-layers, or pass --resume <workspace>)");
     }
 }
 
