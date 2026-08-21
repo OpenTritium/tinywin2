@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "service.security-health",
-  "version": "2.0.0",
-  "title": "安全中心服务改为延迟启动",
-  "description": "SecurityHealthService（Defender 状态汇报 UI）改为延迟自动启动。实时防护引擎不受影响，只是图标晚点出现。",
+  "version": "3.0.0",
+  "title": "配置 Windows 安全中心服务启动方式",
+  "description": "配置 SecurityHealthService（Defender 状态汇报 UI）的启动方式。disabled 仅用于离线 WIM；在线修改通常会被系统服务 ACL 拒绝。禁用后安全中心状态图标和健康汇报不可用，但不等于关闭 Defender 引擎。",
   "group": "Security",
-  "risk": "Low",
-  "tier": "Standard",
+  "risk": "High",
+  "tier": "Expert",
   "arguments": [
     {
       "name": "startMode",
@@ -21,13 +21,13 @@
         },
         {
           "value": "disabled",
-          "label": "禁用",
-          "risk": "Low"
+          "label": "禁用（仅离线）",
+          "risk": "High"
         },
         {
           "value": "manual",
           "label": "手动",
-          "risk": "Low"
+          "risk": "Medium"
         }
       ]
     }
