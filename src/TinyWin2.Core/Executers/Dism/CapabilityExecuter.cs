@@ -33,7 +33,7 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismRemoveExecut
                 // Already absent: no difference entry at all.
             }
             else {
-                yield return new DismRemovalTarget(capability, Before: state);
+                yield return new(capability, Before: state);
             }
         }
     }

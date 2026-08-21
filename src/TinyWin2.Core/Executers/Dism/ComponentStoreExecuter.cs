@@ -14,7 +14,7 @@ public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuter
     public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
         // Component-store size reduction is a run-once optimization: the diff is the action itself.
         _ = ParseOptions(spec);
-        return Task.FromResult(new ResourceDiff(false, [new ChangeItem(ChangeKind.Modified, "component-store")]));
+        return Task.FromResult(new ResourceDiff(false, [new(ChangeKind.Modified, "component-store")]));
     }
 
     public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
@@ -39,7 +39,7 @@ public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuter
             ]),
             DismOutcome.ComponentCleanupUnsupported => ExecResult.Skipped(
                 "this image rejects offline StartComponentCleanup (DISM error 4350)",
-                [new ChangeItem(ChangeKind.Skipped, "component-store", "DISM error 4350")]),
+                [new(ChangeKind.Skipped, "component-store", "DISM error 4350")]),
             _ => throw new ExecException($"dism.exe StartComponentCleanup failed (exit {exitCode})."),
         };
     }

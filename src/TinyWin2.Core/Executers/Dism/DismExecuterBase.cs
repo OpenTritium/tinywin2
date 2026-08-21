@@ -18,7 +18,7 @@ public abstract class DismExecuterBase(IProcessRunner runner) {
         fullArgs.AddRange(arguments);
         context.Log.Debug($"dism.exe {string.Join(" ", fullArgs)}");
         var result = await Runner.RunAsync("dism.exe", fullArgs,
-            new ProcessRunOptions { IgnoreExitCode = true, OnOutputLine = null }, ct);
+            new() { IgnoreExitCode = true, OnOutputLine = null }, ct);
         return (result.ExitCode, result.Output + result.Error);
     }
 }

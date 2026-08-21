@@ -64,6 +64,6 @@ public sealed record AppxOptions {
         var raw = Desired.RequiredStringArray(desired, "patterns", "appx.provisioned");
         return raw.Count == 0
             ? throw new ExecException("appx.provisioned requires at least one pattern.")
-            : new AppxOptions { Patterns = raw.Select(LikePattern.ToRegex).ToArray() };
+            : new AppxOptions { Patterns = [.. raw.Select(LikePattern.ToRegex)] };
     }
 }

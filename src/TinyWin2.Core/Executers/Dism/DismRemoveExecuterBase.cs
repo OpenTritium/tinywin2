@@ -75,11 +75,11 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
             .ToList();
         foreach (var change in diff.Differences.Where(d => d.Kind != ChangeKind.Skipped)) {
             var (exitCode, output) = await RunDismAsync(context,
-                RemoveArguments(new DismRemovalTarget(change.Target, change.Before), spec), ct);
+                RemoveArguments(new(change.Target, change.Before), spec), ct);
             var outcome = DismErrors.Classify(exitCode, output);
             if (outcome == DowngradeOutcome) {
                 context.Log.Warn($"skipping unremovable {Resource} target: {change.Target} ({outcome})");
-                applied.Add(new ChangeItem(ChangeKind.Skipped, change.Target, "not removable in this edition"));
+                applied.Add(new(ChangeKind.Skipped, change.Target, "not removable in this edition"));
             }
             else if (outcome is DismOutcome.Success or DismOutcome.SuccessRebootRequired) {
                 context.Log.Info($"{Resource}: {change.Target} removed");

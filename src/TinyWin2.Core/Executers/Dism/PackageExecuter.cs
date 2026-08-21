@@ -28,11 +28,11 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismRemoveExecuterB
             }
 
             if (RemovableStates.Any(s => state.Equals(s, StringComparison.OrdinalIgnoreCase))) {
-                yield return new DismRemovalTarget(identity, Before: state);
+                yield return new(identity, Before: state);
             }
             else {
                 context.Log.Info($"skipping non-removable CBS package: {identity} [{state}]");
-                yield return new DismRemovalTarget(identity, SkipReason: $"state={state}");
+                yield return new(identity, SkipReason: $"state={state}");
             }
         }
     }
