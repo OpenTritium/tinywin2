@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Executers.Dism;
@@ -8,6 +9,10 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismRemoveE
     public override string Resource => ResourceId;
 
     protected override IReadOnlyList<string> ListArguments => ["/Get-ProvisionedAppxPackages", "/Format:List"];
+
+    /// <summary>Server editions without appx provisioning answer ERROR_INVALID_PARAMETER —
+    /// there is simply nothing provisioned, so the resource is satisfied.</summary>
+    protected override FrozenSet<int> InapplicableExitCodes => [87];
 
     protected override DismOutcome? DowngradeOutcome => null;
 

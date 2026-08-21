@@ -202,6 +202,16 @@ public sealed class AppxProvisionedExecuterTests : IDisposable {
     }
 
     [Test]
+    public async Task ServerExit87IsInapplicableAndSkips() {
+        // Server without appx provisioning answers ERROR_INVALID_PARAMETER (87) on the listing.
+        _harness.Runner.Handler = (_, _) => FakeProcessRunner.Fail(87);
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("appx.provisioned", Ensure.Absent,
+                ("patterns", new JsonArray("Microsoft.Xbox*"))), CancellationToken.None);
+        await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
+    }
+
+    [Test]
     public async Task EditionWithoutAppxProviderSkips() {
         _harness.Runner.Handler = (_, _) => FakeProcessRunner.Fail(50);
         var diff = await _executer.InspectAsync(_harness.NewContext(),

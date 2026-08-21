@@ -3,6 +3,7 @@ using TinyWin2.Core.Executers;
 using TinyWin2.Core.Executers.Dism;
 using TinyWin2.Core.Executers.Registry;
 using TinyWin2.Core.Logging;
+using TinyWin2.Core.Native;
 using DismErrors = TinyWin2.Core.Executers.Dism.DismErrors;
 
 namespace TinyWin2.Core.Tests;
@@ -263,6 +264,47 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
         await Assert.That(diff.Satisfied).IsFalse();
         await Assert.That(diff.Differences.Count).IsEqualTo(1);
         await Assert.That(diff.Differences[0].Target).IsEqualTo("WpnUserService_12345");
+    }
+
+    [Test]
+    public async Task DeniedServiceKeyTakesOwnershipAndRetries() {
+        // TrustedInstaller-owned keys (e.g. DPS) deny reg add; the rescue path must
+        // claim ownership via pwsh and retry the write.
+        var hiveKey = "HKLM\\TinyWin2_system";
+        var servicesRoot = $"{hiveKey}\\ControlSet001\\Services";
+        var deniedKey = $"{servicesRoot}\\DPS";
+        var startAdds = 0;
+        _harness.Runner.Handler = (file, args) => {
+            if (file == "pwsh.exe") {
+                return FakeProcessRunner.Ok();
+            }
+            if (args[0] == "add" && args[1] == deniedKey && args.Contains("/v") && args.Contains("Start")) {
+                return ++startAdds == 1
+                    ? throw new ProcessRunnerException("reg.exe", FakeProcessRunner.Fail(1, "Access is denied."))
+                    : FakeProcessRunner.Ok();
+            }
+            if (args[0] == "load" || args[0] == "add") {
+                return FakeProcessRunner.Ok();
+            }
+            if (args[0] != "query") {
+                return FakeProcessRunner.Ok();
+            }
+            if (args.Count == 4 && args[1] == hiveKey + "\\Select" && args[2] == "/v") {
+                return FakeProcessRunner.Ok("\r\n    Current    REG_DWORD    0x1\r\n");
+            }
+            if (args.Count == 2 && args[1] == servicesRoot) {
+                return FakeProcessRunner.Ok($"\r\n{servicesRoot}\r\n{deniedKey}\r\n");
+            }
+            return args[3] == "Start"
+                ? FakeProcessRunner.Ok("\r\n    Start    REG_DWORD    0x2\r\n")
+                : FakeProcessRunner.Fail(1);
+        };
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("registry.service", Ensure.Present,
+                ("services", new JsonArray("DPS")), ("start", "disabled")), CancellationToken.None);
+        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(startAdds).IsEqualTo(2); // denied once, rescued, written
+        await Assert.That(_harness.Runner.Called("pwsh.exe")).IsTrue();
     }
 
     [Test]

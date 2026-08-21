@@ -1,7 +1,9 @@
 using TinyWin2.Core.Native;
+using TUnit.Core;
 
 namespace TinyWin2.Core.Tests;
 
+[NotInParallel] // every instance mutates the process-wide PATH - instances must not interleave
 public sealed class ToolLocatorTests : IDisposable {
     private readonly string _toolDir = TestPlans.CreateTempDirectory();
     private readonly string _originalPath = Environment.GetEnvironmentVariable("PATH") ?? "";

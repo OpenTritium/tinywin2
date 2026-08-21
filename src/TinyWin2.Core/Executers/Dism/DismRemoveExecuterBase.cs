@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Executers.Dism;
@@ -30,6 +31,11 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
     /// <summary>Outcome that downgrades a failed removal to Skipped (e.g. CBS_E_CANNOT_UNINSTALL); null for none.</summary>
     protected abstract DismOutcome? DowngradeOutcome { get; }
 
+    /// <summary>Exit codes meaning "this listing does not apply to the image" — treated as
+    /// provider-unavailable (satisfied no-op) instead of a hard failure. Server without
+    /// provisioning (appx) answers 87, ERROR_INVALID_PARAMETER.</summary>
+    protected virtual FrozenSet<int> InapplicableExitCodes => FrozenSet<int>.Empty;
+
     protected abstract string SatisfiedSkipReason { get; }
 
     public async Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
@@ -39,7 +45,7 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
 
         var (exitCode, output) = await RunDismAsync(context, [.. ListArguments], ct);
         var outcome = DismErrors.Classify(exitCode, output);
-        if (outcome == DismOutcome.ProviderUnavailable) {
+        if (outcome == DismOutcome.ProviderUnavailable || InapplicableExitCodes.Contains(exitCode)) {
             return new(true, []);
         }
 

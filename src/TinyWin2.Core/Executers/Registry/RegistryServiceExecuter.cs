@@ -35,13 +35,8 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
                 continue;
             }
 
-            await runner.RunAsync("reg.exe",
-                ["add", serviceKey, "/v", "Start", "/t", "REG_DWORD", "/d", start.ToString(), "/f"],
-                cancellationToken: ct);
-            await runner.RunAsync("reg.exe",
-            [
-                "add", serviceKey, "/v", "DelayedAutoStart", "/t", "REG_DWORD", "/d", delayed.ToString(), "/f"
-            ], cancellationToken: ct);
+            await AddDwordWithAclRescueAsync(serviceKey, "Start", start, ct);
+            await AddDwordWithAclRescueAsync(serviceKey, "DelayedAutoStart", delayed, ct);
             context.Log.Info($"service {change.Target} → {change.After}");
             applied.Add(change);
         }
@@ -98,6 +93,23 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
 
         return changes;
     }
+
+    private async Task AddDwordWithAclRescueAsync(string serviceKey, string name, int value, CancellationToken ct) {
+        try {
+            await RegAddDwordAsync(serviceKey, name, value, ct);
+        }
+        catch (ProcessRunnerException) {
+            // TrustedInstaller-owned service keys (e.g. DPS) deny Administrators write:
+            // claim ownership + FullControl for the group, then retry once.
+            await RegistryAcl.RescueAsync(runner, serviceKey, ct);
+            await RegAddDwordAsync(serviceKey, name, value, ct);
+        }
+    }
+
+    private Task RegAddDwordAsync(string serviceKey, string name, int value, CancellationToken ct) =>
+        runner.RunAsync("reg.exe",
+            ["add", serviceKey, "/v", name, "/t", "REG_DWORD", "/d", value.ToString(), "/f"],
+            cancellationToken: ct);
 
     private async Task<string> ResolveControlSetAsync(RegistryHive hive, CancellationToken ct) {
         var result = await runner.RunAsync("reg.exe", ["query", $"{hive.HiveKey}\\Select", "/v", "Current"],
