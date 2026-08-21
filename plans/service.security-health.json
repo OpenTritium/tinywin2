@@ -2,21 +2,55 @@
   "schemaVersion": 2,
   "id": "service.security-health",
   "version": "2.0.0",
-  "title": "禁用 Windows Security Health 服务",
-  "description": "禁用 SecurityHealthService 和 Defender for Endpoint Sense 服务；安全中心健康状态和企业检测上报将不可用。与移除 Defender 条目搭配使用。",
+  "title": "安全中心服务改为延迟启动",
+  "description": "SecurityHealthService（Defender 状态汇报 UI）改为延迟自动启动。实时防护引擎不受影响，只是图标晚点出现。",
   "group": "Security",
-  "risk": "High",
-  "tier": "Experimental",
+  "risk": "Low",
+  "tier": "Standard",
+  "arguments": [
+    {
+      "name": "startMode",
+      "type": "enum",
+      "label": "启动方式",
+      "default": "delayedAuto",
+      "options": [
+        {
+          "value": "delayedAuto",
+          "label": "延迟启动",
+          "risk": "Medium"
+        },
+        {
+          "value": "disabled",
+          "label": "禁用",
+          "risk": "Low"
+        },
+        {
+          "value": "manual",
+          "label": "手动",
+          "risk": "Low"
+        }
+      ]
+    }
+  ],
   "execs": [
     {
       "resource": "registry.service",
       "ensure": "present",
       "with": {
         "services": [
-          "SecurityHealthService",
-          "Sense"
+          "SecurityHealthService"
         ],
-        "start": "disabled"
+        "start": {
+          "$map": {
+            "arg": "startMode",
+            "cases": {
+              "disabled": "disabled",
+              "manual": "manual",
+              "delayedAuto": "DelayedAuto",
+              "auto": "auto"
+            }
+          }
+        }
       }
     }
   ]

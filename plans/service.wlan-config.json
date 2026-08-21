@@ -1,23 +1,28 @@
 {
   "schemaVersion": 2,
-  "id": "service.font-cache",
+  "id": "service.wlan-config",
   "version": "2.0.0",
-  "title": "禁用 Windows 字体缓存服务",
-  "description": "禁用 FontCache。配合 feature.extra-fonts（仅剩控制台字体）后缓存服务无事可做；代价是桌面版首次字体渲染略慢。内存节省 10-20MB。",
-  "group": "Language",
-  "risk": "Medium",
+  "title": "WLAN 配置服务改为延迟启动",
+  "description": "Wcmsvc 改为延迟自动启动。桌面网络配置不急于开机瞬间。",
+  "group": "Networking",
+  "risk": "Low",
   "tier": "Standard",
   "arguments": [
     {
       "name": "startMode",
       "type": "enum",
       "label": "启动方式",
-      "default": "disabled",
+      "default": "delayedAuto",
       "options": [
+        {
+          "value": "delayedAuto",
+          "label": "延迟启动",
+          "risk": "Medium"
+        },
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Medium"
+          "risk": "Low"
         },
         {
           "value": "manual",
@@ -33,7 +38,7 @@
       "ensure": "present",
       "with": {
         "services": [
-          "FontCache"
+          "Wcmsvc"
         ],
         "start": {
           "$map": {

@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "id": "service.font-cache",
+  "id": "service.volume-shadow-copy",
   "version": "2.0.0",
-  "title": "禁用 Windows 字体缓存服务",
-  "description": "禁用 FontCache。配合 feature.extra-fonts（仅剩控制台字体）后缓存服务无事可做；代价是桌面版首次字体渲染略慢。内存节省 10-20MB。",
-  "group": "Language",
+  "title": "禁用卷影副本服务",
+  "description": "禁用 VSS。不做系统快照/备份的 VM 可禁（注意：部分备份软件依赖它）。Expert 层级。",
+  "group": "Storage",
   "risk": "Medium",
   "tier": "Standard",
   "arguments": [
@@ -33,7 +33,7 @@
       "ensure": "present",
       "with": {
         "services": [
-          "FontCache"
+          "VSS"
         ],
         "start": {
           "$map": {

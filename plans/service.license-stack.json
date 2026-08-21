@@ -1,11 +1,11 @@
 {
   "schemaVersion": 2,
-  "id": "service.font-cache",
+  "id": "service.license-stack",
   "version": "2.0.0",
-  "title": "禁用 Windows 字体缓存服务",
-  "description": "禁用 FontCache。配合 feature.extra-fonts（仅剩控制台字体）后缓存服务无事可做；代价是桌面版首次字体渲染略慢。内存节省 10-20MB。",
-  "group": "Language",
-  "risk": "Medium",
+  "title": "禁用商店授权服务三件套",
+  "description": "禁用 LicenseManager、TokenBroker 与 wlidsvc（Microsoft 账户/商店授权栈）。离线精简镜像不用商店与 MSA，三个服务是纯内存开销（约 3 个 svchost）。",
+  "group": "Policies",
+  "risk": "Low",
   "tier": "Standard",
   "arguments": [
     {
@@ -17,7 +17,7 @@
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Medium"
+          "risk": "Low"
         },
         {
           "value": "manual",
@@ -33,7 +33,9 @@
       "ensure": "present",
       "with": {
         "services": [
-          "FontCache"
+          "LicenseManager",
+          "TokenBroker",
+          "wlidsvc"
         ],
         "start": {
           "$map": {

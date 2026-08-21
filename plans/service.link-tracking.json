@@ -1,11 +1,11 @@
 {
   "schemaVersion": 2,
-  "id": "service.font-cache",
+  "id": "service.link-tracking",
   "version": "2.0.0",
-  "title": "禁用 Windows 字体缓存服务",
-  "description": "禁用 FontCache。配合 feature.extra-fonts（仅剩控制台字体）后缓存服务无事可做；代价是桌面版首次字体渲染略慢。内存节省 10-20MB。",
-  "group": "Language",
-  "risk": "Medium",
+  "title": "禁用分布式链接跟踪",
+  "description": "禁用 TrkWks。仅 NTFS 卷间快捷方式跟踪用，单机/服务器场景无用。",
+  "group": "Server",
+  "risk": "Low",
   "tier": "Standard",
   "arguments": [
     {
@@ -17,7 +17,7 @@
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Medium"
+          "risk": "Low"
         },
         {
           "value": "manual",
@@ -33,7 +33,7 @@
       "ensure": "present",
       "with": {
         "services": [
-          "FontCache"
+          "TrkWks"
         ],
         "start": {
           "$map": {

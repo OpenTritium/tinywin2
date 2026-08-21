@@ -1,11 +1,11 @@
 {
   "schemaVersion": 2,
-  "id": "service.font-cache",
+  "id": "service.ai-fabric",
   "version": "2.0.0",
-  "title": "禁用 Windows 字体缓存服务",
-  "description": "禁用 FontCache。配合 feature.extra-fonts（仅剩控制台字体）后缓存服务无事可做；代价是桌面版首次字体渲染略慢。内存节省 10-20MB。",
-  "group": "Language",
-  "risk": "Medium",
+  "title": "禁用 Windows AI Fabric 服务",
+  "description": "禁用 WSAIFabricSvc（Copilot/AI 基础设施）。无 AI 负载的机器上是纯死重。",
+  "group": "System",
+  "risk": "Low",
   "tier": "Standard",
   "arguments": [
     {
@@ -17,7 +17,7 @@
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Medium"
+          "risk": "Low"
         },
         {
           "value": "manual",
@@ -33,7 +33,7 @@
       "ensure": "present",
       "with": {
         "services": [
-          "FontCache"
+          "WSAIFabricSvc"
         ],
         "start": {
           "$map": {

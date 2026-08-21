@@ -1,11 +1,11 @@
 {
   "schemaVersion": 2,
-  "id": "service.font-cache",
+  "id": "service.privacy-broker",
   "version": "2.0.0",
-  "title": "禁用 Windows 字体缓存服务",
-  "description": "禁用 FontCache。配合 feature.extra-fonts（仅剩控制台字体）后缓存服务无事可做；代价是桌面版首次字体渲染略慢。内存节省 10-20MB。",
-  "group": "Language",
-  "risk": "Medium",
+  "title": "禁用隐私功能访问与网络连接代理",
+  "description": "禁用 camsvc（功能访问管理器）与 NcbService（网络连接代理）。两者都是 Store 应用配套，精简镜像无消费者。",
+  "group": "Policies",
+  "risk": "Low",
   "tier": "Standard",
   "arguments": [
     {
@@ -17,7 +17,7 @@
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Medium"
+          "risk": "Low"
         },
         {
           "value": "manual",
@@ -33,7 +33,8 @@
       "ensure": "present",
       "with": {
         "services": [
-          "FontCache"
+          "camsvc",
+          "NcbService"
         ],
         "start": {
           "$map": {
