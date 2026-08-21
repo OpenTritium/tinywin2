@@ -29,7 +29,7 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
     protected abstract IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, ExecSpec spec);
 
     /// <summary>Outcome that downgrades a failed removal to Skipped (e.g. CBS_E_CANNOT_UNINSTALL); null for none.</summary>
-    protected abstract DismOutcome? DowngradeOutcome { get; }
+    protected virtual DismOutcome? DowngradeOutcome => null;
 
     /// <summary>Exit codes meaning "this listing does not apply to the image" — treated as
     /// provider-unavailable (satisfied no-op) instead of a hard failure. Server without

@@ -11,8 +11,6 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismRemoveExecuterB
 
     protected override IReadOnlyList<string> ListArguments => ["/Get-Packages", "/Format:List"];
 
-    protected override DismOutcome? DowngradeOutcome => null;
-
     protected override string SatisfiedSkipReason => "no removable CBS packages matched";
 
     protected override IEnumerable<DismRemovalTarget> SelectTargets(
