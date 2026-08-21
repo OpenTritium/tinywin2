@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "capability.la57",
+  "version": "2.0.0",
+  "title": "移除 LA57 5 级分页支持",
+  "description": "移除 Windows.Kernel.LA57 能力。5 级分页仅特定服务器 CPU 需要，主流硬件可移除。",
+  "group": "System",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.capability",
+      "ensure": "absent",
+      "with": {
+        "capabilities": [
+          "Windows.Kernel.LA57~~~~0.0.1.0"
+        ]
+      }
+    }
+  ]
+}

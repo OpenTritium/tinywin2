@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "capability.legacy-sorting",
+  "version": "2.0.0",
+  "title": "移除旧版排序兼容",
+  "description": "移除 Downlevel.NLS.Sorting.Versions.Server。仅依赖 Win2000 排序语义的旧软件需要。",
+  "group": "Language",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.capability",
+      "ensure": "absent",
+      "with": {
+        "capabilities": [
+          "Downlevel.NLS.Sorting.Versions.Server~~~~0.0.1.0"
+        ]
+      }
+    }
+  ]
+}

@@ -3,7 +3,7 @@
   "id": "feature.dotnet-framework-4",
   "version": "2.0.0",
   "title": "移除 .NET Framework 4.x",
-  "description": "移除 .NET Framework 4.x、Server 扩展和 ASP.NET 4.x；大量服务器管理工具和应用会无法运行。",
+  "description": "移除 .NET Framework 4.x、Server 扩展和 ASP.NET 4.x。重大代价：Windows PowerShell 5.1 (powershell.exe) 依赖 Framework 4，移除后 PowerShell Direct / WinRM / 各类管理自动化全部失效，大量服务器管理工具和应用会无法运行；tzsync.exe 同样依赖 Framework 4，移除后会在启动时报错，故同时禁用 tzautoupdate 服务。",
   "group": "Frameworks",
   "risk": "High",
   "tier": "Expert",
@@ -18,6 +18,16 @@
           "NetFx4Extended-ASPNET45"
         ],
         "removePayload": true
+      }
+    },
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "tzautoupdate"
+        ],
+        "start": "disabled"
       }
     }
   ]

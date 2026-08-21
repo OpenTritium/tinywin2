@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.extra-fonts",
+  "version": "2.0.0",
+  "title": "移除非核心字体",
+  "description": "移除 ServerCore 字体包中的位图/TrueType/UAP 字体（保留 MinConsoleFonts 与 Support 以保证控制台渲染）。Headless 无 GUI 应用时可移除。",
+  "group": "Language",
+  "risk": "Medium",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "ServerCoreFonts-NonCritical-Fonts-BitmapFonts",
+          "ServerCoreFonts-NonCritical-Fonts-TrueType",
+          "ServerCoreFonts-NonCritical-Fonts-UAPFonts"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}

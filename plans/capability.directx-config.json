@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "capability.directx-config",
+  "version": "2.0.0",
+  "title": "移除 DirectX 配置数据库",
+  "description": "移除 DirectX.Configuration.Database。无 GPU / 无图形负载的 VM 可移除。",
+  "group": "Media",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "dism.capability",
+      "ensure": "absent",
+      "with": {
+        "capabilities": [
+          "DirectX.Configuration.Database~~~~0.0.1.0"
+        ]
+      }
+    }
+  ]
+}

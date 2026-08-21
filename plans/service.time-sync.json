@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 2,
+  "id": "service.time-sync",
+  "version": "2.0.0",
+  "title": "禁用 Windows 时间服务",
+  "description": "禁用 W32Time。VM 由 Hypervisor 集成服务做时间同步时可禁用；物理机或需要 NTP 时保留。",
+  "group": "System",
+  "risk": "Low",
+  "tier": "Standard",
+  "arguments": [
+    {
+      "name": "startMode",
+      "type": "enum",
+      "label": "启动方式",
+      "default": "disabled",
+      "options": [
+        {
+          "value": "disabled",
+          "label": "禁用",
+          "risk": "Low"
+        },
+        {
+          "value": "manual",
+          "label": "手动",
+          "risk": "Low"
+        }
+      ]
+    }
+  ],
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "W32Time"
+        ],
+        "start": {
+          "$map": {
+            "arg": "startMode",
+            "cases": {
+              "disabled": "disabled",
+              "manual": "manual"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

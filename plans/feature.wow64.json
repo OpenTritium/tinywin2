@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "id": "feature.wow64",
+  "version": "2.0.0",
+  "title": "移除 WOW64 32 位子系统",
+  "description": "移除 ServerCore-WOW64 与 ServerCore-Drivers-General-WOW64。纯 64 位负载可回收数百 MB；任何 32 位程序将无法运行。",
+  "group": "System",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "dism.feature",
+      "ensure": "absent",
+      "with": {
+        "features": [
+          "ServerCore-WOW64",
+          "ServerCore-Drivers-General-WOW64"
+        ],
+        "removePayload": true
+      }
+    }
+  ]
+}
