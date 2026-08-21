@@ -3,7 +3,7 @@
   "id": "service.volume-shadow-copy",
   "version": "2.0.0",
   "title": "禁用卷影副本服务",
-  "description": "禁用 VSS。不做系统快照/备份的 VM 可禁（注意：部分备份软件依赖它）。Expert 层级。",
+  "description": "禁用 VSS。不做系统快照/备份的 VM 可禁（注意：部分备份软件依赖它）。",
   "group": "Storage",
   "risk": "Medium",
   "tier": "Standard",
