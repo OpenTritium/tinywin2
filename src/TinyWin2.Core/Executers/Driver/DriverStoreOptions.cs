@@ -16,6 +16,9 @@ public sealed record DriverStoreOptions {
                                 let normalized = Path.GetFileName(infName)
                                 where !string.Equals(normalized, infName, StringComparison.Ordinal)
                                       || !infName.EndsWith(".inf", StringComparison.OrdinalIgnoreCase)
+                                      || infName.Contains('*')
+                                      || infName.Contains('?')
+                                      || infName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
                                 select infName) {
             throw new ExecException($"invalid driver INF name '{infName}'.");
         }

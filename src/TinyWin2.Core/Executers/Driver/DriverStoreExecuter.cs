@@ -15,16 +15,14 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
     private sealed record DriverChange(ChangeItem Change, string Directory);
 
     public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
-        if (spec.Ensure == Ensure.Present) {
-            throw new ExecException("driver.store present (driver integration) is not implemented yet.");
-        }
-
+        ValidateSpec(spec);
         var changes = InspectCore(context, spec);
         return Task.FromResult(new ResourceDiff(changes.All(c => c.Change.Kind == ChangeKind.Skipped),
             [.. changes.Select(c => c.Change)]));
     }
 
     public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
+        ValidateSpec(spec);
         var changes = InspectCore(context, spec);
         if (changes.All(c => c.Change.Kind == ChangeKind.Skipped)) {
             return ExecResult.Skipped("no matching Driver Store packages",
@@ -46,7 +44,13 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
             }
         }
 
-        return ExecResult.Applied([.. changes.Where(c => c.Change.Kind != ChangeKind.Skipped).Select(c => c.Change)]);
+        return ExecResult.Applied([.. changes.Select(c => c.Change)]);
+    }
+
+    private static void ValidateSpec(ExecSpec spec) {
+        if (spec.Ensure == Ensure.Present) {
+            throw new ExecException("driver.store present (driver integration) is not implemented yet.");
+        }
     }
 
     private static List<DriverChange> InspectCore(ExecContext context, ExecSpec spec) {
@@ -58,15 +62,18 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : IExecuter {
 
         var changes = new List<DriverChange>();
         foreach (var infName in options.InfNames) {
-            var matches = Directory.EnumerateDirectories(repositoryRoot, $"{infName}_*", SearchOption.TopDirectoryOnly)
+            var prefix = $"{infName}_";
+            var matches = Directory.EnumerateDirectories(repositoryRoot, "*", SearchOption.TopDirectoryOnly)
+                .Where(directory => Path.GetFileName(directory)
+                    .StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                 .ToList();
             if (matches.Count == 0) {
-                changes.Add(new(new ChangeItem(ChangeKind.Skipped, infName, "not in FileRepository"), ""));
+                changes.Add(new(new(ChangeKind.Skipped, infName, "not in FileRepository"), ""));
                 continue;
             }
 
             changes.AddRange(matches.Select(directory => new DriverChange(
-                new ChangeItem(ChangeKind.Removed,
+                new(ChangeKind.Removed,
                     Path.GetRelativePath(context.MountPath, directory), Before: infName),
                 directory)));
         }

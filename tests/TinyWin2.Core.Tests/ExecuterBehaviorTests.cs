@@ -361,13 +361,38 @@ public sealed class DriverStoreExecuterTests : IDisposable {
     }
 
     [Test]
-    public async Task InvalidInfNameRejected() {
+    public async Task ApplyPreservesSkippedInfNamesWhenSomeDriversAreRemoved() {
+        var root = CreateRepository("mdm.inf_amd64_1234abcd");
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
+                ("infNames", new JsonArray("mdm.inf", "ghost.inf"))), CancellationToken.None);
+        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.Changes.Count).IsEqualTo(2);
+        await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Removed)).IsEqualTo(1);
+        await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Skipped)).IsEqualTo(1);
+        await Assert.That(Directory.Exists(Path.Combine(root, "mdm.inf_amd64_1234abcd"))).IsFalse();
+    }
+
+    [Test]
+    public async Task PresentEnsureIsRejectedBeforeInspectingStore() {
         var ex = Assert.Throws<ExecException>(() =>
-            _executer.InspectAsync(_harness.NewContext(),
-                    ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
-                        ("infNames", new JsonArray("C:\\evil\\path.inf"))), CancellationToken.None).GetAwaiter()
-                .GetResult());
-        await Assert.That(ex.Message).Contains("invalid driver INF name");
+            _executer.ApplyAsync(_harness.NewContext(),
+                ExecuterTestHarness.Spec("driver.store", Ensure.Present), CancellationToken.None)
+                .GetAwaiter().GetResult());
+        await Assert.That(ex.Message).Contains("present");
+        await Assert.That(_harness.Runner.Calls).IsEmpty();
+    }
+
+    [Test]
+    public async Task InvalidInfNameRejected() {
+        foreach (var infName in new[] { "C:\\evil\\path.inf", "*.inf", "vendor?.inf" }) {
+            var ex = Assert.Throws<ExecException>(() =>
+                _executer.InspectAsync(_harness.NewContext(),
+                        ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
+                            ("infNames", new JsonArray(infName))), CancellationToken.None).GetAwaiter()
+                    .GetResult());
+            await Assert.That(ex.Message).Contains("invalid driver INF name");
+        }
     }
 
     public void Dispose() => _harness.Dispose();
