@@ -125,7 +125,6 @@ internal static class BuildCommand {
             }
         }
     }
-}
 
     /// <summary>--resume: reuse the newest workspace whose layer chain survived (--keep-layers), or an explicit path.</summary>
     private static string? FindResumeWorkspace(Dictionary<string, List<string>> options, string outputRoot) {

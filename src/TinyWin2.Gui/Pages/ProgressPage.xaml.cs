@@ -71,6 +71,7 @@ public sealed partial class ProgressPage : Page {
     private async Task RunBuildAsync(CancellationToken ct) {
         var dispatcher = DispatcherQueue;
         var arguments = BuildArguments();
+
         void HandleEvent(JsonObject evt) {
             dispatcher.TryEnqueue(() => {
                 var phase = evt["phase"]?.GetValue<string>();
@@ -101,16 +102,18 @@ public sealed partial class ProgressPage : Page {
                 LogList.ScrollIntoView(LogList.Items.LastOrDefault());
             });
         }
+
         var exitCode = await new CliRunner().RunAsync(
             arguments,
             HandleEvent,
-            _ => { },
+            rawLine => { },
             ex => dispatcher.TryEnqueue(() => _lines.Add(new ColoredLogLine {
                 Timestamp = DateTimeOffset.Now,
                 Level = "error",
                 Message = "CLI 运行失败: " + ex.Message,
             })),
             ct);
+
         _finished = true;
         State.BuildSucceeded = exitCode == 0 && State.BuildSucceeded;
         dispatcher.TryEnqueue(() => ((MainWindow)App.MainAppWindow!).GoTo(4));
@@ -127,4 +130,9 @@ public sealed partial class ProgressPage : Page {
         "failed" => "失败",
         _ => phase,
     };
+
+    private void CancelBuild(object sender, RoutedEventArgs e) {
+        _cts?.Cancel();
+        PhaseText.Text = "正在取消…";
+    }
 }

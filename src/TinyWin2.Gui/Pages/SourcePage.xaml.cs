@@ -12,13 +12,82 @@ public sealed partial class SourcePage : Page {
 
     private WizardState State => WizardState.Current;
 
+    private async void PickIso(object sender, RoutedEventArgs e) {
+        var picker = new Windows.Storage.Pickers.FileOpenPicker {
+            SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder,
+            FileTypeFilter = { ".iso" },
+        };
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!));
+        var file = await picker.PickSingleFileAsync();
+        if (file is not null) {
+            SourceBox.Text = file.Path;
+            await RefreshIndexesAsync();
+        }
+    }
+
+    private async void PickFolder(object sender, RoutedEventArgs e) {
+        var picker = new Windows.Storage.Pickers.FolderPicker {
+            SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder,
+            FileTypeFilter = { "*" },
+        };
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!));
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder is not null) {
+            SourceBox.Text = folder.Path;
+            await RefreshIndexesAsync();
+        }
+    }
+
+    private async void SourceBox_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e) {
+        if (e.Key == Windows.System.VirtualKey.Enter) {
+            await RefreshIndexesAsync();
+        }
+    }
+
+    private async Task RefreshIndexesAsync() {
+        var source = SourceBox.Text.Trim();
+        if (source.Length == 0 || !File.Exists(source) && !Directory.Exists(source)) {
+            HintText.Text = "源不存在";
+            return;
+        }
+        State.SourcePath = source;
+        IndexCombo.Items.Clear();
+        IndexSpinner.IsActive = true;
+        HintText.Text = "正在读取索引…";
+        try {
+            var json = await RunInspectAsync(source);
+            var indexes = json?["indexes"] as JsonArray ?? [];
+            State.ImageIndexes.Clear();
+            foreach (var node in indexes.OfType<JsonObject>()) {
+                var item = new ImageIndexItem(
+                    node["index"]!.GetValue<int>(),
+                    node["name"]?.GetValue<string>() ?? "",
+                    node["editionId"]?.GetValue<string>(),
+                    node["version"]?.GetValue<string>(),
+                    $"{node["index"]}: {node["name"]}" + (node["editionId"] is not null ? $" [{node["editionId"]}]" : ""));
+                State.ImageIndexes.Add(item);
+                IndexCombo.Items.Add(item);
+            }
+            HintText.Text = State.ImageIndexes.Count > 0 ? $"{State.ImageIndexes.Count} 个索引" : "未读到索引";
+            if (State.ImageIndexes.Count > 0) {
+                IndexCombo.SelectedIndex = 0;
+            }
+        }
+        catch (Exception ex) {
+            HintText.Text = "读取失败: " + ex.Message;
+        }
+        finally {
+            IndexSpinner.IsActive = false;
+        }
+    }
+
     private static async Task<JsonObject?> RunInspectAsync(string source) {
         JsonObject? parsed = null;
         var lines = new List<string>();
         var exit = await new CliRunner().RunAsync(
             ["inspect", source, "--json"],
-            _ => { },
-            lines.Add,
+            evt => { },
+            line => lines.Add(line),
             _ => { },
             CancellationToken.None);
         var text = string.Join(Environment.NewLine, lines).Trim();
@@ -31,5 +100,34 @@ public sealed partial class SourcePage : Page {
             }
         }
         return exit == 0 ? parsed : throw new InvalidOperationException(text.Length > 300 ? text[..300] : text);
+    }
+
+    private void IndexSelected(object sender, SelectionChangedEventArgs e) {
+        State.SelectedIndex = IndexCombo.SelectedItem as ImageIndexItem;
+        UpdateNextEnabled();
+    }
+
+    private void OutputModeSelected(object sender, SelectionChangedEventArgs e) {
+        if (OutputModeCombo.SelectedItem is ComboBoxItem item && item.Tag is string mode) {
+            State.OutputMode = mode;
+        }
+    }
+
+    private void GranularitySelected(object sender, SelectionChangedEventArgs e) {
+        if (GranularityCombo.SelectedItem is ComboBoxItem item && item.Tag is string granularity) {
+            State.Granularity = granularity;
+        }
+    }
+
+    private void FastToggled(object sender, RoutedEventArgs e) => State.Fast = FastToggle.IsOn;
+
+    private void OutputChanged(object sender, TextChangedEventArgs e) => State.OutputRoot = OutputBox.Text.Trim();
+
+    private void UpdateNextEnabled() {
+        NextButton.IsEnabled = State.SelectedIndex is not null;
+    }
+
+    private void GoNext(object sender, RoutedEventArgs e) {
+        ((MainWindow)App.MainAppWindow!).GoTo(2);
     }
 }
