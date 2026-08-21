@@ -13,11 +13,18 @@ internal static class RegistryAcl {
     private const string GrantCodes = "[1 7 17]";
 
     public static async Task RescueAsync(IProcessRunner runner, string hklmSubKeyPath, CancellationToken ct) {
-        // regini speaks the NT object namespace: \Registry\Machine\<subkey> [aces]
+        // regini speaks the NT object namespace: \Registry\Machine\<subkey> [aces].
+        // Callers pass full reg.exe-style keys ("HKLM\..."); the HKLM\ prefix must go,
+        // or regini resolves \Registry\Machine\HKLM\... and dies with exit 1 / error 87.
+        var subKey = hklmSubKeyPath.Replace("\"", "");
+        if (subKey.StartsWith("HKLM\\", StringComparison.OrdinalIgnoreCase)) {
+            subKey = subKey["HKLM\\".Length..];
+        }
+
         var scriptPath = Path.Combine(Path.GetTempPath(), $"tinywin2-regini-{Guid.NewGuid():N}.txt");
         try {
             await File.WriteAllTextAsync(scriptPath,
-                "\\Registry\\Machine\\" + hklmSubKeyPath.Replace("\"", "") + " " + GrantCodes, ct);
+                "\\Registry\\Machine\\" + subKey + " " + GrantCodes, ct);
             await runner.RunAsync("regini.exe", [scriptPath],
                 new ProcessRunOptions { Timeout = TimeSpan.FromSeconds(30) }, ct);
         }

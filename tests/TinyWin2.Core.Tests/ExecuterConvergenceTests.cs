@@ -290,16 +290,20 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
     [Test]
     public async Task DeniedServiceKeyTakesOwnershipAndRetries() {
         // TrustedInstaller-owned keys (e.g. DPS) deny reg add; the rescue path must
-        // claim ownership via pwsh and retry the write.
+        // grant ACLs via regini and retry the write.
         var hiveKey = "HKLM\\TinyWin2_system";
         var servicesRoot = $"{hiveKey}\\ControlSet001\\Services";
         var deniedKey = $"{servicesRoot}\\DPS";
         var startAdds = 0;
         _harness.Runner.Handler = (file, args) => {
             if (file == "regini.exe") {
+                // Script must carry the NT-object path with the HKLM\ prefix stripped:
+                // \Registry\Machine\TinyWin2_...\Services\DPS [1 7 17]. A stray HKLM\
+                // makes real regini exit 1 ("Failed to load from file (87)").
                 var script = File.ReadAllText(args[0]);
-                if (!script.Contains(deniedKey) || !script.Contains("[1 7 17]")) {
-                    throw new InvalidOperationException("regini script missing key or grant codes: " + script);
+                var expected = "\\Registry\\Machine\\" + deniedKey["HKLM\\".Length..];
+                if (!script.Contains(expected) || script.Contains("HKLM\\") || !script.Contains("[1 7 17]")) {
+                    throw new InvalidOperationException("regini script malformed: " + script);
                 }
                 return FakeProcessRunner.Ok();
             }
