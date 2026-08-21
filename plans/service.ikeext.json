@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.ikeext",
+  "version": "1.0.0",
+  "title": "禁用 IKE 和 AuthIP IPsec 密钥模块",
+  "description": "禁用 IKEEXT。OpenVPN、WireGuard、Clash/Mihomo 等第三方 VPN 通常不依赖此服务；Windows 原生 IKEv1/IKEv2、L2TP/IPsec、Always On VPN、DirectAccess 和依赖 IPsec 的策略将不可用。",
+  "group": "Remote Access",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "IKEEXT"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}
