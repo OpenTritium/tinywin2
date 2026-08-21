@@ -56,7 +56,9 @@
 - 后续 Hyper-V 回归又验证了 `UALSVC`、`iphlpsvc`、`UsoSvc` 禁用后桌面、输入、IPv4/DNS/HTTPS 和应用启动正常；在没有 Windows 原生 VPN/IPsec 需求、且 VM 未安装 OpenVPN/WireGuard/Clash/Mihomo 的前提下，`IKEEXT` 禁用也通过桌面和国内/项目依赖网络回归，可使用 Expert 原子 plan。`SecurityHealthService` 在线修改受系统 ACL 保护，保留为仅供离线 WIM 使用的 Expert 原子 plan，未列入已验证安全清单。
 - Server 默认启用 IE Enhanced Security Configuration（IE ESC），会对浏览器脚本、下载和安全区域施加额外限制。使用 `registry.server-ie-esc` 原子 plan 关闭管理员/用户 IE ESC；该 plan 只适用于受控测试环境，不等同于关闭防火墙或 Defender。
 - 在 4GB Desktop Experience VM 中，`WinHttpAutoProxySvc`（WPAD）和 `VSS` 经离线设置为 Disabled、重启后验证通过：Explorer、ctfmon、TSF、camsvc、FontCache、Themes、LanmanWorkstation 正常，启动后应用崩溃为 0。WPAD 仅适用于固定网络/无 PAC 自动发现环境；VSS 仅适用于不需要系统快照或备份软件的环境。
-- 同一 VM 随后单独禁用 `FontCache`、`lmhosts`、`LicenseManager`、`TokenBroker` 和 `wlidsvc`，并通过离线注册表关闭 Windows/Edge SmartScreen；重启后 Explorer、ctfmon 正常，应用崩溃为 0。`WLMS` 与 `sppsvc` 保持运行：WLMS 停止可能影响 Server 激活状态监视、KMS/AD 续期或 MAK/零售授权的后续宽限期处理，不作为普通后台服务禁用。
+- 同一 VM 随后单独禁用 `FontCache`、`lmhosts`、`LicenseManager`、`TokenBroker` 和 `wlidsvc`，并通过离线注册表关闭 Windows/Edge SmartScreen；重启后 Explorer、ctfmon 正常，应用崩溃为 0。
+- 通过宿主 SYSTEM 一次性任务离线禁用 `SecurityHealthService`、`sppsvc` 和 `WLMS` 后，重启验证仍通过；其中 `WLMS` 停止可能影响 Server 激活状态监视、KMS/AD 续期或 MAK/零售授权的后续宽限期处理，`sppsvc` 是软件保护核心服务，二者只适用于不需要受支持授权状态管理的离线测试镜像。
+- `WSearch` 已禁用；`SearchHost.exe` 是 Explorer/开始菜单的 Shell 宿主，不是索引服务，结束后会被 Shell 自动拉起。不要为消灭该进程而阻断整个 Shell 搜索宿主，否则会影响开始菜单或任务栏搜索。
 - `CscService`（Offline Files/同步中心后端）单独禁用后重启验证通过；`mobsync.exe` 文件保留但不再运行。关闭 `HKLM\SOFTWARE\Policies\Microsoft\Windows NT\Reliability` 下的 `ShutdownReasonOn`、`ShutdownReasonUI`、`ShutdownReasonUIEx` 后，Server 关机/重启原因询问策略为关闭，不影响正常关机或事件日志。
 - 首次部署后前 1~2 次登录可能有初始化窗口（TiWorker/AppX），之后永久稳定——可接受，或构建后做"预初始化"（自动登录跑 2 次再捕获 WIM）。
 
