@@ -53,6 +53,8 @@
 - **桌面版必须保留**：`TextInputManagementService`（TSF）、`camsvc`（AppX/ms-settings 激活）；VM ≥ 4GB。
 - **桌面版可禁用**（已验证）：edgeupdate/edgeupdatem、音频（Audiosrv/AudioEndpointBuilder）、蓝牙/生物（BTAGService/bthserv/BluetoothUserService/DeviceAssociationService/WbioSrvc）、MSDTC、tapisrv、NcbService，以及 `RemoteRegistry`、`WinRM`、`LanmanServer`、`WSAIFabricSvc`、`DPS`、`WdiSystemHost`。这些条目均保持为原子 plan。
 - `WdiServiceHost` 目前仅提供手动启动 plan，未纳入禁用验证。桌面版仍必须保留 `camsvc`、TSF、FontCache 等关键依赖；禁用服务类 plan 只能按已验证清单选择。
+- 后续 Hyper-V 回归又验证了 `UALSVC`、`iphlpsvc`、`UsoSvc` 禁用后桌面、输入、IPv4/DNS/HTTPS 和应用启动正常；`IKEEXT` 禁用后恢复为自动启动，VPN/IPsec 不纳入安全清单；`SecurityHealthService` 受系统 ACL 保护，保持原样。
+- Server 默认启用 IE Enhanced Security Configuration（IE ESC），会对浏览器脚本、下载和安全区域施加额外限制。使用 `registry.server-ie-esc` 原子 plan 关闭管理员/用户 IE ESC；该 plan 只适用于受控测试环境，不等同于关闭防火墙或 Defender。
 - 首次部署后前 1~2 次登录可能有初始化窗口（TiWorker/AppX），之后永久稳定——可接受，或构建后做"预初始化"（自动登录跑 2 次再捕获 WIM）。
 
 ## 六、Hyper-V 冒烟工具（F:\hyperv-smoke2）
