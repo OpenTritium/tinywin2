@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 2,
+  "id": "registry.windows-smartscreen",
+  "version": "1.0.0",
+  "title": "关闭 Windows SmartScreen",
+  "description": "关闭 Windows Shell SmartScreen 检查。未知应用和下载将失去 Windows SmartScreen 信誉防护；仅适合受控离线镜像。",
+  "group": "Security",
+  "risk": "High",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "registry.value",
+      "ensure": "present",
+      "with": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Policies\\Microsoft\\Windows\\System",
+            "name": "EnableSmartScreen",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Microsoft\\Windows\\CurrentVersion\\Explorer",
+            "name": "SmartScreenEnabled",
+            "type": "string",
+            "data": "Off"
+          },
+        ]
+      }
+    }
+  ]
+}

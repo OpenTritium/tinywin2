@@ -50,12 +50,14 @@
 
 ## 五、桌面版 vs Core 版配方差异
 
-- **桌面版必须保留**：`TextInputManagementService`（TSF）、`camsvc`（AppX/ms-settings 激活）；VM ≥ 4GB。
+- **桌面版必须保留**：`TextInputManagementService`（TSF）、`camsvc`（AppX/ms-settings 激活）；VM ≥ 4GB。`FontCache` 默认保守保留，但在本镜像的 4GB Desktop Experience VM 中单独禁用并重启验证通过。
 - **桌面版可禁用**（已验证）：edgeupdate/edgeupdatem、音频（Audiosrv/AudioEndpointBuilder）、蓝牙/生物（BTAGService/bthserv/BluetoothUserService/DeviceAssociationService/WbioSrvc）、MSDTC、tapisrv、NcbService，以及 `RemoteRegistry`、`WinRM`、`LanmanServer`、`WSAIFabricSvc`、`DPS`、`WdiSystemHost`。这些条目均保持为原子 plan。
-- `WdiServiceHost` 目前仅提供手动启动 plan，未纳入禁用验证。桌面版仍必须保留 `camsvc`、TSF、FontCache 等关键依赖；禁用服务类 plan 只能按已验证清单选择。
+- `WdiServiceHost` 目前仅提供手动启动 plan，未纳入禁用验证。桌面版仍必须保留 `camsvc` 和 TSF；`FontCache` 可通过独立原子 plan 禁用。禁用服务类 plan 只能按已验证清单选择，RDP 三件套仍保持 Manual。
 - 后续 Hyper-V 回归又验证了 `UALSVC`、`iphlpsvc`、`UsoSvc` 禁用后桌面、输入、IPv4/DNS/HTTPS 和应用启动正常；在没有 Windows 原生 VPN/IPsec 需求、且 VM 未安装 OpenVPN/WireGuard/Clash/Mihomo 的前提下，`IKEEXT` 禁用也通过桌面和国内/项目依赖网络回归，可使用 Expert 原子 plan。`SecurityHealthService` 在线修改受系统 ACL 保护，保留为仅供离线 WIM 使用的 Expert 原子 plan，未列入已验证安全清单。
 - Server 默认启用 IE Enhanced Security Configuration（IE ESC），会对浏览器脚本、下载和安全区域施加额外限制。使用 `registry.server-ie-esc` 原子 plan 关闭管理员/用户 IE ESC；该 plan 只适用于受控测试环境，不等同于关闭防火墙或 Defender。
 - 在 4GB Desktop Experience VM 中，`WinHttpAutoProxySvc`（WPAD）和 `VSS` 经离线设置为 Disabled、重启后验证通过：Explorer、ctfmon、TSF、camsvc、FontCache、Themes、LanmanWorkstation 正常，启动后应用崩溃为 0。WPAD 仅适用于固定网络/无 PAC 自动发现环境；VSS 仅适用于不需要系统快照或备份软件的环境。
+- 同一 VM 随后单独禁用 `FontCache`、`lmhosts`、`LicenseManager`、`TokenBroker` 和 `wlidsvc`，并通过离线注册表关闭 Windows/Edge SmartScreen；重启后 Explorer、ctfmon 正常，应用崩溃为 0。`WLMS` 与 `sppsvc` 保持运行：WLMS 停止可能影响 Server 激活状态监视、KMS/AD 续期或 MAK/零售授权的后续宽限期处理，不作为普通后台服务禁用。
+- `CscService`（Offline Files/同步中心后端）单独禁用后重启验证通过；`mobsync.exe` 文件保留但不再运行。关闭 `HKLM\SOFTWARE\Policies\Microsoft\Windows NT\Reliability` 下的 `ShutdownReasonOn`、`ShutdownReasonUI`、`ShutdownReasonUIEx` 后，Server 关机/重启原因询问策略为关闭，不影响正常关机或事件日志。
 - 首次部署后前 1~2 次登录可能有初始化窗口（TiWorker/AppX），之后永久稳定——可接受，或构建后做"预初始化"（自动登录跑 2 次再捕获 WIM）。
 
 ## 六、Hyper-V 冒烟工具（F:\hyperv-smoke2）

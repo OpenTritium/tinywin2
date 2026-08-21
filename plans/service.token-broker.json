@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.token-broker",
+  "version": "1.0.0",
+  "title": "禁用 Web 帐户管理器",
+  "description": "禁用 TokenBroker。离线镜像不使用 Microsoft 账户、商店或 Web 账户令牌时可禁用；普通本地账户桌面应用不受影响。",
+  "group": "Policies",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "TokenBroker"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

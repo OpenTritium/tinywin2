@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.netbios-helper",
+  "version": "1.0.0",
+  "title": "禁用 TCP/IP NetBIOS Helper",
+  "description": "禁用 lmhosts（TCP/IP NetBIOS Helper）。不使用旧式 NetBIOS 名称解析或依赖它的 SMB 环境时可禁用；DNS、现代 SMB 和普通桌面应用不受影响。",
+  "group": "Networking",
+  "risk": "Medium",
+  "tier": "Expert",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "lmhosts"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

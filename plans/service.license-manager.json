@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "id": "service.license-manager",
+  "version": "1.0.0",
+  "title": "禁用 Windows 许可证管理器服务",
+  "description": "禁用 LicenseManager。离线镜像不使用 Microsoft Store 或基于 Microsoft 账户的应用授权时可禁用；不等于禁用 Windows 激活，sppsvc 和 WLMS 保持不变。",
+  "group": "Policies",
+  "risk": "Low",
+  "tier": "Standard",
+  "execs": [
+    {
+      "resource": "registry.service",
+      "ensure": "present",
+      "with": {
+        "services": [
+          "LicenseManager"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}
