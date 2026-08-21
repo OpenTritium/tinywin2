@@ -25,7 +25,7 @@
             "name": "SmartScreenEnabled",
             "type": "string",
             "data": "Off"
-          },
+          }
         ]
       }
     }

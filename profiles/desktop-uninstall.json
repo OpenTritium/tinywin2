@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "name": "desktop-uninstall",
+  "description": "Desktop Experience 软件卸载清单。每项引用独立原子 plan；不包含 PowerShell 或 Hyper-V。",
+  "selections": [
+    {
+      "planId": "appx.feedback-hub",
+      "enabled": true
+    },
+    {
+      "planId": "appx.windows-terminal",
+      "enabled": true
+    },
+    {
+      "planId": "component.edge",
+      "enabled": true
+    },
+    {
+      "planId": "appx.calculator",
+      "enabled": true
+    },
+    {
+      "planId": "appx.security-health-ui",
+      "enabled": true
+    },
+    {
+      "planId": "capability.sense-client",
+      "enabled": true
+    },
+    {
+      "planId": "feature.windows-defender",
+      "enabled": true
+    }
+  ]
+}
