@@ -296,7 +296,11 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
         var deniedKey = $"{servicesRoot}\\DPS";
         var startAdds = 0;
         _harness.Runner.Handler = (file, args) => {
-            if (file == "pwsh.exe") {
+            if (file == "regini.exe") {
+                var script = File.ReadAllText(args[0]);
+                if (!script.Contains(deniedKey) || !script.Contains("[1 7 17]")) {
+                    throw new InvalidOperationException("regini script missing key or grant codes: " + script);
+                }
                 return FakeProcessRunner.Ok();
             }
             if (args[0] == "add" && args[1] == deniedKey && args.Contains("/v") && args.Contains("Start")) {
@@ -325,7 +329,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
                 ("services", new JsonArray("DPS")), ("start", "disabled")), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(startAdds).IsEqualTo(2); // denied once, rescued, written
-        await Assert.That(_harness.Runner.Called("pwsh.exe")).IsTrue();
+        await Assert.That(_harness.Runner.Called("regini.exe")).IsTrue();
     }
 
     [Test]
