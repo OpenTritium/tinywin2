@@ -304,20 +304,75 @@ public sealed class FilesystemExecuterTests : IDisposable {
     }
 
     [Test]
-    public async Task PresentCopiesAssetDirectoryIntoImage() {
+    public async Task PresentDirectoryUsesRobocopy() {
         var assets = Path.Combine(_harness.MountPath, "assets");
         Directory.CreateDirectory(Path.Combine(assets, "tools", "sub"));
         File.WriteAllText(Path.Combine(assets, "tools", "app.exe"), "bin");
         File.WriteAllText(Path.Combine(assets, "tools", "sub", "lib.dll"), "dll");
         var context = new ExecContext(_harness.MountPath, _harness.Log,
             new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
+        _harness.Runner.Handler = (file, _) => file == "robocopy.exe"
+            ? FakeProcessRunner.Ok()
+            : FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(context,
             ExecuterTestHarness.Spec("fs.path", Ensure.Present,
                 ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
-        await Assert.That(File.Exists(Path.Combine(_harness.MountPath, "ProgramData", "Tools", "app.exe"))).IsTrue();
-        await Assert.That(File.Exists(Path.Combine(_harness.MountPath, "ProgramData", "Tools", "sub", "lib.dll")))
-            .IsTrue();
+        await Assert.That(_harness.Runner.Called("robocopy.exe")).IsTrue();
+        var copy = _harness.Runner.Calls.Last(c => c.File == "robocopy.exe");
+        await Assert.That(copy.Args).Contains(Path.Combine(assets, "tools"));
+        await Assert.That(copy.Args).Contains(Path.Combine(_harness.MountPath, "ProgramData", "Tools"));
+        await Assert.That(copy.Args).Contains("/E");
+    }
+
+    [Test]
+    public async Task PresentFileOverwritesChangedDestination() {
+        var assets = Path.Combine(_harness.MountPath, "assets");
+        Directory.CreateDirectory(assets);
+        var source = Path.Combine(assets, "settings.ini");
+        File.WriteAllText(source, "new");
+        var destination = Path.Combine(_harness.MountPath, "ProgramData", "settings.ini");
+        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+        File.WriteAllText(destination, "old");
+        var context = new ExecContext(_harness.MountPath, _harness.Log,
+            new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
+        var result = await _executer.ApplyAsync(context,
+            ExecuterTestHarness.Spec("fs.path", Ensure.Present,
+                ("path", "ProgramData\\settings.ini"), ("source", "settings.ini")), CancellationToken.None);
+        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(File.ReadAllText(destination)).IsEqualTo("new");
+    }
+
+    [Test]
+    public async Task PresentDirectoryDetectsMissingAssetFiles() {
+        var assets = Path.Combine(_harness.MountPath, "assets");
+        Directory.CreateDirectory(Path.Combine(assets, "tools"));
+        File.WriteAllText(Path.Combine(assets, "tools", "required.dll"), "payload");
+        Directory.CreateDirectory(Path.Combine(_harness.MountPath, "ProgramData", "Tools"));
+        var context = new ExecContext(_harness.MountPath, _harness.Log,
+            new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
+        var diff = await _executer.InspectAsync(context,
+            ExecuterTestHarness.Spec("fs.path", Ensure.Present,
+                ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None);
+        await Assert.That(diff.Satisfied).IsFalse();
+        await Assert.That(diff.Differences[0].Kind).IsEqualTo(ChangeKind.Modified);
+    }
+
+    [Test]
+    public async Task RobocopyFailureIsReported() {
+        var assets = Path.Combine(_harness.MountPath, "assets");
+        Directory.CreateDirectory(Path.Combine(assets, "tools"));
+        var context = new ExecContext(_harness.MountPath, _harness.Log,
+            new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
+        _harness.Runner.Handler = (file, _) => file == "robocopy.exe"
+            ? FakeProcessRunner.Fail(8)
+            : FakeProcessRunner.Ok();
+        var ex = Assert.Throws<IOException>(() =>
+            _executer.ApplyAsync(context,
+                ExecuterTestHarness.Spec("fs.path", Ensure.Present,
+                    ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None)
+                .GetAwaiter().GetResult());
+        await Assert.That(ex.Message).Contains("robocopy");
     }
 
     public void Dispose() => _harness.Dispose();
