@@ -127,9 +127,4 @@ public sealed partial class ProgressPage : Page {
         "failed" => "失败",
         _ => phase,
     };
-
-    private void CancelBuild(object sender, RoutedEventArgs e) {
-        _cts?.Cancel();
-        PhaseText.Text = "正在取消…";
-    }
 }

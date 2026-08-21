@@ -108,6 +108,7 @@ internal static class Program {
               -o <dir>                              output root (default ./out)
               --granularity group|plan              one layer per group (default) or per plan
               [--fast] [--continue-on-error] [--keep-layers] [--dry-run]
+                                        [--no-layers] [--resume [workspace]]
               [--oscdimg <path>] [--json-events]
 
             examples:

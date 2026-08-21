@@ -13,6 +13,37 @@ namespace TinyWin2.Core.Tests;
 /// </summary>
 public sealed class OptionsValidationTests {
     [Test]
+    public async Task TriggerStartParsesWithKnownKinds() {
+        var options = RegistryServiceOptions.FromDesired(new JsonObject {
+            ["services"] = new JsonArray("W32Time"),
+            ["start"] = "trigger",
+            ["triggers"] = new JsonArray("domain-join", "ip-arrival", "device:{53f5630d-b6bf-11d0-94f2-00a0c91efb8b}"),
+        });
+        await Assert.That(options.StartDword).IsEqualTo(3); // manual
+        await Assert.That(options.Triggers.Count).IsEqualTo(3);
+    }
+
+    [Test]
+    public async Task TriggersRequireTriggerStart() {
+        var ex = Assert.Throws<ExecException>(() => RegistryServiceOptions.FromDesired(new JsonObject {
+            ["services"] = new JsonArray("W32Time"),
+            ["start"] = "disabled",
+            ["triggers"] = new JsonArray("domain-join"),
+        }))!;
+        await Assert.That(ex.Message).Contains("requires 'start'");
+    }
+
+    [Test]
+    public async Task UnknownTriggerNameRejected() {
+        var ex = Assert.Throws<ExecException>(() => RegistryServiceOptions.FromDesired(new JsonObject {
+            ["services"] = new JsonArray("W32Time"),
+            ["start"] = "trigger",
+            ["triggers"] = new JsonArray("magic-event"),
+        }))!;
+        await Assert.That(ex.Message).Contains("unknown trigger");
+    }
+
+    [Test]
     public async Task RegistryServiceRejectsUnknownStartMode() {
         var ex = Assert.Throws<ExecException>(() =>
             RegistryServiceOptions.FromDesired(new JsonObject {

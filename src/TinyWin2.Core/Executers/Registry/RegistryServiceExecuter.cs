@@ -15,7 +15,8 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
     /// One structured difference carrying its own service key and desired start values —
     /// apply never re-parses options or re-resolves the control set.
     /// </summary>
-    private sealed record ServiceChange(ChangeItem Change, string ServiceKey, int Start, int Delayed);
+    private sealed record ServiceChange(ChangeItem Change, string ServiceKey, int Start, int Delayed,
+        IReadOnlyList<string>? Triggers = null);
 
     public async Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
         var changes = await InspectCoreAsync(context, spec, ct);
@@ -30,15 +31,19 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         }
 
         var applied = new List<ChangeItem>();
-        foreach (var (change, serviceKey, start, delayed) in changes) {
-            if (change.Kind == ChangeKind.Skipped) {
+        foreach (var entry in changes) {
+            if (entry.Change.Kind == ChangeKind.Skipped) {
                 continue;
             }
 
-            await AddDwordWithAclRescueAsync(serviceKey, "Start", start, ct);
-            await AddDwordWithAclRescueAsync(serviceKey, "DelayedAutoStart", delayed, ct);
-            context.Log.Info($"service {change.Target} → {change.After}");
-            applied.Add(change);
+            await AddDwordWithAclRescueAsync(entry.ServiceKey, "Start", entry.Start, ct);
+            await AddDwordWithAclRescueAsync(entry.ServiceKey, "DelayedAutoStart", entry.Delayed, ct);
+            if (entry.Triggers is { Count: > 0 } triggers) {
+                await WriteTriggerInfoAsync(entry.ServiceKey, triggers, ct);
+                context.Log.Info($"service {entry.Change.Target}: start=manual + {triggers.Count} trigger(s)");
+            }
+            context.Log.Info($"service {entry.Change.Target} → {entry.Change.After}");
+            applied.Add(entry.Change);
         }
 
         return ExecResult.Applied(applied);
@@ -77,7 +82,7 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             var existingStart = await ReadDwordAsync(serviceKey, "Start", ct);
             if (existingStart is null) {
                 context.Log.Warn($"service '{service}' was not present in {controlSet}; skipping.");
-                changes.Add(new(new(ChangeKind.Skipped, service, "service not present"), serviceKey, 0, 0));
+                changes.Add(new(new(ChangeKind.Skipped, service, "service not present"), serviceKey, 0, 0, options.Triggers));
                 continue;
             }
 
@@ -87,11 +92,29 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
                     new(ChangeKind.Modified, service,
                         Before: Describe(existingStart.Value, existingDelayed),
                         After: Describe(options.StartDword, desiredDelayed)),
-                    serviceKey, options.StartDword, desiredDelayed));
+                    serviceKey, options.StartDword, desiredDelayed, options.Triggers));
             }
         }
 
         return changes;
+    }
+
+    /// <summary>Offline TriggerInfo: subkey per trigger with Type/Action DWORDs (+ SubType GUID for device classes).</summary>
+    private async Task WriteTriggerInfoAsync(string serviceKey, IReadOnlyList<string> triggers, CancellationToken ct) {
+        for (var i = 0; i < triggers.Count; i++) {
+            if (RegistryServiceOptions.ResolveTrigger(triggers[i]) is not { } kind) {
+                continue;
+            }
+            var key = $"{serviceKey}\\TriggerInfo\\{i + 1}";
+            await runner.RunAsync("reg.exe",
+                ["add", key, "/v", "Type", "/t", "REG_DWORD", "/d", kind.Type.ToString(), "/f"], cancellationToken: ct);
+            await runner.RunAsync("reg.exe",
+                ["add", key, "/v", "Action", "/t", "REG_DWORD", "/d", "1", "/f"], cancellationToken: ct);
+            if (kind.SubType is { } subType) {
+                await runner.RunAsync("reg.exe",
+                    ["add", key, "/v", "SubType", "/t", "REG_SZ", "/d", subType, "/f"], cancellationToken: ct);
+            }
+        }
     }
 
     private async Task AddDwordWithAclRescueAsync(string serviceKey, string name, int value, CancellationToken ct) {

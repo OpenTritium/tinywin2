@@ -47,6 +47,11 @@ public sealed record BuildOptions {
     public bool ContinueOnError { get; init; }
     public bool KeepLayers { get; init; }
     public bool DryRun { get; init; }
+    /// <summary>Layerless fast mode: one working mount, steps applied in place. No atomic rollback,
+    /// no layer diff trail, no resume checkpoints — a failed step just leaves the exec's own work undone.</summary>
+    public bool NoLayers { get; init; }
+    /// <summary>Test hook: skip the environment doctor (unit tests run without 50GB free on TEMP).</summary>
+    internal bool SkipEnvironmentChecks { get; init; }
     public string? OscdimgPath { get; init; }
     public string? PlansDirectory { get; init; }
     /// <summary>Existing workspace to resume from: committed layers whose step fingerprint still matches are reused as-is.</summary>
@@ -104,6 +109,9 @@ public sealed class BuildEngine(
             log.Info("dry run: no mutations performed");
             return DryRunResult(buildId);
         }
+        if (options.NoLayers && options.ResumeWorkspace is not null) {
+            throw new InvalidOperationException("--no-layers cannot resume: no layer chain is kept to reuse.");
+        }
         RunDoctor(options);
         var outputRoot = Path.GetFullPath(options.OutputRoot);
         var workspace = options.ResumeWorkspace ?? Path.Combine(outputRoot, "work", buildId);
@@ -123,10 +131,20 @@ public sealed class BuildEngine(
                 log.Info("resume: reusing the existing base layer (image apply skipped)");
             }
             else {
-                await ApplyBaseAsync(stack, options, buildId, workspace, stagingWim, sourceIndex, ct);
+                await ApplyBaseAsync(stack, options, buildId, workspace, stagingWim, sourceIndex, ct,
+                    captureEvidence: !options.NoLayers);
             }
-            var failedSteps = await RunStepsAsync(options, plan, stack, workspace, ct);
-            var installPath = await CaptureInstallImageAsync(options, workspace, stack, builder, sourceIndex, ct);
+            List<(string StepId, int LayerIndex, string Error)> failedSteps;
+            string installPath;
+            if (options.NoLayers) {
+                log.Info("no-layers mode: applying every step against the single working mount");
+                (failedSteps, installPath) = await RunStepsAndCaptureLayerlessAsync(options, plan, stack, workspace,
+                    builder, sourceIndex, ct);
+            }
+            else {
+                failedSteps = await RunStepsAsync(options, plan, stack, workspace, ct);
+                installPath = await CaptureInstallImageAsync(options, workspace, stack, builder, sourceIndex, ct);
+            }
             var (finalInstall, isoPath, vhdxPath) =
                 await PackageOutputAsync(options, buildId, source, mediaPath, installPath, stack, builder, ct);
             var manifestPath = await WriteManifestAsync(buildId, options, plan, stack, mediaPath, finalInstall,
@@ -191,7 +209,7 @@ public sealed class BuildEngine(
     /// <summary>Creates (or reuses) the base layer and applies the staged image into it.</summary>
     private async Task ApplyBaseAsync(
         VhdLayerStack stack, BuildOptions options, string buildId, string workspace, string stagingWim, ImageIndexInfo sourceIndex,
-        CancellationToken ct) {
+        CancellationToken ct, bool captureEvidence = true) {
         log.Phase = BuildPhases.BaseLayer;
         await stack.EnsureBaseAsync(options.BaseVhdxMaximumMb, $"TinyWin2-{buildId}", ct);
         log.Info($"applying '{sourceIndex.Name}' (index {sourceIndex.Index}) into the base layer");
@@ -199,9 +217,74 @@ public sealed class BuildEngine(
             await runner.RunAsync("dism.exe",
                 ["/English", "/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}", $"/ApplyDir:{mount}"],
                 new ProcessRunOptions { Timeout = TimeSpan.FromHours(2) }, token);
-            log.Info("capturing base-layer evidence snapshots (file manifest + registry)");
-            await LayerEvidence.CaptureAsync(mount, workspace, 0, runner, log, token);
+            if (captureEvidence) {
+                log.Info("capturing base-layer evidence snapshots (file manifest + registry)");
+                await LayerEvidence.CaptureAsync(mount, workspace, 0, runner, log, token);
+            }
         }, ct);
+    }
+
+    /// <summary>
+    /// Layerless fast path: attach the base ONCE, run every step against that single mount with no
+    /// per-step diff layers / evidence snapshots / attach-detach cycles, capture the artifact from the
+    /// live volume, detach. A failed step logs and (without ContinueOnError) aborts; nothing is rolled
+    /// back — the exec's own operation granularity is all the atomicity there is.
+    /// </summary>
+    private async Task<(List<(string StepId, int LayerIndex, string Error)>, string InstallPath)> RunStepsAndCaptureLayerlessAsync(
+        BuildOptions options, BuildPlan plan, VhdLayerStack stack, string workspace, OutputBuilder builder,
+        ImageIndexInfo sourceIndex, CancellationToken ct) {
+        var failedSteps = new List<(string, int, string)>();
+        var leaf = stack.LeafVhdxPath;
+        var letter = await layerBackend.AttachAsync(leaf, ct);
+        try {
+            var stepNumber = 0;
+            foreach (var step in plan.Steps) {
+                ct.ThrowIfCancellationRequested();
+                stepNumber++;
+                log.Info($"step {stepNumber}/{plan.Steps.Count}: '{step.Title}' (no-layers)",
+                    data: new JsonObject {
+                        ["progress"] = ProgressAfterBase + (int)(ProgressPlanWeight * stepNumber / (double)plan.Steps.Count),
+                    });
+                var session = new LayerSession {
+                    Record = new LayerRecord { Index = stepNumber, StepId = step.Id, Title = step.Title },
+                    VhdxPath = leaf,
+                    MountPath = $"{letter}:\\",
+                };
+                try {
+                    foreach (var resolved in step.Plans) {
+                        await RunPlanInLayerAsync(resolved, session, [], options, ct);
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException) {
+                    failedSteps.Add((step.Id, stepNumber, ex.Message));
+                    log.Error($"step '{step.Id}' failed (no rollback in no-layers mode): {ex.Message}", step.Id, stepNumber);
+                    if (!options.ContinueOnError) {
+                        throw new BuildStepFailedException(step.Id, stepNumber, ex);
+                    }
+                }
+            }
+
+            log.Phase = BuildPhases.Capture;
+            var format = options.OutputMode switch {
+                OutputMode.Wim => ImageFormat.Wim,
+                _ => ImageFormat.Esd,
+            };
+            if (format == ImageFormat.Esd) {
+                var intermediate = Path.Combine(workspace, "install.intermediate.wim");
+                await builder.CaptureAsync($"{letter}:\\", intermediate, sourceIndex.Name, sourceIndex.Description,
+                    compress: "none", verify: false, ct);
+                var esdPath = Path.Combine(workspace, "install.esd");
+                await builder.ExportEsdAsync(intermediate, esdPath, ct);
+                return (failedSteps, esdPath);
+            }
+            var capturedWim = Path.Combine(workspace, "install.captured.wim");
+            await builder.CaptureAsync($"{letter}:\\", capturedWim, sourceIndex.Name, sourceIndex.Description,
+                ImageFormat.Wim, options.Fast, ct);
+            return (failedSteps, capturedWim);
+        }
+        finally {
+            try { await layerBackend.DetachAsync(leaf, ct); } catch { /* already detached */ }
+        }
     }
 
     /// <summary>Runs every plan step as one atomic layer; returns the failed ones (ContinueOnError).</summary>
@@ -461,6 +544,9 @@ public sealed class BuildEngine(
     };
 
     private void RunDoctor(BuildOptions options) {
+        if (options.SkipEnvironmentChecks) {
+            return;
+        }
         if (!OperatingSystem.IsWindows()) {
             throw new PlatformNotSupportedException("TinyWin2 builds are Windows-only (DISM/diskpart/VHDX).");
         }

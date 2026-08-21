@@ -43,34 +43,4 @@ public sealed partial class ResultPage : Page {
             # 排除失败项后重试：去掉对应的 --plan / 在第 2 页取消勾选
             """;
     }
-
-    private void OpenFolder(object sender, RoutedEventArgs e) {
-        var target = State.IsoPath is not null
-            ? Path.GetDirectoryName(State.IsoPath)!
-            : State.MediaPath;
-        if (Directory.Exists(target)) {
-            _ = Process.Start(new ProcessStartInfo { FileName = target, UseShellExecute = true });
-        }
-    }
-
-    private void CopyDiagnostics(object sender, RoutedEventArgs e) {
-        var text = $"""
-            TinyWin2 构建诊断
-            成功: {State.BuildSucceeded}
-            源: {State.SourcePath} (index {State.SelectedIndex?.Index})
-            输出模式: {State.OutputMode}, 粒度: {State.Granularity}, 快速: {State.Fast}
-            media: {State.MediaPath}
-            ISO: {State.IsoPath}
-            manifest: {State.ManifestPath}
-            已选 plan: {string.Join(", * ", State.Plans.Where(p => p.IsSelected).Select(p => p.Id))}
-            """;
-        var package = new DataPackage();
-        package.SetText(text);
-        Clipboard.SetContent(package);
-    }
-
-    private void Restart(object sender, RoutedEventArgs e) {
-        State.CurrentPhase = "";
-        ((MainWindow)App.MainAppWindow!).GoTo(1);
-    }
 }

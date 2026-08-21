@@ -234,6 +234,57 @@ public sealed class BuildEngineDryRunTests : IDisposable {
     }
 
     [Test]
+    public async Task NoLayersAppliesEverythingAgainstOneAttach() {
+        TestPlans.WritePlan(_plansDir, "no.a", o => o["execs"] = new JsonArray(new JsonObject {
+            ["resource"] = "test.noop",
+            ["ensure"] = "absent",
+            ["with"] = new JsonObject(),
+        }));
+        TestPlans.WritePlan(_plansDir, "no.b", o => o["execs"] = new JsonArray(new JsonObject {
+            ["resource"] = "test.noop",
+            ["ensure"] = "absent",
+            ["with"] = new JsonObject(),
+        }));
+        var runner = new FakeProcessRunner {
+            Handler = (_, args) => {
+                if (args.Contains("/Get-WimInfo")) {
+                    return FakeProcessRunner.Ok("Index : 1\r\nName : Fake Edition\r\n");
+                }
+                // fake dism capture/export: materialize the target file so packaging can move it
+                var target = args.FirstOrDefault(a => a.StartsWith("/ImageFile:") || a.StartsWith("/DestinationImageFile:"));
+                if (target is not null) {
+                    var path = target.Split(':', 2)[1];
+                    Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+                    File.WriteAllText(path, "captured");
+                }
+                return FakeProcessRunner.Ok();
+            },
+        };
+        var media = TestPlans.CreateTempDirectory();
+        Directory.CreateDirectory(Path.Combine(media, "sources"));
+        await File.WriteAllTextAsync(Path.Combine(media, "sources", "install.wim"), "wim");
+        await File.WriteAllTextAsync(Path.Combine(media, "sources", "boot.wim"), "boot");
+        var executers = new ExecuterRegistry([new FakeExecuter("test.noop", fail: false)]);
+        var backend = new FakeLayerBackend();
+        var engine = new BuildEngine(runner, executers, backend, new BuildLog());
+        var result = await engine.BuildAsync(new BuildOptions {
+            SourcePath = media,
+            ImageIndex = 1,
+            Selections = [new PlanSelection("no.a"), new PlanSelection("no.b")],
+            OutputRoot = TestPlans.CreateTempDirectory(),
+            Catalog = PlanCatalog.LoadDirectory(_plansDir),
+            DryRun = false,
+            NoLayers = true,
+            OutputMode = OutputMode.Wim,
+            SkipEnvironmentChecks = true,
+        }, CancellationToken.None);
+        await Assert.That(result.Succeeded).IsTrue();
+        // layerless: no differencing layers at all; exactly two attaches (base image apply + the single working mount)
+        await Assert.That(backend.Calls.Count(c => c.StartsWith("create-diff:"))).IsEqualTo(0);
+        await Assert.That(backend.Calls.Count(c => c.StartsWith("attach:"))).IsEqualTo(2);
+    }
+
+    [Test]
     public async Task DryRunResolvesAndTouchesNothing() {
         var runner = new FakeProcessRunner();
         var executers = new ExecuterRegistry([new FakeExecuter("test.noop", fail: false)]);

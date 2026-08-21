@@ -97,6 +97,8 @@ public sealed partial record RegistryServiceOptions {
     public required IReadOnlyList<string> Services { get; init; }
     public IReadOnlyList<string> ServicePatterns { get; private init; } = [];
     public required string Start { get; init; }
+    /// <summary>Parsed trigger descriptors: preset name or 'device:{interface-class-guid}'.</summary>
+    public IReadOnlyList<string> Triggers { get; private init; } = [];
 
     private static readonly IReadOnlyDictionary<string, int> StartValues =
         new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) {
@@ -104,6 +106,18 @@ public sealed partial record RegistryServiceOptions {
             ["manual"] = 3,
             ["auto"] = 2,
             ["delayedAuto"] = 2,
+            ["trigger"] = 3, // manual + TriggerInfo: the SCM pulls the service when the event fires
+        };
+
+    /// <summary>
+    /// Named SCM trigger events (offline TriggerInfo writes; Action is always SERVICE_START).
+    /// Only subtype-free, documented event types are preset - device classes take a raw GUID.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, (int Type, string? SubType)> TriggerKinds =
+        new Dictionary<string, (int, string?)>(StringComparer.OrdinalIgnoreCase) {
+            ["domain-join"] = (4, null),      // SERVICE_TRIGGER_TYPE_DOMAIN_JOIN
+            ["ip-arrival"] = (2, null),       // SERVICE_TRIGGER_TYPE_IP_ADDRESS_ARRIVAL
+            ["gpo-change"] = (7, null),       // SERVICE_TRIGGER_TYPE_GROUP_POLICY
         };
 
     public bool IsDelayed => string.Equals(Start, "delayedAuto", StringComparison.OrdinalIgnoreCase);
@@ -124,9 +138,34 @@ public sealed partial record RegistryServiceOptions {
         }
 
         var start = Desired.RequiredString(desired, "start", context);
-        return !StartValues.ContainsKey(start)
-            ? throw new ExecException($"{context} requires 'start' (auto|delayedAuto|manual|disabled).")
-            : new() { Services = services, ServicePatterns = patterns, Start = start };
+        if (!StartValues.ContainsKey(start)) {
+            throw new ExecException($"{context} requires 'start' (auto|delayedAuto|manual|disabled|trigger).");
+        }
+        var triggers = Desired.OptionalStringArray(desired, "triggers") ?? [];
+        if (triggers.Count > 0 && !string.Equals(start, "trigger", StringComparison.OrdinalIgnoreCase)) {
+            throw new ExecException($"{context}: 'triggers' requires 'start': 'trigger' (manual + TriggerInfo).");
+        }
+        foreach (var trigger in triggers) {
+            if (!TriggerKinds.ContainsKey(trigger)
+                && !(trigger.StartsWith("device:", StringComparison.OrdinalIgnoreCase)
+                     && Guid.TryParse(trigger["device:".Length..], out _))) {
+                throw new ExecException(
+                    $"{context}: unknown trigger '{trigger}' (expected domain-join|ip-arrival|gpo-change|device:{{guid}}).");
+            }
+        }
+        return new() { Services = services, ServicePatterns = patterns, Start = start, Triggers = triggers };
+    }
+
+    /// <summary>Resolves a trigger descriptor to its SCM (Type, SubType) pair; null when unknown.</summary>
+    internal static (int Type, string? SubType)? ResolveTrigger(string trigger) {
+        if (TriggerKinds.TryGetValue(trigger, out var preset)) {
+            return preset;
+        }
+        if (trigger.StartsWith("device:", StringComparison.OrdinalIgnoreCase)
+            && Guid.TryParse(trigger["device:".Length..], out var guid)) {
+            return (1, $"{{{guid.ToString().ToUpperInvariant()}}}");
+        }
+        return null;
     }
 
     [GeneratedRegex("^[A-Za-z0-9_.?*-]+$")]

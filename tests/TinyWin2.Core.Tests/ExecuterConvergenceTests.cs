@@ -267,6 +267,27 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
     }
 
     [Test]
+    public async Task TriggerStartWritesManualAndTriggerInfo() {
+        SetupServices(("W32Time", "2", null));
+        var hiveKey = "HKLM\\TinyWin2_system";
+        var key32 = $"{hiveKey}\\ControlSet001\\Services\\W32Time";
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("registry.service", Ensure.Present,
+                ("services", new JsonArray("W32Time")), ("start", "trigger"),
+                ("triggers", new JsonArray("domain-join", "device:{53f5630d-b6bf-11d0-94f2-00a0c91efb8b}"))),
+            CancellationToken.None);
+        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        var adds = _harness.Runner.Calls.Where(c => c.Args[0] == "add").Select(c => string.Join(" ", c.Args)).ToList();
+        await Assert.That(adds.Any(a => a.Contains($"{key32} /v Start") && a.Contains("/d 3"))).IsTrue(); // manual
+        var trigger1 = $"{key32}\\TriggerInfo\\1";
+        await Assert.That(adds.Any(a => a.Contains(trigger1) && a.Contains("/v Type") && a.Contains("/d 4"))).IsTrue();
+        await Assert.That(adds.Any(a => a.Contains(trigger1) && a.Contains("/v Action") && a.Contains("/d 1"))).IsTrue();
+        var trigger2 = $"{key32}\\TriggerInfo\\2";
+        await Assert.That(adds.Any(a => a.Contains(trigger2) && a.Contains("/v SubType")
+                                        && a.Contains("53F5630D-B6BF-11D0-94F2-00A0C91EFB8B"))).IsTrue();
+    }
+
+    [Test]
     public async Task DeniedServiceKeyTakesOwnershipAndRetries() {
         // TrustedInstaller-owned keys (e.g. DPS) deny reg add; the rescue path must
         // claim ownership via pwsh and retry the write.

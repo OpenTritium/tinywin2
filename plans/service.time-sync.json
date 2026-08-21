@@ -3,7 +3,7 @@
   "id": "service.time-sync",
   "version": "2.0.0",
   "title": "禁用 Windows 时间服务",
-  "description": "禁用 W32Time。VM 由 Hypervisor 集成服务做时间同步时可禁用；物理机或需要 NTP 时保留。",
+  "description": "将 W32Time 改为按需启动：默认手动 + 触发器（域加入/IP 地址到达时由 SCM 自动拉起）；也可选完全禁用（VM 由 Hypervisor 时间同步兜底时）或手动。",
   "group": "System",
   "risk": "Low",
   "tier": "Standard",
@@ -12,8 +12,13 @@
       "name": "startMode",
       "type": "enum",
       "label": "启动方式",
-      "default": "disabled",
+      "default": "trigger",
       "options": [
+        {
+          "value": "trigger",
+          "label": "手动+触发（域加入/IP到达）",
+          "risk": "Low"
+        },
         {
           "value": "disabled",
           "label": "禁用",
@@ -39,11 +44,16 @@
           "$map": {
             "arg": "startMode",
             "cases": {
+              "trigger": "trigger",
               "disabled": "disabled",
               "manual": "manual"
             }
           }
-        }
+        },
+        "triggers": [
+          "domain-join",
+          "ip-arrival"
+        ]
       }
     }
   ]
