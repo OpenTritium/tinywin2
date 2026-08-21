@@ -1,3 +1,6 @@
+using System.Security.AccessControl;
+using System.Security.Principal;
+using System.Runtime.Versioning;
 using TinyWin2.Core.Layers;
 using TinyWin2.Core.Logging;
 
@@ -47,6 +50,40 @@ public sealed class LayerEvidenceTests : IDisposable {
         await Assert.That(hives.Count).IsEqualTo(2);
         await Assert.That(hives["software"]).Contains("\"A\"=dword:1");
         await Assert.That(hives["system"]).Contains("HKEY_LOCAL_MACHINE");
+    }
+
+    [Test]
+    [SupportedOSPlatform("windows")]
+    public async Task ManifestKeepsReadableFilesWhenAChildDirectoryCannotBeRead() {
+        var imageDir = Path.Combine(_root, "image");
+        Directory.CreateDirectory(imageDir);
+        await File.WriteAllTextAsync(Path.Combine(imageDir, "readable.txt"), "payload");
+
+        var inaccessible = Path.Combine(imageDir, "inaccessible");
+        Directory.CreateDirectory(inaccessible);
+        var user = WindowsIdentity.GetCurrent().User ?? throw new InvalidOperationException("current user has no SID");
+        var rule = new FileSystemAccessRule(user, FileSystemRights.ListDirectory | FileSystemRights.ReadAndExecute,
+            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None,
+            AccessControlType.Deny);
+        var inaccessibleDirectory = new DirectoryInfo(inaccessible);
+        var security = inaccessibleDirectory.GetAccessControl();
+        security.AddAccessRule(rule);
+        inaccessibleDirectory.SetAccessControl(security);
+
+        var manifest = LayerEvidence.ManifestPathFor(LayerEvidence.SnapshotsRoot(_root), 0);
+        try {
+            await LayerEvidence.CaptureAsync(imageDir, _root, 0, new FakeProcessRunner(),
+                new BuildLog(), CancellationToken.None);
+        }
+        finally {
+            security = inaccessibleDirectory.GetAccessControl();
+            security.RemoveAccessRule(rule);
+            inaccessibleDirectory.SetAccessControl(security);
+        }
+        var loaded = LayerEvidence.LoadManifest(manifest);
+
+        await Assert.That(loaded.ContainsKey("readable.txt")).IsTrue();
+        await Assert.That(loaded.ContainsKey("inaccessible")).IsFalse();
     }
 
     public void Dispose() {

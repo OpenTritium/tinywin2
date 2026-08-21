@@ -30,17 +30,17 @@ public static partial class LayerEvidence {
         CancellationToken ct) {
         var snapshotsRoot = SnapshotsRoot(workDirectory);
         Directory.CreateDirectory(snapshotsRoot);
-        await CaptureFileManifestAsync(mountPath, ManifestPathFor(snapshotsRoot, index), ct);
+        await CaptureFileManifestAsync(mountPath, ManifestPathFor(snapshotsRoot, index), log, ct);
         await CaptureRegistryAsync(mountPath, RegistryPathFor(snapshotsRoot, index), runner, log, ct);
         log.Debug($"captured layer {index:000} evidence snapshots", layerIndex: index);
     }
 
     /// <summary>Jump-safe full-tree manifest: size \t mtimeUtc \t relativePath.</summary>
-    private static async Task CaptureFileManifestAsync(string mountPath, string outputFile, CancellationToken ct) {
+    private static async Task CaptureFileManifestAsync(string mountPath, string outputFile, BuildLog log, CancellationToken ct) {
         var builder = new StringBuilder(1 << 20);
         Enumerate(mountPath.TrimEnd('\\') + "\\", "", (size, writeUtc, relative) => {
             builder.Append(size).Append('\t').Append(writeUtc.Ticks).Append('\t').Append(relative).Append('\n');
-        }, ct);
+        }, log, ct);
         await File.WriteAllTextAsync(outputFile, builder.ToString(), ct);
     }
 
@@ -116,28 +116,45 @@ public static partial class LayerEvidence {
     }
 
     /// <summary>Jump-safe enumeration (reparse points recorded, never followed).</summary>
-    private static void Enumerate(string directory, string prefix, Action<long, DateTime, string> emit, CancellationToken ct) {
+    private static void Enumerate(string directory, string prefix, Action<long, DateTime, string> emit, BuildLog log, CancellationToken ct) {
         ct.ThrowIfCancellationRequested();
-        foreach (var entry in Directory.EnumerateFileSystemEntries(directory)) {
-            var name = Path.GetFileName(entry);
-            var relative = prefix.Length == 0 ? name : $"{prefix}\\{name}";
-            var attributes = File.GetAttributes(entry);
-            if ((attributes & FileAttributes.ReparsePoint) != 0) {
-                emit(0, DateTime.MinValue, relative);
-                continue;
-            }
-            if ((attributes & FileAttributes.Directory) != 0) {
-                Enumerate(entry, relative, emit, ct);
-            }
-            else {
-                // Skip offline-hive transaction leftovers (reg load/unload): they are
-                // build-machinery noise, not image content, and differ per layer otherwise.
-                if (HiveTransactionNoise().IsMatch(name)) {
-                    continue;
+        try {
+            foreach (var entry in Directory.EnumerateFileSystemEntries(directory)) {
+                ct.ThrowIfCancellationRequested();
+                try {
+                    var name = Path.GetFileName(entry);
+                    var relative = prefix.Length == 0 ? name : $"{prefix}\\{name}";
+                    var attributes = File.GetAttributes(entry);
+                    if ((attributes & FileAttributes.ReparsePoint) != 0) {
+                        emit(0, DateTime.MinValue, relative);
+                        continue;
+                    }
+                    if ((attributes & FileAttributes.Directory) != 0) {
+                        Enumerate(entry, relative, emit, log, ct);
+                    }
+                    else {
+                        // Skip offline-hive transaction leftovers (reg load/unload): they are
+                        // build-machinery noise, not image content, and differ per layer otherwise.
+                        if (HiveTransactionNoise().IsMatch(name)) {
+                            continue;
+                        }
+                        var info = new FileInfo(entry);
+                        emit(info.Length, info.LastWriteTimeUtc, relative);
+                    }
                 }
-                var info = new FileInfo(entry);
-                emit(info.Length, info.LastWriteTimeUtc, relative);
+                catch (UnauthorizedAccessException ex) {
+                    log.Warn($"skipping inaccessible evidence path '{entry}': {ex.Message}");
+                }
+                catch (IOException ex) {
+                    log.Warn($"skipping unreadable evidence path '{entry}': {ex.Message}");
+                }
             }
+        }
+        catch (UnauthorizedAccessException ex) {
+            log.Warn($"skipping inaccessible evidence directory '{directory}': {ex.Message}");
+        }
+        catch (IOException ex) {
+            log.Warn($"skipping unreadable evidence directory '{directory}': {ex.Message}");
         }
     }
 
