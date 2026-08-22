@@ -9,7 +9,7 @@ using TinyWin2.Core.Plans;
 namespace TinyWin2.Core.Pipeline;
 
 public sealed record PreviewOptions {
-    public required string SourcePath { get; init; }
+    public required string InputPath { get; init; }
     public required int ImageIndex { get; init; }
     public required IReadOnlyList<PlanSelection> Selections { get; init; }
     public required string WorkDirectory { get; init; }
@@ -44,12 +44,17 @@ public sealed class PreviewRunner(
     ILayerBackend layerBackend,
     BuildLog log) {
     public async Task<IReadOnlyList<PlanPreview>> RunAsync(PreviewOptions options, CancellationToken ct) {
+        if (options.ImageIndex < 1) {
+            throw new ArgumentOutOfRangeException(nameof(options.ImageIndex), options.ImageIndex,
+                "image index must be greater than zero.");
+        }
+
         var plan = BuildPlanResolver.Resolve(options.Catalog, options.Selections);
         executers.ValidateBuildPlan(plan);
         log.Phase = BuildPhases.Preview;
         log.Info($"preview: {plan.PlanIds.Count} plans resolved into {plan.Steps.Count} steps");
         var resolver = new SourceImageResolver(runner, log);
-        var source = await resolver.ResolveAsync(options.SourcePath, ct);
+        var source = await resolver.ResolveAsync(options.InputPath, ct);
         var previewCompleted = false;
         try {
             Directory.CreateDirectory(options.WorkDirectory);
@@ -59,7 +64,7 @@ public sealed class PreviewRunner(
             await stack.EnsureBaseAsync(options.BaseVhdxMaximumMb, "TinyWin2-preview", ct);
             if (!stack.BaseReady) {
                 var stagingWim = Path.Combine(options.WorkDirectory, "install.source.wim");
-                await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, true, ct);
+                await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, WimCompression.Fast, false, ct);
                 log.Info("applying source image into the preview base layer");
                 await stack.ApplyImageToBaseAsync(async (mount, token) => {
                     await runner.RunAsync("dism.exe",

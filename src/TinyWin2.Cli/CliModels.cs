@@ -8,9 +8,11 @@ internal sealed record SelectionRequest(
     IReadOnlyList<string> Plans,
     IReadOnlyList<string> Sets);
 
-internal sealed record DoctorRequest(string? OutputDirectory, bool Json);
+internal sealed record DoctorRequest(string Workspace, bool Json);
 
-internal sealed record InspectRequest(string Source, bool Json);
+internal sealed record InspectRequest(string Input, bool Json);
+
+internal sealed record ValidateRequest(string Input, string Kind, bool Json);
 
 internal sealed record PlanListRequest(string? PlansDirectory, string? Category, bool Json);
 
@@ -30,29 +32,31 @@ internal sealed record ProfileValidateRequest(
     string? PlansDirectory);
 
 internal sealed record BuildRequest(
-    string Source,
+    string Input,
     int ImageIndex,
     SelectionRequest Selection,
-    string OutputDirectory,
+    string Output,
+    string Workspace,
     OutputFormat Format,
-    bool CreateIso,
     bool Fast,
+    string? Compression,
+    bool Verify,
+    bool NoVerify,
+    bool CheckIntegrity,
     bool ContinueOnError,
-    bool KeepLayers,
     bool DryRun,
     bool SingleLayer,
     bool SkipEvidence,
-    string? ResumeWorkspace,
-    bool ResumeLatest,
-    string? OscdimgPath,
+    bool Resume,
+    bool Overwrite,
     long BaseVhdxMaximumMb,
     bool JsonEvents);
 
 internal sealed record PreviewRequest(
-    string Source,
+    string Input,
     int ImageIndex,
     SelectionRequest Selection,
-    string OutputDirectory,
+    string Workspace,
     long BaseVhdxMaximumMb,
     bool Json);
 
@@ -70,9 +74,21 @@ internal sealed record LayerExtractRequest(
     string ImagePath,
     string Destination);
 
+internal sealed record PackageIsoRequest(
+    string Input,
+    string Image,
+    string Output,
+    string Workspace,
+    string Oscdimg,
+    bool Overwrite);
+
 internal sealed record LayerRollbackRequest(
     string Workspace,
     int Layer,
     string Output,
     OutputFormat Format,
-    bool Fast);
+    bool Fast,
+    string? Compression,
+    bool Verify,
+    bool NoVerify,
+    bool CheckIntegrity);

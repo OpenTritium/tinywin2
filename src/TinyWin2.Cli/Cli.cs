@@ -108,6 +108,39 @@ internal static class Cli {
             _ => throw new ArgumentException($"unknown capture format '{value}' (wim|esd)")
         };
 
+    public static ImageExportOptions ResolveExportOptions(bool fast, string? compression, bool verify,
+        bool noVerify, bool checkIntegrity) {
+        if (verify && noVerify) {
+            throw new ArgumentException("--verify and --no-verify cannot be used together.");
+        }
+
+        var options = new ImageExportOptions {
+            Compression = fast ? WimCompression.Fast : WimCompression.Max,
+            VerifyCapture = !fast,
+            CheckIntegrity = checkIntegrity
+        };
+        if (compression is not null) {
+            options = options with { Compression = ParseWimCompression(compression) };
+        }
+
+        if (verify) {
+            options = options with { VerifyCapture = true };
+        }
+        else if (noVerify) {
+            options = options with { VerifyCapture = false };
+        }
+
+        return options;
+    }
+
+    public static WimCompression ParseWimCompression(string value) =>
+        value.ToLowerInvariant() switch {
+            "none" => WimCompression.None,
+            "fast" => WimCompression.Fast,
+            "max" => WimCompression.Max,
+            _ => throw new ArgumentException($"unknown WIM compression '{value}' (none|fast|max)")
+        };
+
     public static string Truncate(string value, int width) =>
         value.Length <= width ? value : value[..(width - 1)] + "…";
 

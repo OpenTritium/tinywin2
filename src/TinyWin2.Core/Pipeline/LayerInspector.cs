@@ -234,7 +234,7 @@ public sealed partial class LayerInspector(
         int layerIndex,
         string destinationPath,
         OutputFormat format,
-        bool fast,
+        ImageExportOptions export,
         CancellationToken ct) {
         if (format == OutputFormat.Vhdx) {
             throw new ArgumentException("layer rollback capture supports only WIM or ESD output.", nameof(format));
@@ -251,9 +251,9 @@ public sealed partial class LayerInspector(
                 var intermediate = Path.Combine(Path.GetTempPath(), $"tinywin2-rollback-{Guid.NewGuid():N}.wim");
                 try {
                     // uncompressed staging: the recovery export re-encodes anyway
-                    await builder.CaptureAsync($"{letter}:\\", intermediate, name, null,
-                        "none", false, ct);
-                    await builder.ExportEsdAsync(intermediate, destinationPath, ct);
+                    await builder.CaptureWimAsync($"{letter}:\\", intermediate, name, null,
+                        WimCompression.None, false, export.CheckIntegrity, ct);
+                    await builder.ExportEsdAsync(intermediate, destinationPath, export.CheckIntegrity, ct);
                 }
                 finally {
                     try {
@@ -265,7 +265,8 @@ public sealed partial class LayerInspector(
                 }
             }
             else {
-                await builder.CaptureAsync($"{letter}:\\", destinationPath, name, null, OutputFormat.Wim, fast, ct);
+                await builder.CaptureWimAsync($"{letter}:\\", destinationPath, name, null,
+                    export.Compression, export.VerifyCapture, export.CheckIntegrity, ct);
             }
 
             operationSucceeded = true;

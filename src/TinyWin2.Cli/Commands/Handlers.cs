@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using TinyWin2.Core;
 using TinyWin2.Core.Layers;
 using TinyWin2.Core.Logging;
+using TinyWin2.Core.Native;
 using TinyWin2.Core.Pipeline;
 using TinyWin2.Core.Plans;
 
@@ -13,9 +14,10 @@ internal static class BuildHandler {
             throw new ArgumentException("base VHDX size must be positive");
         }
 
-        var sourcePath = request.Source;
+        var inputPath = Path.GetFullPath(request.Input);
         var imageIndex = request.ImageIndex;
-        var outputRoot = Path.GetFullPath(request.OutputDirectory);
+        var outputPath = Path.GetFullPath(request.Output);
+        var workspacePath = Path.GetFullPath(request.Workspace);
         var plansDir = Cli.FindPlansDirectory(request.Selection.PlansDirectory);
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var selections = Cli.BuildSelections(request.Selection, catalog);
@@ -26,12 +28,7 @@ internal static class BuildHandler {
             _ = log.Attach(evt => Console.Out.WriteLine(evt.ToJson().ToCompactString()));
         }
 
-        if (request.ResumeLatest && request.ResumeWorkspace is not null) {
-            throw new ArgumentException("choose either --resume or --resume-workspace");
-        }
-
-        var resume = FindResumeWorkspace(request.ResumeWorkspace, request.ResumeLatest, outputRoot);
-        var logDirectory = Path.Combine(outputRoot, "logs");
+        var logDirectory = Path.Combine(workspacePath, "logs");
         Directory.CreateDirectory(logDirectory);
         var logFilePath = Path.Combine(logDirectory,
             $"tinywin2-{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfff}-{Guid.NewGuid():N}.log");
@@ -43,21 +40,22 @@ internal static class BuildHandler {
         Console.CancelKeyPress += OnCancel;
         try {
             var result = await engine.BuildAsync(new() {
-                SourcePath = sourcePath,
+                InputPath = inputPath,
                 ImageIndex = imageIndex,
                 Selections = selections,
-                OutputRoot = outputRoot,
+                OutputPath = outputPath,
+                WorkspacePath = workspacePath,
                 Catalog = catalog,
                 OutputFormat = request.Format,
-                CreateIso = request.CreateIso,
-                Fast = request.Fast,
+                SkipLayerHealthCheck = request.Fast,
+                Export = Cli.ResolveExportOptions(request.Fast, request.Compression, request.Verify,
+                    request.NoVerify, request.CheckIntegrity),
                 ContinueOnError = request.ContinueOnError,
                 NoLayers = request.SingleLayer,
-                KeepLayers = request.KeepLayers,
                 DryRun = request.DryRun,
                 CaptureEvidence = !request.SkipEvidence,
-                ResumeWorkspace = resume,
-                OscdimgPath = request.OscdimgPath,
+                Resume = request.Resume,
+                OverwriteOutput = request.Overwrite,
                 PlansDirectory = plansDir,
                 BaseVhdxMaximumMb = request.BaseVhdxMaximumMb
             }, cts.Token);
@@ -71,10 +69,8 @@ internal static class BuildHandler {
                     ["data"] = new JsonObject {
                         ["succeeded"] = result.Succeeded,
                         ["outputFormat"] = result.OutputFormat.ToString().ToLowerInvariant(),
-                        ["createIso"] = request.CreateIso,
-                        ["mediaPath"] = result.MediaPath,
+                        ["workspacePath"] = workspacePath,
                         ["outputPath"] = result.OutputPath,
-                        ["isoPath"] = result.IsoPath,
                         ["manifestPath"] = result.ManifestPath,
                         ["layerCount"] = result.LayerCount,
                         ["failedStepId"] = result.FailedStepId
@@ -85,28 +81,22 @@ internal static class BuildHandler {
                 Console.WriteLine();
                 Console.WriteLine($"✔ build {result.BuildId} complete");
                 Console.WriteLine($"  format:    {result.OutputFormat.ToString().ToLowerInvariant()}");
-                if (result.MediaPath is not null) {
-                    Console.WriteLine($"  media:     {result.MediaPath}");
-                }
-
-                if (result.IsoPath is not null) {
-                    Console.WriteLine($"  ISO:       {result.IsoPath}");
-                }
-
                 Console.WriteLine($"  output:    {result.OutputPath}");
                 Console.WriteLine($"  manifest:  {result.ManifestPath}");
+                Console.WriteLine($"  workspace: {workspacePath}");
                 Console.WriteLine($"  日志:      {logFilePath}");
                 Console.WriteLine($"  layers:    {result.LayerCount}");
             }
 
-            return 0;
+            return result.Succeeded ? 0 : 1;
         }
         catch (BuildStepFailedException ex) {
             if (!jsonEvents) {
                 await Console.Error.WriteLineAsync(
                     $"✘ step '{ex.StepId}' failed at layer {ex.LayerIndex:000}; the layer was discarded and the workspace kept.");
                 await Console.Error.WriteLineAsync(
-                    $"  post-mortem: tinywin2 layer diff <workspace> {Math.Max(0, ex.LayerIndex - 1)} {ex.LayerIndex}");
+                    $"  post-mortem: tinywin2 layer diff --workspace \"{request.Workspace}\" " +
+                    $"--from {Math.Max(0, ex.LayerIndex - 1)} --to {ex.LayerIndex}");
                 await Console.Error.WriteLineAsync(
                     $"  retry without the offender, e.g. add: --plan ... minus {ex.StepId}");
             }
@@ -135,30 +125,6 @@ internal static class BuildHandler {
         }
     }
 
-    /// <summary>--resume: reuse the newest workspace whose layer chain survived (--keep-layers), or an explicit path.</summary>
-    private static string? FindResumeWorkspace(string? explicitPath, bool latest, string outputRoot) {
-        if (!latest && explicitPath is null) {
-            return null;
-        }
-
-        if (explicitPath is not null) {
-            if (File.Exists(Path.Combine(explicitPath, "layers.json"))) {
-                return Path.GetFullPath(explicitPath);
-            }
-
-            throw new DirectoryNotFoundException($"workspace '{explicitPath}' is not resumable");
-        }
-
-        var workRoot = Path.Combine(outputRoot, "work");
-        var candidate = new DirectoryInfo(workRoot)
-            .GetDirectories()
-            .Where(d => File.Exists(Path.Combine(d.FullName, "layers.json")))
-            .OrderByDescending(d => d.CreationTimeUtc)
-            .FirstOrDefault();
-        return candidate?.FullName
-               ?? throw new DirectoryNotFoundException(
-                   $"no resumable workspace under '{workRoot}' (builds must keep layers: add --keep-layers, or pass --resume-workspace <workspace>)");
-    }
 }
 
 internal static class PreviewHandler {
@@ -167,7 +133,7 @@ internal static class PreviewHandler {
             throw new ArgumentException("base VHDX size must be positive");
         }
 
-        var sourcePath = request.Source;
+        var inputPath = Path.GetFullPath(request.Input);
         var imageIndex = request.ImageIndex;
         var plansDir = Cli.FindPlansDirectory(request.Selection.PlansDirectory);
         var catalog = PlanCatalog.LoadDirectory(plansDir);
@@ -176,7 +142,7 @@ internal static class PreviewHandler {
         var log = new BuildLog();
         var (runner, executers, layers) = Cli.CreateEngineParts();
         var previewer = new PreviewRunner(runner, executers, layers, log);
-        var workDirectory = Path.Combine(Path.GetFullPath(request.OutputDirectory), "work", "preview");
+        var workDirectory = Path.GetFullPath(request.Workspace);
         var previewLogDirectory = Path.Combine(Path.GetDirectoryName(workDirectory)!, "logs");
         Directory.CreateDirectory(previewLogDirectory);
         using var previewSerilog = log.UseSerilog(
@@ -195,7 +161,7 @@ internal static class PreviewHandler {
         Console.CancelKeyPress += onCancel;
         try {
             var previews = await previewer.RunAsync(new() {
-                SourcePath = sourcePath,
+                InputPath = inputPath,
                 ImageIndex = imageIndex,
                 Selections = selections,
                 WorkDirectory = workDirectory,
@@ -232,12 +198,113 @@ internal static class PreviewHandler {
         }
         finally {
             Console.CancelKeyPress -= onCancel;
-            try {
-                Directory.Delete(workDirectory, true);
+            // The preview workspace is explicit and remains available for inspection.
+        }
+    }
+}
+
+internal static class ValidateHandler {
+    public static async Task<int> ExecuteAsync(ValidateRequest request) {
+        var input = Path.GetFullPath(request.Input);
+        var kind = request.Kind.ToLowerInvariant() switch {
+            "image" => SourceInputKind.Image,
+            "media" => SourceInputKind.Media,
+            "iso" => SourceInputKind.Iso,
+            _ => throw new ArgumentException("validation kind must be image, media, or iso", nameof(request.Kind))
+        };
+        var resolver = new SourceImageResolver(new ProcessRunner(), new());
+        var source = await resolver.ResolveAsync(input, CancellationToken.None);
+        try {
+            if (source.Kind != kind) {
+                throw new ArgumentException(
+                    $"input '{input}' is {source.Kind.ToString().ToLowerInvariant()}, not {request.Kind}");
             }
-            catch {
-                /* the preview base layer may be worth keeping; ignore */
+
+            if (kind != SourceInputKind.Image) {
+                OutputBuilder.ValidateBootMedia(source.MediaRootPath!);
             }
+
+            var indexes = await resolver.GetIndexesAsync(source.InstallImagePath, CancellationToken.None);
+            if (request.Json) {
+                Console.WriteLine(new JsonObject {
+                    ["input"] = input,
+                    ["kind"] = request.Kind,
+                    ["installImage"] = source.InstallImagePath,
+                    ["bootable"] = kind != SourceInputKind.Image,
+                    ["indexes"] = new JsonArray(indexes.Select(index => (JsonNode)new JsonObject {
+                        ["index"] = index.Index,
+                        ["name"] = index.Name,
+                        ["editionId"] = index.EditionId,
+                        ["version"] = index.Version
+                    }).ToArray())
+                }.ToJsonString(Cli.JsonSerializerOptions));
+            }
+            else {
+                Console.WriteLine(
+                    $"valid {request.Kind}: {indexes.Count} index(es), install image {source.InstallImagePath}");
+            }
+
+            return 0;
+        }
+        finally {
+            await resolver.DismountIsoAsync(source, CancellationToken.None);
+        }
+    }
+}
+
+internal static class PackageHandler {
+    public static async Task<int> CreateIsoAsync(PackageIsoRequest request) {
+        var input = Path.GetFullPath(request.Input);
+        var image = Path.GetFullPath(request.Image);
+        var output = Path.GetFullPath(request.Output);
+        var workspace = Path.GetFullPath(request.Workspace);
+        var oscdimg = Path.GetFullPath(request.Oscdimg);
+        if (!File.Exists(image) || new FileInfo(image).Length == 0) {
+            throw new FileNotFoundException($"built image is missing or empty: '{image}'.");
+        }
+
+        var format = image.EndsWith(".wim", StringComparison.OrdinalIgnoreCase)
+            ? OutputFormat.Wim
+            : image.EndsWith(".esd", StringComparison.OrdinalIgnoreCase)
+                ? OutputFormat.Esd
+                : throw new ArgumentException("--image must be a .wim or .esd file", nameof(request.Image));
+        if (!output.EndsWith(".iso", StringComparison.OrdinalIgnoreCase)) {
+            throw new ArgumentException("--output must end with .iso", nameof(request.Output));
+        }
+
+        if (File.Exists(output) && !request.Overwrite) {
+            throw new IOException($"ISO already exists: '{output}' (pass --overwrite to replace it).");
+        }
+
+        if (!File.Exists(oscdimg)) {
+            throw new FileNotFoundException($"oscdimg.exe not found: '{oscdimg}'.");
+        }
+
+        if (Directory.Exists(workspace) && Directory.EnumerateFileSystemEntries(workspace).Any()) {
+            throw new IOException($"package workspace '{workspace}' is not empty; choose a new directory.");
+        }
+
+        var resolver = new SourceImageResolver(new ProcessRunner(), new());
+        var source = await resolver.ResolveAsync(input, CancellationToken.None);
+        try {
+            if (!source.HasMediaTree) {
+                throw new ArgumentException("--input for package iso must be an ISO or media directory.",
+                    nameof(request.Input));
+            }
+
+            Directory.CreateDirectory(workspace);
+            var media = Path.Combine(workspace, "media");
+            var builder = new OutputBuilder(new ProcessRunner(), new());
+            await builder.StageMediaAsync(source.MediaRootPath!, media, image, format, request.Overwrite,
+                CancellationToken.None);
+            Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+            await builder.CreateIsoAsync(media, output, oscdimg, CancellationToken.None);
+            Console.WriteLine($"ISO: {output}");
+            Console.WriteLine($"media workspace: {workspace}");
+            return 0;
+        }
+        finally {
+            await resolver.DismountIsoAsync(source, CancellationToken.None);
         }
     }
 }
@@ -302,7 +369,10 @@ internal static class LayerHandler {
         var (runner, _, layers) = Cli.CreateEngineParts();
         var inspector = new LayerInspector(runner, layers, log);
         var captured = await inspector.RollbackCaptureAsync(request.Workspace, request.Layer, request.Output,
-            request.Format, request.Fast, CancellationToken.None);
+            request.Format,
+            Cli.ResolveExportOptions(request.Fast, request.Compression, request.Verify, request.NoVerify,
+                request.CheckIntegrity),
+            CancellationToken.None);
         Console.WriteLine($"captured layer state → {captured}");
         return 0;
     }

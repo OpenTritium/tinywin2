@@ -16,13 +16,13 @@ public sealed partial class SourcePage {
 
     private WizardState State => WizardState.Current;
 
-    private void PickIso(object sender, RoutedEventArgs e) => _ = PickIsoAsync();
+    private void PickInput(object sender, RoutedEventArgs e) => _ = PickInputAsync();
 
-    private async Task PickIsoAsync() {
+    private async Task PickInputAsync() {
         try {
             var picker = new FileOpenPicker {
                 SuggestedStartLocation = PickerLocationId.ComputerFolder,
-                FileTypeFilter = { ".iso" }
+                FileTypeFilter = { ".iso", ".wim", ".esd" }
             };
             InitializeWithWindow.Initialize(
                 picker,
@@ -110,7 +110,7 @@ public sealed partial class SourcePage {
         JsonObject? parsed = null;
         var lines = new List<string>();
         var exit = await new CliRunner().RunAsync(
-            ["inspect", source, "--json"],
+            ["inspect", "--input", source, "--json"],
             _ => { },
             lines.Add,
             _ => { },
@@ -137,22 +137,35 @@ public sealed partial class SourcePage {
     private void OutputFormatSelected(object sender, SelectionChangedEventArgs e) {
         if (OutputFormatCombo.SelectedItem is ComboBoxItem { Tag: string format }) {
             State.OutputFormat = format;
-            var isVhdx = string.Equals(format, "vhdx", StringComparison.OrdinalIgnoreCase);
-            IsoToggle.IsEnabled = !isVhdx;
-            if (isVhdx) {
-                State.CreateIso = false;
-                IsoToggle.IsOn = false;
-            }
+            UpdateNextEnabled();
         }
     }
 
-    private void IsoToggled(object sender, RoutedEventArgs e) => State.CreateIso = IsoToggle.IsOn;
-
     private void FastToggled(object sender, RoutedEventArgs e) => State.Fast = FastToggle.IsOn;
 
-    private void OutputChanged(object sender, TextChangedEventArgs e) => State.OutputRoot = OutputBox.Text.Trim();
+    private void OutputChanged(object sender, TextChangedEventArgs e) {
+        State.OutputPath = OutputBox.Text.Trim();
+        UpdateNextEnabled();
+    }
 
-    private void UpdateNextEnabled() => NextButton.IsEnabled = State.SelectedIndex is not null;
+    private void WorkspaceChanged(object sender, TextChangedEventArgs e) {
+        State.WorkspacePath = WorkspaceBox.Text.Trim();
+        UpdateNextEnabled();
+    }
+
+    private void UpdateNextEnabled() {
+        var expectedExtension = "." + State.OutputFormat;
+        NextButton.IsEnabled = State.SelectedIndex is not null
+                               && State.OutputPath.Length > 0
+                               && State.WorkspacePath.Length > 0
+                               && string.Equals(Path.GetExtension(State.OutputPath), expectedExtension,
+                                   StringComparison.OrdinalIgnoreCase);
+        if (State.OutputPath.Length > 0
+            && !string.Equals(Path.GetExtension(State.OutputPath), expectedExtension,
+                StringComparison.OrdinalIgnoreCase)) {
+            HintText.Text = $"输出文件必须使用 {expectedExtension} 扩展名";
+        }
+    }
 
     private void GoNext(object sender, RoutedEventArgs e) => ((MainWindow)App.MainAppWindow!).GoTo(2);
 }

@@ -22,8 +22,8 @@ public sealed class OutputBuilderTests : IDisposable {
     }
 
     [Test]
-    public async Task CaptureBuildsDismArgumentsPerFormatAndSpeed() {
-        await _builder.CaptureAsync("M:\\", "out.wim", "name", "desc", OutputFormat.Wim, true,
+    public async Task CaptureBuildsDismArgumentsForExplicitCompressionAndVerification() {
+        await _builder.CaptureWimAsync("M:\\", "out.wim", "name", "desc", WimCompression.Fast, false, false,
             CancellationToken.None);
         var args = string.Join(' ', _runner.ArgsOf(0));
         await Assert.That(args).Contains("/Capture-Image");
@@ -33,17 +33,18 @@ public sealed class OutputBuilderTests : IDisposable {
         await Assert.That(args).Contains("/Compress:fast");
         await Assert.That(args.Contains("/Verify")).IsFalse();
 
-        await _builder.CaptureAsync("M:\\", "out.esd", "name", null, OutputFormat.Esd, false,
+        await _builder.CaptureWimAsync("M:\\", "out.wim", "name", null, WimCompression.Max, true, true,
             CancellationToken.None);
-        var esdArgs = string.Join(' ', _runner.ArgsOf(1));
-        await Assert.That(esdArgs).Contains("/Compress:recovery");
-        await Assert.That(esdArgs).Contains("/Verify");
-        await Assert.That(esdArgs.Contains("/Description")).IsFalse();
+        var checkedArgs = string.Join(' ', _runner.ArgsOf(1));
+        await Assert.That(checkedArgs).Contains("/Compress:max");
+        await Assert.That(checkedArgs).Contains("/Verify");
+        await Assert.That(checkedArgs).Contains("/CheckIntegrity");
+        await Assert.That(checkedArgs.Contains("/Description")).IsFalse();
     }
 
     [Test]
     public async Task UncompressedStagingCaptureSkipsCompressionAndVerify() {
-        await _builder.CaptureAsync("M:\\", "staging.wim", "name", null, "none", false,
+        await _builder.CaptureWimAsync("M:\\", "staging.wim", "name", null, WimCompression.None, false, false,
             CancellationToken.None);
         var args = string.Join(' ', _runner.ArgsOf(0));
         await Assert.That(args).Contains("/Compress:none");
@@ -51,38 +52,44 @@ public sealed class OutputBuilderTests : IDisposable {
     }
 
     [Test]
-    public void VhdxCannotBeCapturedAsAnInstallImage() {
-        Assert.Throws<ArgumentException>(() => _builder.CaptureAsync(
-            "M:\\", "out.vhdx", "name", null, OutputFormat.Vhdx, true, CancellationToken.None));
+    public async Task EsdExportUsesRecoveryCompressionOnlyAtTheFinalStep() {
+        await _builder.ExportEsdAsync("intermediate.wim", "out.esd", true, CancellationToken.None);
+        var args = string.Join(' ', _runner.ArgsOf(0));
+        await Assert.That(args).Contains("/Export-Image");
+        await Assert.That(args).Contains("/Compress:recovery");
+        await Assert.That(args).Contains("/CheckIntegrity");
+        await Assert.That(args.Contains("/Verify")).IsFalse();
     }
 
     [Test]
     public async Task VhdxCannotRebuildInstallationMedia() {
-        var ex = Assert.Throws<ArgumentException>(() => _builder.RebuildMediaAsync(
-                _root, Path.Combine(_root, "out"), "captured.vhdx", OutputFormat.Vhdx, CancellationToken.None)
+        var ex = Assert.Throws<ArgumentException>(() => _builder.StageMediaAsync(
+                _root, Path.Combine(_root, "out"), "captured.vhdx", OutputFormat.Vhdx, false,
+                CancellationToken.None)
             .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("VHDX");
         await Assert.That(_runner.Calls.Count).IsEqualTo(0);
     }
 
     [Test]
-    public async Task RebuildMediaToleratesRobocopySuccessCodesOnlyBelowEight() {
+    public async Task StageMediaToleratesRobocopySuccessCodesOnlyBelowEight() {
         var source = CreateMediaSource();
         var captured = Path.Combine(_root, "captured.wim");
         await File.WriteAllTextAsync(captured, "payload");
         _runner.Handler = (_, _) => FakeProcessRunner.Fail(1);
-        await _builder.RebuildMediaAsync(source, Path.Combine(_root, "out"), captured, OutputFormat.Wim,
+        await _builder.StageMediaAsync(source, Path.Combine(_root, "out"), captured, OutputFormat.Wim, false,
             CancellationToken.None);
 
         _runner.Handler = (_, _) => FakeProcessRunner.Fail(8);
-        var ex = Assert.Throws<IOException>(() => _builder.RebuildMediaAsync(
-                source, Path.Combine(_root, "out2"), "captured.wim", OutputFormat.Wim, CancellationToken.None)
+        var ex = Assert.Throws<IOException>(() => _builder.StageMediaAsync(
+                source, Path.Combine(_root, "out2"), "captured.wim", OutputFormat.Wim, false,
+                CancellationToken.None)
             .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("robocopy failed");
     }
 
     [Test]
-    public async Task RebuildMediaReplacesStaleInstallImages() {
+    public async Task StageMediaReplacesStaleInstallImages() {
         var source = CreateMediaSource();
         var outDir = Path.Combine(_root, "out");
         var sourcesDir = Path.Combine(outDir, "sources");
@@ -92,7 +99,7 @@ public sealed class OutputBuilderTests : IDisposable {
         var captured = Path.Combine(_root, "captured.wim");
         await File.WriteAllTextAsync(captured, "payload");
 
-        var finalPath = await _builder.RebuildMediaAsync(source, outDir, captured, OutputFormat.Wim,
+        var finalPath = await _builder.StageMediaAsync(source, outDir, captured, OutputFormat.Wim, true,
             CancellationToken.None);
 
         await Assert.That(finalPath).IsEqualTo(Path.Combine(sourcesDir, "install.wim"));
@@ -100,7 +107,7 @@ public sealed class OutputBuilderTests : IDisposable {
         await Assert.That(await File.ReadAllTextAsync(finalPath)).IsEqualTo("payload");
         await Assert.That(File.Exists(Path.Combine(sourcesDir, "install.esd"))).IsFalse();
         await Assert.That(File.Exists(Path.Combine(sourcesDir, "install.staging.wim"))).IsFalse();
-        await Assert.That(File.Exists(captured)).IsFalse();
+        await Assert.That(File.Exists(captured)).IsTrue();
     }
 
     [Test]

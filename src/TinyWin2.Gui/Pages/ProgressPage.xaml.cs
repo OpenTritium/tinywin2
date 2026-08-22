@@ -48,21 +48,16 @@ public sealed partial class ProgressPage {
     private List<string> BuildArguments() {
         var arguments = new List<string> {
             "build",
-            "--source", State.SourcePath,
+            "--input", State.SourcePath,
             "--index", State.SelectedIndex!.Index.ToString(),
-            "--output-format", State.OutputFormat,
+            "--format", State.OutputFormat,
+            "--output", State.OutputPath,
+            "--workspace", State.WorkspacePath,
             "--json-events"
         };
-        if (State.OutputRoot.Length > 0) {
-            arguments.AddRange(["--output-dir", State.OutputRoot]);
-        }
 
         if (State.Fast) {
             arguments.Add("--fast");
-        }
-
-        if (State.CreateIso) {
-            arguments.Add("--iso");
         }
 
         foreach (var (planId, parameters) in State.CollectSelections()) {
@@ -92,10 +87,7 @@ public sealed partial class ProgressPage {
                     var data = evt["data"]?.AsObject();
                     State.BuildSucceeded = data?["succeeded"]?.GetValue<bool>() ?? false;
                     State.OutputFormat = data?["outputFormat"]?.GetValue<string>() ?? State.OutputFormat;
-                    State.CreateIso = data?["createIso"]?.GetValue<bool>() ?? State.CreateIso;
-                    State.MediaPath = data?["mediaPath"]?.GetValue<string>() ?? "";
                     State.OutputPath = data?["outputPath"]?.GetValue<string>() ?? "";
-                    State.IsoPath = data?["isoPath"]?.GetValue<string>();
                     State.ManifestPath = data?["manifestPath"]?.GetValue<string>() ?? "";
                     State.LayerCount = data?["layerCount"]?.GetValue<int>() ?? 0;
                     _lines.Add(new() { Timestamp = DateTimeOffset.Now, Level = "info", Message = "构建结束。" });

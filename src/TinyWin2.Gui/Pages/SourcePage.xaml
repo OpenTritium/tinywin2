@@ -10,9 +10,9 @@
 
       <TextBlock Text="选择安装源" Style="{ThemeResource SubtitleTextBlockStyle}" />
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <TextBox x:Name="SourceBox" PlaceholderText="D:\iso\server2025.iso 或媒体文件夹" Width="560"
+        <TextBox x:Name="SourceBox" PlaceholderText="ISO、媒体文件夹、install.wim 或 install.esd" Width="560"
                  KeyDown="SourceBox_KeyDown" />
-        <Button Content="浏览 ISO…" Click="PickIso" />
+        <Button Content="浏览文件…" Click="PickInput" />
         <Button Content="浏览文件夹…" Click="PickFolder" />
       </StackPanel>
       <ProgressRing x:Name="IndexSpinner" IsActive="False" Width="24" Height="24" HorizontalAlignment="Left" />
@@ -28,12 +28,14 @@
           <ComboBoxItem Content="WIM 镜像" Tag="wim" />
           <ComboBoxItem Content="VHDX 磁盘" Tag="vhdx" />
         </ComboBox>
-        <ToggleSwitch x:Name="IsoToggle" Header="打包 ISO" OffContent="不生成" OnContent="生成" IsOn="True"
-                      Toggled="IsoToggled" />
         <ToggleSwitch x:Name="FastToggle" Header="快速模式" OffContent="标准" OnContent="快速" Toggled="FastToggled" />
       </StackPanel>
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <TextBox x:Name="OutputBox" PlaceholderText="输出目录（默认 .\out）" Width="560" TextChanged="OutputChanged" />
+        <TextBox x:Name="OutputBox" PlaceholderText="输出文件（例如 D:\out\tinywin.esd）" Width="560" TextChanged="OutputChanged" />
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBox x:Name="WorkspaceBox" PlaceholderText="工作目录（用于层链、日志和清单）" Width="560"
+                 TextChanged="WorkspaceChanged" />
       </StackPanel>
 
       <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,16,0,0">

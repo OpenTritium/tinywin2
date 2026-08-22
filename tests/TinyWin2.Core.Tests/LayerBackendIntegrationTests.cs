@@ -86,7 +86,8 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         var runner = new ProcessRunner();
         var executers = new ExecuterRegistry(runner);
         var backend = new DiskPartVhdBackend(runner);
-        var outputRoot = Path.Combine(_root, "out");
+        var outputPath = Path.Combine(_root, "out", "image.wim");
+        var workspacePath = Path.Combine(_root, "work");
         var plansDir = Path.Combine(_root, "plans");
         Directory.CreateDirectory(plansDir);
         WriteRegistryProbePlan(plansDir);
@@ -95,13 +96,14 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         using var logSink = log.UseSerilog(Path.Combine(_root, "it-mini.log"));
         var engine = new BuildEngine(runner, executers, backend, log);
         var result = await engine.BuildAsync(new() {
-            SourcePath = sourcePath,
+            InputPath = sourcePath,
             ImageIndex = 1,
             Selections = [new("it.registry-probe")],
-            OutputRoot = outputRoot,
+            OutputPath = outputPath,
+            WorkspacePath = workspacePath,
             Catalog = catalog,
             OutputFormat = OutputFormat.Wim,
-            Fast = true, // skip the per-layer dism health check to keep the run light
+            SkipLayerHealthCheck = true, // skip the per-layer dism health check to keep the run light
             PlansDirectory = plansDir,
             BaseVhdxMaximumMb = 8_192
         }, CancellationToken.None);
@@ -117,7 +119,8 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         var runner = new ProcessRunner();
         var executers = new ExecuterRegistry(runner);
         var backend = new DiskPartVhdBackend(runner);
-        var outputRoot = Path.Combine(_root, "out-continue");
+        var outputPath = Path.Combine(_root, "out-continue", "image.wim");
+        var workspacePath = Path.Combine(_root, "work-continue");
         var plansDir = Path.Combine(_root, "plans-continue");
         Directory.CreateDirectory(plansDir);
         WriteRegistryProbePlan(plansDir);
@@ -141,20 +144,21 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         using var logSink = log.UseSerilog(Path.Combine(_root, "it-continue.log"));
         var engine = new BuildEngine(runner, executers, backend, log);
         var result = await engine.BuildAsync(new() {
-            SourcePath = sourcePath,
+            InputPath = sourcePath,
             ImageIndex = 1,
             Selections = [new("it.registry-probe"), new("it.registry-boom")],
-            OutputRoot = outputRoot,
+            OutputPath = outputPath,
+            WorkspacePath = workspacePath,
             Catalog = catalog,
             OutputFormat = OutputFormat.Wim,
-            Fast = true,
+            SkipLayerHealthCheck = true,
             ContinueOnError = true,
             PlansDirectory = plansDir,
             BaseVhdxMaximumMb = 8_192
         }, CancellationToken.None);
 
-        // The build completes; only the healthy step's layer survives in the chain.
-        await Assert.That(result.Succeeded).IsTrue();
+        // The build returns an artifact for inspection, but it is incomplete and must fail the command.
+        await Assert.That(result.Succeeded).IsFalse();
         await Assert.That(result.FailedStepId).IsEqualTo("it.registry-boom");
         await Assert.That(result.LayerCount).IsEqualTo(2); // base + the one surviving step layer (boom discarded)
         await Assert.That(File.Exists(result.ManifestPath)).IsTrue();
@@ -196,7 +200,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         using var logSink = log.UseSerilog(Path.Combine(_root, "it-preview.log"));
         var previewer = new PreviewRunner(runner, executers, backend, log);
         var previews = await previewer.RunAsync(new() {
-            SourcePath = sourcePath,
+            InputPath = sourcePath,
             ImageIndex = 1,
             Selections = [
                 new("it.registry-probe"),

@@ -7,17 +7,18 @@ namespace TinyWin2.Cli.Commands;
 
 internal static class InspectHandler {
     public static async Task<int> ExecuteAsync(InspectRequest request) {
-        var source = request.Source;
+        var input = request.Input;
         var log = new BuildLog();
         var resolver = new SourceImageResolver(new ProcessRunner(), log);
-        var media = await resolver.ResolveAsync(source, CancellationToken.None);
+        var source = await resolver.ResolveAsync(input, CancellationToken.None);
         try {
-            var indexes = await resolver.GetIndexesAsync(media.InstallImagePath, CancellationToken.None);
+            var indexes = await resolver.GetIndexesAsync(source.InstallImagePath, CancellationToken.None);
             if (request.Json) {
                 var root = new JsonObject {
-                    ["source"] = source,
-                    ["installImage"] = media.InstallImagePath,
-                    ["format"] = media.IsEsd ? "esd" : "wim",
+                    ["input"] = input,
+                    ["installImage"] = source.InstallImagePath,
+                    ["kind"] = source.Kind.ToString().ToLowerInvariant(),
+                    ["format"] = source.IsEsd ? "esd" : "wim",
                     ["indexes"] = new JsonArray(indexes.Select(i => (JsonNode)new JsonObject {
                         ["index"] = i.Index,
                         ["name"] = i.Name,
@@ -32,8 +33,8 @@ internal static class InspectHandler {
                 return 0;
             }
 
-            Console.WriteLine($"source: {source}");
-            Console.WriteLine($"install image: {media.InstallImagePath} ({(media.IsEsd ? "ESD" : "WIM")})");
+            Console.WriteLine($"input: {input} ({source.Kind.ToString().ToLowerInvariant()})");
+            Console.WriteLine($"install image: {source.InstallImagePath} ({(source.IsEsd ? "ESD" : "WIM")})");
             Console.WriteLine();
             Console.WriteLine($"{"idx",-4} {"name",-45} {"edition",-18} {"version",-12} size");
             foreach (var index in indexes) {
@@ -44,7 +45,7 @@ internal static class InspectHandler {
             return 0;
         }
         finally {
-            await resolver.DismountIsoAsync(media, CancellationToken.None);
+            await resolver.DismountIsoAsync(source, CancellationToken.None);
         }
     }
 }

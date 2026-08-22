@@ -17,43 +17,59 @@ public sealed record ImageIndexInfo(
     string? EditionId,
     long SizeBytes);
 
-/// <summary>A resolved installation media source: folder or mounted ISO.</summary>
-public sealed class SourceMedia {
-    public required string RootPath { get; init; }
+public enum SourceInputKind {
+    Image,
+    Media,
+    Iso
+}
+
+/// <summary>A resolved source: a standalone image, an extracted media tree, or a mounted ISO.</summary>
+public sealed class SourceInput {
+    public required SourceInputKind Kind { get; init; }
+    public required string InputPath { get; init; }
     public bool IsMountedIso { get; init; }
-    public required string IsoPath { get; init; }
+    public string? IsoPath { get; init; }
+    public string? MediaRootPath { get; init; }
     public required string InstallImagePath { get; init; }
     public bool IsEsd => InstallImagePath.EndsWith(".esd", StringComparison.OrdinalIgnoreCase);
+    public bool HasMediaTree => MediaRootPath is not null;
+    public string? BootWimPath {
+        get {
+            if (MediaRootPath is null) {
+                return null;
+            }
 
-    public string BootWimPath => Path.Combine(RootPath, "sources", "boot.wim");
+            var path = Path.Combine(MediaRootPath, "sources", "boot.wim");
+            return File.Exists(path) ? path : null;
+        }
+    }
 }
 
 /// <summary>Resolves ISO/folder sources and inspects install-image indexes (read-only).</summary>
 public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
-    public async Task<SourceMedia> ResolveAsync(string sourcePath, CancellationToken ct) {
-        var fullPath = Path.GetFullPath(sourcePath);
+    public async Task<SourceInput> ResolveAsync(string inputPath, CancellationToken ct) {
+        var fullPath = Path.GetFullPath(inputPath);
         if (Directory.Exists(fullPath)) {
-            var media = new SourceMedia {
-                RootPath = fullPath,
+            return new SourceInput {
+                Kind = SourceInputKind.Media,
+                InputPath = fullPath,
                 IsMountedIso = false,
-                IsoPath = fullPath,
+                MediaRootPath = fullPath,
                 InstallImagePath = FindInstallImage(fullPath)
             };
-            Validate(media);
-            return media;
         }
 
         if (File.Exists(fullPath) && fullPath.EndsWith(".iso", StringComparison.OrdinalIgnoreCase)) {
             var driveRoot = await MountIsoAsync(fullPath, ct);
             try {
-                var media = new SourceMedia {
-                    RootPath = driveRoot,
+                return new SourceInput {
+                    Kind = SourceInputKind.Iso,
+                    InputPath = fullPath,
                     IsMountedIso = true,
                     IsoPath = fullPath,
+                    MediaRootPath = driveRoot,
                     InstallImagePath = FindInstallImage(driveRoot)
                 };
-                Validate(media);
-                return media;
             }
             catch {
                 try {
@@ -71,16 +87,27 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
             }
         }
 
-        throw new FileNotFoundException($"source '{sourcePath}' is neither a folder nor an .iso file.");
+        if (File.Exists(fullPath)
+            && (fullPath.EndsWith(".wim", StringComparison.OrdinalIgnoreCase)
+                || fullPath.EndsWith(".esd", StringComparison.OrdinalIgnoreCase))) {
+            return new SourceInput {
+                Kind = SourceInputKind.Image,
+                InputPath = fullPath,
+                InstallImagePath = fullPath
+            };
+        }
+
+        throw new FileNotFoundException(
+            $"input '{inputPath}' must be an ISO, media directory, WIM, or ESD file.");
     }
 
-    public async Task DismountIsoAsync(SourceMedia media, CancellationToken ct) {
+    public async Task DismountIsoAsync(SourceInput media, CancellationToken ct) {
         if (!media.IsMountedIso) {
             return;
         }
 
         try {
-            var result = await DismountIsoPathAsync(media.IsoPath, ct);
+            var result = await DismountIsoPathAsync(media.IsoPath!, ct);
             if (!result.Success) {
                 log.Warn($"could not dismount source ISO '{media.IsoPath}' (exit {result.ExitCode}).");
             }
@@ -225,29 +252,35 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         string sourceImagePath,
         int index,
         string targetWimPath,
-        bool fast,
+        WimCompression compression,
+        bool checkIntegrity,
         CancellationToken ct) {
-        var compress = fast ? "fast" : "max";
+        var compress = ImageExportOptions.ToDismCompression(compression);
         var metadataPath = targetWimPath + ".tinywin2.json";
-        if (IsReusableExport(sourceImagePath, index, compress, targetWimPath, metadataPath)) {
+        if (IsReusableExport(sourceImagePath, index, compress, checkIntegrity, targetWimPath, metadataPath)) {
             return targetWimPath;
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(targetWimPath))!);
         var temporaryTarget = $"{targetWimPath}.{Guid.NewGuid():N}.tmp.wim";
         try {
-            await runner.RunAsync("dism.exe",
-            [
+            var args = new List<string> {
                 "/English", "/Export-Image", $"/SourceImageFile:{sourceImagePath}", $"/SourceIndex:{index}",
                 $"/DestinationImageFile:{temporaryTarget}", $"/Compress:{compress}"
-            ], cancellationToken: ct);
+            };
+            if (checkIntegrity) {
+                args.Add("/CheckIntegrity");
+            }
+
+            await runner.RunAsync("dism.exe", args, cancellationToken: ct);
 
             if (!File.Exists(temporaryTarget) || new FileInfo(temporaryTarget).Length == 0) {
                 throw new IOException($"DISM reported a successful export but did not create '{temporaryTarget}'.");
             }
 
             File.Move(temporaryTarget, targetWimPath, true);
-            await File.WriteAllTextAsync(metadataPath, BuildExportMetadata(sourceImagePath, index, compress), ct);
+            await File.WriteAllTextAsync(metadataPath,
+                BuildExportMetadata(sourceImagePath, index, compress, checkIntegrity), ct);
         }
         finally {
             try {
@@ -262,8 +295,8 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
     }
 
     /// <summary>Stages the selected index as a plain WIM: ESD sources are exported, WIM sources copied.</summary>
-    public async Task StageAsWimAsync(SourceMedia source, int imageIndex, string targetWimPath, bool fast,
-        CancellationToken ct) {
+    public async Task StageAsWimAsync(SourceInput source, int imageIndex, string targetWimPath,
+        WimCompression compression, bool checkIntegrity, CancellationToken ct) {
         if (!source.IsEsd) {
             File.Copy(source.InstallImagePath, targetWimPath, true);
             try {
@@ -276,7 +309,8 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
             return;
         }
 
-        await ExportIndexToWimAsync(source.InstallImagePath, imageIndex, targetWimPath, fast, ct);
+        await ExportIndexToWimAsync(source.InstallImagePath, imageIndex, targetWimPath, compression,
+            checkIntegrity, ct);
     }
 
     private async Task<string> MountIsoAsync(string isoPath, CancellationToken ct) {
@@ -296,17 +330,18 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         return root;
     }
 
-    public static string ComputeSourceFingerprint(SourceMedia media, int imageIndex) {
+    public static string ComputeSourceFingerprint(SourceInput media, int imageIndex) {
         var identity = new StringBuilder();
-        identity.Append(media.IsMountedIso ? Path.GetFullPath(media.IsoPath) : Path.GetFullPath(media.RootPath))
-            .Append('|').Append(imageIndex)
+        identity.Append(media.Kind).Append('|').Append(Path.GetFullPath(media.InputPath)).Append('|').Append(imageIndex)
             .Append('|').Append(media.IsEsd);
-        if (media.IsMountedIso) {
-            identity.Append('|').Append(FileStamp(media.IsoPath));
+        if (media.Kind == SourceInputKind.Iso) {
+            identity.Append('|').Append(FileStamp(media.IsoPath!));
         }
         else {
-            identity.Append('|').Append(FileStamp(media.InstallImagePath))
-                .Append('|').Append(FileStamp(media.BootWimPath));
+            identity.Append('|').Append(FileStamp(media.InstallImagePath));
+            if (media.BootWimPath is { } bootWimPath) {
+                identity.Append('|').Append(FileStamp(bootWimPath));
+            }
         }
 
         return Fingerprinting.Compute(identity.ToString());
@@ -321,7 +356,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
             new() { IgnoreExitCode = true }, ct);
     }
 
-    private static bool IsReusableExport(string sourceImagePath, int index, string compress,
+    private static bool IsReusableExport(string sourceImagePath, int index, string compress, bool checkIntegrity,
         string targetWimPath, string metadataPath) {
         if (!File.Exists(targetWimPath) || !File.Exists(metadataPath)
                                         || new FileInfo(targetWimPath).Length == 0) {
@@ -335,19 +370,22 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
             return metadata?["source"]?.GetValue<string>() == Path.GetFullPath(sourceImagePath)
                    && metadata["sourceStamp"]?.GetValue<string>() == FileStamp(sourceImagePath)
                    && metadata["index"]?.GetValue<int>() == index
-                   && metadata["compress"]?.GetValue<string>() == compress;
+                   && metadata["compress"]?.GetValue<string>() == compress
+                   && metadata["checkIntegrity"]?.GetValue<bool>() == checkIntegrity;
         }
         catch (Exception) {
             return false;
         }
     }
 
-    private static string BuildExportMetadata(string sourceImagePath, int index, string compress) =>
+    private static string BuildExportMetadata(string sourceImagePath, int index, string compress,
+        bool checkIntegrity) =>
         new JsonObject {
             ["source"] = Path.GetFullPath(sourceImagePath),
             ["sourceStamp"] = FileStamp(sourceImagePath),
             ["index"] = index,
-            ["compress"] = compress
+            ["compress"] = compress,
+            ["checkIntegrity"] = checkIntegrity
         }.ToJsonString();
 
     private static string FileStamp(string path) {
@@ -376,10 +414,4 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         throw new FileNotFoundException($"no sources\\install.wim or sources\\install.esd under '{root}'.");
     }
 
-    private void Validate(SourceMedia media) {
-        if (!File.Exists(media.BootWimPath)) {
-            throw new FileNotFoundException(
-                $"sources\\boot.wim missing under '{media.RootPath}' — not a bootable media folder.");
-        }
-    }
 }

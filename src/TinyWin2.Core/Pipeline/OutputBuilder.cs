@@ -6,36 +6,17 @@ namespace TinyWin2.Core.Pipeline;
 
 /// <summary>Captures the final (or rolled-back) layer into the selected WIM/ESD output.</summary>
 public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
-    /// <summary>Captures a mounted layer directory into a WIM or ESD.</summary>
-    public Task CaptureAsync(
+    /// <summary>Captures a mounted layer directory into a WIM.</summary>
+    public async Task CaptureWimAsync(
         string mountPath,
         string targetPath,
         string imageName,
         string? description,
-        OutputFormat format,
-        bool fast,
-        CancellationToken ct) {
-        var compress = format switch {
-            OutputFormat.Wim => fast ? "fast" : "max",
-            OutputFormat.Esd => "recovery",
-            _ => throw new ArgumentException("VHDX output cannot be captured with DISM.", nameof(format))
-        };
-        return CaptureAsync(mountPath, targetPath, imageName, description, compress, !fast, ct);
-    }
-
-    /// <summary>
-    ///     Staging capture with explicit compression: the ESD pipeline captures an UNCOMPRESSED
-    ///     intermediate WIM and compresses exactly once in the export step — compressing the
-    ///     intermediate and then re-compressing to recovery doubles the work for nothing.
-    /// </summary>
-    public async Task CaptureAsync(
-        string mountPath,
-        string targetPath,
-        string imageName,
-        string? description,
-        string compress,
+        WimCompression compression,
         bool verify,
+        bool checkIntegrity,
         CancellationToken ct) {
+        var compress = ImageExportOptions.ToDismCompression(compression);
         var args = new List<string> {
             "/English",
             "/Capture-Image",
@@ -52,17 +33,22 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
             args.Add("/Verify");
         }
 
+        if (checkIntegrity) {
+            args.Add("/CheckIntegrity");
+        }
+
         log.Info($"capturing {mountPath} → {Path.GetFileName(targetPath)} (compress={compress})");
         await runner.RunAsync("dism.exe", args,
             new() { Timeout = TimeSpan.FromHours(3) }, ct);
     }
 
-    /// <summary>Copies the source media tree into the output folder, replacing install.* with the build result.</summary>
-    public async Task<string> RebuildMediaAsync(
+    /// <summary>Stages a built WIM/ESD into a copy of the source media tree.</summary>
+    public async Task<string> StageMediaAsync(
         string sourceRoot,
         string mediaOutputPath,
         string capturedInstallImage,
         OutputFormat format,
+        bool overwrite,
         CancellationToken ct) {
         var finalName = format switch {
             OutputFormat.Wim => "install.wim",
@@ -91,7 +77,7 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         }
 
         var finalPath = Path.Combine(sourcesDir, finalName);
-        File.Move(capturedInstallImage, finalPath);
+        File.Copy(capturedInstallImage, finalPath, overwrite);
         log.Info($"media folder rebuilt at {mediaOutputPath}");
         return finalPath;
     }
@@ -102,13 +88,7 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         string isoPath,
         string oscdimgPath,
         CancellationToken ct) {
-        var bootFolder = Path.Combine(mediaPath, "boot");
-        var biosBoot = Path.Combine(bootFolder, "etfsboot.com");
-        var efiBootNoPrompt = Path.Combine(mediaPath, "efi", "microsoft", "boot", "efisys_noprompt.bin");
-        var efiBoot = Path.Combine(mediaPath, "efi", "microsoft", "boot", "efisys.bin");
-        if (!File.Exists(biosBoot) || (!File.Exists(efiBootNoPrompt) && !File.Exists(efiBoot))) {
-            throw new FileNotFoundException("boot files (etfsboot.com / efisys*.bin) missing from media folder.");
-        }
+        var (biosBoot, efiBootNoPrompt, efiBoot) = ValidateBootMedia(mediaPath);
 
         var efisys = File.Exists(efiBootNoPrompt) ? efiBootNoPrompt : efiBoot;
         var bootData = $"2#p0,e,b{biosBoot}#pEF,e,b{efisys}";
@@ -119,14 +99,31 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         EnsureNonEmptyFile(isoPath, "oscdimg reported success but did not create a non-empty ISO");
     }
 
-    /// <summary>ESD (LZMS) output goes through an intermediate WIM export for reliability.</summary>
-    public Task ExportEsdAsync(string intermediateWim, string esdPath, CancellationToken ct) =>
-        runner.RunAsync("dism.exe",
-            [
-                "/English", "/Export-Image", $"/SourceImageFile:{intermediateWim}", "/SourceIndex:1",
-                $"/DestinationImageFile:{esdPath}", "/Compress:recovery"
-            ],
-            new() { Timeout = TimeSpan.FromHours(3) }, ct);
+    public static (string BiosBoot, string EfiBootNoPrompt, string EfiBoot) ValidateBootMedia(string mediaPath) {
+        var bootFolder = Path.Combine(mediaPath, "boot");
+        var biosBoot = Path.Combine(bootFolder, "etfsboot.com");
+        var efiBootNoPrompt = Path.Combine(mediaPath, "efi", "microsoft", "boot", "efisys_noprompt.bin");
+        var efiBoot = Path.Combine(mediaPath, "efi", "microsoft", "boot", "efisys.bin");
+        if (!File.Exists(biosBoot) || (!File.Exists(efiBootNoPrompt) && !File.Exists(efiBoot))) {
+            throw new FileNotFoundException("boot files (etfsboot.com / efisys*.bin) missing from media folder.");
+        }
+
+        return (biosBoot, efiBootNoPrompt, efiBoot);
+    }
+
+    /// <summary>ESD output uses one recovery-compression export from an uncompressed intermediate WIM.</summary>
+    public async Task ExportEsdAsync(string intermediateWim, string esdPath, bool checkIntegrity,
+        CancellationToken ct) {
+        var args = new List<string> {
+            "/English", "/Export-Image", $"/SourceImageFile:{intermediateWim}", "/SourceIndex:1",
+            $"/DestinationImageFile:{esdPath}", "/Compress:recovery"
+        };
+        if (checkIntegrity) {
+            args.Add("/CheckIntegrity");
+        }
+
+        await runner.RunAsync("dism.exe", args, new() { Timeout = TimeSpan.FromHours(3) }, ct);
+    }
 
     public static Task<string> ComputeHashAsync(string filePath, CancellationToken ct) {
         EnsureNonEmptyFile(filePath, "cannot hash a missing or empty artifact");

@@ -77,18 +77,28 @@ public sealed class SourceImageResolverTests : IDisposable {
     }
 
     [Test]
-    public async Task FolderSourceWithoutBootWimIsRejected() {
+    public async Task FolderSourceWithoutBootWimCanBeInspected() {
         var media = CreateMediaFolder(true, false, false);
-        var ex = Assert.Throws<FileNotFoundException>(() =>
-            _resolver.ResolveAsync(media, CancellationToken.None).GetAwaiter().GetResult());
-        await Assert.That(ex.Message).Contains("boot.wim");
+        var source = await _resolver.ResolveAsync(media, CancellationToken.None);
+        await Assert.That(source.Kind).IsEqualTo(SourceInputKind.Media);
+        await Assert.That(source.BootWimPath).IsNull();
     }
 
     [Test]
-    public async Task SourceThatIsNeitherFolderNorIsoThrows() {
+    public async Task StandaloneWimIsAcceptedAsAnImageInput() {
+        var image = Path.Combine(_root, "install.wim");
+        await File.WriteAllTextAsync(image, "wim");
+        var source = await _resolver.ResolveAsync(image, CancellationToken.None);
+        await Assert.That(source.Kind).IsEqualTo(SourceInputKind.Image);
+        await Assert.That(source.InstallImagePath).IsEqualTo(image);
+        await Assert.That(source.HasMediaTree).IsFalse();
+    }
+
+    [Test]
+    public async Task UnsupportedInputThrows() {
         var ex = Assert.Throws<FileNotFoundException>(() =>
             _resolver.ResolveAsync(Path.Combine(_root, "ghost.iso"), CancellationToken.None).GetAwaiter().GetResult());
-        await Assert.That(ex.Message).Contains("neither a folder nor an .iso");
+        await Assert.That(ex.Message).Contains("must be an ISO, media directory, WIM, or ESD");
     }
 
     // ---- index listing -----------------------------------------------------
@@ -182,9 +192,10 @@ public sealed class SourceImageResolverTests : IDisposable {
             ["source"] = sourceFullPath,
             ["sourceStamp"] = $"missing:{sourceFullPath}",
             ["index"] = 3,
-            ["compress"] = "fast"
+            ["compress"] = "fast",
+            ["checkIntegrity"] = false
         }.ToJsonString());
-        var result = await _resolver.ExportIndexToWimAsync(source, 3, target, true,
+        var result = await _resolver.ExportIndexToWimAsync(source, 3, target, WimCompression.Fast, false,
             CancellationToken.None);
         await Assert.That(result).IsEqualTo(target);
         await Assert.That(_runner.Called("dism.exe")).IsFalse();
@@ -200,20 +211,24 @@ public sealed class SourceImageResolverTests : IDisposable {
             File.WriteAllText(destination, "exported");
             return FakeProcessRunner.Ok();
         };
-        var result = await _resolver.ExportIndexToWimAsync("src.esd", 3, target, false, CancellationToken.None);
+        var result = await _resolver.ExportIndexToWimAsync("src.esd", 3, target, WimCompression.Max, true,
+            CancellationToken.None);
         await Assert.That(result).IsEqualTo(target);
         await Assert.That(_runner.Calls).Count().IsEqualTo(1);
         await Assert.That(string.Join(' ', _runner.ArgsOf(0))).Contains("/Export-Image");
         await Assert.That(string.Join(' ', _runner.ArgsOf(0))).Contains("/SourceIndex:3");
         await Assert.That(string.Join(' ', _runner.ArgsOf(0))).Contains("/Compress:max");
+        await Assert.That(string.Join(' ', _runner.ArgsOf(0))).Contains("/CheckIntegrity");
     }
 
     [Test]
     public async Task DismountEscapesApostrophesInIsoPaths() {
-        var media = new SourceMedia {
-            RootPath = "X:\\",
+        var media = new SourceInput {
+            Kind = SourceInputKind.Iso,
+            InputPath = "C:\\source's.iso",
             IsMountedIso = true,
             IsoPath = "C:\\source's.iso",
+            MediaRootPath = "X:\\",
             InstallImagePath = "X:\\sources\\install.wim"
         };
 
@@ -225,7 +240,7 @@ public sealed class SourceImageResolverTests : IDisposable {
     }
 
     private string CreateMediaFolder(bool installWim, bool installEsd, bool bootWim = true) {
-        var media = Path.Combine(_root, "media");
+        var media = Path.Combine(_root, "media-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(Path.Combine(media, "sources"));
         if (installWim) {
             File.WriteAllText(Path.Combine(media, "sources", "install.wim"), "wim");

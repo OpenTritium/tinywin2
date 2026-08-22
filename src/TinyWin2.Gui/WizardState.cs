@@ -104,9 +104,9 @@ public sealed class WizardState {
     public string SourcePath { get; set; } = "";
     public ObservableCollection<ImageIndexItem> ImageIndexes { get; } = [];
     public ImageIndexItem? SelectedIndex { get; set; }
-    public string OutputRoot { get; set; } = "";
+    public string OutputPath { get; set; } = "";
+    public string WorkspacePath { get; set; } = "";
     public string OutputFormat { get; set; } = "esd"; // wim | esd | vhdx
-    public bool CreateIso { get; set; } = true;
     public bool Fast { get; set; }
 
     public ObservableCollection<PlanItemViewModel> Plans { get; } = [];
@@ -114,9 +114,6 @@ public sealed class WizardState {
     // Progress + result state filled by the CLI event stream on ProgressPage.
     public string CurrentPhase { get; set; } = "";
     public bool BuildSucceeded { get; set; }
-    public string MediaPath { get; set; } = "";
-    public string OutputPath { get; set; } = "";
-    public string? IsoPath { get; set; }
     public string ManifestPath { get; set; } = "";
     public int LayerCount { get; set; }
 

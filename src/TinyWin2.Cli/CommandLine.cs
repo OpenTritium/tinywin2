@@ -7,39 +7,41 @@ namespace TinyWin2.Cli;
 
 internal static class CommandLine {
     public static RootCommand CreateRootCommand() {
-        var root = new RootCommand("layered Windows image slimming with resumable VHDX differencing chains");
+        var root = new RootCommand("layered Windows image slimming with explicit inputs, outputs, and workspaces");
         var help = new HelpAction();
         root.SetAction(_ => help.Invoke(root.Parse(["--help"])));
         root.Add(Doctor());
         root.Add(Inspect());
         root.Add(Plans());
         root.Add(Profiles());
+        root.Add(Validate());
         root.Add(Build());
         root.Add(Preview());
+        root.Add(Package());
         root.Add(Layers());
         return root;
     }
 
     private static Command Doctor() {
-        var command = new Command("doctor", "check the local environment and required Windows tools");
-        var outputDirectory = Text("--output-dir", "directory used for disk-space checks");
+        var command = new Command("doctor", "check the local environment for a build workspace");
+        var workspace = RequiredText("--workspace", "local workspace path used for disk-space checks");
         var json = Flag("--json", "write machine-readable JSON");
-        command.Add(outputDirectory);
+        command.Add(workspace);
         command.Add(json);
         command.SetAction(result => DoctorHandler.Execute(new(
-            result.GetValue(outputDirectory),
+            Path.GetFullPath(result.GetRequiredValue(workspace)),
             result.GetValue(json))));
         return command;
     }
 
     private static Command Inspect() {
-        var command = new Command("inspect", "list image indexes in an ISO, WIM, ESD, or folder");
-        var source = Argument<string>("source", "ISO, WIM, ESD, or extracted media folder");
+        var command = new Command("inspect", "list image indexes in an ISO, media folder, WIM, or ESD");
+        var input = RequiredText("--input", "ISO, media folder, WIM, or ESD file");
         var json = Flag("--json", "write machine-readable JSON");
-        command.Add(source);
+        command.Add(input);
         command.Add(json);
         command.SetAction(result => InspectHandler.ExecuteAsync(new(
-            result.GetRequiredValue(source),
+            result.GetRequiredValue(input),
             result.GetValue(json))));
         return command;
     }
@@ -86,13 +88,13 @@ internal static class CommandLine {
             result.GetValue(listProfilesDirectory))));
 
         var show = new Command("show", "print a profile as JSON");
-        var showFile = Argument<string>("file", "profile JSON file");
+        var showFile = RequiredText("--input", "profile JSON file");
         show.Add(showFile);
         show.SetAction(result => ProfileHandler.Show(new(result.GetRequiredValue(showFile))));
 
         var export = new Command("export", "write a profile from selected plans");
         var exportSelection = AddSelectionOptions(export);
-        var exportOutput = RequiredText("--output-file", "destination profile JSON file");
+        var exportOutput = RequiredText("--output", "destination profile JSON file");
         var exportName = Text("--name", "profile display name");
         export.Add(exportOutput);
         export.Add(exportName);
@@ -102,7 +104,7 @@ internal static class CommandLine {
             ReadSelection(result, exportSelection))));
 
         var validate = new Command("validate", "validate a profile against the current plan catalog");
-        var validateFile = Argument<string>("file", "profile JSON file");
+        var validateFile = RequiredText("--input", "profile JSON file");
         var validatePlansDirectory = Text("--plans-dir", "directory containing plan JSON files");
         validate.Add(validateFile);
         validate.Add(validatePlansDirectory);
@@ -117,89 +119,125 @@ internal static class CommandLine {
         return command;
     }
 
+    private static Command Validate() {
+        var command = new Command("validate", "validate a built image or bootable media input");
+        var input = RequiredText("--input", "image, media folder, or ISO to validate");
+        var kind = RequiredText("--kind", "validation kind: image, media, or iso");
+        kind.AcceptOnlyFromAmong("image", "media", "iso");
+        var json = Flag("--json", "write machine-readable JSON");
+        command.Add(input);
+        command.Add(kind);
+        command.Add(json);
+        command.SetAction(result => ValidateHandler.ExecuteAsync(new(
+            result.GetRequiredValue(input),
+            result.GetRequiredValue(kind),
+            result.GetValue(json))));
+        return command;
+    }
+
     private static Command Build() {
-        var command = new Command("build", "run a layered slimming build");
-        var source = RequiredText("--source", "source ISO, WIM, ESD, or extracted media folder");
+        var command = new Command("build", "build one explicit WIM, ESD, or debug VHDX artifact");
+        var input = RequiredText("--input", "source ISO, media folder, WIM, or ESD file");
         var index = Required<int>("--index", "source image index");
         var selection = AddSelectionOptions(command);
-        var outputDirectory = Text("--output-dir", "output root directory");
-        outputDirectory.DefaultValueFactory = _ => "out";
-        var outputFormat = Text("--output-format", "output format");
-        outputFormat.AcceptOnlyFromAmong("wim", "esd", "vhdx");
-        outputFormat.DefaultValueFactory = _ => "esd";
-        var createIso = Flag("--iso", "package WIM/ESD media as a bootable ISO");
+        var output = RequiredText("--output", "destination .wim, .esd, or .vhdx file");
+        var workspace = RequiredText("--workspace", "persistent layer workspace directory");
+        var format = RequiredText("--format", "output format");
+        format.AcceptOnlyFromAmong("wim", "esd", "vhdx");
+        var export = AddExportOptions(command);
+        var continueOnError = Flag("--continue-on-error", "continue after a failed plan and mark the artifact incomplete");
+        var dryRun = Flag("--dry-run", "resolve and validate without applying plans");
+        var singleLayer = Flag("--single-layer", "debug mode: apply all plans in one non-atomic mount");
+        var skipEvidence = Flag("--skip-evidence", "skip per-layer evidence capture");
+        var resume = Flag("--resume", "reuse the existing layer workspace");
+        var overwrite = Flag("--overwrite", "replace an existing output file");
         var baseSize = Number("--base-vhdx-mb", "maximum dynamic base VHDX size in MB");
         baseSize.DefaultValueFactory = _ => BuildOptions.DefaultBaseVhdxMaximumMb;
-        var fast = Flag("--fast", "use faster, less conservative capture settings");
-        var continueOnError = Flag("--continue-on-error", "continue after a failed plan");
-        var keepLayers = Flag("--keep-layers", "retain the workspace for inspection or resume");
-        var dryRun = Flag("--dry-run", "resolve and validate without applying plans");
-        var singleLayer = Flag("--single-layer", "apply all plans in one working mount");
-        var skipEvidence = Flag("--skip-evidence", "skip per-layer evidence capture");
-        var resume = Text("--resume-workspace", "workspace to resume");
-        var resumeLatest = Flag("--resume", "resume the newest workspace under the output directory");
-        var oscdimg = Text("--oscdimg-path", "path to oscdimg.exe");
         var jsonEvents = Flag("--json-events", "write JSONL build events to stdout");
 
-        command.Add(source);
+        command.Add(input);
         command.Add(index);
-        command.Add(outputDirectory);
-        command.Add(outputFormat);
-        command.Add(createIso);
-        command.Add(baseSize);
-        command.Add(fast);
+        command.Add(output);
+        command.Add(workspace);
+        command.Add(format);
         command.Add(continueOnError);
-        command.Add(keepLayers);
         command.Add(dryRun);
         command.Add(singleLayer);
         command.Add(skipEvidence);
         command.Add(resume);
-        command.Add(resumeLatest);
-        command.Add(oscdimg);
+        command.Add(overwrite);
+        command.Add(baseSize);
         command.Add(jsonEvents);
         command.SetAction(result => BuildHandler.ExecuteAsync(new(
-            result.GetRequiredValue(source),
+            result.GetRequiredValue(input),
             result.GetRequiredValue(index),
             ReadSelection(result, selection),
-            Path.GetFullPath(result.GetValue(outputDirectory)!),
-            Cli.ParseOutputFormat(result.GetValue(outputFormat)!),
-            result.GetValue(createIso),
-            result.GetValue(fast),
+            result.GetRequiredValue(output),
+            result.GetRequiredValue(workspace),
+            Cli.ParseOutputFormat(result.GetRequiredValue(format)),
+            result.GetValue(export.Fast),
+            result.GetValue(export.Compression),
+            result.GetValue(export.Verify),
+            result.GetValue(export.NoVerify),
+            result.GetValue(export.CheckIntegrity),
             result.GetValue(continueOnError),
-            result.GetValue(keepLayers),
             result.GetValue(dryRun),
             result.GetValue(singleLayer),
             result.GetValue(skipEvidence),
             result.GetValue(resume),
-            result.GetValue(resumeLatest),
-            result.GetValue(oscdimg),
+            result.GetValue(overwrite),
             result.GetValue(baseSize),
             result.GetValue(jsonEvents))));
         return command;
     }
 
     private static Command Preview() {
-        var command = new Command("preview", "report what each plan would change");
-        var source = RequiredText("--source", "source ISO, WIM, ESD, or extracted media folder");
+        var command = new Command("preview", "report what each plan would change in an explicit workspace");
+        var input = RequiredText("--input", "source ISO, media folder, WIM, or ESD file");
         var index = Required<int>("--index", "source image index");
         var selection = AddSelectionOptions(command);
-        var outputDirectory = Text("--output-dir", "workspace output root directory");
-        outputDirectory.DefaultValueFactory = _ => "out";
+        var workspace = RequiredText("--workspace", "preview workspace directory");
         var baseSize = Number("--base-vhdx-mb", "maximum dynamic base VHDX size in MB");
         baseSize.DefaultValueFactory = _ => BuildOptions.DefaultBaseVhdxMaximumMb;
         var json = Flag("--json", "write machine-readable JSON");
-        command.Add(source);
+        command.Add(input);
         command.Add(index);
-        command.Add(outputDirectory);
+        command.Add(workspace);
         command.Add(baseSize);
         command.Add(json);
         command.SetAction(result => PreviewHandler.ExecuteAsync(new(
-            result.GetRequiredValue(source),
+            result.GetRequiredValue(input),
             result.GetRequiredValue(index),
             ReadSelection(result, selection),
-            Path.GetFullPath(result.GetValue(outputDirectory)!),
+            result.GetRequiredValue(workspace),
             result.GetValue(baseSize),
             result.GetValue(json))));
+        return command;
+    }
+
+    private static Command Package() {
+        var command = new Command("package", "package an explicit media input into a final artifact");
+        var iso = new Command("iso", "create a bootable BIOS+UEFI ISO from media and a built image");
+        var input = RequiredText("--input", "source ISO or extracted media folder");
+        var image = RequiredText("--image", "built install.wim or install.esd");
+        var output = RequiredText("--output", "destination .iso file");
+        var workspace = RequiredText("--workspace", "temporary media staging directory");
+        var oscdimg = RequiredText("--oscdimg", "path to oscdimg.exe");
+        var overwrite = Flag("--overwrite", "replace an existing ISO");
+        iso.Add(input);
+        iso.Add(image);
+        iso.Add(output);
+        iso.Add(workspace);
+        iso.Add(oscdimg);
+        iso.Add(overwrite);
+        iso.SetAction(result => PackageHandler.CreateIsoAsync(new(
+            result.GetRequiredValue(input),
+            result.GetRequiredValue(image),
+            result.GetRequiredValue(output),
+            result.GetRequiredValue(workspace),
+            result.GetRequiredValue(oscdimg),
+            result.GetValue(overwrite))));
+        command.Add(iso);
         return command;
     }
 
@@ -207,7 +245,7 @@ internal static class CommandLine {
         var command = new Command("layer", "inspect, compare, extract, or capture layer states");
 
         var list = new Command("list", "list the layer chain in a workspace");
-        var listWorkspace = Argument<string>("workspace", "build workspace directory");
+        var listWorkspace = RequiredText("--workspace", "build workspace directory");
         var listJson = Flag("--json", "write machine-readable JSON");
         list.Add(listWorkspace);
         list.Add(listJson);
@@ -216,9 +254,9 @@ internal static class CommandLine {
             result.GetValue(listJson))));
 
         var diff = new Command("diff", "show file and registry changes between two layers");
-        var diffWorkspace = Argument<string>("workspace", "build workspace directory");
-        var from = Argument<int>("from", "starting layer index");
-        var to = Argument<int>("to", "ending layer index");
+        var diffWorkspace = RequiredText("--workspace", "build workspace directory");
+        var from = Required<int>("--from", "starting layer index");
+        var to = Required<int>("--to", "ending layer index");
         var diffJson = Flag("--json", "write machine-readable JSON");
         diff.Add(diffWorkspace);
         diff.Add(from);
@@ -231,10 +269,10 @@ internal static class CommandLine {
             result.GetValue(diffJson))));
 
         var extract = new Command("extract", "extract an image-relative file from a layer");
-        var extractWorkspace = Argument<string>("workspace", "build workspace directory");
-        var extractLayer = Argument<int>("layer", "layer index");
-        var imagePath = Argument<string>("image-path", "path relative to the image root");
-        var destination = Argument<string>("destination", "destination file");
+        var extractWorkspace = RequiredText("--workspace", "build workspace directory");
+        var extractLayer = Required<int>("--layer", "layer index");
+        var imagePath = RequiredText("--image-path", "path relative to the image root");
+        var destination = RequiredText("--output", "destination file");
         extract.Add(extractWorkspace);
         extract.Add(extractLayer);
         extract.Add(imagePath);
@@ -246,23 +284,26 @@ internal static class CommandLine {
             result.GetRequiredValue(destination))));
 
         var rollback = new Command("rollback", "capture a layer state as a WIM or ESD");
-        var rollbackWorkspace = Argument<string>("workspace", "build workspace directory");
-        var rollbackLayer = Argument<int>("layer", "layer index");
-        var rollbackOutput = RequiredText("--output-file", "destination image file");
+        var rollbackWorkspace = RequiredText("--workspace", "build workspace directory");
+        var rollbackLayer = Required<int>("--layer", "layer index");
+        var rollbackOutput = RequiredText("--output", "destination .wim or .esd file");
         var rollbackFormat = RequiredText("--format", "capture format");
         rollbackFormat.AcceptOnlyFromAmong("wim", "esd");
-        var rollbackFast = Flag("--fast", "use faster, less conservative capture settings");
+        var rollbackExport = AddExportOptions(rollback);
         rollback.Add(rollbackWorkspace);
         rollback.Add(rollbackLayer);
         rollback.Add(rollbackOutput);
         rollback.Add(rollbackFormat);
-        rollback.Add(rollbackFast);
         rollback.SetAction(result => LayerHandler.Rollback(new(
             result.GetRequiredValue(rollbackWorkspace),
             result.GetRequiredValue(rollbackLayer),
             result.GetRequiredValue(rollbackOutput),
-            Cli.ParseCaptureFormat(result.GetValue(rollbackFormat)!),
-            result.GetValue(rollbackFast))));
+            Cli.ParseCaptureFormat(result.GetRequiredValue(rollbackFormat)),
+            result.GetValue(rollbackExport.Fast),
+            result.GetValue(rollbackExport.Compression),
+            result.GetValue(rollbackExport.Verify),
+            result.GetValue(rollbackExport.NoVerify),
+            result.GetValue(rollbackExport.CheckIntegrity))));
 
         command.Add(list);
         command.Add(diff);
@@ -281,6 +322,22 @@ internal static class CommandLine {
         command.Add(plans);
         command.Add(sets);
         return new(plansDirectory, profiles, plans, sets);
+    }
+
+    private static ExportSymbols AddExportOptions(Command command) {
+        var fast = Flag("--fast", "skip per-layer health checks and use fast capture defaults");
+        var compression = Text("--compression",
+            "WIM/source-ESD compression: none, fast, or max; ESD final output remains recovery");
+        compression.AcceptOnlyFromAmong("none", "fast", "max");
+        var verify = Flag("--verify", "verify captured WIM data");
+        var noVerify = Flag("--no-verify", "skip verification of captured WIM data");
+        var checkIntegrity = Flag("--check-integrity", "ask DISM to validate source and exported image integrity");
+        command.Add(fast);
+        command.Add(compression);
+        command.Add(verify);
+        command.Add(noVerify);
+        command.Add(checkIntegrity);
+        return new(fast, compression, verify, noVerify, checkIntegrity);
     }
 
     private static SelectionRequest ReadSelection(ParseResult result, SelectionSymbols symbols) => new(
@@ -322,4 +379,11 @@ internal static class CommandLine {
         Option<string[]> Profiles,
         Option<string[]> Plans,
         Option<string[]> Sets);
+
+    private sealed record ExportSymbols(
+        Option<bool> Fast,
+        Option<string?> Compression,
+        Option<bool> Verify,
+        Option<bool> NoVerify,
+        Option<bool> CheckIntegrity);
 }

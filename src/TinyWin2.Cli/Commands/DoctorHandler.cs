@@ -11,7 +11,7 @@ internal static class DoctorHandler {
             return 3;
         }
 
-        var checks = EnvironmentDoctor.Check(request.OutputDirectory);
+        var checks = EnvironmentDoctor.Check(request.Workspace);
         var json = request.Json;
         if (json) {
             var root = new JsonObject { ["checks"] = Json.ToNode(checks) };

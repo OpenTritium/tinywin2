@@ -360,15 +360,22 @@ public sealed class BuildEngineDryRunTests : IDisposable {
         var executers = new ExecuterRegistry([new FakeExecuter("test.noop", false)]);
         var backend = new FakeLayerBackend();
         var engine = new BuildEngine(runner, executers, backend, new());
+        var outputRoot = TestPlans.CreateTempDirectory();
         var result = await engine.BuildAsync(new() {
-            SourcePath = media,
+            InputPath = media,
             ImageIndex = 1,
             Selections = [new("no.a"), new("no.b")],
-            OutputRoot = TestPlans.CreateTempDirectory(),
+            OutputPath = Path.Combine(outputRoot, "result.wim"),
+            WorkspacePath = Path.Combine(outputRoot, "workspace"),
             Catalog = PlanCatalog.LoadDirectory(_plansDir),
             DryRun = false,
             NoLayers = true,
             OutputFormat = OutputFormat.Wim,
+            Export = new() {
+                Compression = WimCompression.Fast,
+                VerifyCapture = false,
+                CheckIntegrity = true
+            },
             SkipEnvironmentChecks = true
         }, CancellationToken.None);
         await Assert.That(result.Succeeded).IsTrue();
@@ -381,6 +388,14 @@ public sealed class BuildEngineDryRunTests : IDisposable {
         await Assert.That(captureIndex).IsGreaterThan(scanIndex);
         await Assert.That(runner.ArgsOf(scanIndex)).Contains("/English");
         await Assert.That(runner.ArgsOf(scanIndex)).Contains("/Image:S:\\");
+        await Assert.That(runner.ArgsOf(captureIndex)).Contains("/Compress:fast");
+        await Assert.That(runner.ArgsOf(captureIndex)).Contains("/CheckIntegrity");
+        await Assert.That(runner.ArgsOf(captureIndex)).DoesNotContain("/Verify");
+        var manifest = JsonNode.Parse(await File.ReadAllTextAsync(result.ManifestPath))!.AsObject();
+        await Assert.That(manifest["export"]!["wimCompression"]!.GetValue<string>()).IsEqualTo("fast");
+        await Assert.That(manifest["export"]!["finalCompression"]!.GetValue<string>()).IsEqualTo("fast");
+        await Assert.That(manifest["export"]!["verifyCapture"]!.GetValue<bool>()).IsFalse();
+        await Assert.That(manifest["export"]!["checkIntegrity"]!.GetValue<bool>()).IsTrue();
     }
 
     [Test]
@@ -412,10 +427,11 @@ public sealed class BuildEngineDryRunTests : IDisposable {
             new());
 
         var result = await engine.BuildAsync(new() {
-            SourcePath = media,
+            InputPath = media,
             ImageIndex = 1,
             Selections = [new("vhdx.noop")],
-            OutputRoot = outputRoot,
+            OutputPath = Path.Combine(outputRoot, "result.vhdx"),
+            WorkspacePath = Path.Combine(outputRoot, "workspace"),
             Catalog = PlanCatalog.LoadDirectory(_plansDir),
             NoLayers = true,
             OutputFormat = OutputFormat.Vhdx,
@@ -423,8 +439,6 @@ public sealed class BuildEngineDryRunTests : IDisposable {
         }, CancellationToken.None);
 
         await Assert.That(result.OutputFormat).IsEqualTo(OutputFormat.Vhdx);
-        await Assert.That(result.MediaPath).IsNull();
-        await Assert.That(result.IsoPath).IsNull();
         await Assert.That(result.OutputPath).EndsWith(".vhdx");
         await Assert.That(File.Exists(result.OutputPath)).IsTrue();
         await Assert.That(File.Exists(result.ManifestPath)).IsTrue();
@@ -444,14 +458,20 @@ public sealed class BuildEngineDryRunTests : IDisposable {
         var executers = new ExecuterRegistry([new FakeExecuter("test.noop", false)]);
         var engine = new BuildEngine(runner, executers, new FakeLayerBackend(), new());
         var result = await engine.BuildAsync(new() {
-            SourcePath = @"C:\does\not\exist.iso",
+            InputPath = @"C:\does\not\exist.iso",
             ImageIndex = 1,
             Selections = [new("engine.sample")],
-            OutputRoot = Path.GetTempPath(),
+            OutputPath = Path.Combine(Path.GetTempPath(), "tinywin2-dry-run.esd"),
+            WorkspacePath = Path.Combine(Path.GetTempPath(), "tinywin2-dry-run-workspace"),
             Catalog = Catalog(),
             DryRun = true
         }, CancellationToken.None);
         await Assert.That(result.Succeeded).IsTrue();
+        await Assert.That(result.OutputPath).IsEqualTo(
+            Path.GetFullPath(Path.Combine(Path.GetTempPath(), "tinywin2-dry-run.esd")));
+        await Assert.That(result.ManifestPath).IsEqualTo(
+            Path.Combine(Path.GetFullPath(Path.Combine(Path.GetTempPath(), "tinywin2-dry-run-workspace")),
+                "tinywin2-manifest.json"));
         await Assert.That(runner.Calls.Count).IsEqualTo(0);
     }
 }
