@@ -87,14 +87,14 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
             Selections = [new PlanSelection("it.registry-probe")],
             OutputRoot = outputRoot,
             Catalog = catalog,
-            OutputMode = OutputMode.Wim,
+            OutputFormat = OutputFormat.Wim,
             Fast = true, // skip the per-layer dism health check to keep the run light
             PlansDirectory = plansDir,
             BaseVhdxMaximumMb = 8_192,
         }, CancellationToken.None);
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.FailedStepId).IsNull();
-        await Assert.That(File.Exists(result.InstallImagePath)).IsTrue();
+        await Assert.That(File.Exists(result.OutputPath)).IsTrue();
     }
 
     [Test]
@@ -134,7 +134,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
             Selections = [new PlanSelection("it.registry-probe"), new PlanSelection("it.registry-boom")],
             OutputRoot = outputRoot,
             Catalog = catalog,
-            OutputMode = OutputMode.Wim,
+            OutputFormat = OutputFormat.Wim,
             Fast = true,
             ContinueOnError = true,
             PlansDirectory = plansDir,

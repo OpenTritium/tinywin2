@@ -17,18 +17,27 @@ internal static class BuildCommand {
             throw new ArgumentException("missing --i <image index> (see: tinywin2 inspect)");
         }
         var outputRoot = Path.GetFullPath(Get("o") ?? Get("out-dir") ?? "out");
-        var outputMode = (Get("out") ?? Get("out-mode") ?? "iso").ToLowerInvariant() switch {
-            "wim" => OutputMode.Wim,
-            "esd" => OutputMode.Esd,
-            "iso" => OutputMode.Iso,
-            "iso+vhdx" or "iso-vhdx" => OutputMode.IsoAndVhdx,
-            var unknown => throw new ArgumentException($"unknown --out-mode '{unknown}' (wim|esd|iso|iso+vhdx)"),
+        var requestedOutput = Get("out") ?? Get("out-mode");
+        var outputFormat = (requestedOutput ?? "esd").ToLowerInvariant() switch {
+            "wim" => OutputFormat.Wim,
+            "esd" => OutputFormat.Esd,
+            "vhdx" => OutputFormat.Vhdx,
+            // Compatibility alias: the old default was an ESD-backed ISO.
+            "iso" => OutputFormat.Esd,
+            "iso+vhdx" or "iso-vhdx" => throw new ArgumentException(
+                "'iso+vhdx' was replaced by separate outputs; use --out vhdx or --out esd --iso"),
+            var unknown => throw new ArgumentException($"unknown --out '{unknown}' (wim|esd|vhdx)"),
         };
+        var createIso = !options.ContainsKey("no-iso")
+                        && (options.ContainsKey("iso")
+                        || requestedOutput is null
+                        || string.Equals(requestedOutput, "iso", StringComparison.OrdinalIgnoreCase));
         var granularity = (Get("granularity") ?? "group").ToLowerInvariant() switch {
             "group" => LayerGranularity.Group,
             "plan" => LayerGranularity.Plan,
             var unknown => throw new ArgumentException($"unknown --granularity '{unknown}' (group|plan)"),
         };
+        var baseVhdxMaximumMb = ParseBaseVhdxMaximumMb(Get("base-vhdx-mb") ?? Get("base-size"));
         var plansDir = Cli.FindPlansDirectory(Get("plans"));
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var selections = Cli.BuildSelections(options, catalog);
@@ -41,7 +50,8 @@ internal static class BuildCommand {
         var resume = FindResumeWorkspace(options, outputRoot);
         var logDirectory = Path.Combine(outputRoot, "logs");
         Directory.CreateDirectory(logDirectory);
-        var logFilePath = Path.Combine(logDirectory, $"tinywin2-{DateTimeOffset.UtcNow:yyyyMMddTHHmmss}.log");
+        var logFilePath = Path.Combine(logDirectory,
+            $"tinywin2-{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfff}-{Guid.NewGuid():N}.log");
         using var serilog = log.UseSerilog(logFilePath, echoConsole: !jsonEvents);
         var (runner, executers, layers) = Cli.CreateEngineParts();
         var engine = new BuildEngine(runner, executers, layers, log);
@@ -54,16 +64,19 @@ internal static class BuildCommand {
                 Selections = selections,
                 OutputRoot = outputRoot,
                 Catalog = catalog,
-                OutputMode = outputMode,
+                OutputFormat = outputFormat,
+                CreateIso = createIso,
                 Granularity = granularity,
                 Fast = options.ContainsKey("fast"),
                 ContinueOnError = options.ContainsKey("continue-on-error"),
                 NoLayers = options.ContainsKey("no-layers"),
                 KeepLayers = options.ContainsKey("keep-layers"),
                 DryRun = options.ContainsKey("dry-run"),
+                CaptureEvidence = !options.ContainsKey("no-evidence"),
                 ResumeWorkspace = resume,
                 OscdimgPath = Get("oscdimg"),
                 PlansDirectory = plansDir,
+                BaseVhdxMaximumMb = baseVhdxMaximumMb,
             }, cts.Token);
             if (jsonEvents) {
                 Console.Out.WriteLine(new JsonObject {
@@ -74,9 +87,11 @@ internal static class BuildCommand {
                     ["message"] = "build finished",
                     ["data"] = new JsonObject {
                         ["succeeded"] = result.Succeeded,
+                        ["outputFormat"] = result.OutputFormat.ToString().ToLowerInvariant(),
+                        ["createIso"] = createIso,
                         ["mediaPath"] = result.MediaPath,
+                        ["outputPath"] = result.OutputPath,
                         ["isoPath"] = result.IsoPath,
-                        ["vhdxPath"] = result.VhdxPath,
                         ["manifestPath"] = result.ManifestPath,
                         ["layerCount"] = result.LayerCount,
                         ["failedStepId"] = result.FailedStepId,
@@ -86,13 +101,14 @@ internal static class BuildCommand {
             else {
                 Console.WriteLine();
                 Console.WriteLine($"✔ build {result.BuildId} complete");
-                Console.WriteLine($"  media:     {result.MediaPath}");
+                Console.WriteLine($"  format:    {result.OutputFormat.ToString().ToLowerInvariant()}");
+                if (result.MediaPath is not null) {
+                    Console.WriteLine($"  media:     {result.MediaPath}");
+                }
                 if (result.IsoPath is not null) {
                     Console.WriteLine($"  ISO:       {result.IsoPath}");
                 }
-                if (result.VhdxPath is not null) {
-                    Console.WriteLine($"  VHDX:      {result.VhdxPath}");
-                }
+                Console.WriteLine($"  output:    {result.OutputPath}");
                 Console.WriteLine($"  manifest:  {result.ManifestPath}");
                 Console.WriteLine($"  日志:      {logFilePath}");
                 Console.WriteLine($"  layers:    {result.LayerCount}");
@@ -144,7 +160,17 @@ internal static class BuildCommand {
             .FirstOrDefault();
         return candidate?.FullName
                ?? throw new DirectoryNotFoundException(
-                   $"no resumable workspace under '{workRoot}' (builds must keep layers: add --keep-layers, or pass --resume <workspace>)");
+                    $"no resumable workspace under '{workRoot}' (builds must keep layers: add --keep-layers, or pass --resume <workspace>)");
+    }
+
+    private static long ParseBaseVhdxMaximumMb(string? value) {
+        if (value is null) {
+            return BuildOptions.DefaultBaseVhdxMaximumMb;
+        }
+
+        return long.TryParse(value, out var size) && size > 0
+            ? size
+            : throw new ArgumentException($"invalid base VHDX size '{value}' (must be a positive number of MB)");
     }
 }
 
@@ -159,6 +185,12 @@ internal static class PreviewCommand {
         var plansDir = Cli.FindPlansDirectory(Get("plans"));
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var selections = Cli.BuildSelections(options, catalog);
+        var granularity = (Get("granularity") ?? "group").ToLowerInvariant() switch {
+            "group" => LayerGranularity.Group,
+            "plan" => LayerGranularity.Plan,
+            var unknown => throw new ArgumentException($"unknown --granularity '{unknown}' (group|plan)"),
+        };
+        var baseVhdxMaximumMb = ParseBaseVhdxMaximumMb(Get("base-vhdx-mb") ?? Get("base-size"));
         var json = options.ContainsKey("json");
         var log = new BuildLog();
         var (runner, executers, layers) = Cli.CreateEngineParts();
@@ -167,37 +199,66 @@ internal static class PreviewCommand {
         var previewLogDirectory = Path.Combine(Path.GetDirectoryName(workDirectory)!, "logs");
         Directory.CreateDirectory(previewLogDirectory);
         using var previewSerilog = log.UseSerilog(
-            Path.Combine(previewLogDirectory, $"tinywin2-preview-{DateTimeOffset.UtcNow:yyyyMMddTHHmmss}.log"),
+            Path.Combine(previewLogDirectory,
+                $"tinywin2-preview-{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfff}-{Guid.NewGuid():N}.log"),
             echoConsole: !json);
-        var previews = await previewer.RunAsync(new PreviewOptions {
-            SourcePath = sourcePath,
-            ImageIndex = imageIndex,
-            Selections = selections,
-            WorkDirectory = workDirectory,
-            Catalog = catalog,
-            PlansDirectory = plansDir,
-        }, CancellationToken.None);
-        if (json) {
-            Console.WriteLine(new JsonObject {
-                ["plans"] = new JsonArray(previews.Select(p => (JsonNode)p.ToJson()).ToArray()),
-            }.ToJsonString(DoctorCommand.JsonSerializerOptions));
-        }
-        else {
-            Console.WriteLine();
-            Console.WriteLine($"{"plan",-46} {"state",-8} changes");
-            foreach (var preview in previews) {
-                Console.WriteLine($"{preview.PlanId,-46} {(preview.Satisfied ? "no-op" : "will-do"),-8} {preview.Differences.Count}");
-                foreach (var difference in preview.Differences.Take(8)) {
-                    Console.WriteLine($"    [{difference.Kind}] {difference.Target}");
-                }
-                if (preview.Differences.Count > 8) {
-                    Console.WriteLine($"    … {preview.Differences.Count - 8} more");
+        using var cts = new CancellationTokenSource();
+        ConsoleCancelEventHandler onCancel = (_, e) => {
+            e.Cancel = true;
+            log.Warn("cancellation requested; stopping preview…");
+            cts.Cancel();
+        };
+        Console.CancelKeyPress += onCancel;
+        try {
+            var previews = await previewer.RunAsync(new PreviewOptions {
+                SourcePath = sourcePath,
+                ImageIndex = imageIndex,
+                Selections = selections,
+                WorkDirectory = workDirectory,
+                Catalog = catalog,
+                Granularity = granularity,
+                BaseVhdxMaximumMb = baseVhdxMaximumMb,
+                PlansDirectory = plansDir,
+            }, cts.Token);
+            if (json) {
+                Console.WriteLine(new JsonObject {
+                    ["plans"] = new JsonArray(previews.Select(p => (JsonNode)p.ToJson()).ToArray()),
+                }.ToJsonString(DoctorCommand.JsonSerializerOptions));
+            }
+            else {
+                Console.WriteLine();
+                Console.WriteLine($"{"plan",-46} {"state",-8} changes");
+                foreach (var preview in previews) {
+                    Console.WriteLine($"{preview.PlanId,-46} {(preview.Satisfied ? "no-op" : "will-do"),-8} {preview.Differences.Count}");
+                    foreach (var difference in preview.Differences.Take(8)) {
+                        Console.WriteLine($"    [{difference.Kind}] {difference.Target}");
+                    }
+                    if (preview.Differences.Count > 8) {
+                        Console.WriteLine($"    … {preview.Differences.Count - 8} more");
+                    }
                 }
             }
+            return 0;
         }
-        try { Directory.Delete(workDirectory, recursive: true); }
-        catch { /* the preview base layer may be worth keeping; ignore */ }
-        return 0;
+        catch (OperationCanceledException) {
+            Console.Error.WriteLine("preview cancelled.");
+            return 130;
+        }
+        finally {
+            Console.CancelKeyPress -= onCancel;
+            try { Directory.Delete(workDirectory, recursive: true); }
+            catch { /* the preview base layer may be worth keeping; ignore */ }
+        }
+    }
+
+    private static long ParseBaseVhdxMaximumMb(string? value) {
+        if (value is null) {
+            return BuildOptions.DefaultBaseVhdxMaximumMb;
+        }
+
+        return long.TryParse(value, out var size) && size > 0
+            ? size
+            : throw new ArgumentException($"invalid base VHDX size '{value}' (must be a positive number of MB)");
     }
 }
 
@@ -268,7 +329,7 @@ internal static class LayerCommand {
                         Console.Error.WriteLine("usage: tinywin2 layer rollback-to <workspace> <layer> -o <out.wim|esd> [--fast]");
                         return 2;
                     }
-                    var format = output.EndsWith(".esd", StringComparison.OrdinalIgnoreCase) ? ImageFormat.Esd : ImageFormat.Wim;
+                    var format = output.EndsWith(".esd", StringComparison.OrdinalIgnoreCase) ? OutputFormat.Esd : OutputFormat.Wim;
                     var captured = await inspector.RollbackCaptureAsync(workDirectory, int.Parse(positional[2]), output, format,
                         options.ContainsKey("fast"), CancellationToken.None);
                     Console.WriteLine($"captured layer state → {captured}");

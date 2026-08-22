@@ -1,6 +1,6 @@
-using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using TinyWin2.Core.Hashing;
 
 namespace TinyWin2.Core.Plans;
 
@@ -32,7 +32,7 @@ public sealed class PlanCatalog {
         var seenIds = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var file in files) {
             PlanDefinition? plan;
-            var sha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(file)));
+            var hash = Fingerprinting.Compute(File.ReadAllBytes(file));
             try {
                 var node = JsonNode.Parse(File.ReadAllText(file));
                 if (node is not JsonObject obj) {
@@ -53,7 +53,7 @@ public sealed class PlanCatalog {
                 continue;
             }
             seenIds[plan.Id] = file;
-            plans.Add(plan with { Sha256 = sha256 });
+            plans.Add(plan with { Hash = hash });
         }
         foreach (var plan in plans) {
             foreach (var required in plan.Requires) {

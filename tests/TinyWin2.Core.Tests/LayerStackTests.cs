@@ -61,7 +61,32 @@ public sealed class VhdLayerStackTests : IDisposable {
         await Assert.That(stack.Records.Count).IsEqualTo(1);
         await Assert.That(stack.Records[0].Index).IsEqualTo(0);
         await Assert.That(stack.Records[0].Status).IsEqualTo(LayerStatus.Committed);
+        await Assert.That(stack.BaseReady).IsFalse();
         await Assert.That(stack.LeafVhdxPath).IsEqualTo(Path.Combine(_workDir, "base.vhdx"));
+    }
+
+    [Test]
+    public async Task ApplyingBaseMarksItReadyAndPersistsTheMarker() {
+        var stack = await CreateWithBaseAsync();
+        await stack.ApplyImageToBaseAsync((_, _) => Task.CompletedTask, CancellationToken.None);
+        await Assert.That(stack.BaseReady).IsTrue();
+
+        var reloaded = Stack;
+        await Assert.That(reloaded.BaseReady).IsTrue();
+    }
+
+    [Test]
+    public async Task IncompleteBaseRecreationDropsDependentLayers() {
+        var stack = await CreateWithBaseAsync();
+        var layer = await stack.BeginLayerAsync("step1", "S1", null, CancellationToken.None);
+        await stack.CommitLayerAsync(layer, [], CancellationToken.None);
+
+        await stack.EnsureBaseAsync(1000, "test", CancellationToken.None);
+
+        await Assert.That(stack.BaseReady).IsFalse();
+        await Assert.That(stack.Records.Count).IsEqualTo(1);
+        await Assert.That(stack.Records[0].Index).IsEqualTo(0);
+        await Assert.That(File.Exists(layer.VhdxPath)).IsFalse();
     }
 
     [Test]
@@ -118,11 +143,36 @@ public sealed class VhdLayerStackTests : IDisposable {
         }
         await stack.ConsolidateAsync(CancellationToken.None);
         await Assert.That(_backend.MergeDepth).IsEqualTo(3);
+        await Assert.That(stack.ConsolidationPending).IsFalse();
         await Assert.That(File.Exists(Path.Combine(_workDir, "L001.vhdx"))).IsFalse();
         await Assert.That(File.Exists(Path.Combine(_workDir, "L003.vhdx"))).IsFalse();
         await Assert.That(File.Exists(stack.BaseVhdxPath)).IsTrue();
         await Assert.That(stack.Records.Count(r => r.Status == LayerStatus.Merged)).IsEqualTo(3);
         await Assert.That(stack.LeafVhdxPath).EndsWith("base.vhdx");
+    }
+
+    [Test]
+    public async Task TruncateRejectsMergedLayersBecauseBaseCannotRollBack() {
+        var stack = await CreateWithBaseAsync();
+        var session = await stack.BeginLayerAsync("step1", "S1", null, CancellationToken.None);
+        await stack.CommitLayerAsync(session, [], CancellationToken.None);
+        await stack.ConsolidateAsync(CancellationToken.None);
+
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            stack.TruncateToAsync(0, CancellationToken.None).GetAwaiter().GetResult());
+        await Assert.That(ex.Message).Contains("merged");
+    }
+
+    [Test]
+    public async Task SourceProvenanceRoundTripsAndRejectsChanges() {
+        var stack = Stack;
+        stack.InitializeOrValidateSource("source-a", 1);
+        await Assert.That(stack.Records).IsEmpty();
+
+        var reloaded = Stack;
+        reloaded.InitializeOrValidateSource("source-a", 1);
+        var ex = Assert.Throws<IOException>(() => reloaded.InitializeOrValidateSource("source-b", 1));
+        await Assert.That(ex.Message).Contains("different source");
     }
 
     [Test]
@@ -291,13 +341,74 @@ public sealed class BuildEngineDryRunTests : IDisposable {
             Catalog = PlanCatalog.LoadDirectory(_plansDir),
             DryRun = false,
             NoLayers = true,
-            OutputMode = OutputMode.Wim,
+            OutputFormat = OutputFormat.Wim,
             SkipEnvironmentChecks = true,
         }, CancellationToken.None);
         await Assert.That(result.Succeeded).IsTrue();
         // layerless: no differencing layers at all; exactly two attaches (base image apply + the single working mount)
         await Assert.That(backend.Calls.Count(c => c.StartsWith("create-diff:"))).IsEqualTo(0);
         await Assert.That(backend.Calls.Count(c => c.StartsWith("attach:"))).IsEqualTo(2);
+        var scanIndex = runner.Calls.FindIndex(c => c.Args.Contains("/ScanHealth"));
+        var captureIndex = runner.Calls.FindIndex(c => c.Args.Contains("/Capture-Image"));
+        await Assert.That(scanIndex).IsGreaterThanOrEqualTo(0);
+        await Assert.That(captureIndex).IsGreaterThan(scanIndex);
+        await Assert.That(runner.ArgsOf(scanIndex)).Contains("/English");
+        await Assert.That(runner.ArgsOf(scanIndex)).Contains("/Image:S:\\");
+    }
+
+    [Test]
+    public async Task VhdxOutputExportsOneDiskWithoutCapturingInstallImage() {
+        TestPlans.WritePlan(_plansDir, "vhdx.noop", o => o["execs"] = new JsonArray(new JsonObject {
+            ["resource"] = "test.noop",
+            ["ensure"] = "absent",
+            ["with"] = new JsonObject(),
+        }));
+        var runner = new FakeProcessRunner {
+            Handler = (_, args) => {
+                if (args.Contains("/Get-WimInfo")) {
+                    return FakeProcessRunner.Ok("Index : 1\r\nName : Fake Edition\r\n");
+                }
+
+                return FakeProcessRunner.Ok();
+            },
+        };
+        var media = TestPlans.CreateTempDirectory();
+        Directory.CreateDirectory(Path.Combine(media, "sources"));
+        await File.WriteAllTextAsync(Path.Combine(media, "sources", "install.wim"), "wim");
+        await File.WriteAllTextAsync(Path.Combine(media, "sources", "boot.wim"), "boot");
+        var outputRoot = TestPlans.CreateTempDirectory();
+        var backend = new FakeLayerBackend();
+        var engine = new BuildEngine(
+            runner,
+            new ExecuterRegistry([new FakeExecuter("test.noop", fail: false)]),
+            backend,
+            new BuildLog());
+
+        var result = await engine.BuildAsync(new BuildOptions {
+            SourcePath = media,
+            ImageIndex = 1,
+            Selections = [new PlanSelection("vhdx.noop")],
+            OutputRoot = outputRoot,
+            Catalog = PlanCatalog.LoadDirectory(_plansDir),
+            NoLayers = true,
+            OutputFormat = OutputFormat.Vhdx,
+            SkipEnvironmentChecks = true,
+        }, CancellationToken.None);
+
+        await Assert.That(result.OutputFormat).IsEqualTo(OutputFormat.Vhdx);
+        await Assert.That(result.MediaPath).IsNull();
+        await Assert.That(result.IsoPath).IsNull();
+        await Assert.That(result.OutputPath).EndsWith(".vhdx");
+        await Assert.That(File.Exists(result.OutputPath)).IsTrue();
+        await Assert.That(File.Exists(result.ManifestPath)).IsTrue();
+        await Assert.That(runner.Calls.Any(c => c.Args.Contains("/Capture-Image"))).IsFalse();
+        await Assert.That(runner.Calls.Any(c => c.Args.Contains("/ScanHealth"))).IsTrue();
+        var manifest = JsonNode.Parse(await File.ReadAllTextAsync(result.ManifestPath))!.AsObject();
+        await Assert.That(manifest["outputFormat"]!.GetValue<string>()).IsEqualTo("vhdx");
+        await Assert.That(manifest["output"]!["path"]!.GetValue<string>()).IsEqualTo(result.OutputPath);
+        await Assert.That(manifest["output"]!["hashAlgorithm"]!.GetValue<string>()).IsEqualTo("xxh3-v1");
+        await Assert.That(manifest["output"]!["hash"]!.GetValue<string>()).StartsWith("xxh3-v1:");
+        await Assert.That(manifest["installImage"]).IsNull();
     }
 
     [Test]

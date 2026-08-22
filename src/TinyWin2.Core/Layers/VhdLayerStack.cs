@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Globalization;
+using TinyWin2.Core.Hashing;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
 
@@ -34,7 +35,7 @@ public sealed record LayerRecord {
     public JsonObject? BoundArgs { get; init; }
     public JsonArray? ExecResults { get; init; }
 
-    /// <summary>Sha256 of the step's exec specs — lets a resumed build tell a reusable layer from a diverged one.</summary>
+    /// <summary>Versioned fingerprint of the step's exec specs and assets.</summary>
     public string? StepFingerprint { get; init; }
 
     public string? Error { get; init; }
@@ -78,9 +79,31 @@ public sealed class VhdLayerStack(
     private readonly object _gate = new();
     private readonly List<LayerRecord> _records = [];
     private int _nextIndex = 1;
+    private bool _baseReady;
+    private bool _consolidationPending;
+    private string? _sourceFingerprint;
+    private int? _sourceIndex;
     private string WorkDirectory { get; } = Path.GetFullPath(workDirectory);
     public string BaseVhdxPath => Path.Combine(WorkDirectory, BaseFileName);
     private string ManifestPath => Path.Combine(WorkDirectory, ManifestFileName);
+
+    /// <summary>True only after the source image was applied and the base was detached successfully.</summary>
+    public bool BaseReady {
+        get {
+            lock (_gate) {
+                return _baseReady;
+            }
+        }
+    }
+
+    /// <summary>True when a process may have crashed during an offline chain merge.</summary>
+    public bool ConsolidationPending {
+        get {
+            lock (_gate) {
+                return _consolidationPending;
+            }
+        }
+    }
 
     /// <summary>Current chain leaf (deepest committed layer whose VHDX still exists; base after merges).</summary>
     public string LeafVhdxPath {
@@ -153,9 +176,20 @@ public sealed class VhdLayerStack(
             }
 
             ValidateRecords(records);
+            var fingerprintAlgorithm = root["fingerprintAlgorithm"]?.GetValue<string>();
+            if (!string.Equals(fingerprintAlgorithm, Fingerprinting.Algorithm, StringComparison.Ordinal)) {
+                throw new IOException(
+                    $"layer workspace '{stack.WorkDirectory}' uses an unsupported fingerprint algorithm; " +
+                    "delete it and rebuild.");
+            }
+
             lock (stack._gate) {
                 stack._records.AddRange(records);
                 stack._nextIndex = ReadNextIndex(root, records, stack.WorkDirectory);
+                stack._baseReady = root["baseReady"]?.GetValue<bool>() ?? false;
+                stack._consolidationPending = root["consolidationPending"]?.GetValue<bool>() ?? false;
+                stack._sourceFingerprint = root["sourceFingerprint"]?.GetValue<string>();
+                stack._sourceIndex = root["sourceIndex"]?.GetValue<int>();
             }
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or ArgumentException
@@ -181,7 +215,15 @@ public sealed class VhdLayerStack(
                 layers.Add(record.ToJson());
             }
 
-            var root = new JsonObject { ["layers"] = layers, ["nextIndex"] = _nextIndex };
+            var root = new JsonObject {
+                ["fingerprintAlgorithm"] = Fingerprinting.Algorithm,
+                ["layers"] = layers,
+                ["nextIndex"] = _nextIndex,
+                ["baseReady"] = _baseReady,
+                ["consolidationPending"] = _consolidationPending,
+                ["sourceFingerprint"] = _sourceFingerprint,
+                ["sourceIndex"] = _sourceIndex,
+            };
             var staging = ManifestPath + ".tmp";
             File.WriteAllText(staging, root.ToPrettyString());
             File.Move(staging, ManifestPath, overwrite: true);
@@ -190,13 +232,80 @@ public sealed class VhdLayerStack(
 
     /// <summary>Creates the base layer VHDX; no-op when one already exists (resumable).</summary>
     public async Task EnsureBaseAsync(long maximumMb, string volumeLabel, CancellationToken ct) {
+        bool baseReady;
+        lock (_gate) {
+            baseReady = _baseReady;
+        }
+
+        if (!baseReady) {
+            // A base file without the completion marker may be the result of a crashed or
+            // failed Apply-Image. Every diff depends on that base, so the whole incomplete
+            // chain must be discarded before creating a new one.
+            var stalePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            lock (_gate) {
+                foreach (var record in _records.Where(r => r is { Index: > 0, VhdxPath: not null })) {
+                    stalePaths.Add(record.VhdxPath!);
+                }
+            }
+
+            if (Directory.Exists(WorkDirectory)) {
+                foreach (var path in Directory.EnumerateFiles(WorkDirectory, "L*.vhdx")) {
+                    stalePaths.Add(path);
+                }
+            }
+
+            if (File.Exists(BaseVhdxPath)) {
+                stalePaths.Add(BaseVhdxPath);
+            }
+
+            foreach (var path in stalePaths) {
+                try {
+                    await backend.DetachAsync(path, CancellationToken.None);
+                }
+                catch (Exception ex) {
+                    log.Warn($"could not detach incomplete layer '{Path.GetFileName(path)}': {ex.Message}");
+                }
+
+                if (!TryDelete(path, strict: false)) {
+                    throw new IOException(
+                        $"incomplete layer '{path}' could not be removed; delete the workspace and rebuild.");
+                }
+            }
+
+            lock (_gate) {
+                _records.Clear();
+                _nextIndex = 1;
+                _baseReady = false;
+            }
+
+            Save();
+        }
+
+        if (!File.Exists(BaseVhdxPath)) {
+            bool hasDependentLayers;
+            lock (_gate) {
+                hasDependentLayers = _records.Any(r => r.Index > 0);
+                if (!hasDependentLayers) {
+                    _records.RemoveAll(r => r.Index == 0);
+                    _baseReady = false;
+                }
+            }
+
+            if (hasDependentLayers) {
+                throw new IOException(
+                    $"base layer '{BaseVhdxPath}' is missing while dependent layers remain; delete the workspace and rebuild.");
+            }
+
+            Save();
+        }
+
         if (File.Exists(BaseVhdxPath)) {
             bool hasRecord;
             lock (_gate) {
-                hasRecord = _records.Any(r => r.Index == 0 && r.Status == LayerStatus.Committed);
+                hasRecord = _records.Any(r => r is { Index: 0, Status: LayerStatus.Committed });
                 _records.RemoveAll(r => r.Index == 0 && r.Status != LayerStatus.Committed);
                 if (!hasRecord) {
-                    _records.Insert(0, new LayerRecord {
+                    _records.Insert(0, new() {
                         Index = 0,
                         Title = "base image (applied from source index)",
                         VhdxFileName = BaseFileName,
@@ -239,6 +348,7 @@ public sealed class VhdLayerStack(
                 Status = LayerStatus.Committed,
                 VhdxPath = BaseVhdxPath,
             });
+            _baseReady = false;
         }
 
         Save();
@@ -259,10 +369,53 @@ public sealed class VhdLayerStack(
                 log.Warn($"detach after a failed base apply also failed: {ex.Message}");
             }
 
+            lock (_gate) {
+                _baseReady = false;
+            }
+
+            Save();
+
             throw;
         }
 
         await backend.DetachAsync(BaseVhdxPath, CancellationToken.None);
+        lock (_gate) {
+            _baseReady = true;
+        }
+
+        Save();
+    }
+
+    /// <summary>Sets or validates the source identity bound to this workspace.</summary>
+    public void InitializeOrValidateSource(string sourceFingerprint, int sourceIndex) {
+        if (string.IsNullOrWhiteSpace(sourceFingerprint)) {
+            throw new ArgumentException("source fingerprint cannot be empty", nameof(sourceFingerprint));
+        }
+
+        lock (_gate) {
+            if (_sourceFingerprint is null && _sourceIndex is null) {
+                if (_records.Count > 0) {
+                    throw new IOException(
+                        $"layer workspace '{WorkDirectory}' has no source provenance; it cannot be resumed safely.");
+                }
+
+                _sourceFingerprint = sourceFingerprint;
+                _sourceIndex = sourceIndex;
+            }
+            else if (!string.Equals(_sourceFingerprint, sourceFingerprint, StringComparison.Ordinal)
+                     || _sourceIndex != sourceIndex) {
+                if (Fingerprinting.IsCurrent(sourceFingerprint) && !Fingerprinting.IsCurrent(_sourceFingerprint)) {
+                    throw new IOException(
+                        $"layer workspace '{WorkDirectory}' uses a legacy fingerprint format; delete it and rebuild.");
+                }
+
+                throw new IOException(
+                    $"layer workspace '{WorkDirectory}' belongs to a different source image or index; " +
+                    "start a clean build instead of resuming it.");
+            }
+        }
+
+        Save();
     }
 
     /// <summary>Creates + attaches a fresh differencing layer for one plan step.</summary>
@@ -386,8 +539,14 @@ public sealed class VhdLayerStack(
             drop = [.. _records.Where(r => r.Index > keepIndex)];
         }
 
+        if (drop.Any(r => r.Status == LayerStatus.Merged)) {
+            throw new InvalidOperationException(
+                "cannot truncate a workspace after layers were merged into the base; start a clean build.");
+        }
+
         var removed = new HashSet<int>();
         foreach (var record in drop.Where(r => r.VhdxFileName != BaseFileName).OrderByDescending(r => r.Index)) {
+            ct.ThrowIfCancellationRequested();
             if (record.VhdxPath is { } path) {
                 try {
                     await backend.DetachAsync(path, CancellationToken.None);
@@ -432,20 +591,36 @@ public sealed class VhdLayerStack(
             throw new IOException("cannot consolidate the layer chain because a committed VHDX is missing");
         }
 
-        var leaf = diffs[^1];
-        await backend.MergeAsync(leaf.VhdxPath!, depth, ct);
-        foreach (var diff in diffs) {
-            var deleteFailed = !TryDelete(diff.VhdxPath!, strict: false);
-            lock (_gate) {
-                UpdateRecord(diff.Index, record => record with {
-                    Status = LayerStatus.Merged,
-                    EndedUtc = DateTimeOffset.UtcNow,
-                    Error = deleteFailed ? "merged; VHDX cleanup is still pending" : record.Error,
-                });
-            }
+        lock (_gate) {
+            _consolidationPending = true;
         }
 
         Save();
+
+        try {
+            var leaf = diffs[^1];
+            await backend.MergeAsync(leaf.VhdxPath!, depth, ct);
+            foreach (var diff in diffs) {
+                var deleteFailed = !TryDelete(diff.VhdxPath!, strict: false);
+                lock (_gate) {
+                    UpdateRecord(diff.Index, record => record with {
+                        Status = LayerStatus.Merged,
+                        EndedUtc = DateTimeOffset.UtcNow,
+                        Error = deleteFailed ? "merged; VHDX cleanup is still pending" : record.Error,
+                    });
+                }
+            }
+
+            lock (_gate) {
+                _consolidationPending = false;
+            }
+
+            Save();
+        }
+        catch (Exception ex) {
+            log.Error($"layer consolidation did not complete; workspace requires a clean rebuild: {ex.Message}");
+            throw;
+        }
     }
 
     /// <summary>Consolidates the chain and copies the merged base to <paramref name="targetPath"/>
@@ -472,7 +647,7 @@ public sealed class VhdLayerStack(
             var record = _records.LastOrDefault(r => r.Index == index
                                                      && (r.Status is LayerStatus.Committed or LayerStatus.Merged))
                          ?? throw new ArgumentException($"layer {index:000} is not committed");
-            return record.Status == LayerStatus.Committed && record.VhdxPath is not null && File.Exists(record.VhdxPath)
+            return record is { Status: LayerStatus.Committed, VhdxPath: not null } && File.Exists(record.VhdxPath)
                 ? record.VhdxPath
                 : BaseVhdxPath; // merged-away layer: its content is in the base
         }
@@ -594,9 +769,13 @@ public sealed class VhdLayerStack(
     }
 
     private static void ValidateRecords(IReadOnlyList<LayerRecord> records) {
-        if (records.Count == 0 || records[0].Index != 0
-                               || !records[0].VhdxFileName.Equals(BaseFileName, StringComparison.OrdinalIgnoreCase)
-                               || records[0].Status != LayerStatus.Committed) {
+        if (records.Count == 0) {
+            return;
+        }
+
+        if (records[0].Index != 0
+            || !records[0].VhdxFileName.Equals(BaseFileName, StringComparison.OrdinalIgnoreCase)
+            || records[0].Status != LayerStatus.Committed) {
             throw new InvalidDataException("layer manifest must start with a committed base.vhdx layer");
         }
 

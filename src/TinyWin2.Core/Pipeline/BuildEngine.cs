@@ -1,7 +1,8 @@
 using System.Text.Json.Nodes;
-using TinyWin2.Core.Env;
 using TinyWin2.Core.Executers;
+using TinyWin2.Core.Env;
 using TinyWin2.Core.Executers.Registry;
+using TinyWin2.Core.Hashing;
 using TinyWin2.Core.Layers;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
@@ -9,11 +10,10 @@ using TinyWin2.Core.Plans;
 
 namespace TinyWin2.Core.Pipeline;
 
-public enum OutputMode {
+public enum OutputFormat {
     Wim,
     Esd,
-    Iso,
-    IsoAndVhdx,
+    Vhdx,
 }
 
 /// <summary>
@@ -25,6 +25,7 @@ public static class BuildPhases {
     public const string Media = "media";
     public const string BaseLayer = "base-layer";
     public const string Plan = "plan";
+    public const string CbsScan = "cbs-scan";
     public const string Capture = "capture";
     public const string Package = "package";
     public const string Done = "done";
@@ -41,30 +42,37 @@ public sealed record BuildOptions {
     public required IReadOnlyList<PlanSelection> Selections { get; init; }
     public required string OutputRoot { get; init; }
     public required PlanCatalog Catalog { get; init; }
-    public OutputMode OutputMode { get; init; } = OutputMode.Iso;
+    public OutputFormat OutputFormat { get; init; } = OutputFormat.Esd;
+    public bool CreateIso { get; init; }
     public LayerGranularity Granularity { get; init; } = LayerGranularity.Group;
     public bool Fast { get; init; }
     public bool ContinueOnError { get; init; }
     public bool KeepLayers { get; init; }
     public bool DryRun { get; init; }
+    public bool CaptureEvidence { get; init; } = true;
+
     /// <summary>Layerless fast mode: one working mount, steps applied in place. No atomic rollback,
     /// no layer diff trail, no resume checkpoints — a failed step just leaves the exec's own work undone.</summary>
     public bool NoLayers { get; init; }
+
     /// <summary>Test hook: skip the environment doctor (unit tests run without 50GB free on TEMP).</summary>
     internal bool SkipEnvironmentChecks { get; init; }
+
     public string? OscdimgPath { get; init; }
     public string? PlansDirectory { get; init; }
+
     /// <summary>Existing workspace to resume from: committed layers whose step fingerprint still matches are reused as-is.</summary>
     public string? ResumeWorkspace { get; init; }
+
     public long BaseVhdxMaximumMb { get; init; } = DefaultBaseVhdxMaximumMb;
 }
 
 public sealed record BuildResult {
     public required string BuildId { get; init; }
-    public required string MediaPath { get; init; }
+    public required OutputFormat OutputFormat { get; init; }
+    public string? MediaPath { get; init; }
     public string? IsoPath { get; init; }
-    public string? VhdxPath { get; init; }
-    public required string InstallImagePath { get; init; }
+    public required string OutputPath { get; init; }
     public required string ManifestPath { get; init; }
     public required int LayerCount { get; init; }
     public required bool Succeeded { get; init; }
@@ -82,7 +90,7 @@ public sealed class BuildStepFailedException(
 
 /// <summary>
 /// Orchestrates a build: media prep → base layer (apply) → per-step VHDX diff layers
-/// (atomic) → capture WIM/ESD → media rebuild → optional ISO/VHDX → manifest.
+/// (atomic) → capture WIM/ESD or export VHDX → optional ISO packaging → manifest.
 /// </summary>
 public sealed class BuildEngine(
     IProcessRunner runner,
@@ -96,77 +104,100 @@ public sealed class BuildEngine(
     private const int ProgressComplete = 100;
 
     public async Task<BuildResult> BuildAsync(BuildOptions options, CancellationToken ct) {
-        var buildId = DateTimeOffset.UtcNow.ToString("yyyyMMddTHHmmss");
+        var buildId = $"{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfff}-{Guid.NewGuid():N}";
         log.Phase = BuildPhases.Prepare;
-        log.Info($"build {buildId} starting (granularity={options.Granularity}, out={options.OutputMode}, fast={options.Fast})");
+        log.Info(
+            $"build {buildId} starting (granularity={options.Granularity}, out={options.OutputFormat}, " +
+            $"iso={options.CreateIso}, fast={options.Fast}, evidence={options.CaptureEvidence})");
         var plan = BuildPlanResolver.Resolve(options.Catalog, options.Selections, options.Granularity);
         executers.ValidateBuildPlan(plan);
         log.Info($"resolved {plan.PlanIds.Count} plans into {plan.Steps.Count} atomic steps");
         foreach (var step in plan.Steps) {
-            log.Info($"  step {step.Id}: {step.Plans.Count} plan(s) [{string.Join(", ", step.Plans.Select(p => p.Definition.Id))}]");
+            log.Info(
+                $"  step {step.Id}: {step.Plans.Count} plan(s) [{string.Join(", ", step.Plans.Select(p => p.Definition.Id))}]");
         }
+
+        ValidateOutputOptions(options);
+
         if (options.DryRun) {
             log.Info("dry run: no mutations performed");
-            return DryRunResult(buildId);
+            return DryRunResult(buildId, options.OutputFormat);
         }
-        if (options.NoLayers && options.ResumeWorkspace is not null) {
+
+        if (options is { NoLayers: true, ResumeWorkspace: not null }) {
             throw new InvalidOperationException("--no-layers cannot resume: no layer chain is kept to reuse.");
         }
+
         RunDoctor(options);
         var outputRoot = Path.GetFullPath(options.OutputRoot);
         var workspace = options.ResumeWorkspace ?? Path.Combine(outputRoot, "work", buildId);
-        var mediaPath = Path.Combine(outputRoot, $"TinyWin2-{buildId}");
+        var mediaPath = options.OutputFormat == OutputFormat.Vhdx
+            ? null
+            : Path.Combine(outputRoot, $"TinyWin2-{buildId}");
         var resolver = new SourceImageResolver(runner, log);
         var builder = new OutputBuilder(runner, log);
+        var assetFingerprints = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         SourceMedia? source = null;
         try {
             Directory.CreateDirectory(workspace);
             var stack = VhdLayerStack.Load(workspace, layerBackend, log);
-            var baseReady = options.ResumeWorkspace is not null
-                && File.Exists(stack.BaseVhdxPath)
-                && stack.Records.Any(r => r.Index == 0
-                                          && (r.Status is LayerStatus.Committed or LayerStatus.Merged));
-            var (resolvedSource, stagingWim, sourceIndex) = await PrepareSourceAsync(options, workspace, resolver, ct, stageWim: !baseReady);
+            var resolvedSource = await resolver.ResolveAsync(options.SourcePath, ct);
             source = resolvedSource;
+            var (stagingWim, sourceIndex) = await PrepareSourceAsync(options, workspace, resolvedSource, resolver, ct);
+            stack.InitializeOrValidateSource(
+                SourceImageResolver.ComputeSourceFingerprint(resolvedSource, options.ImageIndex),
+                options.ImageIndex);
+            var baseReady = options.ResumeWorkspace is not null && stack.BaseReady;
             if (baseReady) {
                 log.Info("resume: reusing the existing base layer (image apply skipped)");
             }
             else {
+                if (source.IsEsd) {
+                    log.Info("source uses ESD; exporting selected index to WIM first");
+                }
+
+                await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, options.Fast, ct);
                 await ApplyBaseAsync(stack, options, buildId, workspace, stagingWim, sourceIndex, ct,
-                    captureEvidence: !options.NoLayers);
+                    captureEvidence: options.CaptureEvidence && !options.NoLayers);
             }
+
             List<(string StepId, int LayerIndex, string Error)> failedSteps;
-            string installPath;
+            string? installPath;
             if (options.NoLayers) {
                 log.Info("no-layers mode: applying every step against the single working mount");
                 (failedSteps, installPath) = await RunStepsAndCaptureLayerlessAsync(options, plan, stack, workspace,
                     builder, sourceIndex, ct);
             }
             else {
-                failedSteps = await RunStepsAsync(options, plan, stack, workspace, ct);
-                installPath = await CaptureInstallImageAsync(options, workspace, stack, builder, sourceIndex, ct);
+                failedSteps = await RunStepsAsync(options, plan, stack, workspace, assetFingerprints, ct);
+                installPath = await ScanAndCaptureLeafAsync(
+                    options, workspace, stack, builder, sourceIndex, ct);
             }
-            var (finalInstall, isoPath, vhdxPath) =
-                await PackageOutputAsync(options, buildId, source, mediaPath, installPath, stack, builder, ct);
-            var manifestPath = await WriteManifestAsync(buildId, options, plan, stack, mediaPath, finalInstall,
-                isoPath, vhdxPath, sourceIndex, failedSteps, ct);
+
+            var (outputPath, isoPath) =
+                await PackageOutputAsync(options, buildId, resolvedSource, mediaPath, installPath, stack, builder, ct);
+            var manifestPath = await WriteManifestAsync(buildId, options, plan, stack, mediaPath, outputPath,
+                isoPath, sourceIndex, failedSteps, ct);
             log.Phase = BuildPhases.Done;
-            log.Info($"build complete: {mediaPath}", data: new JsonObject { ["progress"] = ProgressComplete });
+            log.Info($"build complete: {outputPath}", data: new JsonObject { ["progress"] = ProgressComplete });
             if (isoPath is not null) {
                 log.Info($"ISO: {isoPath}");
             }
+
             foreach (var (failedStepId, failedLayerIdx, _) in failedSteps) {
                 log.Warn($"completed with skipped failed step '{failedStepId}' (layer {failedLayerIdx:000} discarded)");
             }
+
             if (!options.KeepLayers) {
                 await TryDeleteDirectoryAsync(workspace);
             }
+
             return new BuildResult {
                 BuildId = buildId,
+                OutputFormat = options.OutputFormat,
                 MediaPath = mediaPath,
                 IsoPath = isoPath,
-                VhdxPath = vhdxPath,
-                InstallImagePath = finalInstall,
+                OutputPath = outputPath,
                 ManifestPath = manifestPath,
                 LayerCount = stack.CommittedDepth,
                 Succeeded = true,
@@ -181,42 +212,42 @@ public sealed class BuildEngine(
         }
         finally {
             if (source is not null) {
-                await resolver.DismountIsoAsync(source, CancellationToken.None);
+                try {
+                    await resolver.DismountIsoAsync(source, CancellationToken.None);
+                }
+                catch (Exception cleanupError) {
+                    log.Error($"source ISO cleanup failed: {cleanupError.Message}");
+                }
             }
         }
     }
 
-    /// <summary>Resolves the source, picks the image index, and stages it as a plain WIM.</summary>
-    private async Task<(SourceMedia Source, string StagingWim, ImageIndexInfo SourceIndex)> PrepareSourceAsync(
-        BuildOptions options, string workspace, SourceImageResolver resolver, CancellationToken ct, bool stageWim = true) {
+    /// <summary>Reads the source indexes and returns the selected index plus its staging path.</summary>
+    private async Task<(string StagingWim, ImageIndexInfo SourceIndex)> PrepareSourceAsync(
+        BuildOptions options, string workspace, SourceMedia source, SourceImageResolver resolver,
+        CancellationToken ct) {
         log.Phase = BuildPhases.Media;
-        var source = await resolver.ResolveAsync(options.SourcePath, ct);
         log.Info($"source media: {source.RootPath} ({(source.IsEsd ? "ESD" : "WIM")} install image)",
             data: new JsonObject { ["progress"] = ProgressMedia });
-        var indexes = await resolver.GetIndexesAsync(source.InstallImagePath, ct);
-        var sourceIndex = indexes.FirstOrDefault(i => i.Index == options.ImageIndex)
-                          ?? throw new InvalidOperationException(
-                              $"image index {options.ImageIndex} not found (available: {string.Join(", ", indexes.Select(i => i.Index))}).");
+        var sourceIndex = await resolver.GetIndexAsync(source.InstallImagePath, options.ImageIndex, ct);
         var stagingWim = Path.Combine(workspace, "install.source.wim");
-        if (stageWim) {
-            if (source.IsEsd) {
-                log.Info("source uses ESD; exporting selected index to WIM first");
-            }
-            await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, options.Fast, ct);
-        }
-        return (source, stagingWim, sourceIndex);
+        return (stagingWim, sourceIndex);
     }
 
     /// <summary>Creates (or reuses) the base layer and applies the staged image into it.</summary>
     private async Task ApplyBaseAsync(
-        VhdLayerStack stack, BuildOptions options, string buildId, string workspace, string stagingWim, ImageIndexInfo sourceIndex,
+        VhdLayerStack stack, BuildOptions options, string buildId, string workspace, string stagingWim,
+        ImageIndexInfo sourceIndex,
         CancellationToken ct, bool captureEvidence = true) {
         log.Phase = BuildPhases.BaseLayer;
         await stack.EnsureBaseAsync(options.BaseVhdxMaximumMb, $"TinyWin2-{buildId}", ct);
         log.Info($"applying '{sourceIndex.Name}' (index {sourceIndex.Index}) into the base layer");
         await stack.ApplyImageToBaseAsync(async (mount, token) => {
             await runner.RunAsync("dism.exe",
-                ["/English", "/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}", $"/ApplyDir:{mount}"],
+                [
+                    "/English", "/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}",
+                    $"/ApplyDir:{mount}"
+                ],
                 new ProcessRunOptions { Timeout = TimeSpan.FromHours(2) }, token);
             if (captureEvidence) {
                 log.Info("capturing base-layer evidence snapshots (file manifest + registry)");
@@ -231,25 +262,25 @@ public sealed class BuildEngine(
     /// live volume, detach. A failed step logs and (without ContinueOnError) aborts; nothing is rolled
     /// back — the exec's own operation granularity is all the atomicity there is.
     /// </summary>
-    private async Task<(List<(string StepId, int LayerIndex, string Error)>, string InstallPath)> RunStepsAndCaptureLayerlessAsync(
+    private async Task<(List<(string StepId, int LayerIndex, string Error)>, string? InstallPath)>
+        RunStepsAndCaptureLayerlessAsync(
         BuildOptions options, BuildPlan plan, VhdLayerStack stack, string workspace, OutputBuilder builder,
         ImageIndexInfo sourceIndex, CancellationToken ct) {
         var failedSteps = new List<(string, int, string)>();
-        var leaf = stack.LeafVhdxPath;
-        var letter = await layerBackend.AttachAsync(leaf, ct);
-        try {
+        return await WithMountedAsync(stack.LeafVhdxPath, async mountPath => {
             var stepNumber = 0;
             foreach (var step in plan.Steps) {
                 ct.ThrowIfCancellationRequested();
                 stepNumber++;
                 log.Info($"step {stepNumber}/{plan.Steps.Count}: '{step.Title}' (no-layers)",
                     data: new JsonObject {
-                        ["progress"] = ProgressAfterBase + (int)(ProgressPlanWeight * stepNumber / (double)plan.Steps.Count),
+                        ["progress"] = ProgressAfterBase +
+                                       (int)(ProgressPlanWeight * stepNumber / (double)plan.Steps.Count),
                     });
                 var session = new LayerSession {
                     Record = new LayerRecord { Index = stepNumber, StepId = step.Id, Title = step.Title },
-                    VhdxPath = leaf,
-                    MountPath = $"{letter}:\\",
+                    VhdxPath = stack.LeafVhdxPath,
+                    MountPath = mountPath,
                 };
                 try {
                     foreach (var resolved in step.Plans) {
@@ -258,74 +289,68 @@ public sealed class BuildEngine(
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
                     failedSteps.Add((step.Id, stepNumber, ex.Message));
-                    log.Error($"step '{step.Id}' failed (no rollback in no-layers mode): {ex.Message}", step.Id, stepNumber);
+                    log.Error($"step '{step.Id}' failed (no rollback in no-layers mode): {ex.Message}", step.Id,
+                        stepNumber);
                     if (!options.ContinueOnError) {
                         throw new BuildStepFailedException(step.Id, stepNumber, ex);
                     }
                 }
             }
 
-            log.Phase = BuildPhases.Capture;
-            var format = options.OutputMode switch {
-                OutputMode.Wim => ImageFormat.Wim,
-                _ => ImageFormat.Esd,
-            };
-            if (format == ImageFormat.Esd) {
-                var intermediate = Path.Combine(workspace, "install.intermediate.wim");
-                await builder.CaptureAsync($"{letter}:\\", intermediate, sourceIndex.Name, sourceIndex.Description,
-                    compress: "none", verify: false, ct);
-                var esdPath = Path.Combine(workspace, "install.esd");
-                await builder.ExportEsdAsync(intermediate, esdPath, ct);
-                return (failedSteps, esdPath);
-            }
-            var capturedWim = Path.Combine(workspace, "install.captured.wim");
-            await builder.CaptureAsync($"{letter}:\\", capturedWim, sourceIndex.Name, sourceIndex.Description,
-                ImageFormat.Wim, options.Fast, ct);
-            return (failedSteps, capturedWim);
-        }
-        finally {
-            try { await layerBackend.DetachAsync(leaf, CancellationToken.None); } catch { /* already detached */ }
-        }
+            await ScanCbsAsync(mountPath, ct);
+            return (failedSteps,
+                await CaptureInstallImageFromMountAsync(
+                    options, workspace, builder, sourceIndex, mountPath, ct));
+        }, ct, "layerless operation");
     }
 
     /// <summary>Runs every plan step as one atomic layer; returns the failed ones (ContinueOnError).</summary>
     private async Task<List<(string StepId, int LayerIndex, string Error)>> RunStepsAsync(
-        BuildOptions options, BuildPlan plan, VhdLayerStack stack, string workspace, CancellationToken ct) {
+        BuildOptions options, BuildPlan plan, VhdLayerStack stack, string workspace,
+        IDictionary<string, string> assetFingerprints, CancellationToken ct) {
         log.Phase = BuildPhases.Plan;
         var failedSteps = new List<(string, int, string)>();
         var skipCount = 0;
         if (options.ResumeWorkspace is not null) {
-            skipCount = await ResumePrefixAsync(plan, stack, ct);
+            skipCount = await ResumePrefixAsync(plan, stack, options.PlansDirectory, assetFingerprints, ct);
         }
+
         var stepNumber = skipCount;
         foreach (var step in plan.Steps.Skip(skipCount)) {
             ct.ThrowIfCancellationRequested();
             stepNumber++;
             log.Info($"step {stepNumber}/{plan.Steps.Count}: '{step.Title}'",
-                data: new JsonObject {
-                    ["progress"] = ProgressAfterBase + (int)(ProgressPlanWeight * stepNumber / (double)plan.Steps.Count),
+                data: new() {
+                    ["progress"] =
+                        ProgressAfterBase + (int)(ProgressPlanWeight * stepNumber / (double)plan.Steps.Count),
                 });
-            var session = await stack.BeginLayerAsync(step.Id, step.Title, null, ct, Fingerprint(step));
+            var session = await stack.BeginLayerAsync(step.Id, step.Title, null, ct,
+                await FingerprintAsync(step, options.PlansDirectory, assetFingerprints, ct));
             var execResults = new JsonArray();
             try {
                 foreach (var resolved in step.Plans) {
                     await RunPlanInLayerAsync(resolved, session, execResults, options, ct);
                 }
+
                 if (!options.Fast) {
                     await CheckLayerHealthAsync(session, ct);
                 }
-                await LayerEvidence.CaptureAsync(session.MountPath, workspace, session.Record.Index, runner, log, ct);
+
+                if (options.CaptureEvidence) {
+                    await LayerEvidence.CaptureAsync(session.MountPath, workspace, session.Record.Index, runner, log, ct);
+                }
                 await stack.CommitLayerAsync(session, execResults, ct);
             }
             catch (Exception ex) {
                 var stillPending = stack.Records.Any(r => r.Index == session.Record.Index
-                                                           && r.Status == LayerStatus.Pending);
+                                                          && r.Status == LayerStatus.Pending);
                 if (!stillPending) {
                     // CommitLayerAsync persists the committed state before an optional
                     // chain consolidation. A consolidation failure must leave that state
                     // available for resume instead of deleting a possibly merged layer.
                     throw;
                 }
+
                 try {
                     await stack.DiscardLayerAsync(session, ex.Message, CancellationToken.None);
                 }
@@ -335,76 +360,117 @@ public sealed class BuildEngine(
                     throw new AggregateException(
                         $"step '{step.Id}' failed and its layer could not be discarded", ex, cleanupError);
                 }
+
                 if (ex is OperationCanceledException) {
                     throw;
                 }
+
                 failedSteps.Add((step.Id, session.Record.Index, ex.Message));
-                log.Error($"step '{step.Id}' failed and its layer was discarded: {ex.Message}", step.Id, session.Record.Index);
+                log.Error($"step '{step.Id}' failed and its layer was discarded: {ex.Message}", step.Id,
+                    session.Record.Index);
                 if (!options.ContinueOnError) {
                     throw new BuildStepFailedException(step.Id, session.Record.Index, ex);
                 }
             }
         }
+
         return failedSteps;
     }
 
-    /// <summary>Captures the chain leaf into the install image (WIM directly; ESD via intermediate WIM).</summary>
-    private async Task<string> CaptureInstallImageAsync(
-        BuildOptions options, string workspace, VhdLayerStack stack, OutputBuilder builder, ImageIndexInfo sourceIndex,
-        CancellationToken ct) {
-        log.Phase = BuildPhases.Capture;
-        var format = options.OutputMode switch {
-            OutputMode.Wim => ImageFormat.Wim,
-            _ => ImageFormat.Esd,
-        };
-        var leaf = stack.LeafVhdxPath;
-        var letter = await layerBackend.AttachAsync(leaf, ct);
+    /// <summary>Scans and captures the final leaf while its single attachment is still mounted.</summary>
+    private async Task<string?> ScanAndCaptureLeafAsync(
+        BuildOptions options, string workspace, VhdLayerStack stack, OutputBuilder builder,
+        ImageIndexInfo sourceIndex, CancellationToken ct) {
+        return await WithMountedAsync(stack.LeafVhdxPath, async mountPath => {
+            await ScanCbsAsync(mountPath, ct);
+            return await CaptureInstallImageFromMountAsync(
+                options, workspace, builder, sourceIndex, mountPath, ct);
+        }, ct, "CBS scan/capture");
+    }
+
+    private async Task<T> WithMountedAsync<T>(
+        string vhdxPath, Func<string, Task<T>> operation, CancellationToken ct, string operationName) {
+        var letter = await layerBackend.AttachAsync(vhdxPath, ct);
+        Exception? operationError = null;
         try {
-            if (format == ImageFormat.Esd) {
-                // Uncompressed staging + single compression in the export below: the recovery
-                // pass would re-encode everything anyway, so pre-compressing only costs time.
-                var intermediate = Path.Combine(workspace, "install.intermediate.wim");
-                await builder.CaptureAsync($"{letter}:\\", intermediate, sourceIndex.Name, sourceIndex.Description,
-                    compress: "none", verify: false, ct);
-                var esdPath = Path.Combine(workspace, "install.esd");
-                await builder.ExportEsdAsync(intermediate, esdPath, ct);
-                return esdPath;
-            }
-            var capturedWim = Path.Combine(workspace, "install.captured.wim");
-            await builder.CaptureAsync($"{letter}:\\", capturedWim, sourceIndex.Name, sourceIndex.Description,
-                ImageFormat.Wim, options.Fast, ct);
-            return capturedWim;
+            return await operation($"{letter}:\\");
+        }
+        catch (Exception ex) {
+            operationError = ex;
+            throw;
         }
         finally {
-            try { await layerBackend.DetachAsync(leaf, CancellationToken.None); } catch { /* already detached */ }
+            try {
+                await layerBackend.DetachAsync(vhdxPath, CancellationToken.None);
+            }
+            catch (Exception cleanupError) when (operationError is not null) {
+                log.Error($"detach failed after {operationName} failure: {cleanupError.Message}");
+            }
         }
     }
 
-    /// <summary>Rebuilds the media folder and produces the ISO / merged-VHDX artifacts.</summary>
-    private async Task<(string FinalInstall, string? IsoPath, string? VhdxPath)> PackageOutputAsync(
-        BuildOptions options, string buildId, SourceMedia source, string mediaPath, string installPath,
+    private async Task<string?> CaptureInstallImageFromMountAsync(
+        BuildOptions options, string workspace, OutputBuilder builder, ImageIndexInfo sourceIndex,
+        string mountPath, CancellationToken ct) {
+        if (options.OutputFormat == OutputFormat.Vhdx) {
+            return null;
+        }
+
+        log.Phase = BuildPhases.Capture;
+        if (options.OutputFormat == OutputFormat.Esd) {
+            // Uncompressed staging + single compression in the export below avoids re-encoding twice.
+            var intermediate = Path.Combine(workspace, "install.intermediate.wim");
+            await builder.CaptureAsync(mountPath, intermediate, sourceIndex.Name, sourceIndex.Description,
+                compress: "none", verify: false, ct);
+            var esdPath = Path.Combine(workspace, "install.esd");
+            await builder.ExportEsdAsync(intermediate, esdPath, ct);
+            return esdPath;
+        }
+
+        var capturedWim = Path.Combine(workspace, "install.captured.wim");
+        await builder.CaptureAsync(mountPath, capturedWim, sourceIndex.Name, sourceIndex.Description,
+            OutputFormat.Wim, options.Fast, ct);
+        return capturedWim;
+    }
+
+    private async Task ScanCbsAsync(string mountPath, CancellationToken ct) {
+        log.Phase = BuildPhases.CbsScan;
+        log.Info($"scanning offline CBS health for {mountPath}");
+        await runner.RunAsync("dism.exe",
+            ["/English", $"/Image:{mountPath}", "/Cleanup-Image", "/ScanHealth"],
+            new ProcessRunOptions { Timeout = TimeSpan.FromHours(1) }, ct);
+    }
+
+    /// <summary>Produces the selected image artifact and optionally packages WIM/ESD media as an ISO.</summary>
+    private async Task<(string OutputPath, string? IsoPath)> PackageOutputAsync(
+        BuildOptions options, string buildId, SourceMedia source, string? mediaPath, string? installPath,
         VhdLayerStack stack, OutputBuilder builder, CancellationToken ct) {
         log.Phase = BuildPhases.Package;
-        log.Info("rebuilding installation media folder", data: new JsonObject { ["progress"] = ProgressPackage });
-        var format = options.OutputMode switch {
-            OutputMode.Wim => ImageFormat.Wim,
-            _ => ImageFormat.Esd,
-        };
-        var finalInstall = await builder.RebuildMediaAsync(source.RootPath, mediaPath, installPath, format, ct);
+        log.Info("packaging output", data: new JsonObject { ["progress"] = ProgressPackage });
+
+        if (options.OutputFormat == OutputFormat.Vhdx) {
+            var vhdxPath = Path.Combine(Path.GetFullPath(options.OutputRoot), $"TinyWin2-{buildId}.vhdx");
+            await stack.ExportMergedVhdxAsync(vhdxPath, ct);
+            return (vhdxPath, null);
+        }
+
+        var resolvedMediaPath = mediaPath
+                                ?? throw new InvalidOperationException("WIM/ESD output requires a media output path.");
+        var resolvedInstallPath = installPath
+                                  ?? throw new InvalidOperationException("WIM/ESD output requires a captured image.");
+        var finalInstall = await builder.RebuildMediaAsync(
+            source.RootPath, resolvedMediaPath, resolvedInstallPath, options.OutputFormat, ct);
         string? isoPath = null;
-        if (options.OutputMode is OutputMode.Iso or OutputMode.IsoAndVhdx) {
+        if (options.CreateIso) {
             var oscdimg = options.OscdimgPath
                           ?? ToolLocator.Locate("oscdimg.exe")
-                          ?? throw new FileNotFoundException("oscdimg.exe not found (pass --oscdimg or install Windows ADK).");
+                          ?? throw new FileNotFoundException(
+                              "oscdimg.exe not found (pass --oscdimg or install Windows ADK).");
             isoPath = Path.Combine(Path.GetFullPath(options.OutputRoot), $"TinyWin2-{buildId}.iso");
-            await builder.CreateIsoAsync(mediaPath, isoPath, oscdimg, ct);
+            await builder.CreateIsoAsync(resolvedMediaPath, isoPath, oscdimg, ct);
         }
-        string? vhdxPath = null;
-        if (options.OutputMode == OutputMode.IsoAndVhdx) {
-            vhdxPath = Path.Combine(Path.GetFullPath(options.OutputRoot), $"TinyWin2-{buildId}.vhdx");
-            await stack.ExportMergedVhdxAsync(vhdxPath, ct);
-        }
-        return (finalInstall, isoPath, vhdxPath);
+
+        return (finalInstall, isoPath);
     }
 
     /// <summary>
@@ -412,39 +478,140 @@ public sealed class BuildEngine(
     /// fingerprint. Everything above it is diverged work and gets truncated; the prefix is reused
     /// byte-identically (that is the whole point of differencing layers acting as checkpoints).
     /// </summary>
-    private async Task<int> ResumePrefixAsync(BuildPlan plan, VhdLayerStack stack, CancellationToken ct) {
-        var committed = stack.Records
-            .Where(r => r.Status == LayerStatus.Committed && r.VhdxFileName != "base.vhdx"
-                        && r.VhdxPath is not null && File.Exists(r.VhdxPath))
+    private async Task<int> ResumePrefixAsync(
+        BuildPlan plan, VhdLayerStack stack, string? plansDirectory,
+        IDictionary<string, string> assetFingerprints, CancellationToken ct) {
+        if (stack.ConsolidationPending) {
+            throw new InvalidOperationException(
+                "the resume workspace was interrupted during layer consolidation; start a clean build.");
+        }
+
+        var missingCommitted = stack.Records.Any(r => r.Status == LayerStatus.Committed
+                                                      && r.VhdxFileName != "base.vhdx"
+                                                      && (r.VhdxPath is null || !File.Exists(r.VhdxPath)));
+        if (missingCommitted) {
+            throw new InvalidOperationException(
+                "the resume workspace has a committed layer whose VHDX is missing; start a clean build.");
+        }
+
+        var checkpoints = stack.Records
+            .Where(r => (r.Status == LayerStatus.Merged
+                         || (r.Status == LayerStatus.Committed && r.VhdxFileName != "base.vhdx"
+                                                               && r.VhdxPath is not null && File.Exists(r.VhdxPath)))
+                        && r.VhdxFileName != "base.vhdx")
             .OrderBy(r => r.Index)
             .ToList();
+        if (checkpoints.Any(r => !Fingerprinting.IsCurrent(r.StepFingerprint))) {
+            throw new InvalidOperationException(
+                "the resume workspace uses legacy step fingerprints; delete it and rebuild.");
+        }
+
+        var fingerprints = new string[plan.Steps.Count];
+        for (var index = 0; index < plan.Steps.Count; index++) {
+            fingerprints[index] = await FingerprintAsync(plan.Steps[index], plansDirectory, assetFingerprints, ct);
+        }
+
         var reused = 0;
-        while (reused < committed.Count && reused < plan.Steps.Count
-               && committed[reused].StepId == plan.Steps[reused].Id
-               && string.Equals(committed[reused].StepFingerprint, Fingerprint(plan.Steps[reused]), StringComparison.Ordinal)) {
+        while (reused < checkpoints.Count && reused < plan.Steps.Count
+                                          && checkpoints[reused].StepId == plan.Steps[reused].Id
+                                          && string.Equals(checkpoints[reused].StepFingerprint, fingerprints[reused],
+                                              StringComparison.Ordinal)) {
             reused++;
         }
-        var diverged = committed.Count - reused;
-        log.Info($"resume: {reused} committed layer(s) match the new plan; {diverged} diverged");
-        if (reused > 0 || committed.Count > 0) {
-            var keepIndex = reused > 0 ? committed[reused - 1].Index : 0;
+
+        var mergedCount = checkpoints.Count(r => r.Status == LayerStatus.Merged);
+        if (mergedCount > 0 && (reused < mergedCount || reused < checkpoints.Count)) {
+            throw new InvalidOperationException(
+                "the resume workspace contains merged layers that do not exactly match the new plan; " +
+                "merged content cannot be rolled back, so start a clean build.");
+        }
+
+        var diverged = checkpoints.Count - reused;
+        log.Info($"resume: {reused} checkpoint layer(s) match the new plan; {diverged} diverged");
+        if (reused > 0 || checkpoints.Count > 0) {
+            var keepIndex = reused > 0 ? checkpoints[reused - 1].Index : 0;
             await stack.TruncateToAsync(keepIndex, ct);
         }
+
         return reused;
     }
 
-    /// <summary>Content hash of one step: plan ids + every exec's resource/ensure/desired payload.</summary>
-    private static string Fingerprint(PlanStep step) {
+    /// <summary>Content hash of one step and its file assets.</summary>
+    private static async Task<string> FingerprintAsync(
+        PlanStep step, string? plansDirectory, IDictionary<string, string> assetFingerprints,
+        CancellationToken ct) {
         var builder = new System.Text.StringBuilder();
         foreach (var resolved in step.Plans) {
             builder.Append(resolved.Definition.Id).Append((char)10);
             foreach (var exec in resolved.Execs) {
                 builder.Append(exec.Resource).Append('|').Append(exec.Ensure).Append('|')
                     .Append(exec.Desired.ToJsonString()).Append((char)10);
+                if (exec is { Resource: "fs.path", Ensure: Ensure.Present }) {
+                    var source = exec.Desired["source"]?.GetValue<string>();
+                    var assetsRoot = ResolveAssetsRoot(plansDirectory, resolved.Definition.Id);
+                    var assetPath = ResolveAssetPathForFingerprint(assetsRoot, source);
+                    var cacheKey = assetPath ?? $"<missing:{source}>";
+                    if (!assetFingerprints.TryGetValue(cacheKey, out var assetFingerprint)) {
+                        assetFingerprint = await AssetFingerprintAsync(assetPath, ct);
+                        assetFingerprints[cacheKey] = assetFingerprint;
+                    }
+
+                    builder.Append("asset|").Append(assetFingerprint).Append((char)10);
+                }
             }
         }
-        return Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes(builder.ToString())));
+
+        return Fingerprinting.Compute(builder.ToString());
+    }
+
+    private static string? ResolveAssetPathForFingerprint(string? assetsRoot, string? source) {
+        if (assetsRoot is null || source is null) {
+            return null;
+        }
+
+        var root = Path.GetFullPath(assetsRoot).TrimEnd(Path.DirectorySeparatorChar,
+            Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var candidate = Path.GetFullPath(Path.Combine(root,
+            source.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar)));
+        return candidate.StartsWith(root, StringComparison.OrdinalIgnoreCase) ? candidate : null;
+    }
+
+    private static async Task<string> AssetFingerprintAsync(string? assetPath, CancellationToken ct) {
+        if (assetPath is null || (!File.Exists(assetPath) && !Directory.Exists(assetPath))) {
+            return "missing";
+        }
+
+        if (File.Exists(assetPath)) {
+            return await Fingerprinting.ComputeFileAsync(assetPath, ct);
+        }
+
+        var entries = new List<string>();
+        var pending = new Stack<string>();
+        pending.Push(assetPath);
+        while (pending.TryPop(out var currentPath)) {
+            ct.ThrowIfCancellationRequested();
+            foreach (var entry in Directory.EnumerateFileSystemEntries(currentPath)
+                         .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)) {
+                var relative = Path.GetRelativePath(assetPath, entry);
+                var attributes = File.GetAttributes(entry);
+                if ((attributes & FileAttributes.ReparsePoint) != 0) {
+                    entries.Add("reparse:" + relative);
+                    continue;
+                }
+
+                if ((attributes & FileAttributes.Directory) != 0) {
+                    entries.Add("directory:" + relative);
+                    pending.Push(entry);
+                }
+                else {
+                    var hash = await Fingerprinting.ComputeFileAsync(entry, ct);
+                    entries.Add($"file:{relative}:{hash}");
+                }
+            }
+        }
+
+        var canonical = string.Join('\n', entries.OrderBy(entry => entry, StringComparer.Ordinal));
+        return Fingerprinting.Compute(canonical);
     }
 
     private async Task RunPlanInLayerAsync(
@@ -476,10 +643,12 @@ public sealed class BuildEngine(
                     ["skipReason"] = result.SkipReason,
                 });
                 if (result.Status == ExecStatus.Applied) {
-                    log.Info($"{exec.Resource}: {result.Changes.Count} change(s)", resolved.Definition.Id, session.Record.Index);
+                    log.Info($"{exec.Resource}: {result.Changes.Count} change(s)", resolved.Definition.Id,
+                        session.Record.Index);
                 }
                 else if (result.Status == ExecStatus.Skipped) {
-                    log.Info($"{exec.Resource}: skipped ({result.SkipReason})", resolved.Definition.Id, session.Record.Index);
+                    log.Info($"{exec.Resource}: skipped ({result.SkipReason})", resolved.Definition.Id,
+                        session.Record.Index);
                 }
             }
         }
@@ -494,7 +663,8 @@ public sealed class BuildEngine(
             [$"/Image:{session.MountPath}", "/Cleanup-Image", "/CheckHealth"],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
         if (result.ExitCode != 0) {
-            throw new ExecException($"image health check failed after layer {session.Record.Index:000} (exit {result.ExitCode}).");
+            throw new ExecException(
+                $"image health check failed after layer {session.Record.Index:000} (exit {result.ExitCode}).");
         }
     }
 
@@ -502,6 +672,7 @@ public sealed class BuildEngine(
         if (plansDirectory is null) {
             return null;
         }
+
         var candidate = Path.Combine(plansDirectory, "assets", planId);
         return Directory.Exists(candidate) ? candidate : null;
     }
@@ -511,17 +682,19 @@ public sealed class BuildEngine(
         BuildOptions options,
         BuildPlan plan,
         VhdLayerStack stack,
-        string mediaPath,
-        string installPath,
+        string? mediaPath,
+        string outputPath,
         string? isoPath,
-        string? vhdxPath,
         ImageIndexInfo sourceIndex,
         List<(string StepId, int LayerIndex, string Error)> failedSteps,
         CancellationToken ct) {
         log.Info("writing build manifest");
+        var outputMetadata = await FileMetadataAsync(outputPath, ct);
+        var isoMetadata = isoPath is null ? null : await FileMetadataAsync(isoPath, ct);
         var manifest = new JsonObject {
-            ["schemaVersion"] = 2,
+            ["schemaVersion"] = 5,
             ["tool"] = "TinyWin2",
+            ["fingerprintAlgorithm"] = Fingerprinting.Algorithm,
             ["buildId"] = buildId,
             ["createdUtc"] = DateTimeOffset.UtcNow.ToString("O"),
             ["sourcePath"] = Path.GetFullPath(options.SourcePath),
@@ -531,17 +704,14 @@ public sealed class BuildEngine(
                 ["editionId"] = sourceIndex.EditionId,
                 ["version"] = sourceIndex.Version,
             },
-            ["outputMode"] = options.OutputMode.ToString().ToLowerInvariant(),
+            ["outputFormat"] = options.OutputFormat.ToString().ToLowerInvariant(),
+            ["createIso"] = options.CreateIso,
             ["granularity"] = options.Granularity.ToString().ToLowerInvariant(),
             ["planIds"] = new JsonArray(plan.PlanIds.Select(p => (JsonNode)JsonValue.Create(p)).ToArray()),
             ["mediaPath"] = mediaPath,
-            ["installImage"] = new JsonObject {
-                ["path"] = installPath,
-                ["sha256"] = await OutputBuilder.ComputeSha256Async(installPath, ct),
-                ["sizeBytes"] = new FileInfo(installPath).Length,
-            },
+            ["output"] = outputMetadata,
             ["isoPath"] = isoPath,
-            ["vhdxPath"] = vhdxPath,
+            ["iso"] = isoMetadata,
             ["failedSteps"] = new JsonArray(failedSteps.Select(f => (JsonNode)new JsonObject {
                 ["stepId"] = f.StepId,
                 ["layerIndex"] = f.LayerIndex,
@@ -549,29 +719,57 @@ public sealed class BuildEngine(
             }).ToArray()),
             ["layers"] = new JsonArray(stack.Records.Select(r => (JsonNode)r.ToJson()).ToArray()),
         };
-        var manifestPath = Path.Combine(mediaPath, "tinywin2-manifest.json");
+        var manifestDirectory = mediaPath ?? Path.GetFullPath(options.OutputRoot);
+        Directory.CreateDirectory(manifestDirectory);
+        var manifestFileName = mediaPath is null
+            ? $"TinyWin2-{buildId}-manifest.json"
+            : "tinywin2-manifest.json";
+        var manifestPath = Path.Combine(manifestDirectory, manifestFileName);
         await File.WriteAllTextAsync(manifestPath, manifest.ToPrettyString(), ct);
         return manifestPath;
     }
 
-    private static BuildResult DryRunResult(string buildId) => new() {
+    private static async Task<JsonObject> FileMetadataAsync(string path, CancellationToken ct) {
+        if (!File.Exists(path) || new FileInfo(path).Length == 0) {
+            throw new IOException($"artifact is missing or empty: '{path}'.");
+        }
+
+        return new JsonObject {
+            ["path"] = path,
+            ["hashAlgorithm"] = Fingerprinting.Algorithm,
+            ["hash"] = await OutputBuilder.ComputeHashAsync(path, ct),
+            ["sizeBytes"] = new FileInfo(path).Length,
+        };
+    }
+
+    private static BuildResult DryRunResult(string buildId, OutputFormat outputFormat) => new() {
         BuildId = buildId,
+        OutputFormat = outputFormat,
         MediaPath = "",
-        InstallImagePath = "",
+        OutputPath = "",
         ManifestPath = "",
         LayerCount = 0,
         Succeeded = true,
     };
 
+    private static void ValidateOutputOptions(BuildOptions options) {
+        if (options is { CreateIso: true, OutputFormat: OutputFormat.Vhdx }) {
+            throw new ArgumentException(
+                "ISO packaging requires WIM or ESD output; use --out esd --iso or --out wim --iso.");
+        }
+    }
+
     private void RunDoctor(BuildOptions options) {
         if (options.SkipEnvironmentChecks) {
             return;
         }
+
         if (!OperatingSystem.IsWindows()) {
             throw new PlatformNotSupportedException("TinyWin2 builds are Windows-only (DISM/diskpart/VHDX).");
         }
+
         var failures = EnvironmentDoctor.Check(options.OutputRoot)
-            .Where(c => c.Required && !c.Ok)
+            .Where(c => c is { Required: true, Ok: false })
             .ToList();
         if (failures.Count > 0) {
             throw new InvalidOperationException(
@@ -586,6 +784,7 @@ public sealed class BuildEngine(
                 if (Directory.Exists(path)) {
                     Directory.Delete(path, recursive: true);
                 }
+
                 return;
             }
             catch (Exception ex) when (attempt < 2 && (ex is IOException or UnauthorizedAccessException)) {
@@ -593,7 +792,7 @@ public sealed class BuildEngine(
             }
             catch (Exception ex) {
                 // Leftover work dirs are annoying but harmless; the next build uses a new id.
-                Console.Error.WriteLine($"warning: could not clean workspace '{path}': {ex.Message}");
+                await Console.Error.WriteLineAsync($"warning: could not clean workspace '{path}': {ex.Message}");
             }
         }
     }

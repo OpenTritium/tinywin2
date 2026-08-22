@@ -14,10 +14,12 @@ public sealed record PreviewOptions {
     public required IReadOnlyList<PlanSelection> Selections { get; init; }
     public required string WorkDirectory { get; init; }
     public required PlanCatalog Catalog { get; init; }
-    public LayerGranularity Granularity { get; } = LayerGranularity.Group;
+    public LayerGranularity Granularity { get; init; } = LayerGranularity.Group;
+
     /// <summary>Plans directory: fs.path-present previews need each plan's assets root.</summary>
     public string? PlansDirectory { get; init; }
-    public long BaseVhdxMaximumMb { get; } = BuildOptions.DefaultBaseVhdxMaximumMb;
+
+    public long BaseVhdxMaximumMb { get; init; } = BuildOptions.DefaultBaseVhdxMaximumMb;
 }
 
 public sealed record PlanPreview(
@@ -49,19 +51,33 @@ public sealed class PreviewRunner(
         log.Info($"preview: {plan.PlanIds.Count} plans resolved into {plan.Steps.Count} steps");
         var resolver = new SourceImageResolver(runner, log);
         var source = await resolver.ResolveAsync(options.SourcePath, ct);
+        var previewCompleted = false;
         try {
             Directory.CreateDirectory(options.WorkDirectory);
-            var stagingWim = Path.Combine(options.WorkDirectory, "install.source.wim");
-            await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, fast: true, ct);
             var stack = VhdLayerStack.Load(options.WorkDirectory, layerBackend, log);
+            stack.InitializeOrValidateSource(SourceImageResolver.ComputeSourceFingerprint(source, options.ImageIndex),
+                options.ImageIndex);
             await stack.EnsureBaseAsync(options.BaseVhdxMaximumMb, "TinyWin2-preview", ct);
-            log.Info("applying source image into the preview base layer");
-            await stack.ApplyImageToBaseAsync(async (mount, token) => {
-                await runner.RunAsync("dism.exe",
-                    ["/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}", $"/ApplyDir:{mount}"],
-                    new ProcessRunOptions { Timeout = TimeSpan.FromHours(2) }, token);
-            }, ct);
+            if (!stack.BaseReady) {
+                var stagingWim = Path.Combine(options.WorkDirectory, "install.source.wim");
+                await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, fast: true, ct);
+                log.Info("applying source image into the preview base layer");
+                await stack.ApplyImageToBaseAsync(async (mount, token) => {
+                    await runner.RunAsync("dism.exe",
+                        [
+                            "/English",
+                            "/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}",
+                            $"/ApplyDir:{mount}"
+                        ],
+                        new ProcessRunOptions { Timeout = TimeSpan.FromHours(2) }, token);
+                }, ct);
+            }
+            else {
+                log.Info("preview: reusing the existing base layer");
+            }
+
             var letter = await layerBackend.AttachAsync(stack.BaseVhdxPath, ct);
+            var inspectionCompleted = false;
             try {
                 var previews = new List<PlanPreview>();
                 foreach (var step in plan.Steps) {
@@ -79,6 +95,7 @@ public sealed class PreviewRunner(
                         finally {
                             await hiveCache.UnloadAllAsync(log, CancellationToken.None);
                         }
+
                         previews.Add(new PlanPreview(
                             resolved.Definition.Id,
                             resolved.Definition.Title,
@@ -86,14 +103,30 @@ public sealed class PreviewRunner(
                             differences));
                     }
                 }
+
+                inspectionCompleted = true;
+                previewCompleted = true;
                 return previews;
             }
             finally {
-                await layerBackend.DetachAsync(stack.BaseVhdxPath, CancellationToken.None);
+                try {
+                    await layerBackend.DetachAsync(stack.BaseVhdxPath, CancellationToken.None);
+                }
+                catch (Exception ex) when (!inspectionCompleted) {
+                    log.Error($"preview base detach failed after inspection failure: {ex.Message}");
+                }
             }
         }
         finally {
-            await resolver.DismountIsoAsync(source, CancellationToken.None);
+            try {
+                await resolver.DismountIsoAsync(source, CancellationToken.None);
+            }
+            catch (Exception ex) {
+                log.Error($"preview source ISO cleanup failed: {ex.Message}");
+                if (previewCompleted) {
+                    throw;
+                }
+            }
         }
     }
 
@@ -101,6 +134,7 @@ public sealed class PreviewRunner(
         if (plansDirectory is null) {
             return null;
         }
+
         var candidate = Path.Combine(plansDirectory, "assets", planId);
         return Directory.Exists(candidate) ? candidate : null;
     }

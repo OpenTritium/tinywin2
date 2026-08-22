@@ -23,11 +23,11 @@ public sealed partial class ResultPage : Page {
         if (State.MediaPath.Length > 0) {
             artifacts.Add("media:  " + State.MediaPath);
         }
+        if (State.OutputPath.Length > 0) {
+            artifacts.Add("输出:   " + State.OutputPath);
+        }
         if (State.IsoPath is not null) {
             artifacts.Add("ISO:    " + State.IsoPath);
-        }
-        if (State.VhdxPath is not null) {
-            artifacts.Add("VHDX:   " + State.VhdxPath);
         }
         if (State.ManifestPath.Length > 0) {
             artifacts.Add("清单:   " + State.ManifestPath);
@@ -50,7 +50,9 @@ public sealed partial class ResultPage : Page {
     private void OpenFolder(object sender, RoutedEventArgs e) {
         var target = State.IsoPath is not null
             ? Path.GetDirectoryName(State.IsoPath)!
-            : State.MediaPath;
+            : State.MediaPath.Length > 0
+                ? State.MediaPath
+                : Path.GetDirectoryName(State.OutputPath) ?? "";
         if (Directory.Exists(target)) {
             _ = Process.Start(new ProcessStartInfo { FileName = target, UseShellExecute = true });
         }
@@ -61,8 +63,9 @@ public sealed partial class ResultPage : Page {
             TinyWin2 构建诊断
             成功: {State.BuildSucceeded}
             源: {State.SourcePath} (index {State.SelectedIndex?.Index})
-            输出模式: {State.OutputMode}, 粒度: {State.Granularity}, 快速: {State.Fast}
+            输出格式: {State.OutputFormat}, ISO: {State.CreateIso}, 粒度: {State.Granularity}, 快速: {State.Fast}
             media: {State.MediaPath}
+            输出: {State.OutputPath}
             ISO: {State.IsoPath}
             manifest: {State.ManifestPath}
             已选 plan: {string.Join(", * ", State.Plans.Where(p => p.IsSelected).Select(p => p.Id))}

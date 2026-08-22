@@ -94,7 +94,8 @@ public sealed class WizardState {
     public ObservableCollection<ImageIndexItem> ImageIndexes { get; } = [];
     public ImageIndexItem? SelectedIndex { get; set; }
     public string OutputRoot { get; set; } = "";
-    public string OutputMode { get; set; } = "iso"; // wim | esd | iso | iso+vhdx
+    public string OutputFormat { get; set; } = "esd"; // wim | esd | vhdx
+    public bool CreateIso { get; set; } = true;
     public string Granularity { get; set; } = "group";
     public bool Fast { get; set; }
 
@@ -104,8 +105,8 @@ public sealed class WizardState {
     public string CurrentPhase { get; set; } = "";
     public bool BuildSucceeded { get; set; }
     public string MediaPath { get; set; } = "";
+    public string OutputPath { get; set; } = "";
     public string? IsoPath { get; set; }
-    public string? VhdxPath { get; set; }
     public string ManifestPath { get; set; } = "";
     public int LayerCount { get; set; }
 

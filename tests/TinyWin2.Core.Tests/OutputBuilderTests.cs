@@ -1,5 +1,6 @@
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Pipeline;
+using TinyWin2.Core.Hashing;
 
 namespace TinyWin2.Core.Tests;
 
@@ -14,7 +15,7 @@ public sealed class OutputBuilderTests : IDisposable {
 
     [Test]
     public async Task CaptureBuildsDismArgumentsPerFormatAndSpeed() {
-        await _builder.CaptureAsync("M:\\", "out.wim", "name", "desc", ImageFormat.Wim, fast: true,
+        await _builder.CaptureAsync("M:\\", "out.wim", "name", "desc", OutputFormat.Wim, fast: true,
             CancellationToken.None);
         var args = string.Join(' ', _runner.ArgsOf(0));
         await Assert.That(args).Contains("/Capture-Image");
@@ -24,7 +25,7 @@ public sealed class OutputBuilderTests : IDisposable {
         await Assert.That(args).Contains("/Compress:fast");
         await Assert.That(args.Contains("/Verify")).IsFalse();
 
-        await _builder.CaptureAsync("M:\\", "out.esd", "name", null, ImageFormat.Esd, fast: false,
+        await _builder.CaptureAsync("M:\\", "out.esd", "name", null, OutputFormat.Esd, fast: false,
             CancellationToken.None);
         var esdArgs = string.Join(' ', _runner.ArgsOf(1));
         await Assert.That(esdArgs).Contains("/Compress:recovery");
@@ -42,17 +43,32 @@ public sealed class OutputBuilderTests : IDisposable {
     }
 
     [Test]
+    public void VhdxCannotBeCapturedAsAnInstallImage() {
+        Assert.Throws<ArgumentException>(() => _builder.CaptureAsync(
+            "M:\\", "out.vhdx", "name", null, OutputFormat.Vhdx, fast: true, CancellationToken.None));
+    }
+
+    [Test]
+    public async Task VhdxCannotRebuildInstallationMedia() {
+        var ex = Assert.Throws<ArgumentException>(() => _builder.RebuildMediaAsync(
+            _root, Path.Combine(_root, "out"), "captured.vhdx", OutputFormat.Vhdx, CancellationToken.None)
+            .GetAwaiter().GetResult());
+        await Assert.That(ex.Message).Contains("VHDX");
+        await Assert.That(_runner.Calls.Count).IsEqualTo(0);
+    }
+
+    [Test]
     public async Task RebuildMediaToleratesRobocopySuccessCodesOnlyBelowEight() {
         var source = CreateMediaSource();
         var captured = Path.Combine(_root, "captured.wim");
         await File.WriteAllTextAsync(captured, "payload");
         _runner.Handler = (_, _) => FakeProcessRunner.Fail(1);
-        await _builder.RebuildMediaAsync(source, Path.Combine(_root, "out"), captured, ImageFormat.Wim,
+        await _builder.RebuildMediaAsync(source, Path.Combine(_root, "out"), captured, OutputFormat.Wim,
             CancellationToken.None);
 
         _runner.Handler = (_, _) => FakeProcessRunner.Fail(8);
         var ex = Assert.Throws<IOException>(() => _builder.RebuildMediaAsync(
-            source, Path.Combine(_root, "out2"), "captured.wim", ImageFormat.Wim, CancellationToken.None)
+            source, Path.Combine(_root, "out2"), "captured.wim", OutputFormat.Wim, CancellationToken.None)
             .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("robocopy failed");
     }
@@ -68,7 +84,7 @@ public sealed class OutputBuilderTests : IDisposable {
         var captured = Path.Combine(_root, "captured.wim");
         await File.WriteAllTextAsync(captured, "payload");
 
-        var finalPath = await _builder.RebuildMediaAsync(source, outDir, captured, ImageFormat.Wim,
+        var finalPath = await _builder.RebuildMediaAsync(source, outDir, captured, OutputFormat.Wim,
             CancellationToken.None);
 
         await Assert.That(finalPath).IsEqualTo(Path.Combine(sourcesDir, "install.wim"));
@@ -95,6 +111,10 @@ public sealed class OutputBuilderTests : IDisposable {
         Directory.CreateDirectory(Path.Combine(media, "efi", "microsoft", "boot"));
         File.WriteAllText(Path.Combine(media, "boot", "etfsboot.com"), "b");
         File.WriteAllText(Path.Combine(media, "efi", "microsoft", "boot", "efisys_noprompt.bin"), "e");
+        _runner.Handler = (_, args) => {
+            File.WriteAllText(args[^1], "iso");
+            return FakeProcessRunner.Ok();
+        };
 
         await _builder.CreateIsoAsync(media, Path.Combine(_root, "x.iso"), "oscdimg.exe", CancellationToken.None);
 
@@ -105,11 +125,12 @@ public sealed class OutputBuilderTests : IDisposable {
     }
 
     [Test]
-    public async Task ComputeSha256MatchesKnownDigest() {
+    public async Task ComputeHashUsesXxHash3() {
         var file = Path.Combine(_root, "data.bin");
         await File.WriteAllTextAsync(file, "abc");
-        var hash = await OutputBuilder.ComputeSha256Async(file, CancellationToken.None);
-        await Assert.That(hash).IsEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+        var hash = await OutputBuilder.ComputeHashAsync(file, CancellationToken.None);
+        await Assert.That(hash).IsEqualTo(await Fingerprinting.ComputeFileAsync(file, CancellationToken.None));
+        await Assert.That(hash).StartsWith("xxh3-v1:");
     }
 
     private string CreateMediaSource() {

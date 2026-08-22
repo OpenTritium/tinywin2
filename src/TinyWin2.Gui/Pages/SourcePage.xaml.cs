@@ -107,11 +107,19 @@ public sealed partial class SourcePage : Page {
         UpdateNextEnabled();
     }
 
-    private void OutputModeSelected(object sender, SelectionChangedEventArgs e) {
-        if (OutputModeCombo.SelectedItem is ComboBoxItem item && item.Tag is string mode) {
-            State.OutputMode = mode;
+    private void OutputFormatSelected(object sender, SelectionChangedEventArgs e) {
+        if (OutputFormatCombo.SelectedItem is ComboBoxItem item && item.Tag is string format) {
+            State.OutputFormat = format;
+            var isVhdx = string.Equals(format, "vhdx", StringComparison.OrdinalIgnoreCase);
+            IsoToggle.IsEnabled = !isVhdx;
+            if (isVhdx) {
+                State.CreateIso = false;
+                IsoToggle.IsOn = false;
+            }
         }
     }
+
+    private void IsoToggled(object sender, RoutedEventArgs e) => State.CreateIso = IsoToggle.IsOn;
 
     private void GranularitySelected(object sender, SelectionChangedEventArgs e) {
         if (GranularityCombo.SelectedItem is ComboBoxItem item && item.Tag is string granularity) {

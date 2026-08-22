@@ -49,7 +49,7 @@ public sealed partial class ProgressPage : Page {
             "build",
             "-s", State.SourcePath,
             "-i", State.SelectedIndex!.Index.ToString(),
-            "--out", State.OutputMode,
+            "--out", State.OutputFormat,
             "--granularity", State.Granularity,
             "--json-events",
         };
@@ -58,6 +58,9 @@ public sealed partial class ProgressPage : Page {
         }
         if (State.Fast) {
             arguments.Add("--fast");
+        }
+        if (!State.CreateIso) {
+            arguments.Add("--no-iso");
         }
         foreach (var (planId, args) in State.CollectSelections()) {
             arguments.AddRange(["--plan", planId]);
@@ -83,9 +86,11 @@ public sealed partial class ProgressPage : Page {
                 if (phase is "result") {
                     var data = evt["data"]?.AsObject();
                     State.BuildSucceeded = data?["succeeded"]?.GetValue<bool>() ?? false;
+                    State.OutputFormat = data?["outputFormat"]?.GetValue<string>() ?? State.OutputFormat;
+                    State.CreateIso = data?["createIso"]?.GetValue<bool>() ?? State.CreateIso;
                     State.MediaPath = data?["mediaPath"]?.GetValue<string>() ?? "";
+                    State.OutputPath = data?["outputPath"]?.GetValue<string>() ?? "";
                     State.IsoPath = data?["isoPath"]?.GetValue<string>();
-                    State.VhdxPath = data?["vhdxPath"]?.GetValue<string>();
                     State.ManifestPath = data?["manifestPath"]?.GetValue<string>() ?? "";
                     State.LayerCount = data?["layerCount"]?.GetValue<int>() ?? 0;
                     _lines.Add(new ColoredLogLine { Timestamp = DateTimeOffset.Now, Level = "info", Message = "构建结束。" });
@@ -124,6 +129,7 @@ public sealed partial class ProgressPage : Page {
         "media" => "解析源媒体",
         "base-layer" => "应用基础层（Apply 镜像）",
         "plan" => "逐层执行精简计划",
+        "cbs-scan" => "扫描离线 CBS 健康状态",
         "capture" => "捕获输出镜像",
         "package" => "重建媒体 / 生成 ISO",
         "done" => "完成",

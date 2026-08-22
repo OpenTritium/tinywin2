@@ -104,12 +104,16 @@ internal static class Program {
               --plan <id> [--plan ...]              select plans
               --set planId.arg=value [--set ...]    set plan arguments
               --profile <file>                      load a selection profile
-              --out wim|esd|iso|iso+vhdx            output mode (default iso)
+              --out wim|esd|vhdx                    image output (default esd)
+              --iso                                 package WIM/ESD media as a bootable ISO
               -o <dir>                              output root (default ./out)
               --granularity group|plan              one layer per group (default) or per plan
-              [--fast] [--continue-on-error] [--keep-layers] [--dry-run]
+              --base-vhdx-mb <mb>                    maximum dynamic base VHDX size
+              [--fast] [--no-evidence] [--continue-on-error] [--keep-layers] [--dry-run]
                                         [--no-layers] [--resume [workspace]]
               [--oscdimg <path>] [--json-events]
+
+            Without --out/--iso, the default remains ESD media plus a bootable ISO.
 
             examples:
               tinywin2 inspect D:\iso\server2025.iso

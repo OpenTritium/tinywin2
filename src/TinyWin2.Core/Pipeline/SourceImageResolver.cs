@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using TinyWin2.Core.Hashing;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
 
@@ -41,14 +42,29 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         }
         if (File.Exists(fullPath) && fullPath.EndsWith(".iso", StringComparison.OrdinalIgnoreCase)) {
             var driveRoot = await MountIsoAsync(fullPath, ct);
-            var media = new SourceMedia {
-                RootPath = driveRoot,
-                IsMountedIso = true,
-                IsoPath = fullPath,
-                InstallImagePath = FindInstallImage(driveRoot),
-            };
-            Validate(media);
-            return media;
+            try {
+                var media = new SourceMedia {
+                    RootPath = driveRoot,
+                    IsMountedIso = true,
+                    IsoPath = fullPath,
+                    InstallImagePath = FindInstallImage(driveRoot),
+                };
+                Validate(media);
+                return media;
+            }
+            catch {
+                try {
+                    var cleanup = await DismountIsoPathAsync(fullPath, CancellationToken.None);
+                    if (!cleanup.Success) {
+                        log.Warn($"could not clean up source ISO after resolution failed '{fullPath}' (exit {cleanup.ExitCode}).");
+                    }
+                }
+                catch (Exception ex) {
+                    log.Warn($"could not clean up source ISO after resolution failed '{fullPath}': {ex.Message}");
+                }
+
+                throw;
+            }
         }
         throw new FileNotFoundException($"source '{sourcePath}' is neither a folder nor an .iso file.");
     }
@@ -57,12 +73,39 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         if (!media.IsMountedIso) {
             return;
         }
-        var result = await runner.RunAsync("pwsh.exe",
-            ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", $"Dismount-DiskImage -ImagePath '{media.IsoPath}' | Out-Null; $?"],
+        try {
+            var result = await DismountIsoPathAsync(media.IsoPath, ct);
+            if (!result.Success) {
+                log.Warn($"could not dismount source ISO '{media.IsoPath}' (exit {result.ExitCode}).");
+            }
+        }
+        catch (Exception ex) {
+            log.Warn($"could not dismount source ISO '{media.IsoPath}': {ex.Message}");
+        }
+    }
+
+    /// <summary>Reads one selected index. Build only needs this query; listing all indexes is for inspect/GUI.</summary>
+    public async Task<ImageIndexInfo> GetIndexAsync(string installImagePath, int index, CancellationToken ct) {
+        var result = await runner.RunAsync("dism.exe",
+            ["/Get-WimInfo", $"/WimFile:{installImagePath}", $"/Index:{index}", "/English"],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
         if (!result.Success) {
-            log.Warn($"could not dismount source ISO '{media.IsoPath}' (exit {result.ExitCode}).");
+            var summaries = await GetIndexSummaryAsync(installImagePath, ct);
+            return summaries.FirstOrDefault(item => item.Index == index)
+                   ?? throw new InvalidOperationException(
+                       $"image index {index} not found in '{installImagePath}' " +
+                       $"(available: {string.Join(", ", summaries.Select(item => item.Index))}).");
         }
+
+        var fields = ParseKeyValueLines(result.Output);
+        return new ImageIndexInfo(
+            index,
+            fields.GetValueOrDefault("Name", ""),
+            fields.GetValueOrDefault("Description"),
+            fields.GetValueOrDefault("Architecture"),
+            fields.GetValueOrDefault("Version"),
+            fields.GetValueOrDefault("Edition ID") ?? fields.GetValueOrDefault("EditionId"),
+            ParseByteSize(fields.GetValueOrDefault("Size"), 0));
     }
 
     public async Task<IReadOnlyList<ImageIndexInfo>> GetIndexesAsync(string installImagePath, CancellationToken ct) {
@@ -164,13 +207,30 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         string targetWimPath,
         bool fast,
         CancellationToken ct) {
-        if (File.Exists(targetWimPath)) {
+        var compress = fast ? "fast" : "max";
+        var metadataPath = targetWimPath + ".tinywin2.json";
+        if (IsReusableExport(sourceImagePath, index, compress, targetWimPath, metadataPath)) {
             return targetWimPath;
         }
-        var compress = fast ? "fast" : "max";
-        await runner.RunAsync("dism.exe",
-            ["/English", "/Export-Image", $"/SourceImageFile:{sourceImagePath}", $"/SourceIndex:{index}",
-             $"/DestinationImageFile:{targetWimPath}", $"/Compress:{compress}"], cancellationToken: ct);
+
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(targetWimPath))!);
+        var temporaryTarget = $"{targetWimPath}.{Guid.NewGuid():N}.tmp.wim";
+        try {
+            await runner.RunAsync("dism.exe",
+                ["/English", "/Export-Image", $"/SourceImageFile:{sourceImagePath}", $"/SourceIndex:{index}",
+                 $"/DestinationImageFile:{temporaryTarget}", $"/Compress:{compress}"], cancellationToken: ct);
+
+            if (!File.Exists(temporaryTarget) || new FileInfo(temporaryTarget).Length == 0) {
+                throw new IOException($"DISM reported a successful export but did not create '{temporaryTarget}'.");
+            }
+
+            File.Move(temporaryTarget, targetWimPath, overwrite: true);
+            await File.WriteAllTextAsync(metadataPath, BuildExportMetadata(sourceImagePath, index, compress), ct);
+        }
+        finally {
+            try { File.Delete(temporaryTarget); } catch { /* best effort */ }
+        }
+
         return targetWimPath;
     }
 
@@ -179,6 +239,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         CancellationToken ct) {
         if (!source.IsEsd) {
             File.Copy(source.InstallImagePath, targetWimPath, overwrite: true);
+            try { File.Delete(targetWimPath + ".tinywin2.json"); } catch { /* stale metadata is harmless */ }
             return;
         }
         await ExportIndexToWimAsync(source.InstallImagePath, imageIndex, targetWimPath, fast, ct);
@@ -187,7 +248,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
     private async Task<string> MountIsoAsync(string isoPath, CancellationToken ct) {
         var result = await runner.RunAsync("pwsh.exe",
             ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
-             $"(Mount-DiskImage -ImagePath '{isoPath}' -PassThru | Get-Volume).DriveLetter"],
+             $"$ErrorActionPreference = 'Stop'; (Mount-DiskImage -ImagePath {PsQuote(isoPath)} -PassThru -ErrorAction Stop | Get-Volume).DriveLetter"],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
         var letter = result.Output.Trim().LastOrDefault(char.IsLetter);
         if (result.ExitCode != 0 || letter == '\0') {
@@ -197,6 +258,68 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         log.Info($"mounted source ISO at {root}");
         return root;
     }
+
+    public static string ComputeSourceFingerprint(SourceMedia media, int imageIndex) {
+        var identity = new System.Text.StringBuilder();
+        identity.Append(media.IsMountedIso ? Path.GetFullPath(media.IsoPath) : Path.GetFullPath(media.RootPath))
+            .Append('|').Append(imageIndex)
+            .Append('|').Append(media.IsEsd);
+        if (media.IsMountedIso) {
+            identity.Append('|').Append(FileStamp(media.IsoPath));
+        }
+        else {
+            identity.Append('|').Append(FileStamp(media.InstallImagePath))
+                .Append('|').Append(FileStamp(media.BootWimPath));
+        }
+
+        return Fingerprinting.Compute(identity.ToString());
+    }
+
+    private async Task<ProcessRunResult> DismountIsoPathAsync(string isoPath, CancellationToken ct) {
+        return await runner.RunAsync("pwsh.exe",
+            ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
+             $"$ErrorActionPreference = 'Stop'; Dismount-DiskImage -ImagePath {PsQuote(isoPath)} -ErrorAction Stop | Out-Null"],
+            new ProcessRunOptions { IgnoreExitCode = true }, ct);
+    }
+
+    private static bool IsReusableExport(string sourceImagePath, int index, string compress,
+        string targetWimPath, string metadataPath) {
+        if (!File.Exists(targetWimPath) || !File.Exists(metadataPath)
+            || new FileInfo(targetWimPath).Length == 0) {
+            return false;
+        }
+
+        try {
+            var metadata = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(metadataPath)) as System.Text.Json.Nodes.JsonObject;
+            return metadata?["source"]?.GetValue<string>() == Path.GetFullPath(sourceImagePath)
+                   && metadata["sourceStamp"]?.GetValue<string>() == FileStamp(sourceImagePath)
+                   && metadata["index"]?.GetValue<int>() == index
+                   && metadata["compress"]?.GetValue<string>() == compress;
+        }
+        catch (Exception) {
+            return false;
+        }
+    }
+
+    private static string BuildExportMetadata(string sourceImagePath, int index, string compress) =>
+        new System.Text.Json.Nodes.JsonObject {
+            ["source"] = Path.GetFullPath(sourceImagePath),
+            ["sourceStamp"] = FileStamp(sourceImagePath),
+            ["index"] = index,
+            ["compress"] = compress,
+        }.ToJsonString();
+
+    private static string FileStamp(string path) {
+        var fullPath = Path.GetFullPath(path);
+        if (!File.Exists(fullPath)) {
+            return $"missing:{fullPath}";
+        }
+
+        var info = new FileInfo(fullPath);
+        return $"{fullPath}|{info.Length}|{info.LastWriteTimeUtc.Ticks}";
+    }
+
+    private static string PsQuote(string value) => $"'{value.Replace("'", "''")}'";
 
     private static string FindInstallImage(string root) {
         var wim = Path.Combine(root, "sources", "install.wim");

@@ -1,15 +1,10 @@
-using System.Security.Cryptography;
+using TinyWin2.Core.Hashing;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Pipeline;
 
-public enum ImageFormat {
-    Wim,
-    Esd,
-}
-
-/// <summary>Captures the final (or rolled-back) layer into WIM/ESD and packages media + ISO.</summary>
+/// <summary>Captures the final (or rolled-back) layer into the selected WIM/ESD output.</summary>
 public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
     /// <summary>Captures a mounted layer directory into a WIM or ESD.</summary>
     public Task CaptureAsync(
@@ -17,12 +12,13 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         string targetPath,
         string imageName,
         string? description,
-        ImageFormat format,
+        OutputFormat format,
         bool fast,
         CancellationToken ct) {
         var compress = format switch {
-            ImageFormat.Esd => "recovery",
-            _ => fast ? "fast" : "max",
+            OutputFormat.Wim => fast ? "fast" : "max",
+            OutputFormat.Esd => "recovery",
+            _ => throw new ArgumentException("VHDX output cannot be captured with DISM.", nameof(format)),
         };
         return CaptureAsync(mountPath, targetPath, imageName, description, compress, verify: !fast, ct);
     }
@@ -40,8 +36,7 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         string compress,
         bool verify,
         CancellationToken ct) {
-        var args = new List<string>
-        {
+        var args = new List<string> {
             "/English",
             "/Capture-Image",
             $"/ImageFile:{targetPath}",
@@ -51,10 +46,12 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         if (!string.IsNullOrEmpty(description)) {
             args.Add($"/Description:{description}");
         }
+
         args.Add($"/Compress:{compress}");
         if (verify) {
             args.Add("/Verify");
         }
+
         log.Info($"capturing {mountPath} → {Path.GetFileName(targetPath)} (compress={compress})");
         await runner.RunAsync("dism.exe", args,
             new ProcessRunOptions { Timeout = TimeSpan.FromHours(3) }, ct);
@@ -65,17 +62,25 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         string sourceRoot,
         string mediaOutputPath,
         string capturedInstallImage,
-        ImageFormat format,
+        OutputFormat format,
         CancellationToken ct) {
+        var finalName = format switch {
+            OutputFormat.Wim => "install.wim",
+            OutputFormat.Esd => "install.esd",
+            _ => throw new ArgumentException("VHDX output cannot be placed in installation media.", nameof(format)),
+        };
         Directory.CreateDirectory(mediaOutputPath);
         // robocopy: 0-7 are success codes (1 = files copied).
         var result = await runner.RunAsync("robocopy.exe",
-            [sourceRoot, mediaOutputPath, "/E", "/MT:16", "/R:1", "/W:1", "/NFL", "/NDL", "/NJH", "/NJS",
-             "/XF", "install.wim", "install.esd"],
+            [
+                sourceRoot, mediaOutputPath, "/E", "/MT:16", "/R:1", "/W:1", "/NFL", "/NDL", "/NJH", "/NJS",
+                "/XF", "install.wim", "install.esd"
+            ],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
         if (result.ExitCode >= 8) {
             throw new IOException($"robocopy failed copying media (exit {result.ExitCode}).");
         }
+
         var sourcesDir = Path.Combine(mediaOutputPath, "sources");
         Directory.CreateDirectory(sourcesDir);
         foreach (var stale in new[] { "install.wim", "install.esd", "install.staging.wim" }) {
@@ -84,7 +89,7 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
                 File.Delete(stalePath);
             }
         }
-        var finalName = format == ImageFormat.Esd ? "install.esd" : "install.wim";
+
         var finalPath = Path.Combine(sourcesDir, finalName);
         File.Move(capturedInstallImage, finalPath);
         log.Info($"media folder rebuilt at {mediaOutputPath}");
@@ -104,24 +109,33 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         if (!File.Exists(biosBoot) || (!File.Exists(efiBootNoPrompt) && !File.Exists(efiBoot))) {
             throw new FileNotFoundException("boot files (etfsboot.com / efisys*.bin) missing from media folder.");
         }
+
         var efisys = File.Exists(efiBootNoPrompt) ? efiBootNoPrompt : efiBoot;
         var bootData = $"2#p0,e,b{biosBoot}#pEF,e,b{efisys}";
         log.Info($"creating bootable ISO {isoPath}");
         await runner.RunAsync(oscdimgPath,
             ["-m", "-o", "-u2", "-udfver102", $"-bootdata:{bootData}", mediaPath, isoPath],
             new ProcessRunOptions { Timeout = TimeSpan.FromHours(1) }, ct);
+        EnsureNonEmptyFile(isoPath, "oscdimg reported success but did not create a non-empty ISO");
     }
 
     /// <summary>ESD (LZMS) output goes through an intermediate WIM export for reliability (v1 rule).</summary>
     public Task ExportEsdAsync(string intermediateWim, string esdPath, CancellationToken ct) =>
         runner.RunAsync("dism.exe",
-            ["/English", "/Export-Image", $"/SourceImageFile:{intermediateWim}", "/SourceIndex:1",
-             $"/DestinationImageFile:{esdPath}", "/Compress:recovery"],
+            [
+                "/English", "/Export-Image", $"/SourceImageFile:{intermediateWim}", "/SourceIndex:1",
+                $"/DestinationImageFile:{esdPath}", "/Compress:recovery"
+            ],
             new ProcessRunOptions { Timeout = TimeSpan.FromHours(3) }, ct);
 
-    public static async Task<string> ComputeSha256Async(string filePath, CancellationToken ct) {
-        await using var stream = File.OpenRead(filePath);
-        var hash = await SHA256.HashDataAsync(stream, ct);
-        return Convert.ToHexStringLower(hash);
+    public static Task<string> ComputeHashAsync(string filePath, CancellationToken ct) {
+        EnsureNonEmptyFile(filePath, "cannot hash a missing or empty artifact");
+        return Fingerprinting.ComputeFileAsync(filePath, ct);
+    }
+
+    private static void EnsureNonEmptyFile(string path, string message) {
+        if (!File.Exists(path) || new FileInfo(path).Length == 0) {
+            throw new IOException($"{message}: '{path}'.");
+        }
     }
 }

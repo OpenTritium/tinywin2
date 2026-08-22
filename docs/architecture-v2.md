@@ -73,12 +73,15 @@ base.vhdx ← L001.vhdx ← L002.vhdx …        （diskpart create vdisk parent
   - `layer rollback-to N` — 从第 N 层捕获输出（挂载层；在链重挂受限的构建上不可用时以重放构建代替）
   - `preview` — 基础层上全量 Inspect → 影响预览报告（不执行任何 plan）
 
+默认保留每层文件与注册表证据；只追求最快导出时可使用 `--no-evidence` 显式关闭。
+
 ### 4. 输出（需求 4）
 
-叶子层（或回溯层）→ `dism /Capture-Image`（WIM: fast/max LZX；ESD: 先捕获 WIM 再
-`/Export-Image /Compress:recovery`）→ robocopy 重建媒体目录 → oscdimg 双 BIOS+UEFI
-可引导 ISO（`-bootdata:2#p0,e,b etfsboot.com#pEF,e,b efisys[_noprompt].bin`）。
-`--out iso+vhdx` 追加整链合并后的单文件 VHDX（可直接挂 Hyper-V 冒烟启动）。
+所有 plan 完成后，最终叶子层先独立执行一次离线 CBS `dism /Cleanup-Image /ScanHealth`；扫描
+失败则停止封装并保留工作区。输出格式与成品打包是两个独立选项：`--out wim|esd|vhdx` 分别生成安装镜像或整链合并后的
+单文件 VHDX；WIM/ESD 媒体可再用 `--iso` 交给 oscdimg 打包成双 BIOS+UEFI 可引导 ISO
+（`-bootdata:2#p0,e,b etfsboot.com#pEF,e,b efisys[_noprompt].bin`）。
+默认仍为 ESD 媒体 + ISO；VHDX 不会额外捕获安装镜像，且不能与 ISO 打包同时请求。
 已知取舍：capture 不保留源 WIM 的 FLAGS 元数据（名称/描述保留），端到端验证 setup 可识别安装。
 
 ### 5. Profile（需求 8）
@@ -92,7 +95,7 @@ CLI `profile export|import`；GUI 第 2 页导入/导出；内置 `profiles/stan
 ### 6. CLI 与 GUI（需求 6、9）
 
 CLI 与 GUI 共享 Core；GUI 一律 spawn CLI（`--json-events` 换行分隔 JSON 事件流），
-保证双端行为一致。事件含 phase（prepare/media/base-layer/plan/capture/package/done）、
+保证双端行为一致。事件含 phase（prepare/media/base-layer/plan/cbs-scan/capture/package/done）、
 planId、layerIndex、progress、message。四页向导：源与输出 → 精简项目（分组折叠/搜索/
 tier 过滤/enum 参数下拉含风险徽章/Profile）→ 进度日志（彩色流+进度条+取消）→
 结果（产物清单 or 失败层 + `layer diff` 取证命令提示）。
@@ -111,8 +114,10 @@ tier 过滤/enum 参数下拉含风险徽章/Profile）→ 进度日志（彩色
 - **日志 = 双通道**：`BuildEvent`（强类型领域事件，承载 `--json-events` JSONL 进程协议与 manifest）+
   **Serilog**（标准输出通道：彩色控制台 + `out/logs/tinywin2-*.log` UTF-8 文件，phase/planId/layerIndex
   作为结构化属性；`--json-events` 模式下自动关闭控制台 sink 避免污染 JSONL 流）。GUI 场景日志文件同样生成。
-- 测试：TUnit，83 个单元/收敛语义/层栈状态机/迁移 golden 测试；
+- 测试：TUnit，214 个单元/收敛语义/层栈状态机/迁移 golden 测试；
   `TINYWIN2_IT=1` 门控真实 diskpart 集成测试。
+- plan identity、缓存/恢复指纹，以及最终 WIM/ESD/VHDX/ISO 和 manifest
+  完整性记录统一使用带版本前缀的 `xxh3-v1`。
 - v1 → v2 迁移：`tools/migrate-v1`（156 条 → 152 plan；disable/configure 对合并为
   startMode 枚举参数；old→new 映射表见 `migration-report.json`）。
 

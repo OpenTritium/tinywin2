@@ -144,7 +144,7 @@ public sealed class PlanCatalogTests : IDisposable {
         var catalog = PlanCatalog.LoadDirectory(_directory);
         await Assert.That(catalog.Plans.Count).IsEqualTo(2);
         await Assert.That(catalog.ById.ContainsKey("alpha.two")).IsTrue();
-        await Assert.That(string.IsNullOrEmpty(catalog.Get("alpha.one").Sha256)).IsFalse();
+        await Assert.That(catalog.Get("alpha.one").Hash).StartsWith("xxh3-v1:");
     }
 
     [Test]

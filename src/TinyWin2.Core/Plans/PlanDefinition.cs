@@ -54,7 +54,7 @@ public sealed partial record PlanDefinition {
     public IReadOnlyList<string> Conflicts { get; private init; } = [];
     public IReadOnlyList<PlanArgument> Arguments { get; private init; } = [];
     public IReadOnlyList<PlanExec> Execs { get; private init; } = [];
-    public string? Sha256 { get; init; }
+    public string? Hash { get; init; }
 
     public static PlanDefinition FromJson(JsonObject obj, string? sourceFile = null) {
         var errors = new List<string>();

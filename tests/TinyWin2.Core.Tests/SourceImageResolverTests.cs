@@ -1,5 +1,6 @@
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Pipeline;
+using System.Text.Json.Nodes;
 
 namespace TinyWin2.Core.Tests;
 
@@ -136,13 +137,43 @@ public sealed class SourceImageResolverTests : IDisposable {
         await Assert.That(ex.Message).Contains("could not read image info");
     }
 
+    [Test]
+    public async Task GetIndexQueriesOnlyTheSelectedIndex() {
+        _runner.Handler = (_, args) => FakeProcessRunner.Ok("""
+            Index : 3
+            Name : ServerDatacenter Eval
+            Description : Datacenter image
+            Architecture : x64
+            Version : 10.0.26100.1
+            Edition ID : ServerDatacenterEval
+            Size : 42 bytes
+            """);
+
+        var index = await _resolver.GetIndexAsync(
+            Path.Combine(_root, "install.wim"), 3, CancellationToken.None);
+
+        await Assert.That(_runner.Calls).Count().IsEqualTo(1);
+        await Assert.That(_runner.ArgsOf(0)).Contains("/Index:3");
+        await Assert.That(index.Name).IsEqualTo("ServerDatacenter Eval");
+        await Assert.That(index.EditionId).IsEqualTo("ServerDatacenterEval");
+        await Assert.That(index.SizeBytes).IsEqualTo(42);
+    }
+
     // ---- ESD export --------------------------------------------------------
 
     [Test]
     public async Task ExportIndexSkipsWhenTargetAlreadyExists() {
         var target = Path.Combine(_root, "staging.wim");
         await File.WriteAllTextAsync(target, "existing");
-        var result = await _resolver.ExportIndexToWimAsync(Path.Combine(_root, "src.esd"), 3, target, fast: true,
+        var source = "src.esd";
+        var sourceFullPath = Path.GetFullPath(source);
+        await File.WriteAllTextAsync(target + ".tinywin2.json", new JsonObject {
+            ["source"] = sourceFullPath,
+            ["sourceStamp"] = $"missing:{sourceFullPath}",
+            ["index"] = 3,
+            ["compress"] = "fast",
+        }.ToJsonString());
+        var result = await _resolver.ExportIndexToWimAsync(source, 3, target, fast: true,
             CancellationToken.None);
         await Assert.That(result).IsEqualTo(target);
         await Assert.That(_runner.Called("dism.exe")).IsFalse();
@@ -151,12 +182,35 @@ public sealed class SourceImageResolverTests : IDisposable {
     [Test]
     public async Task ExportIndexBuildsDismArguments() {
         var target = Path.Combine(_root, "staging.wim");
+        _runner.Handler = (_, args) => {
+            const string prefix = "/DestinationImageFile:";
+            var argument = args.First(a => a.StartsWith(prefix, StringComparison.Ordinal));
+            var destination = argument[prefix.Length..];
+            File.WriteAllText(destination, "exported");
+            return FakeProcessRunner.Ok();
+        };
         var result = await _resolver.ExportIndexToWimAsync("src.esd", 3, target, fast: false, CancellationToken.None);
         await Assert.That(result).IsEqualTo(target);
         await Assert.That(_runner.Calls).Count().IsEqualTo(1);
         await Assert.That(string.Join(' ', _runner.ArgsOf(0))).Contains("/Export-Image");
         await Assert.That(string.Join(' ', _runner.ArgsOf(0))).Contains("/SourceIndex:3");
         await Assert.That(string.Join(' ', _runner.ArgsOf(0))).Contains("/Compress:max");
+    }
+
+    [Test]
+    public async Task DismountEscapesApostrophesInIsoPaths() {
+        var media = new SourceMedia {
+            RootPath = "X:\\",
+            IsMountedIso = true,
+            IsoPath = "C:\\source's.iso",
+            InstallImagePath = "X:\\sources\\install.wim",
+        };
+
+        await _resolver.DismountIsoAsync(media, CancellationToken.None);
+
+        var command = string.Join(' ', _runner.ArgsOf(0));
+        await Assert.That(command).Contains("C:\\source''s.iso");
+        await Assert.That(command).Contains("-ErrorAction Stop");
     }
 
     private string CreateMediaFolder(bool installWim, bool installEsd, bool bootWim = true) {

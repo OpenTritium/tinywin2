@@ -70,6 +70,7 @@ public sealed partial class LayerInspector(
             throw new InvalidDataException(
                 $"layer evidence is incomplete for {fromIndex:000}/{toIndex:000}; rebuild the affected layers before diffing.");
         }
+
         var before = beforeSnapshot.Entries;
         var after = afterSnapshot.Entries;
         var files = new List<FileDiffEntry>();
@@ -95,6 +96,7 @@ public sealed partial class LayerInspector(
             throw new FileNotFoundException(
                 $"registry evidence snapshots missing for {fromIndex:000}/{toIndex:000} under '{snapshotsRoot}'.");
         }
+
         var fromHives = LayerEvidence.SplitByHive(File.ReadAllText(fromRegistryPath));
         var toHives = LayerEvidence.SplitByHive(File.ReadAllText(toRegistryPath));
         foreach (var hiveId in fromHives.Keys.Union(toHives.Keys)) {
@@ -231,9 +233,13 @@ public sealed partial class LayerInspector(
         string workDirectory,
         int layerIndex,
         string destinationPath,
-        ImageFormat format,
+        OutputFormat format,
         bool fast,
         CancellationToken ct) {
+        if (format == OutputFormat.Vhdx) {
+            throw new ArgumentException("layer rollback capture supports only WIM or ESD output.", nameof(format));
+        }
+
         var stack = VhdLayerStack.Load(workDirectory, backend, log);
         var vhdxPath = stack.VhdxForLayer(layerIndex);
         var letter = await backend.AttachAsync(vhdxPath, ct);
@@ -241,7 +247,7 @@ public sealed partial class LayerInspector(
         var operationSucceeded = false;
         try {
             var name = $"TinyWin2 layer {layerIndex:000}";
-            if (format == ImageFormat.Esd) {
+            if (format == OutputFormat.Esd) {
                 var intermediate = Path.Combine(Path.GetTempPath(), $"tinywin2-rollback-{Guid.NewGuid():N}.wim");
                 try {
                     // uncompressed staging: the recovery export re-encodes anyway
@@ -259,7 +265,7 @@ public sealed partial class LayerInspector(
                 }
             }
             else {
-                await builder.CaptureAsync($"{letter}:\\", destinationPath, name, null, ImageFormat.Wim, fast, ct);
+                await builder.CaptureAsync($"{letter}:\\", destinationPath, name, null, OutputFormat.Wim, fast, ct);
             }
 
             operationSucceeded = true;
@@ -289,6 +295,7 @@ public sealed partial class LayerInspector(
         if (!candidate.StartsWith(root, StringComparison.OrdinalIgnoreCase)) {
             throw new ArgumentException("image path escapes the mounted layer", nameof(imageRelativePath));
         }
+
         return candidate;
     }
 }

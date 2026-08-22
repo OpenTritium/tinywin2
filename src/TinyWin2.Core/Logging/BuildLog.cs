@@ -104,7 +104,7 @@ public sealed class BuildLog {
                 LayerIndex = layerIndex,
                 Data = data?.DeepClone().AsObject(),
             };
-            sinks = _sinks.ToArray();
+            sinks = [.. _sinks];
         }
 
         foreach (var sink in sinks) {
