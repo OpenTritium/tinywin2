@@ -1,21 +1,18 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "capability.wmic",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 WMIC",
   "description": "移除已弃用的 WMIC 命令行工具；自动化应改用 PowerShell CIM。",
-  "group": "Legacy",
-  "risk": "Medium",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "dism.capability",
-      "ensure": "absent",
-      "with": {
-        "capabilities": [
-          "WMIC~~~~"
-        ]
-      }
+  "category": "Legacy",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "dism.capability",
+    "action": "remove",
+    "spec": {
+      "capabilities": [
+        "WMIC~~~~"
+      ]
     }
-  ]
+  }
 }

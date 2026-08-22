@@ -1,24 +1,21 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.remote-desktop-services",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用远程桌面服务",
   "description": "远程桌面服务及会话环境服务改为手动启动：默认不运行、RDP 入站不监听，但系统可在需要时拉起。注意：不得设为 disabled —— Server 2025 Desktop Experience 的交互登录依赖这些服务，禁用会卡死在『请等候本地会话管理器』。",
-  "group": "Remote Management",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "TermService",
-          "SessionEnv",
-          "UmRdpService"
-        ],
-        "start": "manual"
-      }
+  "category": "Remote Management",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "TermService",
+        "SessionEnv",
+        "UmRdpService"
+      ],
+      "start": "manual"
     }
-  ]
+  }
 }

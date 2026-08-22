@@ -18,8 +18,8 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismRemoveExecuterB
     protected override IEnumerable<DismRemovalTarget> SelectTargets(
         IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
-        ExecSpec spec) {
-        var options = PackageOptions.FromDesired(spec.Desired);
+        OperationSpec spec) {
+        var options = PackageOptions.FromDesired(spec.Spec);
         foreach (var record in records) {
             var identity = DismListParser.Get(record, "Package Identity");
             var state = DismListParser.Get(record, "State") ?? "";
@@ -37,6 +37,6 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismRemoveExecuterB
         }
     }
 
-    protected override IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, ExecSpec spec) =>
+    protected override IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, OperationSpec spec) =>
         ["/Remove-Package", $"/PackageName:{target.RemoveKey}", "/NoRestart"];
 }

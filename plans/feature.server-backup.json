@@ -1,23 +1,20 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.server-backup",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 Windows Server Backup",
   "description": "移除 Windows Server Backup 管理单元和可选功能。",
-  "group": "Server",
-  "risk": "Medium",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "WindowsServerBackup",
-          "WindowsServerBackupSnapin"
-        ],
-        "removePayload": true
-      }
+  "category": "Server",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "WindowsServerBackup",
+        "WindowsServerBackupSnapin"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

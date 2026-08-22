@@ -1,13 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.security-health",
   "version": "3.0.0",
   "title": "配置 Windows 安全中心服务启动方式",
   "description": "配置 SecurityHealthService（Defender 状态汇报 UI）的启动方式。disabled 仅用于离线 WIM；在线修改通常会被系统服务 ACL 拒绝。禁用后安全中心状态图标和健康汇报不可用，但不等于关闭 Defender 引擎。",
-  "group": "Security",
-  "risk": "High",
-  "tier": "Expert",
-  "arguments": [
+  "category": "Security",
+  "riskLevel": "High",
+  "parameters": [
     {
       "name": "startMode",
       "type": "enum",
@@ -17,41 +16,39 @@
         {
           "value": "delayedAuto",
           "label": "延迟启动",
-          "risk": "Medium"
+          "riskLevel": "Medium"
         },
         {
           "value": "disabled",
           "label": "禁用（仅离线）",
-          "risk": "High"
+          "riskLevel": "High"
         },
         {
           "value": "manual",
           "label": "手动",
-          "risk": "Medium"
+          "riskLevel": "Medium"
         }
       ]
     }
   ],
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "SecurityHealthService"
-        ],
-        "start": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "disabled": "disabled",
-              "manual": "manual",
-              "delayedAuto": "DelayedAuto",
-              "auto": "auto"
-            }
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "SecurityHealthService"
+      ],
+      "start": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "disabled": "disabled",
+            "manual": "manual",
+            "delayedAuto": "DelayedAuto",
+            "auto": "auto"
           }
         }
       }
     }
-  ]
+  }
 }

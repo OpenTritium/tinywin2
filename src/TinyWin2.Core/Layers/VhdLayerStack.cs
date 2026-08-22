@@ -1,6 +1,6 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Globalization;
 using TinyWin2.Core.Hashing;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
@@ -32,8 +32,7 @@ public sealed record LayerRecord {
     public LayerStatus Status { get; init; } = LayerStatus.Pending;
     public DateTimeOffset StartedUtc { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? EndedUtc { get; init; }
-    public JsonObject? BoundArgs { get; init; }
-    public JsonArray? ExecResults { get; init; }
+    public JsonObject? OperationResult { get; init; }
 
     /// <summary>Versioned fingerprint of the step's exec specs and assets.</summary>
     public string? StepFingerprint { get; init; }
@@ -49,8 +48,7 @@ public sealed record LayerRecord {
         ["status"] = Status.ToString().ToLowerInvariant(),
         ["startedUtc"] = StartedUtc.ToString("O"),
         ["endedUtc"] = EndedUtc?.ToString("O"),
-        ["boundArgs"] = BoundArgs?.DeepClone(),
-        ["execResults"] = ExecResults?.DeepClone(),
+        ["operationResult"] = OperationResult?.DeepClone(),
         ["stepFingerprint"] = StepFingerprint,
         ["error"] = Error,
     };
@@ -419,8 +417,7 @@ public sealed class VhdLayerStack(
     }
 
     /// <summary>Creates + attaches a fresh differencing layer for one plan step.</summary>
-    public async Task<LayerSession> BeginLayerAsync(string stepId, string title, JsonObject? boundArgs,
-        CancellationToken ct,
+    public async Task<LayerSession> BeginLayerAsync(string stepId, string title, CancellationToken ct,
         string? stepFingerprint = null) {
         var index = NextLayerIndex();
         var fileName = $"L{index:D3}.vhdx";
@@ -433,7 +430,6 @@ public sealed class VhdLayerStack(
             Title = title,
             VhdxFileName = fileName,
             Status = LayerStatus.Pending,
-            BoundArgs = boundArgs,
             VhdxPath = vhdxPath,
             StepFingerprint = stepFingerprint,
         };
@@ -470,13 +466,13 @@ public sealed class VhdLayerStack(
     }
 
     /// <summary>Detaches and keeps the layer (plan succeeded).</summary>
-    public async Task CommitLayerAsync(LayerSession session, JsonArray? execResults, CancellationToken ct) {
+    public async Task CommitLayerAsync(LayerSession session, JsonObject? operationResult, CancellationToken ct) {
         await backend.DetachAsync(session.VhdxPath, CancellationToken.None);
         lock (_gate) {
             UpdateRecord(session.Record.Index, record => record with {
                 Status = LayerStatus.Committed,
                 EndedUtc = DateTimeOffset.UtcNow,
-                ExecResults = execResults ?? record.ExecResults,
+                OperationResult = operationResult ?? record.OperationResult,
             });
         }
 
@@ -754,14 +750,10 @@ public sealed class VhdLayerStack(
             Status = status,
             StartedUtc = started,
             EndedUtc = ended,
-            BoundArgs = node["boundArgs"] is null
+            OperationResult = node["operationResult"] is null
                 ? null
-                : node["boundArgs"] as JsonObject
-                  ?? throw new InvalidDataException($"layer entry {ordinal} has invalid boundArgs"),
-            ExecResults = node["execResults"] is null
-                ? null
-                : node["execResults"] as JsonArray
-                  ?? throw new InvalidDataException($"layer entry {ordinal} has invalid execResults"),
+                : node["operationResult"] as JsonObject
+                  ?? throw new InvalidDataException($"layer entry {ordinal} has invalid operationResult"),
             Error = OptionalString(node, "error", ordinal),
             StepFingerprint = OptionalString(node, "stepFingerprint", ordinal),
             VhdxPath = Path.Combine(workDirectory, fileName),

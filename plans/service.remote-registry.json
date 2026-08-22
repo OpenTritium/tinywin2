@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.remote-registry",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用远程注册表服务",
   "description": "禁用 RemoteRegistry，阻止其他设备读取或修改本机注册表。依赖远程注册表的管理工具将失效。",
-  "group": "Remote Management",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "RemoteRegistry"
-        ],
-        "start": "disabled"
-      }
+  "category": "Remote Management",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "RemoteRegistry"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

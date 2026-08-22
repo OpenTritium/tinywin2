@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.maps-broker",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用离线地图服务",
   "description": "禁用 Downloaded Maps Manager (MapsBroker)。离线地图下载与使用将不可用。",
-  "group": "Background Services",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "MapsBroker"
-        ],
-        "start": "disabled"
-      }
+  "category": "Background Services",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "MapsBroker"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

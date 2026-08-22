@@ -1,13 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.desktop-themes",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "主题服务改为延迟启动",
   "description": "Themes 改为延迟自动启动。桌面视觉栈在登录后再初始化；追求极致可选手动/禁用（会退回经典灰框）。",
-  "group": "System",
-  "risk": "Medium",
-  "tier": "Standard",
-  "arguments": [
+  "category": "System",
+  "riskLevel": "Medium",
+  "parameters": [
     {
       "name": "startMode",
       "type": "enum",
@@ -17,41 +16,39 @@
         {
           "value": "delayedAuto",
           "label": "延迟启动",
-          "risk": "Medium"
+          "riskLevel": "Medium"
         },
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Medium"
+          "riskLevel": "Medium"
         },
         {
           "value": "manual",
           "label": "手动",
-          "risk": "Low"
+          "riskLevel": "Low"
         }
       ]
     }
   ],
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "Themes"
-        ],
-        "start": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "disabled": "disabled",
-              "manual": "manual",
-              "delayedAuto": "DelayedAuto",
-              "auto": "auto"
-            }
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "Themes"
+      ],
+      "start": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "disabled": "disabled",
+            "manual": "manual",
+            "delayedAuto": "DelayedAuto",
+            "auto": "auto"
           }
         }
       }
     }
-  ]
+  }
 }

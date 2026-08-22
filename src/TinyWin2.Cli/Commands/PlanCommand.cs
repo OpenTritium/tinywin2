@@ -18,41 +18,40 @@ internal static class PlanCommand {
     }
 
     private static int List(PlanCatalog catalog, Dictionary<string, List<string>> options) {
-        var groupFilter = options.GetValueOrDefault("group")?.FirstOrDefault();
+        var categoryFilter = options.GetValueOrDefault("category")?.FirstOrDefault();
         var plans = catalog.Plans
-            .Where(p => groupFilter is null || string.Equals(p.Group, groupFilter, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p.Group, StringComparer.OrdinalIgnoreCase)
+            .Where(p => categoryFilter is null || string.Equals(p.Category, categoryFilter, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.Category, StringComparer.OrdinalIgnoreCase)
             .ThenBy(p => p.Id, StringComparer.OrdinalIgnoreCase);
         if (options.ContainsKey("json")) {
             var root = new JsonObject {
                 ["plans"] = new JsonArray(plans.Select(p => (JsonNode)new JsonObject {
                     ["id"] = p.Id,
                     ["title"] = p.Title,
-                    ["group"] = p.Group,
-                    ["risk"] = p.Risk,
-                    ["tier"] = p.Tier,
+                    ["category"] = p.Category,
+                    ["riskLevel"] = p.RiskLevel,
                     ["requires"] = new JsonArray(p.Requires.Select(r => (JsonNode)r).ToArray()),
                     ["conflicts"] = new JsonArray(p.Conflicts.Select(c => (JsonNode)c).ToArray()),
-                    ["arguments"] = new JsonArray(p.Arguments.Select(a => (JsonNode)a.ToJson()).ToArray()),
+                    ["parameters"] = new JsonArray(p.Parameters.Select(a => (JsonNode)a.ToJson()).ToArray()),
                 }).ToArray()),
             };
             Console.WriteLine(root.ToJsonString(DoctorCommand.JsonSerializerOptions));
             return 0;
         }
-        string? currentGroup = null;
+        string? currentCategory = null;
         foreach (var plan in plans) {
-            if (currentGroup != plan.Group) {
-                currentGroup = plan.Group;
+            if (currentCategory != plan.Category) {
+                currentCategory = plan.Category;
                 Console.WriteLine();
-                Console.WriteLine($"== {plan.Group} ==");
+                Console.WriteLine($"== {plan.Category} ==");
             }
-            var risk = plan.Risk.ToLowerInvariant() switch {
+            var risk = plan.RiskLevel.ToLowerInvariant() switch {
                 "high" => "‼",
                 "medium" => "! ",
                 _ => "· ",
             };
-            var args = plan.Arguments.Count == 0 ? "" : $"  (args: {string.Join(", ", plan.Arguments.Select(a => a.Name))})";
-            Console.WriteLine($"  {risk}{plan.Id,-46} {plan.Title}{args}");
+            var parameters = plan.Parameters.Count == 0 ? "" : $"  (parameters: {string.Join(", ", plan.Parameters.Select(a => a.Name))})";
+            Console.WriteLine($"  {risk}{plan.Id,-46} {plan.Title}{parameters}");
         }
         Console.WriteLine();
         Console.WriteLine($"{catalog.Plans.Count} plans. Details: tinywin2 plan show <id>");
@@ -70,17 +69,16 @@ internal static class PlanCommand {
             ["version"] = plan.Version,
             ["title"] = plan.Title,
             ["description"] = plan.Description,
-            ["group"] = plan.Group,
-            ["risk"] = plan.Risk,
-            ["tier"] = plan.Tier,
+            ["category"] = plan.Category,
+            ["riskLevel"] = plan.RiskLevel,
             ["requires"] = new JsonArray(plan.Requires.Select(r => (JsonNode)r).ToArray()),
             ["conflicts"] = new JsonArray(plan.Conflicts.Select(c => (JsonNode)c).ToArray()),
-            ["arguments"] = new JsonArray(plan.Arguments.Select(a => (JsonNode)a.ToJson()).ToArray()),
-            ["execs"] = new JsonArray(plan.Execs.Select(e => (JsonNode)new JsonObject {
-                ["resource"] = e.Resource,
-                ["ensure"] = e.Ensure.ToString().ToLowerInvariant(),
-                ["with"] = e.With.DeepClone(),
-            }).ToArray()),
+            ["parameters"] = new JsonArray(plan.Parameters.Select(a => (JsonNode)a.ToJson()).ToArray()),
+            ["operation"] = new JsonObject {
+                ["resource"] = plan.Operation.Resource,
+                ["action"] = plan.Operation.Action.ToString().ToLowerInvariant(),
+                ["spec"] = plan.Operation.Spec.DeepClone(),
+            },
         }.ToJsonString(DoctorCommand.JsonSerializerOptions));
         return 0;
     }

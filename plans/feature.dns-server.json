@@ -1,23 +1,20 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.dns-server",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 DNS Server",
   "description": "移除 DNS 服务器角色及管理工具；本机不能作为权威或递归 DNS 服务器。",
-  "group": "Server Roles",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "DNS-Server-Full-Role",
-          "DNS-Server-Tools"
-        ],
-        "removePayload": true
-      }
+  "category": "Server Roles",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "DNS-Server-Full-Role",
+        "DNS-Server-Tools"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

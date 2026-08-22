@@ -1,13 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.wlan-config",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "WLAN 配置服务改为延迟启动",
   "description": "Wcmsvc 改为延迟自动启动。桌面网络配置不急于开机瞬间。",
-  "group": "Networking",
-  "risk": "Low",
-  "tier": "Standard",
-  "arguments": [
+  "category": "Networking",
+  "riskLevel": "Low",
+  "parameters": [
     {
       "name": "startMode",
       "type": "enum",
@@ -17,41 +16,39 @@
         {
           "value": "delayedAuto",
           "label": "延迟启动",
-          "risk": "Medium"
+          "riskLevel": "Medium"
         },
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Low"
+          "riskLevel": "Low"
         },
         {
           "value": "manual",
           "label": "手动",
-          "risk": "Low"
+          "riskLevel": "Low"
         }
       ]
     }
   ],
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "Wcmsvc"
-        ],
-        "start": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "disabled": "disabled",
-              "manual": "manual",
-              "delayedAuto": "DelayedAuto",
-              "auto": "auto"
-            }
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "Wcmsvc"
+      ],
+      "start": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "disabled": "disabled",
+            "manual": "manual",
+            "delayedAuto": "DelayedAuto",
+            "auto": "auto"
           }
         }
       }
     }
-  ]
+  }
 }

@@ -8,7 +8,7 @@ namespace TinyWin2.Core.Executers;
 
 /// <summary>
 /// The single dispatch point from resource ids to executer instances
-/// (v1's handler allowlist, but typed and injectable for tests).
+/// using a typed, injectable resource allowlist for tests.
 /// </summary>
 public sealed class ExecuterRegistry {
     private readonly Dictionary<string, IExecuter> _byResource;
@@ -44,17 +44,11 @@ public sealed class ExecuterRegistry {
             ? executer
             : throw new ExecException($"no executer registered for resource '{resource}'.");
 
-    /// <summary>Validates that every exec in the plan maps to a registered resource.</summary>
+    /// <summary>Validates that every operation maps to a registered resource and valid action/spec.</summary>
     public void ValidateBuildPlan(BuildPlan plan) {
-        var unknown = plan.Steps
-            .SelectMany(step => step.Plans)
-            .SelectMany(resolved => resolved.Execs)
-            .Select(exec => exec.Resource)
-            .Where(resource => !_byResource.ContainsKey(resource))
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-        if (unknown.Count > 0) {
-            throw new ExecException($"unknown resources in build plan: {string.Join(", ", unknown)}");
+        foreach (var step in plan.Steps) {
+            var operation = step.Plan.Operation;
+            Get(operation.Resource).Validate(operation);
         }
     }
 }

@@ -13,18 +13,27 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
     /// <summary>One structured difference: exactly one of Value/DeleteKey is set.</summary>
     private sealed record ValueChange(ChangeItem Change, RegistryValueTarget? Value = null, string? DeleteKey = null);
 
-    public async Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
+    public void Validate(OperationSpec spec) {
+        if (spec.Action is not (OperationAction.Set or OperationAction.Remove)) {
+            throw new ExecException($"{ResourceId} supports actions 'set' and 'remove'.");
+        }
+        _ = RegistryValueOptions.FromDesired(spec.Spec, spec.Action);
+    }
+
+    public async Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+        Validate(spec);
         var changes = await InspectCoreAsync(context, spec, ct);
         return new(changes.Count == 0, [.. changes.Select(c => c.Change)]);
     }
 
-    public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
+    public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+        Validate(spec);
         var changes = await InspectCoreAsync(context, spec, ct);
         if (changes.Count == 0) {
             return ExecResult.Skipped("registry values already in the desired state");
         }
 
-        var options = RegistryValueOptions.FromDesired(spec.Desired, spec.Ensure);
+        var options = RegistryValueOptions.FromDesired(spec.Spec, spec.Action);
         var hive = await context.Hives.GetAsync(options.Hive, context.Log, ct);
         foreach (var change in changes) {
             if (change.DeleteKey is { } deleteKey) {
@@ -36,7 +45,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
             }
 
             var target = change.Value!;
-            if (spec.Ensure == Ensure.Absent) {
+            if (spec.Action == OperationAction.Remove) {
                 var args = string.IsNullOrEmpty(target.Name)
                     ? (string[])["delete", hive.KeyUnderHive(target.Key), "/ve", "/f"]
                     : ["delete", hive.KeyUnderHive(target.Key), "/v", target.Name, "/f"];
@@ -66,8 +75,8 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
     }
 
     /// <summary>Produces structured differences carrying their own execution targets — no reverse lookup by display string.</summary>
-    private async Task<List<ValueChange>> InspectCoreAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
-        var options = RegistryValueOptions.FromDesired(spec.Desired, spec.Ensure);
+    private async Task<List<ValueChange>> InspectCoreAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+        var options = RegistryValueOptions.FromDesired(spec.Spec, spec.Action);
         var hive = await context.Hives.GetAsync(options.Hive, context.Log, ct);
         var changes = new List<ValueChange>();
         foreach (var value in options.Values) {
@@ -80,7 +89,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
                 ? RegValues.ParseQueryValue(result.Output, string.IsNullOrEmpty(value.Name) ? "(Default)" : value.Name)
                 : null;
             var display = hive.ValueUnderHive(value.Key, value.Name);
-            if (spec.Ensure == Ensure.Absent) {
+            if (spec.Action == OperationAction.Remove) {
                 if (existing is not null) {
                     changes.Add(new(
                         new(ChangeKind.Removed, display, Before: $"{existing.Type} {existing.Data}"),
@@ -106,7 +115,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
             }
         }
 
-        if (spec.Ensure == Ensure.Absent) {
+        if (spec.Action == OperationAction.Remove) {
             foreach (var key in options.DeleteKeys) {
                 var result = await runner.RunAsync("reg.exe", ["query", hive.KeyUnderHive(key)],
                     new() { IgnoreExitCode = true }, ct);

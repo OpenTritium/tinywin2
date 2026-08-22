@@ -1,21 +1,18 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "appx.people",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 People",
   "description": "移除 Microsoft People 预装 Appx。",
-  "group": "Applications",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "appx.provisioned",
-      "ensure": "absent",
-      "with": {
-        "patterns": [
-          "Microsoft.People"
-        ]
-      }
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": {
+      "patterns": [
+        "Microsoft.People"
+      ]
     }
-  ]
+  }
 }

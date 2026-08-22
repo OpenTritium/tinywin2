@@ -14,8 +14,6 @@ public sealed record PreviewOptions {
     public required IReadOnlyList<PlanSelection> Selections { get; init; }
     public required string WorkDirectory { get; init; }
     public required PlanCatalog Catalog { get; init; }
-    public LayerGranularity Granularity { get; init; } = LayerGranularity.Group;
-
     /// <summary>Plans directory: fs.path-present previews need each plan's assets root.</summary>
     public string? PlansDirectory { get; init; }
 
@@ -36,8 +34,8 @@ public sealed record PlanPreview(
 }
 
 /// <summary>
-/// The v1 "Inspection phase": applies the base layer, then runs <c>InspectAsync</c> for
-/// every exec (read-only) and reports what each plan would change. No plan layers, no output.
+/// The inspection phase: applies the base layer, then runs <c>InspectAsync</c> for
+/// every operation (read-only) and reports what each plan would change. No plan layers, no output.
 /// </summary>
 public sealed class PreviewRunner(
     IProcessRunner runner,
@@ -45,7 +43,7 @@ public sealed class PreviewRunner(
     ILayerBackend layerBackend,
     BuildLog log) {
     public async Task<IReadOnlyList<PlanPreview>> RunAsync(PreviewOptions options, CancellationToken ct) {
-        var plan = BuildPlanResolver.Resolve(options.Catalog, options.Selections, options.Granularity);
+        var plan = BuildPlanResolver.Resolve(options.Catalog, options.Selections);
         executers.ValidateBuildPlan(plan);
         log.Phase = BuildPhases.Preview;
         log.Info($"preview: {plan.PlanIds.Count} plans resolved into {plan.Steps.Count} steps");
@@ -81,27 +79,25 @@ public sealed class PreviewRunner(
             try {
                 var previews = new List<PlanPreview>();
                 foreach (var step in plan.Steps) {
-                    foreach (var resolved in step.Plans) {
-                        var hiveCache = new RegistryHiveCache($"{letter}:\\", runner);
-                        var context = new ExecContext($"{letter}:\\", log, hiveCache,
-                            ResolveAssetsRoot(options.PlansDirectory, resolved.Definition.Id));
-                        var differences = new List<ChangeItem>();
-                        try {
-                            foreach (var exec in resolved.Execs) {
-                                var diff = await executers.Get(exec.Resource).InspectAsync(context, exec, ct);
-                                differences.AddRange(diff.Differences.Where(d => d.Kind != ChangeKind.Skipped));
-                            }
-                        }
-                        finally {
-                            await hiveCache.UnloadAllAsync(log, CancellationToken.None);
-                        }
-
-                        previews.Add(new PlanPreview(
-                            resolved.Definition.Id,
-                            resolved.Definition.Title,
-                            differences.Count == 0,
-                            differences));
+                    var resolved = step.Plan;
+                    var hiveCache = new RegistryHiveCache($"{letter}:\\", runner);
+                    var context = new ExecContext($"{letter}:\\", log, hiveCache,
+                        ResolveAssetsRoot(options.PlansDirectory, resolved.Definition.Id));
+                    var differences = new List<ChangeItem>();
+                    try {
+                        var operation = resolved.Operation;
+                        var diff = await executers.Get(operation.Resource).InspectAsync(context, operation, ct);
+                        differences.AddRange(diff.Differences.Where(d => d.Kind != ChangeKind.Skipped));
                     }
+                    finally {
+                        await hiveCache.UnloadAllAsync(log, CancellationToken.None);
+                    }
+
+                    previews.Add(new PlanPreview(
+                        resolved.Definition.Id,
+                        resolved.Definition.Title,
+                        differences.Count == 0,
+                        differences));
                 }
 
                 inspectionCompleted = true;

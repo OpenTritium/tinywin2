@@ -1,46 +1,43 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "driver.vendor-raid-controllers",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除厂商 RAID 和存储控制器驱动",
   "description": "从 Driver Store 移除预装的 Adaptec、LSI、Avago、Dell PERC、HP、Intel、Marvell、NVIDIA、PMC-Sierra、Promise、SiS 和 VIA RAID 驱动。若启动磁盘或未来硬件依赖其中任一驱动，系统可能无法启动。",
-  "group": "Drivers",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "driver.store",
-      "ensure": "absent",
-      "with": {
-        "infNames": [
-          "arcsas.inf",
-          "megasas35i.inf",
-          "itsas35i.inf",
-          "lsi_sas3i.inf",
-          "megasas2i.inf",
-          "mpi3drvi.inf",
-          "percsas2i.inf",
-          "percsas3i.inf",
-          "nulhpopr.inf",
-          "hpsamd.inf",
-          "nulhprs8.inf",
-          "iastorv.inf",
-          "iastorav.inf",
-          "3ware.inf",
-          "lsi_sas.inf",
-          "lsi_sas2i.inf",
-          "megasr.inf",
-          "mvumis.inf",
-          "smartsamd.inf",
-          "nvraid.inf",
-          "adp80xx.inf",
-          "stexstor.inf",
-          "sisraid2.inf",
-          "sisraid4.inf",
-          "vsmraid.inf",
-          "vstxraid.inf"
-        ]
-      }
+  "category": "Drivers",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "driver.store",
+    "action": "remove",
+    "spec": {
+      "infNames": [
+        "arcsas.inf",
+        "megasas35i.inf",
+        "itsas35i.inf",
+        "lsi_sas3i.inf",
+        "megasas2i.inf",
+        "mpi3drvi.inf",
+        "percsas2i.inf",
+        "percsas3i.inf",
+        "nulhpopr.inf",
+        "hpsamd.inf",
+        "nulhprs8.inf",
+        "iastorv.inf",
+        "iastorav.inf",
+        "3ware.inf",
+        "lsi_sas.inf",
+        "lsi_sas2i.inf",
+        "megasr.inf",
+        "mvumis.inf",
+        "smartsamd.inf",
+        "nvraid.inf",
+        "adp80xx.inf",
+        "stexstor.inf",
+        "sisraid2.inf",
+        "sisraid4.inf",
+        "vsmraid.inf",
+        "vstxraid.inf"
+      ]
     }
-  ]
+  }
 }

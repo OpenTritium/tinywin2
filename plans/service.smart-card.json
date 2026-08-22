@@ -1,23 +1,20 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.smart-card",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用智能卡服务",
   "description": "禁用 Smart Card 服务及设备枚举服务；智能卡登录、证书读取器和部分企业身份验证设备将不可用。",
-  "group": "Security",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "SCardSvr",
-          "ScDeviceEnum"
-        ],
-        "start": "disabled"
-      }
+  "category": "Security",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "SCardSvr",
+        "ScDeviceEnum"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

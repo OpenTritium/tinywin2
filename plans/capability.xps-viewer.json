@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 3,
+  "id": "capability.xps-viewer",
+  "version": "3.0.0",
+  "title": "移除 XPS Viewer 能力",
+  "description": "移除 XPS Viewer Features on Demand 能力。",
+  "category": "Documents",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "dism.capability",
+    "action": "remove",
+    "spec": {
+      "capabilities": [
+        "XPS.Viewer~~~~0.0.1.0"
+      ]
+    }
+  }
+}

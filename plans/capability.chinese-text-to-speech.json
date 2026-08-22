@@ -1,21 +1,18 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "capability.chinese-text-to-speech",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除中文文本转语音",
   "description": "移除简体中文文本转语音引擎。",
-  "group": "Language",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "dism.capability",
-      "ensure": "absent",
-      "with": {
-        "capabilities": [
-          "Language.TextToSpeech~~~zh-CN~0.0.1.0"
-        ]
-      }
+  "category": "Language",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "dism.capability",
+    "action": "remove",
+    "spec": {
+      "capabilities": [
+        "Language.TextToSpeech~~~zh-CN~0.0.1.0"
+      ]
     }
-  ]
+  }
 }

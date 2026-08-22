@@ -102,12 +102,11 @@ internal static class Program {
             build options:
               -s <iso|folder> -i <index>            source and image index
               --plan <id> [--plan ...]              select plans
-              --set planId.arg=value [--set ...]    set plan arguments
+              --set planId.parameter=value [--set ...] set plan parameters
               --profile <file>                      load a selection profile
               --out wim|esd|vhdx                    image output (default esd)
               --iso                                 package WIM/ESD media as a bootable ISO
               -o <dir>                              output root (default ./out)
-              --granularity group|plan              one layer per group (default) or per plan
               --base-vhdx-mb <mb>                    maximum dynamic base VHDX size
               [--fast] [--no-evidence] [--continue-on-error] [--keep-layers] [--dry-run]
                                         [--no-layers] [--resume [workspace]]

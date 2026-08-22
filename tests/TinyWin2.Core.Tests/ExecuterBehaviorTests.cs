@@ -29,12 +29,12 @@ public sealed class FeatureExecuterTests : IDisposable {
 
         // removePayload defaults to true: a merely-Disabled feature still carries payload.
         var diff = await _executer.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("dism.feature", Ensure.Absent,
+            ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
                 ("features", new JsonArray("Hyper-V", "NetFx3"))), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsFalse();
         await Assert.That(diff.Differences.Count).IsEqualTo(2);
         var withoutPayload = await _executer.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("dism.feature", Ensure.Absent,
+            ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
                 ("features", new JsonArray("Hyper-V", "NetFx3")), ("removePayload", false)), CancellationToken.None);
         await Assert.That(withoutPayload.Differences.Count).IsEqualTo(1);
         await Assert.That(withoutPayload.Differences[0].Target).IsEqualTo("Hyper-V");
@@ -44,7 +44,7 @@ public sealed class FeatureExecuterTests : IDisposable {
     public async Task DisabledWithoutPayloadTargetIsSatisfied() {
         SetupFeatures(("NetFx3", "Disabled"));
         var diff = await _executer.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("dism.feature", Ensure.Absent,
+            ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
                 ("features", new JsonArray("NetFx3")), ("removePayload", false)), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsTrue();
     }
@@ -53,7 +53,7 @@ public sealed class FeatureExecuterTests : IDisposable {
     public async Task ApplyDisablesWithRemoveFlag() {
         SetupFeatures(("Hyper-V", "Enabled"));
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("dism.feature", Ensure.Absent,
+            ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
                 ("features", new JsonArray("Hyper-V")), ("removePayload", true)), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         var disable = _harness.Runner.Calls.First(c => c.Args.Contains("/Disable-Feature"));
@@ -68,7 +68,7 @@ public sealed class FeatureExecuterTests : IDisposable {
             ? FakeProcessRunner.Ok("Feature Name : Permanent\r\nState : Enabled")
             : FakeProcessRunner.Fail(DismErrors.CbsEInvalidInstallState);
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("dism.feature", Ensure.Absent,
+            ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
                 ("features", new JsonArray("Permanent"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(result.Changes[0].Kind).IsEqualTo(ChangeKind.Skipped);
@@ -78,7 +78,7 @@ public sealed class FeatureExecuterTests : IDisposable {
     public async Task ProviderUnavailableEditionSkipsEverything() {
         _harness.Runner.Handler = (_, _) => FakeProcessRunner.Fail(50);
         var diff = await _executer.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("dism.feature", Ensure.Absent,
+            ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
                 ("features", new JsonArray("AnyFeature"))), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsTrue();
     }
@@ -96,11 +96,11 @@ public sealed class CapabilityAndPackageTests : IDisposable {
             ? FakeProcessRunner.Ok("Capability Identity : Language.OCR~~~zh-CN~0.0.1.0\r\nState : Installed")
             : FakeProcessRunner.Ok();
         var diff = await capabilities.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("dism.capability", Ensure.Absent,
+            ExecuterTestHarness.Spec("dism.capability", OperationAction.Remove,
                 ("capabilities", new JsonArray("Language.OCR~~~zh-CN~0.0.1.0"))), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsFalse();
         var result = await capabilities.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("dism.capability", Ensure.Absent,
+            ExecuterTestHarness.Spec("dism.capability", OperationAction.Remove,
                 ("capabilities", new JsonArray("Language.OCR~~~zh-CN~0.0.1.0"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(string.Join(" ", _harness.Runner.Calls.Last().Args)).Contains("/Remove-Capability");
@@ -113,7 +113,7 @@ public sealed class CapabilityAndPackageTests : IDisposable {
             ? FakeProcessRunner.Ok("Capability Identity : Cap1\r\nState : Installed")
             : FakeProcessRunner.Fail(DismErrors.CbsECannotUninstall);
         var result = await capabilities.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("dism.capability", Ensure.Absent,
+            ExecuterTestHarness.Spec("dism.capability", OperationAction.Remove,
                 ("capabilities", new JsonArray("Cap1"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(result.Changes[0].Kind).IsEqualTo(ChangeKind.Skipped);
@@ -135,7 +135,7 @@ public sealed class CapabilityAndPackageTests : IDisposable {
                                    """)
             : FakeProcessRunner.Ok();
         var diff = await packages.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("dism.package", Ensure.Absent,
+            ExecuterTestHarness.Spec("dism.package", OperationAction.Remove,
                 ("patterns", new JsonArray("^Microsoft-Windows-(Foo|Bar|Pending)-Package~"))), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsFalse();
         await Assert.That(diff.Differences.Count).IsEqualTo(3);
@@ -151,7 +151,7 @@ public sealed class CapabilityAndPackageTests : IDisposable {
                                    + "Package Identity : Microsoft-Windows-Bar-Package~1\r\nState : Superseded")
             : FakeProcessRunner.Ok();
         var result = await packages.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("dism.package", Ensure.Absent,
+            ExecuterTestHarness.Spec("dism.package", OperationAction.Remove,
                 ("patterns", new JsonArray("^Microsoft-Windows-(Foo|Bar)-Package~"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(result.Changes.Count).IsEqualTo(2);
@@ -174,7 +174,7 @@ public sealed class ComponentStoreExecuterTests : IDisposable {
     public async Task CleanupRunsAndApplies() {
         _harness.Runner.Handler = (_, _) => FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("dism.component-store", Ensure.Absent, ("resetBase", true)),
+            ExecuterTestHarness.Spec("dism.component-store", OperationAction.Cleanup, ("resetBase", true)),
             CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(string.Join(" ", _harness.Runner.Calls[0].Args)).Contains("/ResetBase");
@@ -184,18 +184,18 @@ public sealed class ComponentStoreExecuterTests : IDisposable {
     public async Task Error4350DowngradesToSkipped() {
         _harness.Runner.Handler = (_, _) => FakeProcessRunner.Fail(4350);
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("dism.component-store", Ensure.Absent), CancellationToken.None);
+            ExecuterTestHarness.Spec("dism.component-store", OperationAction.Cleanup), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
         await Assert.That(result.SkipReason).Contains("4350");
     }
 
     [Test]
-    public async Task PresentEnsureIsRejected() {
+    public async Task NonCleanupActionIsRejected() {
         var ex = Assert.Throws<ExecException>(() =>
             _executer.ApplyAsync(_harness.NewContext(),
-                ExecuterTestHarness.Spec("dism.component-store", Ensure.Present), CancellationToken.None)
+                ExecuterTestHarness.Spec("dism.component-store", OperationAction.Set), CancellationToken.None)
                 .GetAwaiter().GetResult());
-        await Assert.That(ex.Message).Contains("present is not implemented");
+        await Assert.That(ex.Message).Contains("action 'cleanup'");
         await Assert.That(_harness.Runner.Calls).IsEmpty();
     }
 
@@ -222,7 +222,7 @@ public sealed class AppxProvisionedExecuterTests : IDisposable {
                                    """)
             : FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("appx.provisioned", Ensure.Absent,
+            ExecuterTestHarness.Spec("appx.provisioned", OperationAction.Remove,
                 ("patterns", new JsonArray("Microsoft.Xbox*"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(result.Changes.Count).IsEqualTo(1);
@@ -235,7 +235,7 @@ public sealed class AppxProvisionedExecuterTests : IDisposable {
         // Server without appx provisioning answers ERROR_INVALID_PARAMETER (87) on the listing.
         _harness.Runner.Handler = (_, _) => FakeProcessRunner.Fail(87);
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("appx.provisioned", Ensure.Absent,
+            ExecuterTestHarness.Spec("appx.provisioned", OperationAction.Remove,
                 ("patterns", new JsonArray("Microsoft.Xbox*"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
     }
@@ -247,7 +247,7 @@ public sealed class AppxProvisionedExecuterTests : IDisposable {
                                    + "PackageName : Microsoft.WindowsCalculator_1.0.0.0_neutral_~_8wekyb3d8bbwe")
             : FakeProcessRunner.Ok();
         var diff = await _executer.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("appx.provisioned", Ensure.Absent,
+            ExecuterTestHarness.Spec("appx.provisioned", OperationAction.Remove,
                 ("patterns", new JsonArray("Microsoft.WindowsCalculator"))), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsFalse();
         await Assert.That(diff.Differences[0].Target)
@@ -258,7 +258,7 @@ public sealed class AppxProvisionedExecuterTests : IDisposable {
     public async Task EditionWithoutAppxProviderSkips() {
         _harness.Runner.Handler = (_, _) => FakeProcessRunner.Fail(50);
         var diff = await _executer.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("appx.provisioned", Ensure.Absent,
+            ExecuterTestHarness.Spec("appx.provisioned", OperationAction.Remove,
                 ("patterns", new JsonArray("Microsoft.Xbox*"))), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsTrue();
     }
@@ -280,7 +280,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
         Directory.CreateDirectory(target);
         File.WriteAllText(Path.Combine(target, "img.jpg"), "x");
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("fs.path", Ensure.Absent,
+            ExecuterTestHarness.Spec("fs.path", OperationAction.Remove,
                 ("paths", new JsonArray("Windows/Web/Wallpaper"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(Directory.Exists(target)).IsFalse();
@@ -289,7 +289,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
     [Test]
     public async Task AbsentMissingPathSkips() {
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("fs.path", Ensure.Absent,
+            ExecuterTestHarness.Spec("fs.path", OperationAction.Remove,
                 ("paths", new JsonArray("Does/Not/Exist"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
     }
@@ -315,7 +315,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
             ? FakeProcessRunner.Ok()
             : FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(context,
-            ExecuterTestHarness.Spec("fs.path", Ensure.Present,
+            ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
                 ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(_harness.Runner.Called("robocopy.exe")).IsTrue();
@@ -337,7 +337,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
         var context = new ExecContext(_harness.MountPath, _harness.Log,
             new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
         var result = await _executer.ApplyAsync(context,
-            ExecuterTestHarness.Spec("fs.path", Ensure.Present,
+            ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
                 ("path", "ProgramData\\settings.ini"), ("source", "settings.ini")), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(File.ReadAllText(destination)).IsEqualTo("new");
@@ -352,7 +352,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
         var context = new ExecContext(_harness.MountPath, _harness.Log,
             new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
         var diff = await _executer.InspectAsync(context,
-            ExecuterTestHarness.Spec("fs.path", Ensure.Present,
+            ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
                 ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsFalse();
         await Assert.That(diff.Differences[0].Kind).IsEqualTo(ChangeKind.Modified);
@@ -369,7 +369,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
             : FakeProcessRunner.Ok();
         var ex = Assert.Throws<IOException>(() =>
             _executer.ApplyAsync(context,
-                ExecuterTestHarness.Spec("fs.path", Ensure.Present,
+                ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
                     ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None)
                 .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("robocopy");
@@ -394,7 +394,7 @@ public sealed class DriverStoreExecuterTests : IDisposable {
                                    + "Inbox : No\r\n")
             : FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
+            ExecuterTestHarness.Spec("driver.store", OperationAction.Remove,
                 ("infNames", new JsonArray("mdm.inf"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         var remove = _harness.Runner.Calls.Last(c => c.Args.Contains("/Remove-Driver"));
@@ -409,7 +409,7 @@ public sealed class DriverStoreExecuterTests : IDisposable {
                                    + "Inbox : No\r\n")
             : FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
+            ExecuterTestHarness.Spec("driver.store", OperationAction.Remove,
                 ("infNames", new JsonArray("ghost.inf"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
     }
@@ -422,7 +422,7 @@ public sealed class DriverStoreExecuterTests : IDisposable {
                                    + "Inbox : No\r\n")
             : FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
+            ExecuterTestHarness.Spec("driver.store", OperationAction.Remove,
                 ("infNames", new JsonArray("mdm.inf", "ghost.inf"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(result.Changes.Count).IsEqualTo(2);
@@ -439,7 +439,7 @@ public sealed class DriverStoreExecuterTests : IDisposable {
                                    + "Inbox : Yes\r\n")
             : FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
+            ExecuterTestHarness.Spec("driver.store", OperationAction.Remove,
                 ("infNames", new JsonArray("mdm.inf"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
         await Assert.That(result.Changes[0].Before)
@@ -448,12 +448,12 @@ public sealed class DriverStoreExecuterTests : IDisposable {
     }
 
     [Test]
-    public async Task PresentEnsureIsRejectedBeforeInspectingStore() {
+    public async Task NonRemoveActionIsRejectedBeforeInspectingStore() {
         var ex = Assert.Throws<ExecException>(() =>
             _executer.ApplyAsync(_harness.NewContext(),
-                ExecuterTestHarness.Spec("driver.store", Ensure.Present), CancellationToken.None)
+                ExecuterTestHarness.Spec("driver.store", OperationAction.Set), CancellationToken.None)
                 .GetAwaiter().GetResult());
-        await Assert.That(ex.Message).Contains("present");
+        await Assert.That(ex.Message).Contains("action 'remove'");
         await Assert.That(_harness.Runner.Calls).IsEmpty();
     }
 
@@ -462,7 +462,7 @@ public sealed class DriverStoreExecuterTests : IDisposable {
         foreach (var infName in new[] { "C:\\evil\\path.inf", "*.inf", "vendor?.inf" }) {
             var ex = Assert.Throws<ExecException>(() =>
                 _executer.InspectAsync(_harness.NewContext(),
-                        ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
+                        ExecuterTestHarness.Spec("driver.store", OperationAction.Remove,
                             ("infNames", new JsonArray(infName))), CancellationToken.None).GetAwaiter()
                     .GetResult());
             await Assert.That(ex.Message).Contains("invalid driver INF name");

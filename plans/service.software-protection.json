@@ -1,13 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.software-protection",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "软件保护服务改为延迟启动",
   "description": "sppsvc（激活/许可）改为延迟自动启动。开机后 1-2 分钟再完成激活完全可接受，退出开机阶段的服务竞争。",
-  "group": "Policies",
-  "risk": "Low",
-  "tier": "Standard",
-  "arguments": [
+  "category": "Policies",
+  "riskLevel": "Low",
+  "parameters": [
     {
       "name": "startMode",
       "type": "enum",
@@ -17,41 +16,39 @@
         {
           "value": "delayedAuto",
           "label": "延迟启动",
-          "risk": "Medium"
+          "riskLevel": "Medium"
         },
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Low"
+          "riskLevel": "Low"
         },
         {
           "value": "manual",
           "label": "手动",
-          "risk": "Low"
+          "riskLevel": "Low"
         }
       ]
     }
   ],
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "sppsvc"
-        ],
-        "start": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "disabled": "disabled",
-              "manual": "manual",
-              "delayedAuto": "DelayedAuto",
-              "auto": "auto"
-            }
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "sppsvc"
+      ],
+      "start": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "disabled": "disabled",
+            "manual": "manual",
+            "delayedAuto": "DelayedAuto",
+            "auto": "auto"
           }
         }
       }
     }
-  ]
+  }
 }

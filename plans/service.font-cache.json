@@ -1,13 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.font-cache",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用 Windows 字体缓存服务",
   "description": "禁用 FontCache。配合 feature.extra-fonts（仅剩控制台字体）后缓存服务无事可做；代价是桌面版首次字体渲染略慢。内存节省 10-20MB。",
-  "group": "Language",
-  "risk": "Medium",
-  "tier": "Standard",
-  "arguments": [
+  "category": "Language",
+  "riskLevel": "Medium",
+  "parameters": [
     {
       "name": "startMode",
       "type": "enum",
@@ -17,36 +16,34 @@
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Medium"
+          "riskLevel": "Medium"
         },
         {
           "value": "manual",
           "label": "手动",
-          "risk": "Low"
+          "riskLevel": "Low"
         }
       ]
     }
   ],
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "FontCache"
-        ],
-        "start": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "disabled": "disabled",
-              "manual": "manual",
-              "delayedAuto": "DelayedAuto",
-              "auto": "auto"
-            }
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "FontCache"
+      ],
+      "start": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "disabled": "disabled",
+            "manual": "manual",
+            "delayedAuto": "DelayedAuto",
+            "auto": "auto"
           }
         }
       }
     }
-  ]
+  }
 }

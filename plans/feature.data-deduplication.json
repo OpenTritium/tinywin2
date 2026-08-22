@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.data-deduplication",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除数据重复删除",
   "description": "移除 Data Deduplication 服务和 cmdlet；卷数据重复删除、优化和回收任务将不可用。",
-  "group": "Storage",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "Dedup-Core"
-        ],
-        "removePayload": true
-      }
+  "category": "Storage",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "Dedup-Core"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

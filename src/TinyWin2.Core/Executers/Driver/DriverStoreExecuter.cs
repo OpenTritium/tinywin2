@@ -14,15 +14,22 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
 
     private sealed record DriverChange(ChangeItem Change, string? PublishedName = null);
 
-    public async Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
-        ValidateSpec(spec);
+    public void Validate(OperationSpec spec) {
+        if (spec.Action != OperationAction.Remove) {
+            throw new ExecException($"{ResourceId} supports only action 'remove'.");
+        }
+        _ = DriverStoreOptions.FromDesired(spec.Spec);
+    }
+
+    public async Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+        Validate(spec);
         var changes = await InspectCoreAsync(context, spec, ct);
         return new(changes.All(c => c.Change.Kind == ChangeKind.Skipped),
             [.. changes.Select(c => c.Change)]);
     }
 
-    public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
-        ValidateSpec(spec);
+    public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+        Validate(spec);
         var changes = await InspectCoreAsync(context, spec, ct);
         if (changes.All(c => c.Change.Kind == ChangeKind.Skipped)) {
             return ExecResult.Skipped("no removable third-party Driver Store packages",
@@ -53,8 +60,8 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
     }
 
     private async Task<List<DriverChange>> InspectCoreAsync(
-        ExecContext context, ExecSpec spec, CancellationToken ct) {
-        var options = DriverStoreOptions.FromDesired(spec.Desired);
+        ExecContext context, OperationSpec spec, CancellationToken ct) {
+        var options = DriverStoreOptions.FromDesired(spec.Spec);
         var (exitCode, output) = await RunDismAsync(context,
             ["/Get-Drivers", "/All", "/Format:List"], ct);
         var outcome = DismErrors.Classify(exitCode, output);
@@ -103,9 +110,4 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
         return changes;
     }
 
-    private static void ValidateSpec(ExecSpec spec) {
-        if (spec.Ensure == Ensure.Present) {
-            throw new ExecException("driver.store present (driver integration) is not implemented yet.");
-        }
-    }
 }

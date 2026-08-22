@@ -4,7 +4,7 @@ namespace TinyWin2.Core.Executers.Dism;
 
 /// <summary>
 /// Classifies dism.exe outcomes by exit code (and, where needed, English/Chinese text hints),
-/// replacing v1's localized-regex error handling with stable numeric contracts.
+/// using stable numeric contracts instead of localized output parsing.
 /// </summary>
 public enum DismOutcome {
     Success,
@@ -17,10 +17,10 @@ public enum DismOutcome {
 }
 
 public static partial class DismErrors {
-    /// <summary>0x800F0813 — feature is permanent for this edition (v1: CBS_E_INVALID_INSTALL_STATE).</summary>
+    /// <summary>0x800F0813 — feature is permanent for this edition (CBS_E_INVALID_INSTALL_STATE).</summary>
     public const int CbsEInvalidInstallState = unchecked((int)0x800F0813);
 
-    /// <summary>0x800F0825 — capability-on-demand is permanent for this edition (v1: CBS_E_CANNOT_UNINSTALL).</summary>
+    /// <summary>0x800F0825 — capability-on-demand is permanent for this edition (CBS_E_CANNOT_UNINSTALL).</summary>
     public const int CbsECannotUninstall = unchecked((int)0x800F0825);
 
     /// <summary>Win32 ERROR_NOT_SUPPORTED — the edition exposes no servicing provider for this operation.</summary>

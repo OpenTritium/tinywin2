@@ -1,4 +1,3 @@
-using System.Text.Json.Nodes;
 using TinyWin2.Core.Plans;
 using TinyWin2.Core.Profiles;
 
@@ -56,7 +55,7 @@ internal static class ProfileCommand {
     private static int Export(Dictionary<string, List<string>> options) {
         var output = options.GetValueOrDefault("out")?.FirstOrDefault() ?? options.GetValueOrDefault("o")?.FirstOrDefault();
         if (output is null) {
-            Console.Error.WriteLine("usage: tinywin2 profile export -o <file> [--name x] [--profile p] [--plan id ...] [--set planId.arg=v ...]");
+            Console.Error.WriteLine("usage: tinywin2 profile export -o <file> [--name x] [--profile p] [--plan id ...] [--set planId.parameter=v ...]");
             return 2;
         }
         var catalog = PlanCatalog.LoadDirectory(Cli.FindPlansDirectory(options.GetValueOrDefault("plans")?.FirstOrDefault()));
@@ -64,7 +63,7 @@ internal static class ProfileCommand {
         var profile = new Profile(
             options.GetValueOrDefault("name")?.FirstOrDefault() ?? Path.GetFileNameWithoutExtension(output),
             "exported by tinywin2",
-            selections.Select(s => new ProfileSelection(s.PlanId, true, ToJsonObject(s.Args))).ToList());
+            selections);
         ProfileStore.Save(profile, output);
         Console.WriteLine($"exported {profile.Selections.Count} selections → {output}");
         return 0;
@@ -88,17 +87,6 @@ internal static class ProfileCommand {
             return 1;
         }
         return 0;
-    }
-
-    private static JsonObject? ToJsonObject(IReadOnlyDictionary<string, JsonNode?>? args) {
-        if (args is null || args.Count == 0) {
-            return null;
-        }
-        var obj = new JsonObject();
-        foreach (var (key, value) in args) {
-            obj[key] = value?.DeepClone();
-        }
-        return obj;
     }
 
     private static int Unknown(string command) {

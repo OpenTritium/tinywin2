@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.telnet-client",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 Telnet 客户端",
   "description": "移除 Telnet Client；无法使用遗留 Telnet 终端连接。",
-  "group": "Networking",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "TelnetClient"
-        ],
-        "removePayload": true
-      }
+  "category": "Networking",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "TelnetClient"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

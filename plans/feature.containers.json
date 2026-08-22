@@ -1,24 +1,21 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.containers",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 Windows Containers",
   "description": "移除 Windows 容器、Host Networking Service 与软件定义网络组件。",
-  "group": "Virtualization",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "Containers",
-          "Containers-HNS",
-          "Containers-SDN"
-        ],
-        "removePayload": true
-      }
+  "category": "Virtualization",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "Containers",
+        "Containers-HNS",
+        "Containers-SDN"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

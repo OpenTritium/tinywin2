@@ -1,23 +1,20 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.audio",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用 Windows 音频服务",
   "description": "禁用 Audiosrv 和 AudioEndpointBuilder；系统音频输出、录音以及依赖音频会话的应用将不可用。",
-  "group": "Devices",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "Audiosrv",
-          "AudioEndpointBuilder"
-        ],
-        "start": "disabled"
-      }
+  "category": "Devices",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "Audiosrv",
+        "AudioEndpointBuilder"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

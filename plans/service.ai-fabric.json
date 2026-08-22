@@ -1,13 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.ai-fabric",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用 Windows AI Fabric 服务",
   "description": "禁用 WSAIFabricSvc（Copilot/AI 基础设施）。无 AI 负载的机器上是纯死重。",
-  "group": "System",
-  "risk": "Low",
-  "tier": "Standard",
-  "arguments": [
+  "category": "System",
+  "riskLevel": "Low",
+  "parameters": [
     {
       "name": "startMode",
       "type": "enum",
@@ -17,36 +16,34 @@
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Low"
+          "riskLevel": "Low"
         },
         {
           "value": "manual",
           "label": "手动",
-          "risk": "Low"
+          "riskLevel": "Low"
         }
       ]
     }
   ],
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "WSAIFabricSvc"
-        ],
-        "start": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "disabled": "disabled",
-              "manual": "manual",
-              "delayedAuto": "DelayedAuto",
-              "auto": "auto"
-            }
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "WSAIFabricSvc"
+      ],
+      "start": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "disabled": "disabled",
+            "manual": "manual",
+            "delayedAuto": "DelayedAuto",
+            "auto": "auto"
           }
         }
       }
     }
-  ]
+  }
 }

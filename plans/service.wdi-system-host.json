@@ -1,13 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.wdi-system-host",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "title": "配置系统诊断主机启动方式",
   "description": "配置 WdiSystemHost 的启动方式。禁用模式已在 Desktop Experience Hyper-V VM 中完成重启和桌面功能验证；默认仍为手动以保持通用 profile 保守。",
-  "group": "Diagnostics",
-  "risk": "Medium",
-  "tier": "Standard",
-  "arguments": [
+  "category": "Diagnostics",
+  "riskLevel": "Medium",
+  "parameters": [
     {
       "name": "startMode",
       "type": "enum",
@@ -17,34 +16,32 @@
         {
           "value": "manual",
           "label": "手动",
-          "risk": "Medium"
+          "riskLevel": "Medium"
         },
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Medium"
+          "riskLevel": "Medium"
         }
       ]
     }
   ],
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "WdiSystemHost"
-        ],
-        "start": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "manual": "Manual",
-              "disabled": "disabled"
-            }
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "WdiSystemHost"
+      ],
+      "start": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "manual": "Manual",
+            "disabled": "disabled"
           }
         }
       }
     }
-  ]
+  }
 }

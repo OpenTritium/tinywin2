@@ -1,24 +1,21 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.smb1",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 SMB 1.0",
   "description": "移除 SMBv1 客户端、服务器和基础协议；访问仅支持 SMBv1 的旧 NAS 或设备将失败。",
-  "group": "Networking",
-  "risk": "Medium",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "SMB1Protocol",
-          "SMB1Protocol-Client",
-          "SMB1Protocol-Server"
-        ],
-        "removePayload": true
-      }
+  "category": "Networking",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "SMB1Protocol",
+        "SMB1Protocol-Client",
+        "SMB1Protocol-Server"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

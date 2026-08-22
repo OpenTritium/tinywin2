@@ -11,13 +11,21 @@ public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuter
     private const string ResourceId = "dism.component-store";
     public string Resource => ResourceId;
 
-    public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
+    public void Validate(OperationSpec spec) {
+        if (spec.Action != OperationAction.Cleanup) {
+            throw new ExecException($"{ResourceId} supports only action 'cleanup'.");
+        }
+    }
+
+    public Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
         // Component-store size reduction is a run-once optimization: the diff is the action itself.
+        Validate(spec);
         _ = ParseOptions(spec);
         return Task.FromResult(new ResourceDiff(false, [new(ChangeKind.Modified, "component-store")]));
     }
 
-    public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
+    public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+        Validate(spec);
         var options = ParseOptions(spec);
         var resetBase = options.ResetBase;
         if (resetBase) {
@@ -44,9 +52,6 @@ public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuter
         };
     }
 
-    private static ComponentStoreOptions ParseOptions(ExecSpec spec) {
-        return spec.Ensure == Ensure.Present
-            ? throw new ExecException($"{ResourceId} present is not implemented yet.")
-            : ComponentStoreOptions.FromDesired(spec.Desired);
-    }
+    private static ComponentStoreOptions ParseOptions(OperationSpec spec) =>
+        ComponentStoreOptions.FromDesired(spec.Spec);
 }

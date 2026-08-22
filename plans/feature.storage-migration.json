@@ -1,24 +1,21 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.storage-migration",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除存储迁移服务",
   "description": "移除 Storage Migration Service、管理组件和代理；无法使用 Windows Server 存储迁移工具。",
-  "group": "Server Roles",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "StorageMigrationService",
-          "StorageMigrationServiceManagement",
-          "StorageMigrationServiceProxy"
-        ],
-        "removePayload": true
-      }
+  "category": "Server Roles",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "StorageMigrationService",
+        "StorageMigrationServiceManagement",
+        "StorageMigrationServiceProxy"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

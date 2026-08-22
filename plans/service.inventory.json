@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.inventory",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用清单与兼容性评估服务",
   "description": "禁用 InventorySvc；硬件/软件清单收集和兼容性评估后台任务将不可用。",
-  "group": "Diagnostics",
-  "risk": "Medium",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "InventorySvc"
-        ],
-        "start": "disabled"
-      }
+  "category": "Diagnostics",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "InventorySvc"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

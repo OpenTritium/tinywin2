@@ -8,9 +8,9 @@ public sealed record FsPathOptions {
     public string? Path { get; private init; }
     public string? Source { get; private init; }
 
-    public static FsPathOptions FromDesired(JsonObject desired, Ensure ensure) {
+    public static FsPathOptions FromDesired(JsonObject desired, OperationAction action) {
         const string context = "fs.path";
-        if (ensure == Ensure.Absent) {
+        if (action == OperationAction.Remove) {
             var paths = Desired.RequiredStringArray(desired, "paths", context);
             return paths.Count == 0
                 ? throw new ExecException("fs.path absent requires at least one path.")

@@ -1,25 +1,22 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.bitlocker",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 BitLocker 管理组件",
   "description": "移除 BitLocker 工具、网络解锁和远程管理扩展；BitLocker 卷加密配置与恢复管理将不可用。",
-  "group": "Security",
-  "risk": "High",
-  "tier": "Experimental",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "Bitlocker-Utilities",
-          "BdeAducExtTool",
-          "BitLocker-NetworkUnlock",
-          "BitLocker-RemoteAdminTool"
-        ],
-        "removePayload": true
-      }
+  "category": "Security",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "Bitlocker-Utilities",
+        "BdeAducExtTool",
+        "BitLocker-NetworkUnlock",
+        "BitLocker-RemoteAdminTool"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

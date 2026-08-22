@@ -2,7 +2,7 @@ using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Executers;
 
-/// <summary>Filesystem mutations against the mounted image, with the v1 privilege-rescue fallback.</summary>
+/// <summary>Filesystem mutations against the mounted image, with a privilege-rescue fallback.</summary>
 internal static class ImageFs {
     /// <summary>Deletes a file or directory (recursively) when it exists; a no-op otherwise.</summary>
     internal static void DeleteIfExists(string target) {

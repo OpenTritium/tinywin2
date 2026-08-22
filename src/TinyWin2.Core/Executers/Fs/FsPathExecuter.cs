@@ -27,18 +27,27 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
         string? AssetSource = null,
         EntryKind AssetKind = EntryKind.Missing);
 
-    public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
+    public void Validate(OperationSpec spec) {
+        if (spec.Action is not (OperationAction.Remove or OperationAction.Copy)) {
+            throw new ExecException($"{ResourceId} supports actions 'remove' and 'copy'.");
+        }
+        _ = FsPathOptions.FromDesired(spec.Spec, spec.Action);
+    }
+
+    public Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+        Validate(spec);
         var changes = InspectCore(context, spec);
         return Task.FromResult(new ResourceDiff(changes.Count == 0, [.. changes.Select(c => c.Change)]));
     }
 
-    public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
+    public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+        Validate(spec);
         var changes = InspectCore(context, spec);
         if (changes.Count == 0) {
             return ExecResult.Skipped("paths already in the desired state");
         }
 
-        if (spec.Ensure == Ensure.Absent) {
+        if (spec.Action == OperationAction.Remove) {
             foreach (var change in changes) {
                 context.Log.Info($"removing image path: {change.Change.Target}");
                 try {
@@ -89,9 +98,9 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
         return ExecResult.Applied([.. changes.Select(c => c.Change)]);
     }
 
-    private static List<PathChange> InspectCore(ExecContext context, ExecSpec spec) {
-        var options = FsPathOptions.FromDesired(spec.Desired, spec.Ensure);
-        if (spec.Ensure == Ensure.Absent) {
+    private static List<PathChange> InspectCore(ExecContext context, OperationSpec spec) {
+        var options = FsPathOptions.FromDesired(spec.Spec, spec.Action);
+        if (spec.Action == OperationAction.Remove) {
             var changes = new List<PathChange>();
             foreach (var relative in options.Paths) {
                 var target = ResolveInsideMount(context.MountPath, relative);
@@ -127,7 +136,7 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
             ];
     }
 
-    /// <summary>Rejects rooted paths, .. traversal, and anything escaping the mount root (v1 rules).</summary>
+    /// <summary>Rejects rooted paths, .. traversal, and anything escaping the mount root.</summary>
     internal static string ResolveInsideMount(string mountPath, string relativePath) {
         var normalized = relativePath.Replace('/', '\\').TrimStart('\\');
         if (string.IsNullOrWhiteSpace(normalized)

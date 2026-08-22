@@ -1,23 +1,20 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.dhcp-server",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 DHCP Server",
   "description": "移除 DHCP 服务器角色及管理工具；本机不能为网络客户端分配 DHCP 地址。",
-  "group": "Server Roles",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "DHCPServer",
-          "DHCPServer-Tools"
-        ],
-        "removePayload": true
-      }
+  "category": "Server Roles",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "DHCPServer",
+        "DHCPServer-Tools"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

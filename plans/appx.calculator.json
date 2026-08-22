@@ -1,21 +1,18 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "appx.calculator",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除计算器",
   "description": "移除 Windows Calculator 预置 Appx；Server 镜像通常没有此包。",
-  "group": "Applications",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "appx.provisioned",
-      "ensure": "absent",
-      "with": {
-        "patterns": [
-          "Microsoft.WindowsCalculator"
-        ]
-      }
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": {
+      "patterns": [
+        "Microsoft.WindowsCalculator"
+      ]
     }
-  ]
+  }
 }

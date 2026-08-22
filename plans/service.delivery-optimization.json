@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.delivery-optimization",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用 Delivery Optimization",
   "description": "禁用 Delivery Optimization；Windows Update 将回退到传统下载，局域网和互联网更新共享不可用。",
-  "group": "Update Services",
-  "risk": "Medium",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "DoSvc"
-        ],
-        "start": "disabled"
-      }
+  "category": "Update Services",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "DoSvc"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

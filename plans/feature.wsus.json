@@ -1,28 +1,25 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.wsus",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 Windows Server Update Services",
   "description": "移除 WSUS 数据库、服务、API 和管理工具；本机不能作为企业更新服务器。Windows Update 客户端不受此条目影响。",
-  "group": "Server Roles",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "UpdateServices",
-          "UpdateServices-API",
-          "UpdateServices-Database",
-          "UpdateServices-RSAT",
-          "UpdateServices-Services",
-          "UpdateServices-UI",
-          "UpdateServices-WidDatabase"
-        ],
-        "removePayload": true
-      }
+  "category": "Server Roles",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "UpdateServices",
+        "UpdateServices-API",
+        "UpdateServices-Database",
+        "UpdateServices-RSAT",
+        "UpdateServices-Services",
+        "UpdateServices-UI",
+        "UpdateServices-WidDatabase"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

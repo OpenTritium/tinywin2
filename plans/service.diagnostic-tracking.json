@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.diagnostic-tracking",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用诊断跟踪服务",
   "description": "禁用 Connected User Experiences and Telemetry 服务 (DiagTrack)，避免非必要诊断后台常驻。",
-  "group": "Background Services",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "DiagTrack"
-        ],
-        "start": "disabled"
-      }
+  "category": "Background Services",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "DiagTrack"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

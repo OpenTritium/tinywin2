@@ -8,7 +8,7 @@ using TinyWin2.Core.Executers.Registry;
 namespace TinyWin2.Core.Tests;
 
 /// <summary>
-/// Boundary validation: every malformed `with` payload is rejected at the single
+/// Boundary validation: every malformed operation spec is rejected at the single
 /// JsonNode→record edge, before any executer logic runs.
 /// </summary>
 public sealed class OptionsValidationTests {
@@ -98,7 +98,7 @@ public sealed class OptionsValidationTests {
             ["name"] = "V",
             ["type"] = "dword",
             ["data"] = 1,
-        }, Ensure.Present);
+        }, OperationAction.Set);
         await Assert.That(options.Values.Count).IsEqualTo(1);
         await Assert.That(options.Values[0].RegType).IsEqualTo("REG_DWORD");
     }
@@ -109,8 +109,8 @@ public sealed class OptionsValidationTests {
             RegistryValueOptions.FromDesired(new JsonObject {
                 ["hive"] = "software",
                 ["deleteKeys"] = new JsonArray("K"),
-            }, Ensure.Present));
-        await Assert.That(ex.Message).Contains("only valid with ensure: absent");
+            }, OperationAction.Set));
+        await Assert.That(ex.Message).Contains("only valid with action: remove");
     }
 
     [Test]
@@ -119,7 +119,7 @@ public sealed class OptionsValidationTests {
             RegistryValueOptions.FromDesired(new JsonObject {
                 ["hive"] = "hive_of_hades",
                 ["values"] = new JsonArray(),
-            }, Ensure.Present));
+            }, OperationAction.Set));
         await Assert.That(ex.Message).Contains("unsupported registry hive");
     }
 
@@ -129,14 +129,14 @@ public sealed class OptionsValidationTests {
             RegistryValueOptions.FromDesired(new JsonObject {
                 ["hive"] = "software",
                 ["values"] = new JsonArray("not-an-object"),
-            }, Ensure.Absent));
+            }, OperationAction.Remove));
         await Assert.That(scalarArray.Message).Contains("only objects");
 
         var scalar = Assert.Throws<ExecException>(() =>
             RegistryValueOptions.FromDesired(new JsonObject {
                 ["hive"] = "software",
                 ["values"] = "not-an-array",
-            }, Ensure.Absent));
+            }, OperationAction.Remove));
         await Assert.That(scalar.Message).Contains("array of objects");
     }
 
@@ -172,13 +172,13 @@ public sealed class OptionsValidationTests {
     }
 
     [Test]
-    public async Task FsPathValidatesPerEnsureShape() {
+    public async Task FsPathValidatesPerActionShape() {
         var absent = FsPathOptions.FromDesired(new JsonObject {
             ["paths"] = new JsonArray("inetpub"),
-        }, Ensure.Absent);
+        }, OperationAction.Remove);
         await Assert.That(absent.Paths.Count).IsEqualTo(1);
         var ex = Assert.Throws<ExecException>(() =>
-            FsPathOptions.FromDesired(new JsonObject { ["paths"] = new JsonArray("x") }, Ensure.Present));
+            FsPathOptions.FromDesired(new JsonObject { ["paths"] = new JsonArray("x") }, OperationAction.Copy));
         await Assert.That(ex.Message).Contains("'path'");
     }
 }

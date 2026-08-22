@@ -1,31 +1,22 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.xps",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 XPS 查看器",
   "description": "移除 XPS Viewer 功能和按需功能包。",
-  "group": "Documents",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "Xps-Foundation-Xps-Viewer"
-        ],
-        "removePayload": true
-      }
-    },
-    {
-      "resource": "dism.capability",
-      "ensure": "absent",
-      "with": {
-        "capabilities": [
-          "XPS.Viewer~~~~0.0.1.0"
-        ]
-      }
+  "category": "Documents",
+  "riskLevel": "Low",
+  "requires": [
+    "capability.xps-viewer"
+  ],
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "Xps-Foundation-Xps-Viewer"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

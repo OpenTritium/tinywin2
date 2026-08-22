@@ -1,21 +1,18 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "capability.notepad",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除记事本",
   "description": "移除 Microsoft Notepad 按需功能包。",
-  "group": "Utilities",
-  "risk": "Medium",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "dism.capability",
-      "ensure": "absent",
-      "with": {
-        "capabilities": [
-          "Microsoft.Windows.Notepad~~~~0.0.1.0"
-        ]
-      }
+  "category": "Utilities",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "dism.capability",
+    "action": "remove",
+    "spec": {
+      "capabilities": [
+        "Microsoft.Windows.Notepad~~~~0.0.1.0"
+      ]
     }
-  ]
+  }
 }

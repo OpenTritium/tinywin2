@@ -96,7 +96,7 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         return finalPath;
     }
 
-    /// <summary>Creates a dual BIOS+UEFI bootable ISO with oscdimg (v1 flags, verbatim).</summary>
+    /// <summary>Creates a dual BIOS+UEFI bootable ISO with the standard oscdimg flags.</summary>
     public async Task CreateIsoAsync(
         string mediaPath,
         string isoPath,
@@ -119,7 +119,7 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         EnsureNonEmptyFile(isoPath, "oscdimg reported success but did not create a non-empty ISO");
     }
 
-    /// <summary>ESD (LZMS) output goes through an intermediate WIM export for reliability (v1 rule).</summary>
+    /// <summary>ESD (LZMS) output goes through an intermediate WIM export for reliability.</summary>
     public Task ExportEsdAsync(string intermediateWim, string esdPath, CancellationToken ct) =>
         runner.RunAsync("dism.exe",
             [

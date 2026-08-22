@@ -1,7 +1,7 @@
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Globalization;
 using System.Runtime.ExceptionServices;
+using System.Text;
+using System.Text.RegularExpressions;
 using TinyWin2.Core.Executers.Registry;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;

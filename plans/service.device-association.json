@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.device-association",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用设备关联服务",
   "description": "禁用 Device Association Service；USB、蓝牙和其他即插即用设备的配对与自动关联可能失败。",
-  "group": "Devices",
-  "risk": "High",
-  "tier": "Experimental",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "DeviceAssociationService"
-        ],
-        "start": "disabled"
-      }
+  "category": "Devices",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "DeviceAssociationService"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

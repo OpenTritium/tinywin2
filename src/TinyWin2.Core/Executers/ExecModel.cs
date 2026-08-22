@@ -4,13 +4,16 @@ using TinyWin2.Core.Logging;
 
 namespace TinyWin2.Core.Executers;
 
-/// <summary>Desired state of a resource: present (add/modify) or absent (remove).</summary>
-public enum Ensure {
-    Present,
-    Absent,
+/// <summary>Semantic action requested from a resource executor.</summary>
+public enum OperationAction {
+    Configure,
+    Set,
+    Remove,
+    Cleanup,
+    Copy,
 }
 
-/// <summary>Semantic change kinds recorded per exec.</summary>
+/// <summary>Semantic change kinds recorded per operation.</summary>
 public enum ChangeKind {
     Created,
     Modified,
@@ -18,14 +21,14 @@ public enum ChangeKind {
     Skipped,
 }
 
-/// <summary>Final outcome status of one exec. Failures are exceptions
+/// <summary>Final outcome status of one operation. Failures are exceptions
 /// (<see cref="ExecException"/>), never a status value.</summary>
 public enum ExecStatus {
     Applied,
     Skipped,
 }
 
-/// <summary>One semantic change an exec made (or skipped) against a named target.</summary>
+/// <summary>One semantic change an operation made (or skipped) against a named target.</summary>
 public sealed record ChangeItem(ChangeKind Kind, string Target, string? Before = null, string? After = null) {
     public JsonObject ToJson() => new() {
         ["kind"] = Kind.ToString().ToLowerInvariant(),
@@ -35,7 +38,7 @@ public sealed record ChangeItem(ChangeKind Kind, string Target, string? Before =
     };
 }
 
-/// <summary>Result of one exec. Hard failures throw <see cref="ExecException"/> instead.</summary>
+/// <summary>Result of one operation. Hard failures throw <see cref="ExecException"/> instead.</summary>
 /// <param name="Changes">What changed; may carry Skipped items for absent targets.</param>
 public sealed record ExecResult(ExecStatus Status, IReadOnlyList<ChangeItem> Changes, string? SkipReason = null) {
     public static ExecResult Applied(IReadOnlyList<ChangeItem> changes) => new(ExecStatus.Applied, changes);
@@ -45,18 +48,18 @@ public sealed record ExecResult(ExecStatus Status, IReadOnlyList<ChangeItem> Cha
 }
 
 /// <summary>
-/// Result of inspecting a resource against an <see cref="ExecSpec"/>: whether the image
+/// Result of inspecting a resource against an <see cref="OperationSpec"/>: whether the image
 /// already satisfies the desired state, and which changes convergence would produce.
 /// </summary>
 public sealed record ResourceDiff(bool Satisfied, IReadOnlyList<ChangeItem> Differences);
 
 /// <summary>
-/// One bound exec: pure data produced at plan-resolution time (after argument binding).
-/// <paramref name="Desired"/> is resource-specific and validated against the resource schema.
+/// One bound operation: pure data produced at plan-resolution time (after parameter binding).
+/// <paramref name="Spec"/> is resource-specific and validated against the resource schema.
 /// </summary>
-public sealed record ExecSpec(string Resource, Ensure Ensure, JsonObject Desired);
+public sealed record OperationSpec(string Resource, OperationAction Action, JsonObject Spec);
 
-/// <summary>Thrown by executers for hard failures; soft/expected misses become Skipped results.</summary>
+/// <summary>Thrown by executors for hard failures; soft/expected misses become Skipped results.</summary>
 public sealed class ExecException(string message, Exception? inner = null)
     : Exception(message, inner);
 

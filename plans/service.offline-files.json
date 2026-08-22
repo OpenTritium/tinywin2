@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.offline-files",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "title": "禁用 Offline Files 同步中心后端",
   "description": "禁用 CscService（Offline Files），关闭微软同步中心的脱机文件同步后端；mobsync.exe 保留，避免直接删除系统组件。",
-  "group": "Storage",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "CscService"
-        ],
-        "start": "disabled"
-      }
+  "category": "Storage",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "CscService"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

@@ -1,13 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.display-broker",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用显示代理服务",
   "description": "禁用 DispBrokerDesktopSvc（显示设置代理）。Headless / 无交互会话的 VM 可禁用。",
-  "group": "System",
-  "risk": "Low",
-  "tier": "Standard",
-  "arguments": [
+  "category": "System",
+  "riskLevel": "Low",
+  "parameters": [
     {
       "name": "startMode",
       "type": "enum",
@@ -17,34 +16,32 @@
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Low"
+          "riskLevel": "Low"
         },
         {
           "value": "manual",
           "label": "手动",
-          "risk": "Low"
+          "riskLevel": "Low"
         }
       ]
     }
   ],
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "DispBrokerDesktopSvc"
-        ],
-        "start": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "disabled": "disabled",
-              "manual": "manual"
-            }
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "DispBrokerDesktopSvc"
+      ],
+      "start": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "disabled": "disabled",
+            "manual": "manual"
           }
         }
       }
     }
-  ]
+  }
 }

@@ -50,7 +50,6 @@ public sealed partial class ProgressPage : Page {
             "-s", State.SourcePath,
             "-i", State.SelectedIndex!.Index.ToString(),
             "--out", State.OutputFormat,
-            "--granularity", State.Granularity,
             "--json-events",
         };
         if (State.OutputRoot.Length > 0) {
@@ -62,9 +61,9 @@ public sealed partial class ProgressPage : Page {
         if (!State.CreateIso) {
             arguments.Add("--no-iso");
         }
-        foreach (var (planId, args) in State.CollectSelections()) {
+        foreach (var (planId, parameters) in State.CollectSelections()) {
             arguments.AddRange(["--plan", planId]);
-            foreach (var (name, value) in args) {
+            foreach (var (name, value) in parameters) {
                 arguments.AddRange(["--set", $"{planId}.{name}={value}"]);
             }
         }

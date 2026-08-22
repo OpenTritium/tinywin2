@@ -1,21 +1,18 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "appx.your-phone",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除手机连接",
   "description": "移除 Microsoft Your Phone 预装 Appx。",
-  "group": "Applications",
-  "risk": "Medium",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "appx.provisioned",
-      "ensure": "absent",
-      "with": {
-        "patterns": [
-          "Microsoft.YourPhone"
-        ]
-      }
+  "category": "Applications",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": {
+      "patterns": [
+        "Microsoft.YourPhone"
+      ]
     }
-  ]
+  }
 }

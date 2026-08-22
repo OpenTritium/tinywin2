@@ -10,10 +10,13 @@ public sealed class ProfileTests : IDisposable {
 
     [Test]
     public async Task ToJsonFromJsonRoundTrips() {
-        var args = new JsonObject { ["level"] = 3, ["note"] = "测试" };
+        var parameters = new JsonObject { ["level"] = 3, ["note"] = "测试" };
         var profile = new Profile("my-profile", "desc", [
-            new ProfileSelection("fs.inetpub", false, null),
-            new ProfileSelection("dism.feature", true, (JsonObject)args.DeepClone()),
+            new PlanSelection("fs.inetpub", false),
+            new PlanSelection("dism.feature", true, new Dictionary<string, JsonNode?> {
+                ["level"] = parameters["level"]!.DeepClone(),
+                ["note"] = parameters["note"]!.DeepClone(),
+            }),
         ]);
         var restored = Profile.FromJson(profile.ToJson());
         await Assert.That(restored.Name).IsEqualTo("my-profile");
@@ -22,19 +25,20 @@ public sealed class ProfileTests : IDisposable {
         await Assert.That(restored.Selections[0].PlanId).IsEqualTo("fs.inetpub");
         await Assert.That(restored.Selections[0].Enabled).IsFalse();
         await Assert.That(restored.Selections[1].Enabled).IsTrue();
-        await Assert.That(restored.Selections[1].Args?["level"]?.GetValue<int>()).IsEqualTo(3);
-        await Assert.That(restored.Selections[1].Args?["note"]?.GetValue<string>()).IsEqualTo("测试");
+        await Assert.That(restored.Selections[1].Parameters?["level"]?.GetValue<int>()).IsEqualTo(3);
+        await Assert.That(restored.Selections[1].Parameters?["note"]?.GetValue<string>()).IsEqualTo("测试");
     }
 
     [Test]
     public async Task MissingNameThrows() {
-        var ex = Assert.Throws<JsonException>(() => Profile.FromJson([]));
+        var ex = Assert.Throws<JsonException>(() => Profile.FromJson(new JsonObject { ["schemaVersion"] = 3 }));
         await Assert.That(ex.Message).Contains("'name'");
     }
 
     [Test]
     public async Task SelectionWithoutPlanIdThrows() {
         var obj = new JsonObject {
+            ["schemaVersion"] = 3,
             ["name"] = "p",
             ["selections"] = new JsonArray(new JsonObject { ["enabled"] = true }),
         };
@@ -43,21 +47,48 @@ public sealed class ProfileTests : IDisposable {
     }
 
     [Test]
-    public async Task EnabledDefaultsToTrueAndNonObjectSelectionsAreSkipped() {
+    public async Task NonObjectSelectionsAreRejected() {
         var obj = new JsonObject {
+            ["schemaVersion"] = 3,
             ["name"] = "p",
             ["selections"] = new JsonArray(
                 new JsonObject { ["planId"] = "a" },
                 (JsonNode)"just a string"),
         };
-        var profile = Profile.FromJson(obj);
-        await Assert.That(profile.Selections).Count().IsEqualTo(1);
-        await Assert.That(profile.Selections[0].Enabled).IsTrue();
+        var ex = Assert.Throws<JsonException>(() => Profile.FromJson(obj));
+        await Assert.That(ex.Message).Contains("selection at index 1");
+    }
+
+    [Test]
+    public async Task DuplicateSelectionsAreRejected() {
+        var obj = new JsonObject {
+            ["schemaVersion"] = 3,
+            ["name"] = "p",
+            ["selections"] = new JsonArray(
+                new JsonObject { ["planId"] = "a" },
+                new JsonObject { ["planId"] = "a" }),
+        };
+        var ex = Assert.Throws<JsonException>(() => Profile.FromJson(obj));
+        await Assert.That(ex.Message).Contains("duplicate selection");
+    }
+
+    [Test]
+    public async Task NullSelectionFieldsAreRejected() {
+        var obj = new JsonObject {
+            ["schemaVersion"] = 3,
+            ["name"] = "p",
+            ["selections"] = new JsonArray(new JsonObject {
+                ["planId"] = "a",
+                ["enabled"] = null,
+            }),
+        };
+        var ex = Assert.Throws<JsonException>(() => Profile.FromJson(obj));
+        await Assert.That(ex.Message).Contains("enabled must be a boolean");
     }
 
     [Test]
     public async Task SaveCreatesDirectoryAndLoadReadsBack() {
-        var profile = new Profile("round", null, [new ProfileSelection("a.b", true, null)]);
+        var profile = new Profile("round", null, [new PlanSelection("a.b")]);
         var path = Path.Combine(_root, "nested", "dir", "profile.json");
         ProfileStore.Save(profile, path);
         await Assert.That(File.Exists(path)).IsTrue();
@@ -75,15 +106,15 @@ public sealed class ProfileTests : IDisposable {
     }
 
     [Test]
-    public async Task ToPlanSelectionsMapsEnabledAndArgs() {
+    public async Task ToPlanSelectionsMapsEnabledAndParameters() {
         var profile = new Profile("p", null, [
-            new ProfileSelection("x", true, new JsonObject { ["k"] = "v" }),
-            new ProfileSelection("y", false, null),
+            new PlanSelection("x", true, new Dictionary<string, JsonNode?> { ["k"] = "v" }),
+            new PlanSelection("y", false),
         ]);
         var selections = ProfileStore.ToPlanSelections(profile);
         await Assert.That(selections[0].PlanId).IsEqualTo("x");
         await Assert.That(selections[0].Enabled).IsTrue();
-        await Assert.That(selections[0].Args?["k"]?.GetValue<string>()).IsEqualTo("v");
+        await Assert.That(selections[0].Parameters?["k"]?.GetValue<string>()).IsEqualTo("v");
         await Assert.That(selections[1].Enabled).IsFalse();
     }
 
@@ -95,9 +126,8 @@ public sealed class ProfileTests : IDisposable {
         TestPlans.WritePlan(plansDir, "known.two");
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var profile = new Profile("p", null, [
-            new ProfileSelection("known.one", true, null),
-            new ProfileSelection("ghost.plan", true, null),
-            new ProfileSelection("ghost.plan", false, null),
+            new PlanSelection("known.one"),
+            new PlanSelection("ghost.plan"),
         ]);
         var unknown = ProfileStore.UnknownPlans(profile, catalog);
         await Assert.That(unknown).Count().IsEqualTo(1);

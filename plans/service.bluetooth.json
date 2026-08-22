@@ -1,24 +1,21 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.bluetooth",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用蓝牙服务",
   "description": "禁用 Bluetooth Support Service 及蓝牙用户服务；蓝牙键鼠、耳机和其他蓝牙设备将不可用。",
-  "group": "Devices",
-  "risk": "Medium",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "bthserv",
-          "BluetoothUserService",
-          "BTAGService"
-        ],
-        "start": "disabled"
-      }
+  "category": "Devices",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "bthserv",
+        "BluetoothUserService",
+        "BTAGService"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

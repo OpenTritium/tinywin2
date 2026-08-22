@@ -18,8 +18,8 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterB
     protected override IEnumerable<DismRemovalTarget> SelectTargets(
         IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
-        ExecSpec spec) {
-        var options = FeatureOptions.FromDesired(spec.Desired);
+        OperationSpec spec) {
+        var options = FeatureOptions.FromDesired(spec.Spec);
         var states = records.ToDictionary(
             r => DismListParser.Get(r, "Feature Name") ?? "",
             r => DismListParser.Get(r, "State") ?? "",
@@ -39,9 +39,9 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterB
         }
     }
 
-    protected override IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, ExecSpec spec) {
+    protected override IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, OperationSpec spec) {
         var args = new List<string> { "/Disable-Feature", $"/FeatureName:{target.RemoveKey}", "/NoRestart" };
-        if (FeatureOptions.FromDesired(spec.Desired).RemovePayload) {
+        if (FeatureOptions.FromDesired(spec.Spec).RemovePayload) {
             args.Add("/Remove");
         }
 

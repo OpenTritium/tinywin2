@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 3,
   "name": "desktop-uninstall",
   "description": "Desktop Experience 软件卸载清单。每项引用独立原子 plan；不包含 PowerShell 或 Hyper-V。",
   "selections": [

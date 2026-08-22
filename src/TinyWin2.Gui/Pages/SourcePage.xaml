@@ -27,10 +27,6 @@
                     <ComboBoxItem Content="VHDX 磁盘" Tag="vhdx"/>
                 </ComboBox>
                 <ToggleSwitch x:Name="IsoToggle" Header="打包 ISO" OffContent="不生成" OnContent="生成" IsOn="True" Toggled="IsoToggled"/>
-                <ComboBox x:Name="GranularityCombo" Width="220" SelectionChanged="GranularitySelected" Header="分层粒度">
-                    <ComboBoxItem Content="按大类一层（推荐）" Tag="group" IsSelected="True"/>
-                    <ComboBoxItem Content="每条 plan 一层" Tag="plan"/>
-                </ComboBox>
                 <ToggleSwitch x:Name="FastToggle" Header="快速模式" OffContent="标准" OnContent="快速" Toggled="FastToggled"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="8">

@@ -1,6 +1,6 @@
+using TinyWin2.Core.Hashing;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Pipeline;
-using TinyWin2.Core.Hashing;
 
 namespace TinyWin2.Core.Tests;
 

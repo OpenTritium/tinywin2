@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 3,
+  "id": "capability.media-windows-media-player",
+  "version": "3.0.0",
+  "title": "移除 Windows Media Player 能力",
+  "description": "移除 Media.WindowsMediaPlayer Features on Demand 能力。",
+  "category": "Media",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "dism.capability",
+    "action": "remove",
+    "spec": {
+      "capabilities": [
+        "Media.WindowsMediaPlayer~~~~0.0.12.0"
+      ]
+    }
+  }
+}

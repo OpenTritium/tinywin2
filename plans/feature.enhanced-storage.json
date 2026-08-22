@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.enhanced-storage",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除增强型存储支持",
   "description": "移除 Enhanced Storage；支持硬件加密的可移动存储设备可能不可用。",
-  "group": "Storage",
-  "risk": "Medium",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "EnhancedStorage"
-        ],
-        "removePayload": true
-      }
+  "category": "Storage",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "EnhancedStorage"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

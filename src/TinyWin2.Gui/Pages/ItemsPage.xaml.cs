@@ -60,16 +60,14 @@ public sealed partial class ItemsPage : Page {
 
     private void RebuildRows() {
         var search = (SearchBox.Text ?? "").Trim();
-        var tier = (TierFilter.SelectedItem as ComboBoxItem)?.Tag as string ?? "all";
 
         bool Filter(PlanItemViewModel p) =>
-            (tier == "all" || p.Tier == tier)
-            && (search.Length == 0
+            search.Length == 0
                 || p.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || p.Id.Contains(search, StringComparison.OrdinalIgnoreCase));
+                || p.Id.Contains(search, StringComparison.OrdinalIgnoreCase);
 
         _rows.Clear();
-        foreach (var group in State.Plans.Where(Filter).GroupBy(p => p.Group).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)) {
+        foreach (var group in State.Plans.Where(Filter).GroupBy(p => p.Category).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)) {
             var headerRow = new RowItem { Header = group.Key, Plans = [.. group] };
             _rows.Add(headerRow);
             foreach (var plan in group) {
@@ -81,14 +79,6 @@ public sealed partial class ItemsPage : Page {
 
     private void SearchChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args) => RebuildRows();
 
-    private void TierChanged(object sender, SelectionChangedEventArgs e) => RebuildRows();
-
-    private void SelectStandard(object sender, RoutedEventArgs e) {
-        foreach (var plan in State.Plans) {
-            plan.IsSelected = plan.Tier == "Standard";
-        }
-    }
-
     private void SelectNone(object sender, RoutedEventArgs e) {
         foreach (var plan in State.Plans) {
             plan.IsSelected = false;
@@ -97,7 +87,7 @@ public sealed partial class ItemsPage : Page {
 
     private void GroupCheckChanged(object sender, RoutedEventArgs e) {
         if (sender is CheckBox { Tag: string header, IsChecked: { } checkedState } && State.Catalog is not null) {
-            foreach (var plan in State.Plans.Where(p => p.Group == header)) {
+            foreach (var plan in State.Plans.Where(p => p.Category == header)) {
                 plan.IsSelected = checkedState;
             }
         }
@@ -109,30 +99,31 @@ public sealed partial class ItemsPage : Page {
             return;
         }
         DetailTitle.Text = plan.Title;
-        DetailId.Text = $"{plan.Id} · {plan.Group} · 风险 {plan.Risk} · 档位 {plan.Tier}";
+        DetailId.Text = $"{plan.Id} · {plan.Category} · 风险 {plan.RiskLevel}";
         DetailDescription.Text = plan.Description;
 
         ArgumentPanel.Children.Clear();
-        foreach (var argument in plan.Arguments) {
-            var header = new TextBlock { Text = argument.Label, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
+        foreach (var parameter in plan.Parameters) {
+            var header = new TextBlock { Text = parameter.Label, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
             ArgumentPanel.Children.Add(header);
-            if (argument.Type == "enum" && argument.Options.Count > 0) {
+            if (parameter.Type == "enum" && parameter.Options.Count > 0) {
                 var combo = new ComboBox { Width = 260 };
-                foreach (var option in argument.Options) {
-                    combo.Items.Add($"{option.Label}（风险 {option.Risk ?? "?"}）|{option.Value}");
+                foreach (var option in parameter.Options) {
+                    combo.Items.Add($"{option.Label}（风险 {option.RiskLevel ?? "?"}）|{option.Value}");
                 }
-                var current = argument.Options.ToList().FindIndex(o => o.Value == argument.SelectedValue);
+                var current = parameter.Options.ToList().FindIndex(o =>
+                    o.Value == parameter.SelectedValue);
                 combo.SelectedIndex = current >= 0 ? current : 0;
                 combo.SelectionChanged += (_, _) => {
                     if (combo.SelectedItem is string selected) {
-                        argument.SelectedValue = selected.Split('|')[^1];
+                        parameter.SelectedValue = selected.Split('|')[^1];
                     }
                 };
                 ArgumentPanel.Children.Add(combo);
             }
             else {
-                var box = new TextBox { Width = 260, Text = argument.SelectedValue };
-                box.TextChanged += (_, _) => argument.SelectedValue = box.Text;
+                var box = new TextBox { Width = 260, Text = parameter.SelectedValue };
+                box.TextChanged += (_, _) => parameter.SelectedValue = box.Text;
                 ArgumentPanel.Children.Add(box);
             }
         }
@@ -160,9 +151,9 @@ public sealed partial class ItemsPage : Page {
                 }
                 item.IsSelected = true;
                 applied++;
-                foreach (var argument in item.Arguments) {
-                    if (selection.Args is not null && selection.Args.TryGetPropertyValue(argument.Name, out var value) && value is not null) {
-                        argument.SelectedValue = value.ToString();
+                foreach (var parameter in item.Parameters) {
+                    if (selection.Parameters is not null && selection.Parameters.TryGetValue(parameter.Name, out var value) && value is not null) {
+                        parameter.SelectedValue = value.ToString();
                     }
                 }
             }
@@ -196,15 +187,18 @@ public sealed partial class ItemsPage : Page {
         }
         var dialog = new { FileName = file.Path };
         var selections = State.Plans
-            .Where(p => p.IsSelected)
-            .Select(p => {
-                var args = new JsonObject();
-                foreach (var argument in p.Arguments) {
-                    args[argument.Name] = JsonValue.Create(argument.SelectedValue);
-                }
-                return new ProfileSelection(p.Id, true, args);
-            })
-            .ToList();
+        .Where(p => p.IsSelected)
+        .Select(p => {
+            var parameters = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
+            foreach (var parameter in p.Parameters) {
+                parameters[parameter.Name] = JsonValue.Create(parameter.SelectedValue);
+            }
+            return new PlanSelection(
+                p.Id,
+                true,
+                parameters);
+        })
+        .ToList();
         ProfileStore.Save(new Profile(
             Path.GetFileNameWithoutExtension(dialog.FileName),
             "导出自 TinyWin2 GUI",

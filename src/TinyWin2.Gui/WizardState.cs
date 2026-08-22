@@ -4,41 +4,40 @@ using TinyWin2.Core.Plans;
 
 namespace TinyWin2.Gui;
 
-/// <summary>UI-facing catalog item with selection + argument state.</summary>
+/// <summary>UI-facing catalog item with selection + parameter state.</summary>
 public partial class PlanItemViewModel : ObservableObject {
     public PlanItemViewModel(PlanDefinition definition) {
         Definition = definition;
-        foreach (var argument in definition.Arguments) {
-            Arguments.Add(new ArgumentViewModel(argument));
+        foreach (var parameter in definition.Parameters) {
+            Parameters.Add(new ParameterViewModel(parameter));
         }
-        foreach (var argument in Arguments) {
-            argument.ValueChanged += () => OnPropertyChanged(nameof(Summary));
+        foreach (var parameter in Parameters) {
+            parameter.ValueChanged += () => OnPropertyChanged(nameof(Summary));
         }
     }
 
     private PlanDefinition Definition { get; }
     public string Id => Definition.Id;
     public string Title => Definition.Title;
-    public string Group => Definition.Group;
-    public string Risk => Definition.Risk;
-    public string Tier => Definition.Tier;
+    public string Category => Definition.Category;
+    public string RiskLevel => Definition.RiskLevel;
     public string Description => Definition.Description;
-    public ObservableCollection<ArgumentViewModel> Arguments { get; } = [];
+    public ObservableCollection<ParameterViewModel> Parameters { get; } = [];
 
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
 
-    public string Summary => Arguments.Count == 0
+    public string Summary => Parameters.Count == 0
         ? ""
-        : string.Join(" · ", Arguments.Select(a => $"{a.Label}: {a.Display}"));
+        : string.Join(" · ", Parameters.Select(p => $"{p.Label}: {p.Display}"));
 
-    public string RiskBadge => Risk switch {
+    public string RiskBadge => RiskLevel switch {
         "High" => "‼高",
         "Medium" => "!中",
         _ => "·低",
     };
 
-    public Microsoft.UI.Xaml.Media.Brush RiskBrush => Risk switch {
+    public Microsoft.UI.Xaml.Media.Brush RiskBrush => RiskLevel switch {
         "High" => new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.DarkRed),
         "Medium" => new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.DarkGoldenrod),
         _ => new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.DarkGreen),
@@ -49,24 +48,24 @@ public partial class PlanItemViewModel : ObservableObject {
     public event Action? SelectedChanged;
 }
 
-public partial class ArgumentViewModel : ObservableObject {
-    public ArgumentViewModel(PlanArgument argument) {
-        Argument = argument;
-        SelectedValue = argument.Options.Count > 0
-            ? argument.Options[0].Value
-            : argument.Default?.ToString() ?? "";
-        foreach (var option in argument.Options) {
-            if (argument.Default is { } d && d.ToString() == option.Value) {
+public partial class ParameterViewModel : ObservableObject {
+    public ParameterViewModel(PlanParameter parameter) {
+        Parameter = parameter;
+        SelectedValue = parameter.Options.Count > 0
+            ? parameter.Options[0].Value
+            : parameter.Default?.ToString() ?? "";
+        foreach (var option in parameter.Options) {
+            if (parameter.Default is { } d && d.ToString() == option.Value) {
                 SelectedValue = option.Value;
             }
         }
     }
 
-    private PlanArgument Argument { get; }
-    public string Name => Argument.Name;
-    public string Label => Argument.Label;
-    public string Type => Argument.Type.ToString().ToLowerInvariant();
-    public IReadOnlyList<PlanArgumentOption> Options => Argument.Options;
+    private PlanParameter Parameter { get; }
+    public string Name => Parameter.Name;
+    public string Label => Parameter.Label;
+    public string Type => Parameter.Type.ToString().ToLowerInvariant();
+    public IReadOnlyList<PlanParameterOption> Options => Parameter.Options;
 
     [ObservableProperty]
     public partial string SelectedValue { get; set; }
@@ -96,7 +95,6 @@ public sealed class WizardState {
     public string OutputRoot { get; set; } = "";
     public string OutputFormat { get; set; } = "esd"; // wim | esd | vhdx
     public bool CreateIso { get; set; } = true;
-    public string Granularity { get; set; } = "group";
     public bool Fast { get; set; }
 
     public ObservableCollection<PlanItemViewModel> Plans { get; } = [];
@@ -110,18 +108,18 @@ public sealed class WizardState {
     public string ManifestPath { get; set; } = "";
     public int LayerCount { get; set; }
 
-    public List<(string PlanId, Dictionary<string, object?> Args)> CollectSelections() {
+    public List<(string PlanId, Dictionary<string, object?> Parameters)> CollectSelections() {
         var result = new List<(string, Dictionary<string, object?>)>();
         foreach (var plan in Plans.Where(p => p.IsSelected)) {
-            var args = new Dictionary<string, object?>(StringComparer.Ordinal);
-            foreach (var argument in plan.Arguments) {
-                args[argument.Name] = argument.Type switch {
-                    "int" when int.TryParse(argument.SelectedValue, out var n) => n,
-                    "bool" when bool.TryParse(argument.SelectedValue, out var b) => b,
-                    _ => argument.SelectedValue,
+            var parameters = new Dictionary<string, object?>(StringComparer.Ordinal);
+            foreach (var parameter in plan.Parameters) {
+                parameters[parameter.Name] = parameter.Type switch {
+                    "int" when int.TryParse(parameter.SelectedValue, out var n) => n,
+                    "bool" when bool.TryParse(parameter.SelectedValue, out var b) => b,
+                    _ => parameter.SelectedValue,
                 };
             }
-            result.Add((plan.Id, args));
+            result.Add((plan.Id, parameters));
         }
         return result;
     }

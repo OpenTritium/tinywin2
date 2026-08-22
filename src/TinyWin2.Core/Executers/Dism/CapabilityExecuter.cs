@@ -18,8 +18,8 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismRemoveExecut
     protected override IEnumerable<DismRemovalTarget> SelectTargets(
         IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
-        ExecSpec spec) {
-        var options = CapabilityOptions.FromDesired(spec.Desired);
+        OperationSpec spec) {
+        var options = CapabilityOptions.FromDesired(spec.Spec);
         var states = records.ToDictionary(
             r => DismListParser.Get(r, "Capability Identity") ?? "",
             r => DismListParser.Get(r, "State") ?? "",
@@ -38,6 +38,6 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismRemoveExecut
         }
     }
 
-    protected override IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, ExecSpec spec) =>
+    protected override IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, OperationSpec spec) =>
         ["/Remove-Capability", $"/CapabilityName:{target.RemoveKey}"];
 }

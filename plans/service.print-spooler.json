@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.print-spooler",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用打印后台处理服务",
   "description": "禁用 Print Spooler (Spooler)。本地和网络打印、打印到 PDF 将不可用。",
-  "group": "Background Services",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "Spooler"
-        ],
-        "start": "disabled"
-      }
+  "category": "Background Services",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "Spooler"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

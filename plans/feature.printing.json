@@ -1,25 +1,22 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.printing",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除打印与 Microsoft Print to PDF",
   "description": "移除本地打印客户端、图形打印组件和 Microsoft Print to PDF。",
-  "group": "Devices",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "Printing-Client",
-          "Printing-Client-Gui",
-          "Printing-PrintToPDFServices-Features",
-          "Microsoft-Windows-Printing-PremiumTools"
-        ],
-        "removePayload": true
-      }
+  "category": "Devices",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "Printing-Client",
+        "Printing-Client-Gui",
+        "Printing-PrintToPDFServices-Features",
+        "Microsoft-Windows-Printing-PremiumTools"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

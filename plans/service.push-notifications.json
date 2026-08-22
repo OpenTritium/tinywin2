@@ -1,23 +1,20 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.push-notifications",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用 Windows 推送通知",
   "description": "禁用 Windows Push Notifications 系统服务；Toast 通知和部分应用实时提醒将不可用。",
-  "group": "Background Services",
-  "risk": "Medium",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "WpnService",
-          "WpnUserService"
-        ],
-        "start": "disabled"
-      }
+  "category": "Background Services",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "WpnService",
+        "WpnUserService"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

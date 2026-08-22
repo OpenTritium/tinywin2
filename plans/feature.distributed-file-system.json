@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.distributed-file-system",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除分布式文件系统命名空间",
   "description": "移除 DFS Namespace Server；无法托管 DFS 命名空间。",
-  "group": "Server Roles",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "DFSN-Server"
-        ],
-        "removePayload": true
-      }
+  "category": "Server Roles",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "DFSN-Server"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

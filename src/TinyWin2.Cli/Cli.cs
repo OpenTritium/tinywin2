@@ -33,15 +33,19 @@ internal static class Cli {
                     throw new InvalidOperationException(
                         $"profile '{profilePath}' references unknown plans: {string.Join(", ", unknown)}");
                 }
-                selections.AddRange(Core.Profiles.ProfileStore.ToPlanSelections(profile).Where(s => s.Enabled));
+                selections.AddRange(Core.Profiles.ProfileStore.ToPlanSelections(profile));
             }
         }
         void EnsureSelected(string planId) {
             if (!catalog.ById.ContainsKey(planId)) {
                 throw new ArgumentException($"unknown plan '{planId}' (see: tinywin2 plan list)");
             }
-            if (selections.All(s => s.PlanId != planId)) {
+            var existing = selections.FindIndex(s => s.PlanId == planId);
+            if (existing < 0) {
                 selections.Add(new PlanSelection(planId));
+            }
+            else if (!selections[existing].Enabled) {
+                selections[existing] = selections[existing] with { Enabled = true };
             }
         }
         if (options.TryGetValue("plan", out var planIds)) {
@@ -53,24 +57,27 @@ internal static class Cli {
             foreach (var set in sets) {
                 var separator = set.IndexOf('=');
                 if (separator <= 0) {
-                    throw new ArgumentException($"--set expects planId.arg=value, got '{set}'");
+                    throw new ArgumentException($"--set expects planId.parameter=value, got '{set}'");
                 }
                 var target = set[..separator];
                 var dot = target.LastIndexOf('.');
                 if (dot <= 0) {
-                    throw new ArgumentException($"--set expects planId.arg=value, got '{set}'");
+                    throw new ArgumentException($"--set expects planId.parameter=value, got '{set}'");
                 }
                 var planId = target[..dot];
-                var argName = target[(dot + 1)..];
+                var parameterName = target[(dot + 1)..];
                 var value = ParseValue(set[(separator + 1)..]);
                 EnsureSelected(planId);
                 var index = selections.FindIndex(s => s.PlanId == planId);
-                var args = selections[index].Args as IDictionary<string, JsonNode?> ?? new Dictionary<string, JsonNode?>();
-                args[argName] = value;
-                selections[index] = selections[index] with { Args = (IReadOnlyDictionary<string, JsonNode?>?)args };
+                var parameters = selections[index].Parameters as IDictionary<string, JsonNode?>
+                                 ?? new Dictionary<string, JsonNode?>();
+                parameters[parameterName] = value;
+                selections[index] = selections[index] with {
+                    Parameters = (IReadOnlyDictionary<string, JsonNode?>?)parameters,
+                };
             }
         }
-        if (selections.Count == 0) {
+        if (selections.Count == 0 || selections.All(s => !s.Enabled)) {
             throw new ArgumentException("no plans selected: pass --profile, --plan and/or --set.");
         }
         return selections;

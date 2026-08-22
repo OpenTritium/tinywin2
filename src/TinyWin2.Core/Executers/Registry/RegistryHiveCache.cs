@@ -34,7 +34,7 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
     private string MountPath { get; } = mountPath;
     private IProcessRunner Runner { get; } = runner;
 
-    /// <summary>Hive id → file path inside the image (v1 mapping + SECURITY/SAM).</summary>
+    /// <summary>Hive id → file path inside the image, including SECURITY/SAM.</summary>
     public static readonly IReadOnlyDictionary<string, string> HiveFiles =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
             ["software"] = @"Windows\System32\config\SOFTWARE",

@@ -1,13 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.network-setup",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "网络设置服务改为手动",
   "description": "将 NetSetupSvc 改为手动启动。添加网卡/加入域时按需拉起，平时不占开机竞争。",
-  "group": "Networking",
-  "risk": "Low",
-  "tier": "Standard",
-  "arguments": [
+  "category": "Networking",
+  "riskLevel": "Low",
+  "parameters": [
     {
       "name": "startMode",
       "type": "enum",
@@ -17,34 +16,32 @@
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Low"
+          "riskLevel": "Low"
         },
         {
           "value": "manual",
           "label": "手动",
-          "risk": "Low"
+          "riskLevel": "Low"
         }
       ]
     }
   ],
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "NetSetupSvc"
-        ],
-        "start": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "disabled": "disabled",
-              "manual": "manual"
-            }
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "NetSetupSvc"
+      ],
+      "start": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "disabled": "disabled",
+            "manual": "manual"
           }
         }
       }
     }
-  ]
+  }
 }

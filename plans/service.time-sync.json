@@ -1,13 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.time-sync",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用 Windows 时间服务",
   "description": "将 W32Time 改为按需启动：默认手动 + 触发器（域加入/IP 地址到达时由 SCM 自动拉起）；也可选完全禁用（VM 由 Hypervisor 时间同步兜底时）或手动。",
-  "group": "System",
-  "risk": "Low",
-  "tier": "Standard",
-  "arguments": [
+  "category": "System",
+  "riskLevel": "Low",
+  "parameters": [
     {
       "name": "startMode",
       "type": "enum",
@@ -17,53 +16,51 @@
         {
           "value": "trigger",
           "label": "手动+触发（域加入/IP到达）",
-          "risk": "Low"
+          "riskLevel": "Low"
         },
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Low"
+          "riskLevel": "Low"
         },
         {
           "value": "manual",
           "label": "手动",
-          "risk": "Low"
+          "riskLevel": "Low"
         }
       ]
     }
   ],
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "W32Time"
-        ],
-        "start": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "trigger": "trigger",
-              "disabled": "disabled",
-              "manual": "manual"
-            }
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "W32Time"
+      ],
+      "start": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "trigger": "trigger",
+            "disabled": "disabled",
+            "manual": "manual"
           }
-        },
-        "triggers": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "trigger": [
-                "domain-join",
-                "ip-arrival"
-              ],
-              "disabled": [],
-              "manual": []
-            }
+        }
+      },
+      "triggers": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "trigger": [
+              "domain-join",
+              "ip-arrival"
+            ],
+            "disabled": [],
+            "manual": []
           }
         }
       }
     }
-  ]
+  }
 }

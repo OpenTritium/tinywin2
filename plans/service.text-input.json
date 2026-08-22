@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.text-input",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用 Text Input Management",
   "description": "禁用 Text Input Management Service；触摸键盘、手写板、部分 IME 和现代文本输入体验将不可用。\n\n【警告】桌面版（Desktop Experience）不可禁用：LogonUI 密码框依赖 TSF 输入栈，禁用后首次登录会卡死在『请等候本地会话管理器』。仅限 Server Core 使用。",
-  "group": "Desktop Experience",
-  "risk": "High",
-  "tier": "Experimental",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "TextInputManagementService"
-        ],
-        "start": "disabled"
-      }
+  "category": "Desktop Experience",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "TextInputManagementService"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

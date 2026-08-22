@@ -1,21 +1,18 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "capability.vbscript",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 VBScript",
   "description": "移除 VBScript 引擎；遗留登录脚本和 .vbs 自动化将无法运行。",
-  "group": "Legacy",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "dism.capability",
-      "ensure": "absent",
-      "with": {
-        "capabilities": [
-          "VBSCRIPT~~~~"
-        ]
-      }
+  "category": "Legacy",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.capability",
+    "action": "remove",
+    "spec": {
+      "capabilities": [
+        "VBSCRIPT~~~~"
+      ]
     }
-  ]
+  }
 }

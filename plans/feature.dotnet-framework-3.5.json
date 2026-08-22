@@ -1,23 +1,20 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.dotnet-framework-3.5",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 .NET Framework 3.5",
   "description": "移除 .NET Framework 3.5 和 Server 扩展；依赖 .NET 2.0/3.0/3.5 的旧版应用将无法运行。",
-  "group": "Frameworks",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "NetFx3",
-          "NetFx3ServerFeatures"
-        ],
-        "removePayload": true
-      }
+  "category": "Frameworks",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "NetFx3",
+        "NetFx3ServerFeatures"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

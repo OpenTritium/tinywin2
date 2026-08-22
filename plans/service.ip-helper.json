@@ -1,13 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.ip-helper",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用 IP 帮助服务",
   "description": "禁用 iphlpsvc（Teredo / 6to4 / ISATAP 隧道与 IPv6 转换）。无 IPv6 隧道需求时可禁用。",
-  "group": "Networking",
-  "risk": "Low",
-  "tier": "Standard",
-  "arguments": [
+  "category": "Networking",
+  "riskLevel": "Low",
+  "parameters": [
     {
       "name": "startMode",
       "type": "enum",
@@ -17,34 +16,32 @@
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Low"
+          "riskLevel": "Low"
         },
         {
           "value": "manual",
           "label": "手动",
-          "risk": "Low"
+          "riskLevel": "Low"
         }
       ]
     }
   ],
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "iphlpsvc"
-        ],
-        "start": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "disabled": "disabled",
-              "manual": "manual"
-            }
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "iphlpsvc"
+      ],
+      "start": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "disabled": "disabled",
+            "manual": "manual"
           }
         }
       }
     }
-  ]
+  }
 }

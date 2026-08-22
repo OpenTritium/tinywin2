@@ -1,21 +1,18 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "fs.prefetch",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 Prefetch 缓存",
   "description": "移除离线镜像中已有的 Windows Prefetch 缓存；系统启动后会重新生成，首次启动和应用冷启动可能变慢。",
-  "group": "Servicing",
-  "risk": "Medium",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "fs.path",
-      "ensure": "absent",
-      "with": {
-        "paths": [
-          "Windows/Prefetch"
-        ]
-      }
+  "category": "Servicing",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "fs.path",
+    "action": "remove",
+    "spec": {
+      "paths": [
+        "Windows/Prefetch"
+      ]
     }
-  ]
+  }
 }

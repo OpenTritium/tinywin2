@@ -1,33 +1,30 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "registry.edge-background-mode",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁止 Edge 后台驻留",
   "description": "关闭 Edge Startup Boost 和后台模式。浏览器仍保留，但不应在关闭后继续占用后台资源。",
-  "group": "Browser",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "registry.value",
-      "ensure": "present",
-      "with": {
-        "hive": "software",
-        "values": [
-          {
-            "key": "Policies\\Microsoft\\Edge",
-            "name": "StartupBoostEnabled",
-            "type": "dword",
-            "data": 0
-          },
-          {
-            "key": "Policies\\Microsoft\\Edge",
-            "name": "BackgroundModeEnabled",
-            "type": "dword",
-            "data": 0
-          }
-        ]
-      }
+  "category": "Browser",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "registry.value",
+    "action": "set",
+    "spec": {
+      "hive": "software",
+      "values": [
+        {
+          "key": "Policies\\Microsoft\\Edge",
+          "name": "StartupBoostEnabled",
+          "type": "dword",
+          "data": 0
+        },
+        {
+          "key": "Policies\\Microsoft\\Edge",
+          "name": "BackgroundModeEnabled",
+          "type": "dword",
+          "data": 0
+        }
+      ]
     }
-  ]
+  }
 }

@@ -10,13 +10,6 @@
         <Grid RowDefinitions="Auto,Auto,Auto,*" Grid.Column="0" Margin="0,0,12,0">
             <StackPanel Orientation="Horizontal" Spacing="8" Grid.Row="0">
                 <AutoSuggestBox x:Name="SearchBox" PlaceholderText="搜索精简项…" Width="320" TextChanged="SearchChanged"/>
-                <ComboBox x:Name="TierFilter" Width="180" SelectionChanged="TierChanged">
-                    <ComboBoxItem Content="全部" Tag="all" IsSelected="True"/>
-                    <ComboBoxItem Content="仅常规 (Standard)" Tag="Standard"/>
-                    <ComboBoxItem Content="仅专家 (Expert)" Tag="Expert"/>
-                    <ComboBoxItem Content="仅实验 (Experimental)" Tag="Experimental"/>
-                </ComboBox>
-                <Button Content="常规全选" Click="SelectStandard"/>
                 <Button Content="全不选" Click="SelectNone"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="8" Grid.Row="1" Margin="0,8,0,0">

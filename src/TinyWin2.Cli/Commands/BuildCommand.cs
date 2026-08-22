@@ -32,11 +32,6 @@ internal static class BuildCommand {
                         && (options.ContainsKey("iso")
                         || requestedOutput is null
                         || string.Equals(requestedOutput, "iso", StringComparison.OrdinalIgnoreCase));
-        var granularity = (Get("granularity") ?? "group").ToLowerInvariant() switch {
-            "group" => LayerGranularity.Group,
-            "plan" => LayerGranularity.Plan,
-            var unknown => throw new ArgumentException($"unknown --granularity '{unknown}' (group|plan)"),
-        };
         var baseVhdxMaximumMb = ParseBaseVhdxMaximumMb(Get("base-vhdx-mb") ?? Get("base-size"));
         var plansDir = Cli.FindPlansDirectory(Get("plans"));
         var catalog = PlanCatalog.LoadDirectory(plansDir);
@@ -66,7 +61,6 @@ internal static class BuildCommand {
                 Catalog = catalog,
                 OutputFormat = outputFormat,
                 CreateIso = createIso,
-                Granularity = granularity,
                 Fast = options.ContainsKey("fast"),
                 ContinueOnError = options.ContainsKey("continue-on-error"),
                 NoLayers = options.ContainsKey("no-layers"),
@@ -185,11 +179,6 @@ internal static class PreviewCommand {
         var plansDir = Cli.FindPlansDirectory(Get("plans"));
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var selections = Cli.BuildSelections(options, catalog);
-        var granularity = (Get("granularity") ?? "group").ToLowerInvariant() switch {
-            "group" => LayerGranularity.Group,
-            "plan" => LayerGranularity.Plan,
-            var unknown => throw new ArgumentException($"unknown --granularity '{unknown}' (group|plan)"),
-        };
         var baseVhdxMaximumMb = ParseBaseVhdxMaximumMb(Get("base-vhdx-mb") ?? Get("base-size"));
         var json = options.ContainsKey("json");
         var log = new BuildLog();
@@ -216,7 +205,6 @@ internal static class PreviewCommand {
                 Selections = selections,
                 WorkDirectory = workDirectory,
                 Catalog = catalog,
-                Granularity = granularity,
                 BaseVhdxMaximumMb = baseVhdxMaximumMb,
                 PlansDirectory = plansDir,
             }, cts.Token);

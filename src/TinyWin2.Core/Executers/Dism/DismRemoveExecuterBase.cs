@@ -26,9 +26,9 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
     protected abstract IEnumerable<DismRemovalTarget> SelectTargets(
         IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
-        ExecSpec spec);
+        OperationSpec spec);
 
-    protected abstract IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, ExecSpec spec);
+    protected abstract IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, OperationSpec spec);
 
     /// <summary>Outcome that downgrades a failed removal to Skipped (e.g. CBS_E_CANNOT_UNINSTALL); null for none.</summary>
     protected virtual DismOutcome? DowngradeOutcome => null;
@@ -40,10 +40,14 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
 
     protected abstract string SatisfiedSkipReason { get; }
 
-    public async Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
-        if (spec.Ensure == Ensure.Present) {
-            throw new ExecException($"{Resource} present is not implemented yet.");
+    public virtual void Validate(OperationSpec spec) {
+        if (spec.Action != OperationAction.Remove) {
+            throw new ExecException($"{Resource} supports only action 'remove'.");
         }
+    }
+
+    public async Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+        Validate(spec);
 
         var (exitCode, output) = await RunDismAsync(context, [.. ListArguments], ct);
         var outcome = DismErrors.Classify(exitCode, output);
@@ -69,7 +73,7 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
         return new ResourceDiff(differences.All(d => d.Kind == ChangeKind.Skipped), differences);
     }
 
-    public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
+    public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
         var diff = await InspectAsync(context, spec, ct);
         if (diff.Satisfied) {
             return ExecResult.Skipped(SatisfiedSkipReason,

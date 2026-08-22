@@ -23,13 +23,13 @@ public sealed class ExecuterTestHarness : IDisposable {
         File.WriteAllBytes(path, "QFIB"u8); // arbitrary non-empty content
     }
 
-    public static ExecSpec Spec(string resource, Ensure ensure, params (string Key, JsonNode? Value)[] desired) {
+    public static OperationSpec Spec(string resource, OperationAction action, params (string Key, JsonNode? Value)[] desired) {
         var obj = new JsonObject();
         foreach (var (key, value) in desired) {
             obj[key] = value?.DeepClone();
         }
 
-        return new ExecSpec(resource, ensure, obj);
+        return new OperationSpec(resource, action, obj);
     }
 
     public void Dispose() {
@@ -90,7 +90,7 @@ public sealed class DismClassifierTests {
 
         var ex = Assert.Throws<ExecException>(() =>
             executer.InspectAsync(harness.NewContext(),
-                ExecuterTestHarness.Spec("dism.feature", Ensure.Absent,
+                ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
                     ("features", new JsonArray("Feature"))), CancellationToken.None)
                 .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("returned no dism.feature records");
@@ -115,7 +115,7 @@ public sealed class RegistryValueExecuterTests : IDisposable {
             ? FakeProcessRunner.Fail(1, "The system was unable to find the specified registry key or value.")
             : FakeProcessRunner.Ok();
         var diff = await _executer.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.value", Ensure.Present,
+            ExecuterTestHarness.Spec("registry.value", OperationAction.Set,
                 ("hive", "software"),
                 ("key", "Policies\\Test"),
                 ("name", "EnableSpyware"),
@@ -132,7 +132,7 @@ public sealed class RegistryValueExecuterTests : IDisposable {
             ? FakeProcessRunner.Ok(QueryOutput("EnableSpyware", "REG_DWORD", "0x1"))
             : FakeProcessRunner.Ok();
         var diff = await _executer.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.value", Ensure.Present,
+            ExecuterTestHarness.Spec("registry.value", OperationAction.Set,
                 ("hive", "software"), ("key", "Policies\\Test"), ("name", "EnableSpyware"),
                 ("type", "dword"), ("data", 1)), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsTrue();
@@ -144,7 +144,7 @@ public sealed class RegistryValueExecuterTests : IDisposable {
             ? FakeProcessRunner.Fail(1)
             : FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.value", Ensure.Present,
+            ExecuterTestHarness.Spec("registry.value", OperationAction.Set,
                 ("hive", "software"), ("key", "Policies\\Test"), ("name", "Value"),
                 ("type", "multi"), ("data", new JsonArray("a", "b"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
@@ -159,7 +159,7 @@ public sealed class RegistryValueExecuterTests : IDisposable {
             ? FakeProcessRunner.Ok(QueryOutput("EnableSpyware", "REG_DWORD", "0x1"))
             : FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.value", Ensure.Absent,
+            ExecuterTestHarness.Spec("registry.value", OperationAction.Remove,
                 ("hive", "software"),
                 ("values", new JsonArray(new JsonObject { ["key"] = "Policies\\Test", ["name"] = "EnableSpyware" })),
                 ("deleteKeys", new JsonArray("Policies\\Gone"))), CancellationToken.None);
@@ -177,7 +177,7 @@ public sealed class RegistryValueExecuterTests : IDisposable {
         _harness.Runner.Handler = (_, args) => args[0] == "query"
             ? FakeProcessRunner.Ok(existing)
             : FakeProcessRunner.Ok();
-        var spec = ExecuterTestHarness.Spec("registry.value", Ensure.Present,
+        var spec = ExecuterTestHarness.Spec("registry.value", OperationAction.Set,
             ("hive", "software"), ("key", "K"), ("name", "Value"), ("type", "string"), ("data", "hello"));
         var first = await _executer.InspectAsync(_harness.NewContext(), spec, CancellationToken.None);
         await Assert.That(first.Satisfied).IsTrue();
@@ -198,7 +198,7 @@ public sealed class RegistryValueExecuterTests : IDisposable {
             : FakeProcessRunner.Ok();
         var ex = Assert.Throws<ProcessRunnerException>(() =>
             _executer.InspectAsync(_harness.NewContext(),
-                ExecuterTestHarness.Spec("registry.value", Ensure.Absent,
+                ExecuterTestHarness.Spec("registry.value", OperationAction.Remove,
                     ("hive", "software"),
                     ("key", "Policies\\Test"),
                     ("name", "EnableSpyware")), CancellationToken.None)
@@ -263,7 +263,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
     public async Task DetectsManualServiceNeedingDisable() {
         SetupServices(("LanmanWorkstation", "3", null));
         var diff = await _executer.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.service", Ensure.Present,
+            ExecuterTestHarness.Spec("registry.service", OperationAction.Configure,
                 ("services", new JsonArray("LanmanWorkstation")), ("start", "disabled")), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsFalse();
         await Assert.That(diff.Differences[0].Kind).IsEqualTo(ChangeKind.Modified);
@@ -275,7 +275,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
     public async Task SatisfiedWhenAlreadyInDesiredMode() {
         SetupServices(("Svc", "4", null));
         var diff = await _executer.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.service", Ensure.Present,
+            ExecuterTestHarness.Spec("registry.service", OperationAction.Configure,
                 ("services", new JsonArray("Svc")), ("start", "disabled")), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsTrue();
     }
@@ -284,11 +284,11 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
     public async Task DelayedAutoRequiresBothValues() {
         SetupServices(("Svc", "2", "1"));
         var satisfied = await _executer.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.service", Ensure.Present,
+            ExecuterTestHarness.Spec("registry.service", OperationAction.Configure,
                 ("services", new JsonArray("Svc")), ("start", "delayedAuto")), CancellationToken.None);
         await Assert.That(satisfied.Satisfied).IsTrue();
         var notSatisfied = await _executer.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.service", Ensure.Present,
+            ExecuterTestHarness.Spec("registry.service", OperationAction.Configure,
                 ("services", new JsonArray("Svc")), ("start", "auto")), CancellationToken.None);
         await Assert.That(notSatisfied.Satisfied).IsFalse();
     }
@@ -297,7 +297,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
     public async Task PatternsMatchWildcardServiceNames() {
         SetupServices(("WpnUserService_12345", "2", null), ("Other", "2", null));
         var diff = await _executer.InspectAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.service", Ensure.Present,
+            ExecuterTestHarness.Spec("registry.service", OperationAction.Configure,
                 ("servicePatterns", new JsonArray("WpnUserService_*")), ("start", "manual")), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsFalse();
         await Assert.That(diff.Differences.Count).IsEqualTo(1);
@@ -310,7 +310,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
         var hiveKey = "HKLM\\TinyWin2_system";
         var key32 = $"{hiveKey}\\ControlSet001\\Services\\W32Time";
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.service", Ensure.Present,
+            ExecuterTestHarness.Spec("registry.service", OperationAction.Configure,
                 ("services", new JsonArray("W32Time")), ("start", "trigger"),
                 ("triggers", new JsonArray("domain-join", "device:{53f5630d-b6bf-11d0-94f2-00a0c91efb8b}"))),
             CancellationToken.None);
@@ -329,7 +329,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
     public async Task TriggerStartDoesNotSkipWhenManualServiceLacksTriggers() {
         SetupServices(("W32Time", "3", null));
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.service", Ensure.Present,
+            ExecuterTestHarness.Spec("registry.service", OperationAction.Configure,
                 ("services", new JsonArray("W32Time")), ("start", "trigger"),
                 ("triggers", new JsonArray("domain-join"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
@@ -378,7 +378,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
             return FakeProcessRunner.Fail(1);
         };
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.service", Ensure.Present,
+            ExecuterTestHarness.Spec("registry.service", OperationAction.Configure,
                 ("services", new JsonArray("W32Time")), ("start", "trigger"),
                 ("triggers", new JsonArray("domain-join"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
@@ -430,7 +430,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
                 : FakeProcessRunner.Fail(1);
         };
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.service", Ensure.Present,
+            ExecuterTestHarness.Spec("registry.service", OperationAction.Configure,
                 ("services", new JsonArray("DPS")), ("start", "disabled")), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(startAdds).IsEqualTo(2); // denied once, rescued, written
@@ -441,7 +441,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
     public async Task MissingServicesAreSkippedNotFailed() {
         SetupServices(("Existing", "3", null));
         var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.service", Ensure.Present,
+            ExecuterTestHarness.Spec("registry.service", OperationAction.Configure,
                 ("services", new JsonArray("Existing", "Ghost")), ("start", "disabled")), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         await Assert.That(result.Changes.Count).IsEqualTo(1);

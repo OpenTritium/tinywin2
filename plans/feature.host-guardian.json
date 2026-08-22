@@ -1,23 +1,20 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.host-guardian",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 Host Guardian Service",
   "description": "移除 Host Guardian Service 及其包；无法部署受防护虚拟机基础结构。",
-  "group": "Virtualization",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "HostGuardian",
-          "HostGuardianService-Package"
-        ],
-        "removePayload": true
-      }
+  "category": "Virtualization",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "HostGuardian",
+        "HostGuardianService-Package"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "component.edge",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 Microsoft Edge 浏览器",
   "description": "尝试移除镜像中的 Microsoft Edge CBS 包；Edge 在部分 Server 版本中属于基础包，找不到可移除包时会安全跳过。",
-  "group": "Browser",
-  "risk": "High",
-  "tier": "Experimental",
-  "execs": [
-    {
-      "resource": "dism.package",
-      "ensure": "absent",
-      "with": {
-        "patterns": [
-          "EdgeChromium",
-          "Microsoft.*Edge"
-        ]
-      }
+  "category": "Browser",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.package",
+    "action": "remove",
+    "spec": {
+      "patterns": [
+        "EdgeChromium",
+        "Microsoft.*Edge"
+      ]
     }
-  ]
+  }
 }

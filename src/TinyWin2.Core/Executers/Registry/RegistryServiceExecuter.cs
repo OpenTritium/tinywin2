@@ -4,8 +4,7 @@ using TinyWin2.Core.Native;
 namespace TinyWin2.Core.Executers.Registry;
 
 /// <summary>
-/// Converges offline service start modes. Unifies v1's DisableOfflineService and
-/// ConfigureOfflineService: every start mode is present-with-a-value.
+/// Converges offline service start modes: every start mode is present-with-a-value.
 /// </summary>
 public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IExecuter {
     private const string ResourceId = "registry.service";
@@ -18,12 +17,21 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
     private sealed record ServiceChange(ChangeItem Change, string ServiceKey, int Start, int Delayed,
         IReadOnlyList<RegistryServiceOptions.ServiceTrigger> Triggers, bool TriggerInfoChanged = false);
 
-    public async Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
+    public void Validate(OperationSpec spec) {
+        if (spec.Action != OperationAction.Configure) {
+            throw new ExecException($"{ResourceId} supports only action 'configure'.");
+        }
+        _ = RegistryServiceOptions.FromDesired(spec.Spec);
+    }
+
+    public async Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+        Validate(spec);
         var changes = await InspectCoreAsync(context, spec, ct);
         return new(changes.All(c => c.Change.Kind == ChangeKind.Skipped), [.. changes.Select(c => c.Change)]);
     }
 
-    public async Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
+    public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+        Validate(spec);
         var changes = await InspectCoreAsync(context, spec, ct);
         if (changes.All(c => c.Change.Kind == ChangeKind.Skipped)) {
             return ExecResult.Skipped("services already in the desired start mode",
@@ -51,13 +59,13 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         return ExecResult.Applied(applied);
     }
 
-    private async Task<List<ServiceChange>> InspectCoreAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
-        var options = RegistryServiceOptions.FromDesired(spec.Desired);
+    private async Task<List<ServiceChange>> InspectCoreAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+        var options = RegistryServiceOptions.FromDesired(spec.Spec);
         var hive = await context.Hives.GetAsync("system", context.Log, ct);
         var controlSet = await ResolveControlSetAsync(hive, ct);
         var servicesRoot = $@"{hive.HiveKey}\{controlSet}\Services";
 
-        // Enumerate service key names once; patterns match against them (v1 wildcard semantics).
+        // Enumerate service key names once; patterns match against them.
         var enumerated = await runner.RunAsync("reg.exe", ["query", servicesRoot],
             new() { IgnoreExitCode = true }, ct);
         if (!enumerated.Success && enumerated.ExitCode != 1) {

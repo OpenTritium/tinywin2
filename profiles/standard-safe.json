@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 3,
   "name": "standard-safe",
-  "description": "v1 Standard tier equivalent: all low-risk common plans.",
+  "description": "Validated desktop-safe baseline plan selection.",
   "selections": [
     {
       "planId": "service.font-cache",

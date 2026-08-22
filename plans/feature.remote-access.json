@@ -1,29 +1,26 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.remote-access",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 Remote Access 与路由服务",
   "description": "移除 RRAS、VPN、NAT、网关和远程访问管理工具；本机不能作为 VPN、路由或 NAT 网关。",
-  "group": "Networking",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "RemoteAccess",
-          "RemoteAccessServer",
-          "RemoteAccessMgmtTools",
-          "RemoteAccessPowerShell",
-          "RasServerAdminTools",
-          "RasRoutingProtocols",
-          "Gateway",
-          "Gateway-UI"
-        ],
-        "removePayload": true
-      }
+  "category": "Networking",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "RemoteAccess",
+        "RemoteAccessServer",
+        "RemoteAccessMgmtTools",
+        "RemoteAccessPowerShell",
+        "RasServerAdminTools",
+        "RasRoutingProtocols",
+        "Gateway",
+        "Gateway-UI"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

@@ -1,21 +1,18 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "appx.power-automate",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 Power Automate",
   "description": "移除 Microsoft Power Automate Desktop 预装 Appx。",
-  "group": "Applications",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "appx.provisioned",
-      "ensure": "absent",
-      "with": {
-        "patterns": [
-          "Microsoft.PowerAutomateDesktop"
-        ]
-      }
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": {
+      "patterns": [
+        "Microsoft.PowerAutomateDesktop"
+      ]
     }
-  ]
+  }
 }

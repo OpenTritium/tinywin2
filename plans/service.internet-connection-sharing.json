@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.internet-connection-sharing",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用 Internet 连接共享",
   "description": "禁用 Internet Connection Sharing (SharedAccess)。移动热点和网络连接共享将不可用。",
-  "group": "Network Services",
-  "risk": "Medium",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "SharedAccess"
-        ],
-        "start": "disabled"
-      }
+  "category": "Network Services",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "SharedAccess"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

@@ -4,7 +4,7 @@ namespace TinyWin2.Core.Executers;
 
 /// <summary>
 /// Boundary readers: the ONLY place in the engine that pulls values out of a
-/// bound <c>with</c> JsonObject. Everything past this point is strongly typed.
+/// bound operation <c>spec</c> JsonObject. Everything past this point is strongly typed.
 /// </summary>
 internal static class Desired {
     internal static string RequiredString(JsonObject desired, string key, string context) {

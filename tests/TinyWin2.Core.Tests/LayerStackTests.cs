@@ -78,8 +78,8 @@ public sealed class VhdLayerStackTests : IDisposable {
     [Test]
     public async Task IncompleteBaseRecreationDropsDependentLayers() {
         var stack = await CreateWithBaseAsync();
-        var layer = await stack.BeginLayerAsync("step1", "S1", null, CancellationToken.None);
-        await stack.CommitLayerAsync(layer, [], CancellationToken.None);
+        var layer = await stack.BeginLayerAsync("step1", "S1", CancellationToken.None);
+        await stack.CommitLayerAsync(layer, null, CancellationToken.None);
 
         await stack.EnsureBaseAsync(1000, "test", CancellationToken.None);
 
@@ -92,23 +92,23 @@ public sealed class VhdLayerStackTests : IDisposable {
     [Test]
     public async Task CommitLayerAdvancesLeafAndChain() {
         var stack = await CreateWithBaseAsync();
-        var session = await stack.BeginLayerAsync("group:Apps", "Applications", null, CancellationToken.None);
-        await stack.CommitLayerAsync(session, [], CancellationToken.None);
-        var second = await stack.BeginLayerAsync("group:Net", "Networking", null, CancellationToken.None);
+        var session = await stack.BeginLayerAsync("step-apps", "Applications", CancellationToken.None);
+        await stack.CommitLayerAsync(session, null, CancellationToken.None);
+        var second = await stack.BeginLayerAsync("step-network", "Networking", CancellationToken.None);
         await Assert.That(session.Record.Index).IsEqualTo(1);
         await Assert.That(second.Record.Index).IsEqualTo(2);
         await Assert.That(_backend.Calls).Contains("create-diff:L001.vhdx<-base.vhdx");
         await Assert.That(_backend.Calls).Contains("create-diff:L002.vhdx<-L001.vhdx");
         // A pending (uncommitted) layer is not the leaf yet.
         await Assert.That(stack.LeafVhdxPath).EndsWith("L001.vhdx");
-        await stack.CommitLayerAsync(second, [], CancellationToken.None);
+        await stack.CommitLayerAsync(second, null, CancellationToken.None);
         await Assert.That(stack.LeafVhdxPath).EndsWith("L002.vhdx");
     }
 
     [Test]
     public async Task DiscardLayerDeletesVhdxAndKeepsPreviousLeaf() {
         var stack = await CreateWithBaseAsync();
-        var session = await stack.BeginLayerAsync("step1", "S1", null, CancellationToken.None);
+        var session = await stack.BeginLayerAsync("step1", "S1", CancellationToken.None);
         await stack.DiscardLayerAsync(session, "boom", CancellationToken.None);
         await Assert.That(File.Exists(session.VhdxPath)).IsFalse();
         await Assert.That(stack.LeafVhdxPath).EndsWith("base.vhdx");
@@ -116,21 +116,21 @@ public sealed class VhdLayerStackTests : IDisposable {
         await Assert.That(stack.Records[1].Error).IsEqualTo("boom");
 
         // the next layer starts again from the base with a fresh index
-        var next = await stack.BeginLayerAsync("step2", "S2", null, CancellationToken.None);
+        var next = await stack.BeginLayerAsync("step2", "S2", CancellationToken.None);
         await Assert.That(_backend.Calls).Contains("create-diff:L002.vhdx<-base.vhdx");
         await Assert.That(next.Record.Index).IsEqualTo(2);
     }
 
     [Test]
-    public async Task ManifestRoundTripsAcrossLoads() {
+    public async Task OperationResultRoundTripsAcrossLoads() {
         var stack = await CreateWithBaseAsync();
-        var session = await stack.BeginLayerAsync("step1", "S1", new JsonObject { ["mode"] = "safe" }, CancellationToken.None);
-        await stack.CommitLayerAsync(session, new JsonArray(), CancellationToken.None);
+        var session = await stack.BeginLayerAsync("step1", "S1", CancellationToken.None);
+        await stack.CommitLayerAsync(session, new JsonObject { ["status"] = "applied" }, CancellationToken.None);
         stack.Save();
         var reloaded = Stack;
         await Assert.That(reloaded.Records.Count).IsEqualTo(2);
         await Assert.That(reloaded.Records[1].Status).IsEqualTo(LayerStatus.Committed);
-        await Assert.That(reloaded.Records[1].BoundArgs!["mode"]!.GetValue<string>()).IsEqualTo("safe");
+        await Assert.That(reloaded.Records[1].OperationResult!["status"]!.GetValue<string>()).IsEqualTo("applied");
         await Assert.That(reloaded.LeafVhdxPath).EndsWith("L001.vhdx");
     }
 
@@ -138,8 +138,8 @@ public sealed class VhdLayerStackTests : IDisposable {
     public async Task ConsolidateMergesWholeChainAndClearsDiffs() {
         var stack = await CreateWithBaseAsync();
         foreach (var title in new[] { "A", "B", "C" }) {
-            var session = await stack.BeginLayerAsync(title, title, null, CancellationToken.None);
-            await stack.CommitLayerAsync(session, [], CancellationToken.None);
+            var session = await stack.BeginLayerAsync(title, title, CancellationToken.None);
+            await stack.CommitLayerAsync(session, null, CancellationToken.None);
         }
         await stack.ConsolidateAsync(CancellationToken.None);
         await Assert.That(_backend.MergeDepth).IsEqualTo(3);
@@ -154,8 +154,8 @@ public sealed class VhdLayerStackTests : IDisposable {
     [Test]
     public async Task TruncateRejectsMergedLayersBecauseBaseCannotRollBack() {
         var stack = await CreateWithBaseAsync();
-        var session = await stack.BeginLayerAsync("step1", "S1", null, CancellationToken.None);
-        await stack.CommitLayerAsync(session, [], CancellationToken.None);
+        var session = await stack.BeginLayerAsync("step1", "S1", CancellationToken.None);
+        await stack.CommitLayerAsync(session, null, CancellationToken.None);
         await stack.ConsolidateAsync(CancellationToken.None);
 
         var ex = Assert.Throws<InvalidOperationException>(() =>
@@ -179,12 +179,12 @@ public sealed class VhdLayerStackTests : IDisposable {
     public async Task SecondConsolidationMergesOnlyLiveDiffs() {
         var stack = await CreateWithBaseAsync();
         foreach (var title in new[] { "A", "B", "C" }) {
-            var session = await stack.BeginLayerAsync(title, title, null, CancellationToken.None);
-            await stack.CommitLayerAsync(session, [], CancellationToken.None);
+            var session = await stack.BeginLayerAsync(title, title, CancellationToken.None);
+            await stack.CommitLayerAsync(session, null, CancellationToken.None);
         }
         await stack.ConsolidateAsync(CancellationToken.None);
-        var reborn = await stack.BeginLayerAsync("D", "D", null, CancellationToken.None);
-        await stack.CommitLayerAsync(reborn, [], CancellationToken.None);
+        var reborn = await stack.BeginLayerAsync("D", "D", CancellationToken.None);
+        await stack.CommitLayerAsync(reborn, null, CancellationToken.None);
         await stack.ConsolidateAsync(CancellationToken.None);
         // merged-away layers must not inflate the second merge's depth (their files are gone)
         await Assert.That(_backend.MergeDepth).IsEqualTo(1);
@@ -197,8 +197,8 @@ public sealed class VhdLayerStackTests : IDisposable {
         _backend.MaxSafeChainDepth = int.MaxValue; // Hyper-V-shaped backend
         var stack = await CreateWithBaseAsync();
         for (var i = 0; i < 35; i++) { // past diskpart's limit — must not matter here
-            var session = await stack.BeginLayerAsync($"s{i}", $"S{i}", null, CancellationToken.None);
-            await stack.CommitLayerAsync(session, [], CancellationToken.None);
+            var session = await stack.BeginLayerAsync($"s{i}", $"S{i}", CancellationToken.None);
+            await stack.CommitLayerAsync(session, null, CancellationToken.None);
         }
         await Assert.That(_backend.Calls.Count(c => c.StartsWith("merge:"))).IsEqualTo(0);
 
@@ -213,8 +213,8 @@ public sealed class VhdLayerStackTests : IDisposable {
         var stack = await CreateWithBaseAsync();
         var sessions = new List<LayerSession>();
         foreach (var title in new[] { "A", "B", "C" }) {
-            var session = await stack.BeginLayerAsync(title, title, null, CancellationToken.None);
-            await stack.CommitLayerAsync(session, [], CancellationToken.None);
+            var session = await stack.BeginLayerAsync(title, title, CancellationToken.None);
+            await stack.CommitLayerAsync(session, null, CancellationToken.None);
             sessions.Add(session);
         }
         await stack.TruncateToAsync(sessions[0].Record.Index, CancellationToken.None);
@@ -229,12 +229,12 @@ public sealed class VhdLayerStackTests : IDisposable {
     public async Task TruncateDoesNotReuseDeletedLayerIndexes() {
         var stack = await CreateWithBaseAsync();
         foreach (var title in new[] { "A", "B" }) {
-            var session = await stack.BeginLayerAsync(title, title, null, CancellationToken.None);
-            await stack.CommitLayerAsync(session, [], CancellationToken.None);
+            var session = await stack.BeginLayerAsync(title, title, CancellationToken.None);
+            await stack.CommitLayerAsync(session, null, CancellationToken.None);
         }
 
         await stack.TruncateToAsync(1, CancellationToken.None);
-        var next = await stack.BeginLayerAsync("C", "C", null, CancellationToken.None);
+        var next = await stack.BeginLayerAsync("C", "C", CancellationToken.None);
 
         await Assert.That(next.Record.Index).IsEqualTo(3);
         await Assert.That(next.VhdxPath).EndsWith("L003.vhdx");
@@ -245,13 +245,13 @@ public sealed class VhdLayerStackTests : IDisposable {
     public async Task AutoConsolidationGuardTracksLiveChainDepth() {
         var stack = await CreateWithBaseAsync();
         for (var i = 0; i < 31; i++) { // crosses the chain-depth threshold of 30
-            var session = await stack.BeginLayerAsync($"s{i}", $"S{i}", null, CancellationToken.None);
-            await stack.CommitLayerAsync(session, [], CancellationToken.None);
+            var session = await stack.BeginLayerAsync($"s{i}", $"S{i}", CancellationToken.None);
+            await stack.CommitLayerAsync(session, null, CancellationToken.None);
         }
         await Assert.That(_backend.Calls.Count(c => c.StartsWith("merge:"))).IsEqualTo(1);
         await Assert.That(_backend.MergeDepth).IsEqualTo(31);
-        var after = await stack.BeginLayerAsync("after", "after", null, CancellationToken.None);
-        await stack.CommitLayerAsync(after, [], CancellationToken.None);
+        var after = await stack.BeginLayerAsync("after", "after", CancellationToken.None);
+        await stack.CommitLayerAsync(after, null, CancellationToken.None);
         // the guard must reset after consolidation instead of firing on every later commit
         await Assert.That(_backend.Calls.Count(c => c.StartsWith("merge:"))).IsEqualTo(1);
     }
@@ -259,7 +259,7 @@ public sealed class VhdLayerStackTests : IDisposable {
     [Test]
     public async Task VhdxForLayerRejectsUncommitted() {
         var stack = await CreateWithBaseAsync();
-        var session = await stack.BeginLayerAsync("step1", "S1", null, CancellationToken.None);
+        var session = await stack.BeginLayerAsync("step1", "S1", CancellationToken.None);
         await stack.DiscardLayerAsync(session, "x", CancellationToken.None);
         Assert.Throws<ArgumentException>(() => stack.VhdxForLayer(1));
     }
@@ -274,10 +274,12 @@ public sealed class FakeExecuter(string resource, bool fail) : IExecuter {
     public string Resource { get; } = resource;
     private int ApplyCount { get; set; }
 
-    public Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) =>
+    public void Validate(OperationSpec spec) { }
+
+    public Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) =>
         Task.FromResult(new ResourceDiff(false, [new ChangeItem(ChangeKind.Modified, Resource)]));
 
-    public Task<ExecResult> ApplyAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
+    public Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
         ApplyCount++;
         return Task.FromResult(fail
             ? throw new ExecException("boom from " + Resource)
@@ -290,27 +292,27 @@ public sealed class BuildEngineDryRunTests : IDisposable {
 
     private PlanCatalog Catalog() {
         TestPlans.WritePlan(_plansDir, "engine.sample", o => {
-            o["execs"] = new JsonArray(new JsonObject {
+            o["operation"] = new JsonObject {
                 ["resource"] = "test.noop",
-                ["ensure"] = "absent",
-                ["with"] = new JsonObject(),
-            });
+                ["action"] = "remove",
+                ["spec"] = new JsonObject(),
+            };
         });
         return PlanCatalog.LoadDirectory(_plansDir);
     }
 
     [Test]
     public async Task NoLayersAppliesEverythingAgainstOneAttach() {
-        TestPlans.WritePlan(_plansDir, "no.a", o => o["execs"] = new JsonArray(new JsonObject {
+        TestPlans.WritePlan(_plansDir, "no.a", o => o["operation"] = new JsonObject {
             ["resource"] = "test.noop",
-            ["ensure"] = "absent",
-            ["with"] = new JsonObject(),
-        }));
-        TestPlans.WritePlan(_plansDir, "no.b", o => o["execs"] = new JsonArray(new JsonObject {
+            ["action"] = "remove",
+            ["spec"] = new JsonObject(),
+        });
+        TestPlans.WritePlan(_plansDir, "no.b", o => o["operation"] = new JsonObject {
             ["resource"] = "test.noop",
-            ["ensure"] = "absent",
-            ["with"] = new JsonObject(),
-        }));
+            ["action"] = "remove",
+            ["spec"] = new JsonObject(),
+        });
         var runner = new FakeProcessRunner {
             Handler = (_, args) => {
                 if (args.Contains("/Get-WimInfo")) {
@@ -358,11 +360,11 @@ public sealed class BuildEngineDryRunTests : IDisposable {
 
     [Test]
     public async Task VhdxOutputExportsOneDiskWithoutCapturingInstallImage() {
-        TestPlans.WritePlan(_plansDir, "vhdx.noop", o => o["execs"] = new JsonArray(new JsonObject {
+        TestPlans.WritePlan(_plansDir, "vhdx.noop", o => o["operation"] = new JsonObject {
             ["resource"] = "test.noop",
-            ["ensure"] = "absent",
-            ["with"] = new JsonObject(),
-        }));
+            ["action"] = "remove",
+            ["spec"] = new JsonObject(),
+        });
         var runner = new FakeProcessRunner {
             Handler = (_, args) => {
                 if (args.Contains("/Get-WimInfo")) {

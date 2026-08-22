@@ -9,7 +9,7 @@ public sealed record RegistryValueOptions {
     public required IReadOnlyList<RegistryValueTarget> Values { get; init; }
     public IReadOnlyList<string> DeleteKeys { get; private init; } = [];
 
-    public static RegistryValueOptions FromDesired(JsonObject desired, Ensure ensure) {
+    public static RegistryValueOptions FromDesired(JsonObject desired, OperationAction action) {
         const string context = "registry.value";
         var hive = Desired.RequiredString(desired, "hive", context);
         if (!RegistryHiveCache.HiveFiles.ContainsKey(hive)) {
@@ -20,19 +20,19 @@ public sealed record RegistryValueOptions {
         var targets = new List<RegistryValueTarget>();
         var declared = false;
         foreach (var raw in Desired.ObjectArray(desired, "values")) {
-            targets.Add(RegistryValueTarget.FromDesired(raw, ensure));
+            targets.Add(RegistryValueTarget.FromDesired(raw, action));
             declared = true;
         }
 
         if (desired.ContainsKey("key")) {
             // Single-value shorthand at the top level.
-            targets.Add(RegistryValueTarget.FromDesired(desired, ensure));
+            targets.Add(RegistryValueTarget.FromDesired(desired, action));
             declared = true;
         }
 
         var deleteKeys = Desired.OptionalStringArray(desired, "deleteKeys") ?? [];
-        if (ensure == Ensure.Present && deleteKeys.Count > 0) {
-            throw new ExecException("'deleteKeys' is only valid with ensure: absent.");
+        if (action == OperationAction.Set && deleteKeys.Count > 0) {
+            throw new ExecException("'deleteKeys' is only valid with action: remove.");
         }
 
         if (!declared && deleteKeys.Count == 0) {
@@ -55,10 +55,10 @@ public sealed record RegistryValueTarget {
     /// <summary>REG_* form for reg.exe.</summary>
     public string RegType => RegistryValueTypes.ToRegType(Type!);
 
-    public static RegistryValueTarget FromDesired(JsonObject raw, Ensure ensure) {
+    public static RegistryValueTarget FromDesired(JsonObject raw, OperationAction action) {
         var key = Desired.RequiredString(raw, "key", "registry value").Trim('\\');
         var name = Desired.OptionalString(raw, "name") ?? "";
-        if (ensure == Ensure.Absent) {
+        if (action == OperationAction.Remove) {
             return new() { Key = key, Name = name };
         }
 

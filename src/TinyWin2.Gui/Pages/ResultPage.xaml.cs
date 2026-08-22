@@ -63,7 +63,7 @@ public sealed partial class ResultPage : Page {
             TinyWin2 构建诊断
             成功: {State.BuildSucceeded}
             源: {State.SourcePath} (index {State.SelectedIndex?.Index})
-            输出格式: {State.OutputFormat}, ISO: {State.CreateIso}, 粒度: {State.Granularity}, 快速: {State.Fast}
+            输出格式: {State.OutputFormat}, ISO: {State.CreateIso}, 原子 Plan: 是, 快速: {State.Fast}
             media: {State.MediaPath}
             输出: {State.OutputPath}
             ISO: {State.IsoPath}

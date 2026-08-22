@@ -1,13 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.update-orchestrator",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用更新会话编排器 (UsoSvc)",
   "description": "禁用 Update Session Orchestrator。精简镜像通常不打算再接收更新；恢复更新前需改回手动/自动。",
-  "group": "Update Services",
-  "risk": "Medium",
-  "tier": "Standard",
-  "arguments": [
+  "category": "Update Services",
+  "riskLevel": "Medium",
+  "parameters": [
     {
       "name": "startMode",
       "type": "enum",
@@ -17,34 +16,32 @@
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "Medium"
+          "riskLevel": "Medium"
         },
         {
           "value": "manual",
           "label": "手动",
-          "risk": "Low"
+          "riskLevel": "Low"
         }
       ]
     }
   ],
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "UsoSvc"
-        ],
-        "start": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "disabled": "disabled",
-              "manual": "manual"
-            }
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "UsoSvc"
+      ],
+      "start": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "disabled": "disabled",
+            "manual": "manual"
           }
         }
       }
     }
-  ]
+  }
 }

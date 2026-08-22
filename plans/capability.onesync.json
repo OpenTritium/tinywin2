@@ -1,21 +1,18 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "capability.onesync",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 OneSync",
   "description": "移除邮件、日历和联系人使用的 OneSync 框架。",
-  "group": "Applications",
-  "risk": "Medium",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "dism.capability",
-      "ensure": "absent",
-      "with": {
-        "capabilities": [
-          "OneCoreUAP.OneSync~~~~0.0.1.0"
-        ]
-      }
+  "category": "Applications",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "dism.capability",
+    "action": "remove",
+    "spec": {
+      "capabilities": [
+        "OneCoreUAP.OneSync~~~~0.0.1.0"
+      ]
     }
-  ]
+  }
 }

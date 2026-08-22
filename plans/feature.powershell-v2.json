@@ -1,23 +1,20 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.powershell-v2",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 Windows PowerShell 2.0",
   "description": "移除已弃用的 PowerShell 2.0 兼容组件；Windows PowerShell 5.1、PowerShell 7 和 Server Manager 不受影响。",
-  "group": "Developer",
-  "risk": "Medium",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "MicrosoftWindowsPowerShellV2",
-          "MicrosoftWindowsPowerShellV2Root"
-        ],
-        "removePayload": true
-      }
+  "category": "Developer",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "MicrosoftWindowsPowerShellV2",
+        "MicrosoftWindowsPowerShellV2Root"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

@@ -1,21 +1,18 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "fs.windows-old",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 Windows.old",
   "description": "移除升级残留的 Windows.old 目录；全新安装媒体通常没有此目录，目录不存在时安全跳过。",
-  "group": "Servicing",
-  "risk": "Medium",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "fs.path",
-      "ensure": "absent",
-      "with": {
-        "paths": [
-          "Windows.old"
-        ]
-      }
+  "category": "Servicing",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "fs.path",
+    "action": "remove",
+    "spec": {
+      "paths": [
+        "Windows.old"
+      ]
     }
-  ]
+  }
 }

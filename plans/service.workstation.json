@@ -1,13 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.workstation",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "延迟启动 Workstation 服务",
   "description": "将 LanmanWorkstation 设置为延迟自动启动；保留 SMB 客户端，但开机初期访问网络共享可能稍慢。",
-  "group": "Networking",
-  "risk": "Medium",
-  "tier": "Standard",
-  "arguments": [
+  "category": "Networking",
+  "riskLevel": "Medium",
+  "parameters": [
     {
       "name": "startMode",
       "type": "enum",
@@ -17,34 +16,32 @@
         {
           "value": "delayed",
           "label": "延迟启动",
-          "risk": "Medium"
+          "riskLevel": "Medium"
         },
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "High"
+          "riskLevel": "High"
         }
       ]
     }
   ],
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "LanmanWorkstation"
-        ],
-        "start": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "delayed": "DelayedAuto",
-              "disabled": "disabled"
-            }
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "LanmanWorkstation"
+      ],
+      "start": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "delayed": "DelayedAuto",
+            "disabled": "disabled"
           }
         }
       }
     }
-  ]
+  }
 }

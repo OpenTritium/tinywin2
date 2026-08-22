@@ -1,6 +1,6 @@
 using System.Text.Json.Nodes;
-using TinyWin2.Core.Executers;
 using TinyWin2.Core.Env;
+using TinyWin2.Core.Executers;
 using TinyWin2.Core.Executers.Registry;
 using TinyWin2.Core.Hashing;
 using TinyWin2.Core.Layers;
@@ -44,7 +44,6 @@ public sealed record BuildOptions {
     public required PlanCatalog Catalog { get; init; }
     public OutputFormat OutputFormat { get; init; } = OutputFormat.Esd;
     public bool CreateIso { get; init; }
-    public LayerGranularity Granularity { get; init; } = LayerGranularity.Group;
     public bool Fast { get; init; }
     public bool ContinueOnError { get; init; }
     public bool KeepLayers { get; init; }
@@ -107,14 +106,14 @@ public sealed class BuildEngine(
         var buildId = $"{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfff}-{Guid.NewGuid():N}";
         log.Phase = BuildPhases.Prepare;
         log.Info(
-            $"build {buildId} starting (granularity={options.Granularity}, out={options.OutputFormat}, " +
+            $"build {buildId} starting (atomic-plans=true, out={options.OutputFormat}, " +
             $"iso={options.CreateIso}, fast={options.Fast}, evidence={options.CaptureEvidence})");
-        var plan = BuildPlanResolver.Resolve(options.Catalog, options.Selections, options.Granularity);
+        var plan = BuildPlanResolver.Resolve(options.Catalog, options.Selections);
         executers.ValidateBuildPlan(plan);
         log.Info($"resolved {plan.PlanIds.Count} plans into {plan.Steps.Count} atomic steps");
         foreach (var step in plan.Steps) {
             log.Info(
-                $"  step {step.Id}: {step.Plans.Count} plan(s) [{string.Join(", ", step.Plans.Select(p => p.Definition.Id))}]");
+                $"  step {step.Id}: plan '{step.Plan.Definition.Id}' ({step.Plan.Operation.Resource})");
         }
 
         ValidateOutputOptions(options);
@@ -260,7 +259,7 @@ public sealed class BuildEngine(
     /// Layerless fast path: attach the base ONCE, run every step against that single mount with no
     /// per-step diff layers / evidence snapshots / attach-detach cycles, capture the artifact from the
     /// live volume, detach. A failed step logs and (without ContinueOnError) aborts; nothing is rolled
-    /// back — the exec's own operation granularity is all the atomicity there is.
+    /// back — the operation's own plan granularity is all the atomicity there is.
     /// </summary>
     private async Task<(List<(string StepId, int LayerIndex, string Error)>, string? InstallPath)>
         RunStepsAndCaptureLayerlessAsync(
@@ -283,9 +282,7 @@ public sealed class BuildEngine(
                     MountPath = mountPath,
                 };
                 try {
-                    foreach (var resolved in step.Plans) {
-                        await RunPlanInLayerAsync(resolved, session, [], options, ct);
-                    }
+                    _ = await RunPlanInLayerAsync(step.Plan, session, options, ct);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
                     failedSteps.Add((step.Id, stepNumber, ex.Message));
@@ -324,13 +321,10 @@ public sealed class BuildEngine(
                     ["progress"] =
                         ProgressAfterBase + (int)(ProgressPlanWeight * stepNumber / (double)plan.Steps.Count),
                 });
-            var session = await stack.BeginLayerAsync(step.Id, step.Title, null, ct,
+            var session = await stack.BeginLayerAsync(step.Id, step.Title, ct,
                 await FingerprintAsync(step, options.PlansDirectory, assetFingerprints, ct));
-            var execResults = new JsonArray();
             try {
-                foreach (var resolved in step.Plans) {
-                    await RunPlanInLayerAsync(resolved, session, execResults, options, ct);
-                }
+                var operationResult = await RunPlanInLayerAsync(step.Plan, session, options, ct);
 
                 if (!options.Fast) {
                     await CheckLayerHealthAsync(session, ct);
@@ -341,7 +335,7 @@ public sealed class BuildEngine(
                         ct);
                 }
 
-                await stack.CommitLayerAsync(session, execResults, ct);
+                await stack.CommitLayerAsync(session, operationResult, ct);
             }
             catch (Exception ex) {
                 var stillPending = stack.Records.Any(r => r.Index == session.Record.Index
@@ -543,24 +537,24 @@ public sealed class BuildEngine(
         PlanStep step, string? plansDirectory, IDictionary<string, string> assetFingerprints,
         CancellationToken ct) {
         var builder = new System.Text.StringBuilder();
-        foreach (var resolved in step.Plans) {
-            builder.Append(resolved.Definition.Id).Append((char)10);
-            foreach (var exec in resolved.Execs) {
-                builder.Append(exec.Resource).Append('|').Append(exec.Ensure).Append('|')
-                    .Append(exec.Desired.ToJsonString()).Append((char)10);
-                if (exec is { Resource: "fs.path", Ensure: Ensure.Present }) {
-                    var source = exec.Desired["source"]?.GetValue<string>();
-                    var assetsRoot = ResolveAssetsRoot(plansDirectory, resolved.Definition.Id);
-                    var assetPath = ResolveAssetPathForFingerprint(assetsRoot, source);
-                    var cacheKey = assetPath ?? $"<missing:{source}>";
-                    if (!assetFingerprints.TryGetValue(cacheKey, out var assetFingerprint)) {
-                        assetFingerprint = await AssetFingerprintAsync(assetPath, ct);
-                        assetFingerprints[cacheKey] = assetFingerprint;
-                    }
-
-                    builder.Append("asset|").Append(assetFingerprint).Append((char)10);
-                }
+        var resolved = step.Plan;
+        builder.Append(resolved.Definition.Id).Append('|')
+            .Append(resolved.Definition.Version).Append('|')
+            .Append(resolved.Definition.Hash).Append((char)10);
+        var operation = resolved.Operation;
+        builder.Append(operation.Resource).Append('|').Append(operation.Action).Append('|')
+            .Append(operation.Spec.ToJsonString()).Append((char)10);
+        if (operation is { Resource: "fs.path", Action: OperationAction.Copy }) {
+            var source = operation.Spec["source"]?.GetValue<string>();
+            var assetsRoot = ResolveAssetsRoot(plansDirectory, resolved.Definition.Id);
+            var assetPath = ResolveAssetPathForFingerprint(assetsRoot, source);
+            var cacheKey = assetPath ?? $"<missing:{source}>";
+            if (!assetFingerprints.TryGetValue(cacheKey, out var assetFingerprint)) {
+                assetFingerprint = await AssetFingerprintAsync(assetPath, ct);
+                assetFingerprints[cacheKey] = assetFingerprint;
             }
+
+            builder.Append("asset|").Append(assetFingerprint).Append((char)10);
         }
 
         return Fingerprinting.Compute(builder.ToString());
@@ -616,10 +610,9 @@ public sealed class BuildEngine(
         return Fingerprinting.Compute(canonical);
     }
 
-    private async Task RunPlanInLayerAsync(
+    private async Task<JsonObject> RunPlanInLayerAsync(
         ResolvedPlan resolved,
         LayerSession session,
-        JsonArray execResults,
         BuildOptions options,
         CancellationToken ct) {
         var hiveCache = new RegistryHiveCache(session.MountPath, runner);
@@ -631,28 +624,28 @@ public sealed class BuildEngine(
             ResolveAssetsRoot(options.PlansDirectory, resolved.Definition.Id));
         log.PlanId = resolved.Definition.Id;
         try {
-            foreach (var exec in resolved.Execs) {
-                ct.ThrowIfCancellationRequested();
-                var executer = executers.Get(exec.Resource);
-                log.Debug($"exec {exec.Resource} ({exec.Ensure})", resolved.Definition.Id, session.Record.Index);
-                var result = await executer.ApplyAsync(context, exec, ct);
-                execResults.Add(new JsonObject {
-                    ["planId"] = resolved.Definition.Id,
-                    ["resource"] = exec.Resource,
-                    ["ensure"] = exec.Ensure.ToString().ToLowerInvariant(),
-                    ["status"] = result.Status.ToString().ToLowerInvariant(),
-                    ["changes"] = new JsonArray(result.Changes.Select(c => (JsonNode)c.ToJson()).ToArray()),
-                    ["skipReason"] = result.SkipReason,
-                });
-                if (result.Status == ExecStatus.Applied) {
-                    log.Info($"{exec.Resource}: {result.Changes.Count} change(s)", resolved.Definition.Id,
-                        session.Record.Index);
-                }
-                else if (result.Status == ExecStatus.Skipped) {
-                    log.Info($"{exec.Resource}: skipped ({result.SkipReason})", resolved.Definition.Id,
-                        session.Record.Index);
-                }
+            ct.ThrowIfCancellationRequested();
+            var operation = resolved.Operation;
+            var executer = executers.Get(operation.Resource);
+            log.Debug($"operation {operation.Resource} ({operation.Action})", resolved.Definition.Id, session.Record.Index);
+            var result = await executer.ApplyAsync(context, operation, ct);
+            var operationResult = new JsonObject {
+                ["planId"] = resolved.Definition.Id,
+                ["resource"] = operation.Resource,
+                ["action"] = operation.Action.ToString().ToLowerInvariant(),
+                ["status"] = result.Status.ToString().ToLowerInvariant(),
+                ["changes"] = new JsonArray(result.Changes.Select(c => (JsonNode)c.ToJson()).ToArray()),
+                ["skipReason"] = result.SkipReason,
+            };
+            if (result.Status == ExecStatus.Applied) {
+                log.Info($"{operation.Resource}: {result.Changes.Count} change(s)", resolved.Definition.Id,
+                    session.Record.Index);
             }
+            else if (result.Status == ExecStatus.Skipped) {
+                log.Info($"{operation.Resource}: skipped ({result.SkipReason})", resolved.Definition.Id,
+                    session.Record.Index);
+            }
+            return operationResult;
         }
         finally {
             log.PlanId = null;
@@ -708,7 +701,7 @@ public sealed class BuildEngine(
             },
             ["outputFormat"] = options.OutputFormat.ToString().ToLowerInvariant(),
             ["createIso"] = options.CreateIso,
-            ["granularity"] = options.Granularity.ToString().ToLowerInvariant(),
+            ["atomicPlans"] = true,
             ["planIds"] = new JsonArray(plan.PlanIds.Select(p => (JsonNode)JsonValue.Create(p)).ToArray()),
             ["mediaPath"] = mediaPath,
             ["output"] = outputMetadata,

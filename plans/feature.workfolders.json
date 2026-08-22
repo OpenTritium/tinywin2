@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.workfolders",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 Work Folders 客户端",
   "description": "移除企业 Work Folders 同步客户端。",
-  "group": "Enterprise",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "WorkFolders-Client"
-        ],
-        "removePayload": true
-      }
+  "category": "Enterprise",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "WorkFolders-Client"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

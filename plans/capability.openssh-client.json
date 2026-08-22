@@ -1,21 +1,18 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "capability.openssh-client",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 OpenSSH 客户端",
   "description": "移除 ssh、scp 等 OpenSSH 客户端工具。",
-  "group": "Networking",
-  "risk": "Medium",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "dism.capability",
-      "ensure": "absent",
-      "with": {
-        "capabilities": [
-          "OpenSSH.Client~~~~0.0.1.0"
-        ]
-      }
+  "category": "Networking",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "dism.capability",
+    "action": "remove",
+    "spec": {
+      "capabilities": [
+        "OpenSSH.Client~~~~0.0.1.0"
+      ]
     }
-  ]
+  }
 }

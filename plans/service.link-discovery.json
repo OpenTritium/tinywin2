@@ -1,23 +1,20 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.link-discovery",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用链路发现驱动服务",
   "description": "禁用 LLTDIO 与 RSPNDR（链路层拓扑发现/响应器）。网络发现功能已移除后这两个内核驱动是残留。",
-  "group": "Networking",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "lltdio",
-          "rspndr"
-        ],
-        "start": "disabled"
-      }
+  "category": "Networking",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "lltdio",
+        "rspndr"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

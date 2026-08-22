@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.multipath-io",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 Multipath I/O",
   "description": "移除 MPIO 存储多路径支持；依赖多路径 SAN 的磁盘连接将不可用。",
-  "group": "Storage",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "MultipathIo"
-        ],
-        "removePayload": true
-      }
+  "category": "Storage",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "MultipathIo"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

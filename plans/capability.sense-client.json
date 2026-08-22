@@ -1,21 +1,18 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "capability.sense-client",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除 Defender for Endpoint 传感器桩",
   "description": "移除 Microsoft.Windows.Sense.Client。不用 MDE 接入的机器是纯死重。",
-  "group": "Security",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "dism.capability",
-      "ensure": "absent",
-      "with": {
-        "capabilities": [
-          "Microsoft.Windows.Sense.Client~~~~"
-        ]
-      }
+  "category": "Security",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "dism.capability",
+    "action": "remove",
+    "spec": {
+      "capabilities": [
+        "Microsoft.Windows.Sense.Client~~~~"
+      ]
     }
-  ]
+  }
 }

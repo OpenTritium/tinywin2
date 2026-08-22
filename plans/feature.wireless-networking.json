@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.wireless-networking",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除无线网络支持",
   "description": "移除 WLAN 客户端功能；适合只使用有线网络的服务器。",
-  "group": "Networking",
-  "risk": "Medium",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "WirelessNetworking"
-        ],
-        "removePayload": true
-      }
+  "category": "Networking",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "WirelessNetworking"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

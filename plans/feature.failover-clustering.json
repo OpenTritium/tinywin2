@@ -1,27 +1,24 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "feature.failover-clustering",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除故障转移群集",
   "description": "移除 Failover Clustering 服务、管理控制台、PowerShell 和命令行组件；无法创建或管理 Windows 群集。",
-  "group": "Server Roles",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "dism.feature",
-      "ensure": "absent",
-      "with": {
-        "features": [
-          "FailoverCluster-FullServer",
-          "FailoverCluster-Mgmt",
-          "FailoverCluster-PowerShell",
-          "FailoverCluster-CmdInterface",
-          "FailoverCluster-AdminPak",
-          "FailoverCluster-AutomationServer"
-        ],
-        "removePayload": true
-      }
+  "category": "Server Roles",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.feature",
+    "action": "remove",
+    "spec": {
+      "features": [
+        "FailoverCluster-FullServer",
+        "FailoverCluster-Mgmt",
+        "FailoverCluster-PowerShell",
+        "FailoverCluster-CmdInterface",
+        "FailoverCluster-AdminPak",
+        "FailoverCluster-AutomationServer"
+      ],
+      "removePayload": true
     }
-  ]
+  }
 }

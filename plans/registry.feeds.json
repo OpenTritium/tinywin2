@@ -1,27 +1,24 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "registry.feeds",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "禁用资讯与兴趣",
   "description": "禁用 Windows Feeds 入口。",
-  "group": "Policies",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "registry.value",
-      "ensure": "present",
-      "with": {
-        "hive": "software",
-        "values": [
-          {
-            "key": "Policies\\Microsoft\\Windows\\Windows Feeds",
-            "name": "EnableFeeds",
-            "type": "dword",
-            "data": 0
-          }
-        ]
-      }
+  "category": "Policies",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "registry.value",
+    "action": "set",
+    "spec": {
+      "hive": "software",
+      "values": [
+        {
+          "key": "Policies\\Microsoft\\Windows\\Windows Feeds",
+          "name": "EnableFeeds",
+          "type": "dword",
+          "data": 0
+        }
+      ]
     }
-  ]
+  }
 }

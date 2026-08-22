@@ -1,39 +1,36 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "registry.shutdown-event-tracker",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "title": "关闭关机原因询问窗口",
   "description": "关闭 Windows Server Shutdown Event Tracker，不再在关机或重启后要求填写原因；不影响正常关机、重启或事件日志记录。",
-  "group": "System",
-  "risk": "Low",
-  "tier": "Standard",
-  "execs": [
-    {
-      "resource": "registry.value",
-      "ensure": "present",
-      "with": {
-        "hive": "software",
-        "values": [
-          {
-            "key": "Policies\\Microsoft\\Windows NT\\Reliability",
-            "name": "ShutdownReasonOn",
-            "type": "dword",
-            "data": 0
-          },
-          {
-            "key": "Policies\\Microsoft\\Windows NT\\Reliability",
-            "name": "ShutdownReasonUI",
-            "type": "dword",
-            "data": 0
-          },
-          {
-            "key": "Policies\\Microsoft\\Windows NT\\Reliability",
-            "name": "ShutdownReasonUIEx",
-            "type": "dword",
-            "data": 0
-          }
-        ]
-      }
+  "category": "System",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "registry.value",
+    "action": "set",
+    "spec": {
+      "hive": "software",
+      "values": [
+        {
+          "key": "Policies\\Microsoft\\Windows NT\\Reliability",
+          "name": "ShutdownReasonOn",
+          "type": "dword",
+          "data": 0
+        },
+        {
+          "key": "Policies\\Microsoft\\Windows NT\\Reliability",
+          "name": "ShutdownReasonUI",
+          "type": "dword",
+          "data": 0
+        },
+        {
+          "key": "Policies\\Microsoft\\Windows NT\\Reliability",
+          "name": "ShutdownReasonUIEx",
+          "type": "dword",
+          "data": 0
+        }
+      ]
     }
-  ]
+  }
 }

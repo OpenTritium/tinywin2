@@ -111,18 +111,17 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         // The unsupported hive only fails once the step runs (options parse at exec time),
         // so the plan resolves fine and the failure is a genuine step-level event.
         TestPlans.WritePlan(plansDir, "it.registry-boom", o => {
-            o["group"] = "BoomGroup";
-            o["execs"] = new JsonArray(new JsonObject {
+            o["operation"] = new JsonObject {
                 ["resource"] = "registry.value",
-                ["ensure"] = "present",
-                ["with"] = new JsonObject {
+                ["action"] = "set",
+                ["spec"] = new JsonObject {
                     ["hive"] = "bogus",
                     ["key"] = "SOFTWARE\\X",
                     ["name"] = "N",
                     ["type"] = "dword",
                     ["data"] = 1,
                 },
-            });
+            };
         });
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var log = new BuildLog();
@@ -143,7 +142,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
 
         // The build completes; only the healthy step's layer survives in the chain.
         await Assert.That(result.Succeeded).IsTrue();
-        await Assert.That(result.FailedStepId).IsEqualTo("group:BoomGroup"); // group granularity steps carry the group id, not the plan id
+        await Assert.That(result.FailedStepId).IsEqualTo("it.registry-boom");
         await Assert.That(result.LayerCount).IsEqualTo(2); // base + the one surviving step layer (boom discarded)
         await Assert.That(File.Exists(result.ManifestPath)).IsTrue();
     }
@@ -159,25 +158,25 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         Directory.CreateDirectory(plansDir);
         WriteRegistryProbePlan(plansDir);
         TestPlans.WritePlan(plansDir, "it.fs-remove", o => {
-            o["execs"] = new JsonArray(new JsonObject {
+            o["operation"] = new JsonObject {
                 ["resource"] = "fs.path",
-                ["ensure"] = "absent",
-                ["with"] = new JsonObject { ["paths"] = new JsonArray("Windows/System32") },
-            });
+                ["action"] = "remove",
+                ["spec"] = new JsonObject { ["paths"] = new JsonArray("Windows/System32") },
+            };
         });
         // fs.path-present needs the plan assets root: previews must resolve it exactly like builds.
         var payload = Path.Combine(plansDir, "assets", "it.fs-copy", "payload");
         Directory.CreateDirectory(payload);
         await File.WriteAllTextAsync(Path.Combine(payload, "pinned.txt"), "pinned");
         TestPlans.WritePlan(plansDir, "it.fs-copy", o => {
-            o["execs"] = new JsonArray(new JsonObject {
+            o["operation"] = new JsonObject {
                 ["resource"] = "fs.path",
-                ["ensure"] = "present",
-                ["with"] = new JsonObject {
+                ["action"] = "copy",
+                ["spec"] = new JsonObject {
                     ["path"] = "TinyWin2/pinned.txt",
                     ["source"] = "payload/pinned.txt",
                 },
-            });
+            };
         });
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var log = new BuildLog();
@@ -210,17 +209,17 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
 
     private static void WriteRegistryProbePlan(string plansDir) {
         TestPlans.WritePlan(plansDir, "it.registry-probe", o => {
-            o["execs"] = new JsonArray(new JsonObject {
+            o["operation"] = new JsonObject {
                 ["resource"] = "registry.value",
-                ["ensure"] = "present",
-                ["with"] = new JsonObject {
+                ["action"] = "set",
+                ["spec"] = new JsonObject {
                     ["hive"] = "software",
                     ["key"] = "SOFTWARE\\TinyWin2IT",
                     ["name"] = "Probe",
                     ["type"] = "dword",
                     ["data"] = 42,
                 },
-            });
+            };
         });
     }
 

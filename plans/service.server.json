@@ -1,13 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.server",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "延迟启动 Server 文件共享服务",
   "description": "将 LanmanServer 设置为延迟自动启动；保留 SMB 文件共享，但登录初期共享可能暂时不可用。",
-  "group": "Networking",
-  "risk": "Medium",
-  "tier": "Standard",
-  "arguments": [
+  "category": "Networking",
+  "riskLevel": "Medium",
+  "parameters": [
     {
       "name": "startMode",
       "type": "enum",
@@ -17,34 +16,32 @@
         {
           "value": "delayed",
           "label": "延迟启动",
-          "risk": "Medium"
+          "riskLevel": "Medium"
         },
         {
           "value": "disabled",
           "label": "禁用",
-          "risk": "High"
+          "riskLevel": "High"
         }
       ]
     }
   ],
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "LanmanServer"
-        ],
-        "start": {
-          "$map": {
-            "arg": "startMode",
-            "cases": {
-              "delayed": "DelayedAuto",
-              "disabled": "disabled"
-            }
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "LanmanServer"
+      ],
+      "start": {
+        "$map": {
+          "parameter": "startMode",
+          "cases": {
+            "delayed": "DelayedAuto",
+            "disabled": "disabled"
           }
         }
       }
     }
-  ]
+  }
 }

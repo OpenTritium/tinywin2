@@ -1,22 +1,19 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "service.wlms",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "title": "禁用 Windows Licensing Monitoring Service",
   "description": "禁用 WLMS（Windows Server 授权监视服务）。可能影响 Server 激活状态监视、KMS/AD 续期以及 MAK/零售授权的后续宽限期处理；仅适用于不需要受支持授权状态管理的离线测试镜像。",
-  "group": "Policies",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "registry.service",
-      "ensure": "present",
-      "with": {
-        "services": [
-          "WLMS"
-        ],
-        "start": "disabled"
-      }
+  "category": "Policies",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "WLMS"
+      ],
+      "start": "disabled"
     }
-  ]
+  }
 }

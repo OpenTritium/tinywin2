@@ -21,8 +21,8 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismRemoveE
     protected override IEnumerable<DismRemovalTarget> SelectTargets(
         IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
-        ExecSpec spec) {
-        var options = AppxOptions.FromDesired(spec.Desired);
+        OperationSpec spec) {
+        var options = AppxOptions.FromDesired(spec.Spec);
         foreach (var record in records) {
             var displayName = DismListParser.Get(record, "DisplayName");
             // RemoveKey is the dism Package Name; DisplayName is what patterns match and logs show.
@@ -36,6 +36,6 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismRemoveE
         }
     }
 
-    protected override IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, ExecSpec spec) =>
+    protected override IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, OperationSpec spec) =>
         ["/Remove-ProvisionedAppxPackage", $"/PackageName:{target.RemoveKey}"];
 }

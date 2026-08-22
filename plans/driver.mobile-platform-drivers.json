@@ -1,38 +1,35 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "driver.mobile-platform-drivers",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "移除移动平台与消费级芯片组驱动",
   "description": "从 Driver Store 移除 AMD/Intel GPIO、I2C、低功耗子系统、平台监控和 Apple SSD 驱动。笔记本的触摸板、传感器、存储或电源管理可能失效。",
-  "group": "Drivers",
-  "risk": "High",
-  "tier": "Expert",
-  "execs": [
-    {
-      "resource": "driver.store",
-      "ensure": "absent",
-      "with": {
-        "infNames": [
-          "amdgpio2.inf",
-          "amdi2c.inf",
-          "amdsbs.inf",
-          "amdwps.inf",
-          "applessd.inf",
-          "iagpio.inf",
-          "iai2c.inf",
-          "ialpss2i_gpio2_bxt_p.inf",
-          "ialpss2i_gpio2_cnl.inf",
-          "ialpss2i_gpio2_glk.inf",
-          "ialpss2i_gpio2_skl.inf",
-          "ialpss2i_i2c_bxt_p.inf",
-          "ialpss2i_i2c_cnl.inf",
-          "ialpss2i_i2c_glk.inf",
-          "ialpss2i_i2c_skl.inf",
-          "ialpssi_gpio.inf",
-          "ialpssi_i2c.inf",
-          "intelpmt.inf"
-        ]
-      }
+  "category": "Drivers",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "driver.store",
+    "action": "remove",
+    "spec": {
+      "infNames": [
+        "amdgpio2.inf",
+        "amdi2c.inf",
+        "amdsbs.inf",
+        "amdwps.inf",
+        "applessd.inf",
+        "iagpio.inf",
+        "iai2c.inf",
+        "ialpss2i_gpio2_bxt_p.inf",
+        "ialpss2i_gpio2_cnl.inf",
+        "ialpss2i_gpio2_glk.inf",
+        "ialpss2i_gpio2_skl.inf",
+        "ialpss2i_i2c_bxt_p.inf",
+        "ialpss2i_i2c_cnl.inf",
+        "ialpss2i_i2c_glk.inf",
+        "ialpss2i_i2c_skl.inf",
+        "ialpssi_gpio.inf",
+        "ialpssi_i2c.inf",
+        "intelpmt.inf"
+      ]
     }
-  ]
+  }
 }
