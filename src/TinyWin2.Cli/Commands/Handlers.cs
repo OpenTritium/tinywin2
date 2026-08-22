@@ -124,7 +124,6 @@ internal static class BuildHandler {
             }
         }
     }
-
 }
 
 internal static class PreviewHandler {

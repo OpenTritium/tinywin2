@@ -31,7 +31,8 @@
         <ToggleSwitch x:Name="FastToggle" Header="快速模式" OffContent="标准" OnContent="快速" Toggled="FastToggled" />
       </StackPanel>
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <TextBox x:Name="OutputBox" PlaceholderText="输出文件（例如 D:\out\tinywin.esd）" Width="560" TextChanged="OutputChanged" />
+        <TextBox x:Name="OutputBox" PlaceholderText="输出文件（例如 D:\out\tinywin.esd）" Width="560"
+                 TextChanged="OutputChanged" />
       </StackPanel>
       <StackPanel Orientation="Horizontal" Spacing="8">
         <TextBox x:Name="WorkspaceBox" PlaceholderText="工作目录（用于层链、日志和清单）" Width="560"

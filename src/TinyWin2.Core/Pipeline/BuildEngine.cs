@@ -45,8 +45,10 @@ public sealed record BuildOptions {
     public required string WorkspacePath { get; init; }
     public required PlanCatalog Catalog { get; init; }
     public OutputFormat OutputFormat { get; init; } = OutputFormat.Esd;
-    /// <summary>Skips per-layer DISM health checks; export behavior is configured by <see cref="Export"/>.</summary>
+
+    /// <summary>Skips per-layer DISM health checks; export behavior is configured by <see cref="Export" />.</summary>
     public bool SkipLayerHealthCheck { get; init; }
+
     public ImageExportOptions Export { get; init; } = new();
     public bool ContinueOnError { get; init; }
     public bool DryRun { get; init; }

@@ -145,7 +145,8 @@ internal static class CommandLine {
         var format = RequiredText("--format", "output format");
         format.AcceptOnlyFromAmong("wim", "esd", "vhdx");
         var export = AddExportOptions(command);
-        var continueOnError = Flag("--continue-on-error", "continue after a failed plan and mark the artifact incomplete");
+        var continueOnError = Flag("--continue-on-error",
+            "continue after a failed plan and mark the artifact incomplete");
         var dryRun = Flag("--dry-run", "resolve and validate without applying plans");
         var singleLayer = Flag("--single-layer", "debug mode: apply all plans in one non-atomic mount");
         var skipEvidence = Flag("--skip-evidence", "skip per-layer evidence capture");

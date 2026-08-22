@@ -33,6 +33,7 @@ public sealed class SourceInput {
     public required string InstallImagePath { get; init; }
     public bool IsEsd => InstallImagePath.EndsWith(".esd", StringComparison.OrdinalIgnoreCase);
     public bool HasMediaTree => MediaRootPath is not null;
+
     public string? BootWimPath {
         get {
             if (MediaRootPath is null) {
@@ -50,7 +51,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
     public async Task<SourceInput> ResolveAsync(string inputPath, CancellationToken ct) {
         var fullPath = Path.GetFullPath(inputPath);
         if (Directory.Exists(fullPath)) {
-            return new SourceInput {
+            return new() {
                 Kind = SourceInputKind.Media,
                 InputPath = fullPath,
                 IsMountedIso = false,
@@ -62,7 +63,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         if (File.Exists(fullPath) && fullPath.EndsWith(".iso", StringComparison.OrdinalIgnoreCase)) {
             var driveRoot = await MountIsoAsync(fullPath, ct);
             try {
-                return new SourceInput {
+                return new() {
                     Kind = SourceInputKind.Iso,
                     InputPath = fullPath,
                     IsMountedIso = true,
@@ -90,7 +91,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         if (File.Exists(fullPath)
             && (fullPath.EndsWith(".wim", StringComparison.OrdinalIgnoreCase)
                 || fullPath.EndsWith(".esd", StringComparison.OrdinalIgnoreCase))) {
-            return new SourceInput {
+            return new() {
                 Kind = SourceInputKind.Image,
                 InputPath = fullPath,
                 InstallImagePath = fullPath
@@ -413,5 +414,4 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
 
         throw new FileNotFoundException($"no sources\\install.wim or sources\\install.esd under '{root}'.");
     }
-
 }
