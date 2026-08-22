@@ -25,7 +25,7 @@ public sealed record Profile(
     }
 
     public static Profile FromJson(JsonObject obj) {
-        RejectUnknownProperties(obj, "profile", ["schemaVersion", "name", "description", "selections"]);
+        RejectUnknownProperties(obj, "profile", ["$schema", "schemaVersion", "name", "description", "selections"]);
         var schemaVersion = obj["schemaVersion"]?.GetValue<int>()
                             ?? throw new JsonException("profile requires 'schemaVersion'.");
         if (schemaVersion != CurrentSchemaVersion) {

@@ -31,13 +31,14 @@ public sealed class PlanCatalog(IReadOnlyList<PlanDefinition> plans) {
         var seenIds = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var file in files) {
             PlanDefinition? plan;
-            var hash = Fingerprinting.Compute(File.ReadAllBytes(file));
+            JsonObject? obj;
             try {
                 var node = JsonNode.Parse(File.ReadAllText(file));
-                if (node is not JsonObject obj) {
+                if (node is not JsonObject parsed) {
                     throw new PlanValidationException(file, ["root must be a JSON object."]);
                 }
 
+                obj = parsed;
                 plan = PlanDefinition.FromJson(obj, file);
             }
             catch (JsonException ex) {
@@ -56,7 +57,7 @@ public sealed class PlanCatalog(IReadOnlyList<PlanDefinition> plans) {
             }
 
             seenIds[plan.Id] = file;
-            plans.Add(plan with { Hash = hash });
+            plans.Add(plan with { Hash = ComputePlanHash(obj!) });
         }
 
         foreach (var plan in plans) {
@@ -77,5 +78,11 @@ public sealed class PlanCatalog(IReadOnlyList<PlanDefinition> plans) {
         }
 
         return errors.Count > 0 ? throw new PlanValidationException(directory, errors) : new(plans);
+    }
+
+    private static string ComputePlanHash(JsonObject obj) {
+        var semantic = (JsonObject)obj.DeepClone();
+        semantic.Remove("$schema");
+        return Fingerprinting.Compute(semantic.ToJsonString());
     }
 }

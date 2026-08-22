@@ -1,0 +1,713 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TinyWin2 plan v3",
+  "description": "Schema for one atomic TinyWin2 image modification plan.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "version",
+    "title",
+    "description",
+    "category",
+    "operation"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Editor metadata pointing to the schema used by this file."
+    },
+    "schemaVersion": {
+      "const": 3,
+      "description": "Plan JSON structure version."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "Stable plan identifier used by profiles, dependencies and checkpoints."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Behavior version of this plan, using x.y.z notation."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Accessibility",
+        "Applications",
+        "Background Experience",
+        "Background Services",
+        "Browser",
+        "Desktop Experience",
+        "Developer",
+        "Devices",
+        "Diagnostics",
+        "Documents",
+        "Drivers",
+        "Enterprise",
+        "Frameworks",
+        "Language",
+        "Languages",
+        "Legacy",
+        "Media",
+        "Network Services",
+        "Networking",
+        "Policies",
+        "Remote Access",
+        "Remote Management",
+        "Security",
+        "Server",
+        "Server Roles",
+        "Servicing",
+        "Storage",
+        "System",
+        "Update Services",
+        "Utilities",
+        "Virtualization"
+      ]
+    },
+    "riskLevel": {
+      "type": "string",
+      "enum": ["Low", "Medium", "High"],
+      "default": "Medium"
+    },
+    "requires": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/planId"
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/planId"
+      }
+    },
+    "parameters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/parameter"
+      }
+    },
+    "operation": {
+      "$ref": "#/$defs/operation"
+    }
+  },
+  "$defs": {
+    "planId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stringArray": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/nonEmptyString"
+      }
+    },
+    "parameterBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "type": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "default": {},
+        "options": {
+          "type": "array"
+        }
+      }
+    },
+    "parameterOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value"],
+      "properties": {
+        "value": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "label": {
+          "type": "string"
+        },
+        "riskLevel": {
+          "type": "string",
+          "enum": ["Low", "Medium", "High"]
+        }
+      }
+    },
+    "parameter": {
+      "oneOf": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/parameterBase"
+            },
+            {
+              "type": "object",
+              "required": ["options"],
+              "properties": {
+                "type": {
+                  "const": "enum"
+                },
+                "default": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "#/$defs/parameterOption"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/parameterBase"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "int"
+                },
+                "default": {
+                  "type": "integer"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/parameterBase"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "bool"
+                },
+                "default": {
+                  "type": "boolean"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/parameterBase"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "string"
+                },
+                "default": {
+                  "type": "string"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "operation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resource", "action", "spec"],
+          "properties": {
+            "resource": {
+              "const": "appx.provisioned"
+            },
+            "action": {
+              "const": "remove"
+            },
+            "spec": {
+              "$ref": "#/$defs/appxProvisionedSpec"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resource", "action", "spec"],
+          "properties": {
+            "resource": {
+              "const": "dism.capability"
+            },
+            "action": {
+              "const": "remove"
+            },
+            "spec": {
+              "$ref": "#/$defs/capabilitySpec"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resource", "action", "spec"],
+          "properties": {
+            "resource": {
+              "const": "dism.component-store"
+            },
+            "action": {
+              "const": "cleanup"
+            },
+            "spec": {
+              "$ref": "#/$defs/componentStoreSpec"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resource", "action", "spec"],
+          "properties": {
+            "resource": {
+              "const": "dism.feature"
+            },
+            "action": {
+              "const": "remove"
+            },
+            "spec": {
+              "$ref": "#/$defs/featureSpec"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resource", "action", "spec"],
+          "properties": {
+            "resource": {
+              "const": "dism.package"
+            },
+            "action": {
+              "const": "remove"
+            },
+            "spec": {
+              "$ref": "#/$defs/packageSpec"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resource", "action", "spec"],
+          "properties": {
+            "resource": {
+              "const": "driver.store"
+            },
+            "action": {
+              "const": "remove"
+            },
+            "spec": {
+              "$ref": "#/$defs/driverSpec"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resource", "action", "spec"],
+          "properties": {
+            "resource": {
+              "const": "fs.path"
+            },
+            "action": {
+              "const": "remove"
+            },
+            "spec": {
+              "$ref": "#/$defs/fsRemoveSpec"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resource", "action", "spec"],
+          "properties": {
+            "resource": {
+              "const": "fs.path"
+            },
+            "action": {
+              "const": "copy"
+            },
+            "spec": {
+              "$ref": "#/$defs/fsCopySpec"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resource", "action", "spec"],
+          "properties": {
+            "resource": {
+              "const": "registry.service"
+            },
+            "action": {
+              "const": "configure"
+            },
+            "spec": {
+              "$ref": "#/$defs/registryServiceSpec"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resource", "action", "spec"],
+          "properties": {
+            "resource": {
+              "const": "registry.value"
+            },
+            "action": {
+              "const": "set"
+            },
+            "spec": {
+              "$ref": "#/$defs/registryValueSetSpec"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resource", "action", "spec"],
+          "properties": {
+            "resource": {
+              "const": "registry.value"
+            },
+            "action": {
+              "const": "remove"
+            },
+            "spec": {
+              "$ref": "#/$defs/registryValueRemoveSpec"
+            }
+          }
+        }
+      ]
+    },
+    "appxProvisionedSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["patterns"],
+      "properties": {
+        "patterns": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    },
+    "capabilitySpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilities"],
+      "properties": {
+        "capabilities": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    },
+    "componentStoreSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "resetBase": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "featureSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["features"],
+      "properties": {
+        "features": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "removePayload": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "packageSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["patterns"],
+      "properties": {
+        "patterns": {
+          "$ref": "#/$defs/stringArray",
+          "description": "Regular expressions matched against DISM package identities."
+        }
+      }
+    },
+    "driverSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["infNames"],
+      "properties": {
+        "infNames": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[^\\\\/:*?\"<>|]+\\.inf$"
+          }
+        }
+      }
+    },
+    "fsRemoveSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["paths"],
+      "properties": {
+        "paths": {
+          "$ref": "#/$defs/stringArray",
+          "description": "Relative paths inside the mounted image."
+        }
+      }
+    },
+    "fsCopySpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "source"],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/nonEmptyString",
+          "description": "Relative destination path inside the mounted image."
+        },
+        "source": {
+          "$ref": "#/$defs/nonEmptyString",
+          "description": "Relative path under the plan assets directory."
+        }
+      }
+    },
+    "registryServiceSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start"],
+      "anyOf": [
+        {
+          "required": ["services"]
+        },
+        {
+          "required": ["servicePatterns"]
+        }
+      ],
+      "properties": {
+        "services": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "servicePatterns": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "start": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": ["auto", "delayedAuto", "manual", "Manual", "disabled", "trigger"]
+            },
+            {
+              "$ref": "#/$defs/mapExpression"
+            }
+          ]
+        },
+        "triggers": {
+          "oneOf": [
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "pattern": "^(domain-join|ip-arrival|gpo-change|device:[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-5][0-9A-Fa-f]{3}-[89abAB][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12})$"
+              }
+            },
+            {
+              "$ref": "#/$defs/mapExpression"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "start": {
+                "const": "trigger"
+              }
+            }
+          },
+          "then": {
+            "required": ["triggers"]
+          }
+        }
+      ]
+    },
+    "registryValueTargetSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "type", "data"],
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["dword", "qword", "string", "expand", "multi"]
+        },
+        "data": {}
+      }
+    },
+    "mapExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["$map"],
+      "properties": {
+        "$map": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["parameter"],
+          "properties": {
+            "parameter": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "cases": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {}
+            },
+            "default": {}
+          }
+        }
+      }
+    },
+    "registryValueTargetRemove": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key"],
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "registryValueSetSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hive"],
+      "anyOf": [
+        {
+          "required": ["values"]
+        },
+        {
+          "required": ["key", "type", "data"]
+        }
+      ],
+      "properties": {
+        "hive": {
+          "type": "string",
+          "enum": ["software", "system", "default", "components", "sam", "security"]
+        },
+        "key": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["dword", "qword", "string", "expand", "multi"]
+        },
+        "data": {},
+        "values": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/registryValueTargetSet"
+          }
+        }
+      }
+    },
+    "registryValueRemoveSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hive"],
+      "anyOf": [
+        {
+          "required": ["values"]
+        },
+        {
+          "required": ["key"]
+        },
+        {
+          "required": ["deleteKeys"]
+        }
+      ],
+      "properties": {
+        "hive": {
+          "type": "string",
+          "enum": ["software", "system", "default", "components", "sam", "security"]
+        },
+        "key": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/registryValueTargetRemove"
+          }
+        },
+        "deleteKeys": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    }
+  }
+}

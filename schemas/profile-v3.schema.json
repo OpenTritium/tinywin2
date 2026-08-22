@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TinyWin2 profile v3",
+  "description": "Schema for a reusable set of TinyWin2 plan selections.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "name", "selections"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Editor metadata pointing to the schema used by this file."
+    },
+    "schemaVersion": {
+      "const": 3
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "selections": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/selection"
+      }
+    }
+  },
+  "$defs": {
+    "planId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["planId"],
+      "properties": {
+        "planId": {
+          "$ref": "#/$defs/planId",
+          "description": "ID of a plan from the catalog."
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Parameter values keyed by the selected plan's parameter names."
+        }
+      }
+    }
+  }
+}

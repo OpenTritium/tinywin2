@@ -1,4 +1,5 @@
 {
+  "$schema": "../schemas/plan-v3.schema.json",
   "schemaVersion": 3,
   "id": "registry.server-manager-autostart",
   "version": "3.0.0",

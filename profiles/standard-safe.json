@@ -1,4 +1,5 @@
 {
+  "$schema": "../schemas/profile-v3.schema.json",
   "schemaVersion": 3,
   "name": "standard-safe",
   "description": "Validated desktop-safe baseline plan selection.",

@@ -185,6 +185,20 @@ public sealed class PlanCatalogTests : IDisposable {
     }
 
     [Test]
+    public async Task PlanHashIgnoresEditorSchemaMetadata() {
+        TestPlans.WritePlan(_directory, "alpha.one");
+        var path = Path.Combine(_directory, "alpha_one.json");
+        var withoutSchema = PlanCatalog.LoadDirectory(_directory).Get("alpha.one").Hash;
+
+        var plan = JsonNode.Parse(await File.ReadAllTextAsync(path))!.AsObject();
+        plan["$schema"] = "../schemas/plan-v3.schema.json";
+        await File.WriteAllTextAsync(path, plan.ToJsonString());
+
+        var withSchema = PlanCatalog.LoadDirectory(_directory).Get("alpha.one").Hash;
+        await Assert.That(withSchema).IsEqualTo(withoutSchema);
+    }
+
+    [Test]
     public async Task DuplicateIdsAreRejected() {
         TestPlans.WritePlan(_directory, "dup.thing", o => o["category"] = "A");
         File.Move(Path.Combine(_directory, "dup_thing.json"), Path.Combine(_directory, "dup_thing_copy.json"));

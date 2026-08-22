@@ -73,7 +73,7 @@ public sealed partial record PlanDefinition {
     public static PlanDefinition FromJson(JsonObject obj, string? sourceFile = null) {
         var errors = new List<string>();
         RejectUnknownProperties(obj, "plan", [
-            "schemaVersion", "id", "version", "title", "description", "category", "riskLevel",
+            "$schema", "schemaVersion", "id", "version", "title", "description", "category", "riskLevel",
             "requires", "conflicts", "parameters", "operation"
         ], errors);
         var schemaVersion = ReadInt(obj, "schemaVersion", errors);

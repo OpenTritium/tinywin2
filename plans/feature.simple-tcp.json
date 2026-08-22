@@ -1,4 +1,5 @@
 {
+  "$schema": "../schemas/plan-v3.schema.json",
   "schemaVersion": 3,
   "id": "feature.simple-tcp",
   "version": "3.0.0",

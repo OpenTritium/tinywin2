@@ -1,4 +1,5 @@
 {
+  "$schema": "../schemas/plan-v3.schema.json",
   "schemaVersion": 3,
   "id": "maintenance.component-cleanup",
   "version": "3.0.0",
