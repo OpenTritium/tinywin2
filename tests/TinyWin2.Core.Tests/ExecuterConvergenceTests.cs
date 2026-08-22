@@ -172,6 +172,26 @@ public sealed class RegistryValueExecuterTests : IDisposable {
         await Assert.That(_harness.Runner.Calls.Any(c => c.Args[0] == "add")).IsFalse();
     }
 
+    [Test]
+    public async Task MultiStringComparisonIgnoresRegQueryTerminator() {
+        await Assert.That(RegValues.Equals("REG_MULTI_SZ", "a\\0b\\0", "a\\0b")).IsTrue();
+    }
+
+    [Test]
+    public async Task RegistryQueryAccessFailureIsNotTreatedAsMissing() {
+        _harness.Runner.Handler = (_, args) => args[0] == "query"
+            ? FakeProcessRunner.Fail(5, "Access is denied.")
+            : FakeProcessRunner.Ok();
+        var ex = Assert.Throws<ProcessRunnerException>(() =>
+            _executer.InspectAsync(_harness.NewContext(),
+                ExecuterTestHarness.Spec("registry.value", Ensure.Absent,
+                    ("hive", "software"),
+                    ("key", "Policies\\Test"),
+                    ("name", "EnableSpyware")), CancellationToken.None)
+                .GetAwaiter().GetResult());
+        await Assert.That(ex.Message).Contains("code 5");
+    }
+
     public void Dispose() => _harness.Dispose();
 }
 
@@ -203,6 +223,10 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
             if (args.Count == 2 && args[1] == servicesRoot) {
                 var lines = services.Select(s => $"{servicesRoot}\\{s.Name}");
                 return FakeProcessRunner.Ok($"\r\n{servicesRoot}\r\n" + string.Join("\r\n", lines) + "\r\n");
+            }
+
+            if (args.Count >= 2 && args[1].ToString().Contains("\\TriggerInfo", StringComparison.OrdinalIgnoreCase)) {
+                return FakeProcessRunner.Fail(1);
             }
 
             // /v Start or /v DelayedAutoStart on a service key
@@ -279,12 +303,72 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
         var adds = _harness.Runner.Calls.Where(c => c.Args[0] == "add").Select(c => string.Join(" ", c.Args)).ToList();
         await Assert.That(adds.Any(a => a.Contains($"{key32} /v Start") && a.Contains("/d 3"))).IsTrue(); // manual
-        var trigger1 = $"{key32}\\TriggerInfo\\1";
-        await Assert.That(adds.Any(a => a.Contains(trigger1) && a.Contains("/v Type") && a.Contains("/d 4"))).IsTrue();
+        var trigger1 = $"{key32}\\TriggerInfo\\0";
+        await Assert.That(adds.Any(a => a.Contains(trigger1) && a.Contains("/v Type") && a.Contains("/d 3"))).IsTrue();
         await Assert.That(adds.Any(a => a.Contains(trigger1) && a.Contains("/v Action") && a.Contains("/d 1"))).IsTrue();
-        var trigger2 = $"{key32}\\TriggerInfo\\2";
-        await Assert.That(adds.Any(a => a.Contains(trigger2) && a.Contains("/v SubType")
-                                        && a.Contains("53F5630D-B6BF-11D0-94F2-00A0C91EFB8B"))).IsTrue();
+        var trigger2 = $"{key32}\\TriggerInfo\\1";
+        await Assert.That(adds.Any(a => a.Contains(trigger2) && a.Contains("/v GUID")
+                                        && a.Contains("0D63F553BFB6D01194F200A0C91EFB8B"))).IsTrue();
+    }
+
+    [Test]
+    public async Task TriggerStartDoesNotSkipWhenManualServiceLacksTriggers() {
+        SetupServices(("W32Time", "3", null));
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("registry.service", Ensure.Present,
+                ("services", new JsonArray("W32Time")), ("start", "trigger"),
+                ("triggers", new JsonArray("domain-join"))), CancellationToken.None);
+        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(_harness.Runner.Calls.Any(c => c.Args[0] == "add" && c.Args.Contains("GUID"))).IsTrue();
+    }
+
+    [Test]
+    public async Task TriggerStartSkipsWhenTriggerInfoMatches() {
+        var hiveKey = "HKLM\\TinyWin2_system";
+        var servicesRoot = $"{hiveKey}\\ControlSet001\\Services";
+        var serviceKey = $"{servicesRoot}\\W32Time";
+        var triggerRoot = $"{serviceKey}\\TriggerInfo";
+        var triggerKey = $"{triggerRoot}\\0";
+        _harness.Runner.Handler = (_, args) => {
+            if (args[0] is "load" or "add" or "delete") {
+                return FakeProcessRunner.Ok();
+            }
+
+            if (args[0] != "query") {
+                return FakeProcessRunner.Ok();
+            }
+
+            if (args.Count == 4 && args[1] == hiveKey + "\\Select") {
+                return FakeProcessRunner.Ok("\r\n    Current    REG_DWORD    0x1\r\n");
+            }
+
+            if (args.Count == 2 && args[1] == servicesRoot) {
+                return FakeProcessRunner.Ok($"\r\n{servicesRoot}\r\n{serviceKey}\r\n");
+            }
+
+            if (args.Count >= 2 && args[1] == triggerRoot) {
+                return FakeProcessRunner.Ok($"\r\n{triggerRoot}\r\n{triggerKey}\r\n");
+            }
+
+            if (args.Count == 2 && args[1] == triggerKey) {
+                return FakeProcessRunner.Ok($"\r\n{triggerKey}\r\n"
+                    + "    Action    REG_DWORD    0x1\r\n"
+                    + "    GUID    REG_BINARY    BA0AE21C5198214494301DDEB766E809\r\n"
+                    + "    Type    REG_DWORD    0x3\r\n");
+            }
+
+            if (args.Count > 3 && args[1] == serviceKey && args[3] == "Start") {
+                return FakeProcessRunner.Ok("\r\n    Start    REG_DWORD    0x3\r\n");
+            }
+
+            return FakeProcessRunner.Fail(1);
+        };
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("registry.service", Ensure.Present,
+                ("services", new JsonArray("W32Time")), ("start", "trigger"),
+                ("triggers", new JsonArray("domain-join"))), CancellationToken.None);
+        await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
+        await Assert.That(_harness.Runner.Calls.Any(c => c.Args[0] is "add" or "delete")).IsFalse();
     }
 
     [Test]
@@ -298,11 +382,11 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
         _harness.Runner.Handler = (file, args) => {
             if (file == "regini.exe") {
                 // Script must carry the NT-object path with the HKLM\ prefix stripped:
-                // \Registry\Machine\TinyWin2_...\Services\DPS [1 7 17]. A stray HKLM\
+                // \Registry\Machine\TinyWin2_...\Services\DPS [1 17]. A stray HKLM\
                 // makes real regini exit 1 ("Failed to load from file (87)").
                 var script = File.ReadAllText(args[0]);
                 var expected = "\\Registry\\Machine\\" + deniedKey["HKLM\\".Length..];
-                if (!script.Contains(expected) || script.Contains("HKLM\\") || !script.Contains("[1 7 17]")) {
+                if (!script.Contains(expected) || script.Contains("HKLM\\") || !script.Contains("[1 17]")) {
                     throw new InvalidOperationException("regini script malformed: " + script);
                 }
                 return FakeProcessRunner.Ok();
@@ -324,7 +408,10 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
             if (args.Count == 2 && args[1] == servicesRoot) {
                 return FakeProcessRunner.Ok($"\r\n{servicesRoot}\r\n{deniedKey}\r\n");
             }
-            return args[3] == "Start"
+            if (args.Count >= 2 && args[1].ToString().Contains("\\TriggerInfo", StringComparison.OrdinalIgnoreCase)) {
+                return FakeProcessRunner.Fail(1);
+            }
+            return args.Count > 3 && args[3] == "Start"
                 ? FakeProcessRunner.Ok("\r\n    Start    REG_DWORD    0x2\r\n")
                 : FakeProcessRunner.Fail(1);
         };

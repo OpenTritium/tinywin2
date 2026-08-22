@@ -9,8 +9,8 @@ namespace TinyWin2.Core.Executers.Registry;
 /// loaded-hive path denies even for owners).
 /// </summary>
 internal static class RegistryAcl {
-    /// <summary>regini script codes [1 7 17]: Administrators Full, SYSTEM Full (SYSTEM twice = Full + owner-style).</summary>
-    private const string GrantCodes = "[1 7 17]";
+    /// <summary>regini script codes: Administrators Full and SYSTEM Full.</summary>
+    private const string GrantCodes = "[1 17]";
 
     public static async Task RescueAsync(IProcessRunner runner, string hklmSubKeyPath, CancellationToken ct) {
         // regini speaks the NT object namespace: \Registry\Machine\<subkey> [aces].
@@ -26,10 +26,15 @@ internal static class RegistryAcl {
             await File.WriteAllTextAsync(scriptPath,
                 "\\Registry\\Machine\\" + subKey + " " + GrantCodes, ct);
             await runner.RunAsync("regini.exe", [scriptPath],
-                new ProcessRunOptions { Timeout = TimeSpan.FromSeconds(30) }, ct);
+                new() { Timeout = TimeSpan.FromSeconds(30) }, ct);
         }
         finally {
-            try { File.Delete(scriptPath); } catch { /* best effort */ }
+            try {
+                File.Delete(scriptPath);
+            }
+            catch {
+                /* best effort */
+            }
         }
     }
 }

@@ -63,13 +63,13 @@ public sealed class RegistryHiveCacheTests : IDisposable {
     }
 
     [Test]
-    public async Task UnloadGivesUpAfterFiveAttemptsAndWarns() {
+    public async Task UnloadGivesUpAfterFiveAttemptsAndFailsVisibly() {
         CreateHiveFile("software");
         var log = new BuildLog();
-        var warnings = new List<string>();
+        var errors = new List<string>();
         using var token = log.Attach(evt => {
-            if (evt.Level == BuildEventLevel.Warn) {
-                warnings.Add(evt.Message);
+            if (evt.Level == BuildEventLevel.Error) {
+                errors.Add(evt.Message);
             }
         });
         _ = await _cache.GetAsync("software", log, CancellationToken.None);
@@ -78,11 +78,18 @@ public sealed class RegistryHiveCacheTests : IDisposable {
             ? throw new ProcessRunnerException("reg.exe", FakeProcessRunner.Fail(++unloadAttempts))
             : FakeProcessRunner.Ok();
 
-        await _cache.UnloadAllAsync(log, CancellationToken.None);
+        var ex = Assert.Throws<AggregateException>(() =>
+            _cache.UnloadAllAsync(log, CancellationToken.None).GetAwaiter().GetResult());
 
         await Assert.That(unloadAttempts).IsEqualTo(5);
-        await Assert.That(warnings.Count).IsEqualTo(1);
-        await Assert.That(warnings[0]).Contains("could not unload offline hive 'software'");
+        await Assert.That(ex.Message).Contains("could not be unloaded");
+        await Assert.That(errors.Count).IsEqualTo(1);
+        await Assert.That(errors[0]).Contains("could not unload offline hive 'software'");
+
+        _runner.Handler = (_, args) => args.Count > 0 && args[0] == "unload"
+            ? FakeProcessRunner.Ok()
+            : FakeProcessRunner.Ok();
+        await _cache.UnloadAllAsync(log, CancellationToken.None);
     }
 
     [Test]

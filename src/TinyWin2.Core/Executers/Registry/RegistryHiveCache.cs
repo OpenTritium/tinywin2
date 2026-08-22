@@ -78,16 +78,29 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
         List<RegistryHive> toUnload;
         lock (_gate) {
             toUnload = [.. _loaded.Values.Where(h => h.IsLoaded)];
-            _loaded.Clear();
         }
 
+        List<Exception>? failures = null;
         foreach (var hive in toUnload) {
-            await UnloadWithRetryAsync(Runner, hive.HiveKey, hive.HiveId, log, ct);
-            hive.IsLoaded = false;
+            try {
+                await UnloadWithRetryAsync(Runner, hive.HiveKey, hive.HiveId, log, ct);
+                hive.IsLoaded = false;
+                lock (_gate) {
+                    _loaded.Remove(hive.HiveId);
+                }
+            }
+            catch (Exception ex) when (ex is ProcessRunnerException or ExecException) {
+                failures ??= [];
+                failures.Add(ex);
+            }
+        }
+
+        if (failures is not null) {
+            throw new AggregateException("one or more offline registry hives could not be unloaded", failures);
         }
     }
 
-    /// <summary>reg.exe unload lags behind handle release: linear-backoff retries, then warn and move on.</summary>
+    /// <summary>reg.exe unload lags behind handle release: linear-backoff retries, then fail visibly.</summary>
     internal static async Task UnloadWithRetryAsync(
         IProcessRunner runner,
         string hiveKey,
@@ -103,8 +116,8 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
                 await Task.Delay(200 * attempt, ct);
             }
             catch (ProcessRunnerException) {
-                log.Warn($"could not unload offline hive '{what}' after {attempt} attempts; continuing.");
-                return;
+                log.Error($"could not unload offline hive '{what}' after {attempt} attempts.");
+                throw;
             }
         }
     }
@@ -131,13 +144,17 @@ public static partial class RegValues {
     public static string RenderData(string type, System.Text.Json.Nodes.JsonNode? data) {
         switch (type) {
             case "REG_DWORD":
-                return $"0x{ToLong(data!):x8}";
+                var dword = ToUnsignedLong(data, type);
+                return dword <= uint.MaxValue
+                    ? $"0x{dword:x8}"
+                    : throw new ExecException("REG_DWORD data must be an unsigned 32-bit integer.");
             case "REG_QWORD":
-                return $"0x{ToLong(data!):x16}";
+                return $"0x{ToUnsignedLong(data, type):x16}";
             case "REG_MULTI_SZ":
                 var items = data as System.Text.Json.Nodes.JsonArray
                             ?? throw new ExecException("REG_MULTI_SZ data must be a JSON array of strings.");
-                return string.Join("\\0", items.Select(i => i!.GetValue<string>()));
+                return string.Join("\\0", items.Select(i => i?.GetValue<string>()
+                    ?? throw new ExecException("REG_MULTI_SZ data must contain only strings.")));
             case "REG_SZ":
             case "REG_EXPAND_SZ":
                 return data!.GetValue<string>();
@@ -146,19 +163,27 @@ public static partial class RegValues {
         }
     }
 
-    /// <summary>JsonValue stores int/long/double depending on origin; accept any integral form.</summary>
-    private static long ToLong(System.Text.Json.Nodes.JsonNode data) {
+    /// <summary>Accepts non-negative JSON integers for DWORD/QWORD values.</summary>
+    private static ulong ToUnsignedLong(System.Text.Json.Nodes.JsonNode? data, string type) {
         if (data is System.Text.Json.Nodes.JsonValue value) {
-            if (value.TryGetValue<int>(out var i)) {
-                return i;
+            if (value.TryGetValue<int>(out var integer) && integer >= 0) {
+                return (ulong)integer;
             }
 
-            if (value.TryGetValue<long>(out var l)) {
-                return l;
+            if (value.TryGetValue<uint>(out var unsignedInteger)) {
+                return unsignedInteger;
+            }
+
+            if (value.TryGetValue<ulong>(out var unsigned)) {
+                return unsigned;
+            }
+
+            if (value.TryGetValue<long>(out var signed) && signed >= 0) {
+                return (ulong)signed;
             }
         }
 
-        return data.GetValue<long>();
+        throw new ExecException($"{type} data must be a non-negative integer.");
     }
 
     /// <summary>Normalizes queried data to the rendered form for comparison.</summary>
@@ -170,12 +195,40 @@ public static partial class RegValues {
                    && queried == desired;
         }
 
+        if (type == "REG_MULTI_SZ") {
+            return string.Equals(NormalizeMultiString(queriedData), NormalizeMultiString(desiredData),
+                StringComparison.Ordinal);
+        }
+
         return string.Equals(queriedData.TrimEnd('\0'), desiredData, StringComparison.Ordinal);
     }
 
-    private static bool TryParseHex(string value, out long number) {
-        var trimmed = value.Trim().TrimStart("0x");
-        return long.TryParse(trimmed, System.Globalization.NumberStyles.HexNumber,
+    private static string NormalizeMultiString(string value) {
+        var normalized = value.TrimEnd('\0');
+        while (normalized.EndsWith(@"\0", StringComparison.Ordinal)) {
+            normalized = normalized[..^2];
+        }
+
+        return normalized;
+    }
+
+    internal static bool TryParseDword(string value, out int number) {
+        number = 0;
+        if (!TryParseHex(value, out var parsed) || parsed > int.MaxValue) {
+            return false;
+        }
+
+        number = (int)parsed;
+        return true;
+    }
+
+    private static bool TryParseHex(string value, out ulong number) {
+        var trimmed = value.Trim();
+        if (trimmed.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) {
+            trimmed = trimmed[2..];
+        }
+
+        return ulong.TryParse(trimmed, System.Globalization.NumberStyles.HexNumber,
             System.Globalization.CultureInfo.InvariantCulture, out number);
     }
 

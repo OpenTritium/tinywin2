@@ -50,10 +50,19 @@
             }
           }
         },
-        "triggers": [
-          "domain-join",
-          "ip-arrival"
-        ]
+        "triggers": {
+          "$map": {
+            "arg": "startMode",
+            "cases": {
+              "trigger": [
+                "domain-join",
+                "ip-arrival"
+              ],
+              "disabled": [],
+              "manual": []
+            }
+          }
+        }
       }
     }
   ]

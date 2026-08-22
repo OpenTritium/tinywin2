@@ -68,9 +68,9 @@ public sealed record RegistryValueTarget {
                 $"registry value '{key}\\{name}' requires a valid 'type' (dword|qword|string|expand|multi).");
         }
 
-        return !raw.ContainsKey("data")
+        return !raw.TryGetPropertyValue("data", out var data) || data is null
             ? throw new ExecException($"registry value '{key}\\{name}' requires 'data'.")
-            : new() { Key = key, Name = name, Type = type, Data = raw["data"]!.DeepClone() };
+            : new() { Key = key, Name = name, Type = type, Data = data.DeepClone() };
     }
 }
 
@@ -97,6 +97,7 @@ public sealed partial record RegistryServiceOptions {
     public required IReadOnlyList<string> Services { get; init; }
     public IReadOnlyList<string> ServicePatterns { get; private init; } = [];
     public required string Start { get; init; }
+
     /// <summary>Parsed trigger descriptors: preset name or 'device:{interface-class-guid}'.</summary>
     public IReadOnlyList<string> Triggers { get; private init; } = [];
 
@@ -109,15 +110,17 @@ public sealed partial record RegistryServiceOptions {
             ["trigger"] = 3, // manual + TriggerInfo: the SCM pulls the service when the event fires
         };
 
+    internal sealed record ServiceTrigger(int Type, Guid SubType);
+
     /// <summary>
     /// Named SCM trigger events (offline TriggerInfo writes; Action is always SERVICE_START).
-    /// Only subtype-free, documented event types are preset - device classes take a raw GUID.
+    /// Presets carry the documented subtype GUID; device classes take a raw interface-class GUID.
     /// </summary>
-    private static readonly IReadOnlyDictionary<string, (int Type, string? SubType)> TriggerKinds =
-        new Dictionary<string, (int, string?)>(StringComparer.OrdinalIgnoreCase) {
-            ["domain-join"] = (4, null),      // SERVICE_TRIGGER_TYPE_DOMAIN_JOIN
-            ["ip-arrival"] = (2, null),       // SERVICE_TRIGGER_TYPE_IP_ADDRESS_ARRIVAL
-            ["gpo-change"] = (7, null),       // SERVICE_TRIGGER_TYPE_GROUP_POLICY
+    private static readonly IReadOnlyDictionary<string, (int Type, Guid SubType)> TriggerKinds =
+        new Dictionary<string, (int, Guid)>(StringComparer.OrdinalIgnoreCase) {
+            ["domain-join"] = (3, Guid.Parse("1ce20aba-9851-4421-9430-1ddeb766e809")),
+            ["ip-arrival"] = (2, Guid.Parse("4f27f2de-14e2-430b-a549-7cd48cbc8245")),
+            ["gpo-change"] = (5, Guid.Parse("659fcae6-5bdb-4da9-b1ff-ca2a178d46e0")),
         };
 
     public bool IsDelayed => string.Equals(Start, "delayedAuto", StringComparison.OrdinalIgnoreCase);
@@ -141,10 +144,16 @@ public sealed partial record RegistryServiceOptions {
         if (!StartValues.ContainsKey(start)) {
             throw new ExecException($"{context} requires 'start' (auto|delayedAuto|manual|disabled|trigger).");
         }
+
         var triggers = Desired.OptionalStringArray(desired, "triggers") ?? [];
         if (triggers.Count > 0 && !string.Equals(start, "trigger", StringComparison.OrdinalIgnoreCase)) {
             throw new ExecException($"{context}: 'triggers' requires 'start': 'trigger' (manual + TriggerInfo).");
         }
+
+        if (string.Equals(start, "trigger", StringComparison.OrdinalIgnoreCase) && triggers.Count == 0) {
+            throw new ExecException($"{context}: 'start': 'trigger' requires at least one trigger.");
+        }
+
         foreach (var trigger in triggers) {
             if (!TriggerKinds.ContainsKey(trigger)
                 && !(trigger.StartsWith("device:", StringComparison.OrdinalIgnoreCase)
@@ -153,18 +162,24 @@ public sealed partial record RegistryServiceOptions {
                     $"{context}: unknown trigger '{trigger}' (expected domain-join|ip-arrival|gpo-change|device:{{guid}}).");
             }
         }
+
         return new() { Services = services, ServicePatterns = patterns, Start = start, Triggers = triggers };
     }
 
+    internal IReadOnlyList<ServiceTrigger> ResolveTriggers() =>
+        [.. Triggers.Select(ResolveTrigger).OfType<ServiceTrigger>()];
+
     /// <summary>Resolves a trigger descriptor to its SCM (Type, SubType) pair; null when unknown.</summary>
-    internal static (int Type, string? SubType)? ResolveTrigger(string trigger) {
+    internal static ServiceTrigger? ResolveTrigger(string trigger) {
         if (TriggerKinds.TryGetValue(trigger, out var preset)) {
-            return preset;
+            return new ServiceTrigger(preset.Type, preset.SubType);
         }
+
         if (trigger.StartsWith("device:", StringComparison.OrdinalIgnoreCase)
             && Guid.TryParse(trigger["device:".Length..], out var guid)) {
-            return (1, $"{{{guid.ToString().ToUpperInvariant()}}}");
+            return new ServiceTrigger(1, guid);
         }
+
         return null;
     }
 

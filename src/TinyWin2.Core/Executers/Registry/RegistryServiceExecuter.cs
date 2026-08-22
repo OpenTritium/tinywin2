@@ -16,7 +16,7 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
     /// apply never re-parses options or re-resolves the control set.
     /// </summary>
     private sealed record ServiceChange(ChangeItem Change, string ServiceKey, int Start, int Delayed,
-        IReadOnlyList<string>? Triggers = null);
+        IReadOnlyList<RegistryServiceOptions.ServiceTrigger> Triggers, bool TriggerInfoChanged = false);
 
     public async Task<ResourceDiff> InspectAsync(ExecContext context, ExecSpec spec, CancellationToken ct) {
         var changes = await InspectCoreAsync(context, spec, ct);
@@ -38,9 +38,11 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
 
             await AddDwordWithAclRescueAsync(entry.ServiceKey, "Start", entry.Start, ct);
             await AddDwordWithAclRescueAsync(entry.ServiceKey, "DelayedAutoStart", entry.Delayed, ct);
-            if (entry.Triggers is { Count: > 0 } triggers) {
-                await WriteTriggerInfoAsync(entry.ServiceKey, triggers, ct);
-                context.Log.Info($"service {entry.Change.Target}: start=manual + {triggers.Count} trigger(s)");
+            if (entry.TriggerInfoChanged) {
+                await WriteTriggerInfoAsync(entry.ServiceKey, entry.Triggers, ct);
+                if (entry.Triggers.Count > 0) {
+                    context.Log.Info($"service {entry.Change.Target}: start=manual + {entry.Triggers.Count} trigger(s)");
+                }
             }
             context.Log.Info($"service {entry.Change.Target} → {entry.Change.After}");
             applied.Add(entry.Change);
@@ -58,6 +60,9 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         // Enumerate service key names once; patterns match against them (v1 wildcard semantics).
         var enumerated = await runner.RunAsync("reg.exe", ["query", servicesRoot],
             new() { IgnoreExitCode = true }, ct);
+        if (!enumerated.Success && enumerated.ExitCode != 1) {
+            throw new ProcessRunnerException("reg.exe", enumerated);
+        }
         var allNames = enumerated.Output.Split('\n')
             .Select(l => l.TrimEnd('\r').Trim())
             .Where(l => l.StartsWith(servicesRoot + "\\", StringComparison.OrdinalIgnoreCase))
@@ -82,49 +87,138 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             var existingStart = await ReadDwordAsync(serviceKey, "Start", ct);
             if (existingStart is null) {
                 context.Log.Warn($"service '{service}' was not present in {controlSet}; skipping.");
-                changes.Add(new(new(ChangeKind.Skipped, service, "service not present"), serviceKey, 0, 0, options.Triggers));
+                changes.Add(new(new(ChangeKind.Skipped, service, "service not present"), serviceKey, 0, 0, []));
                 continue;
             }
 
             var existingDelayed = await ReadDwordAsync(serviceKey, "DelayedAutoStart", ct) ?? 0;
-            if (existingStart != options.StartDword || existingDelayed != desiredDelayed) {
+            var desiredTriggers = string.Equals(options.Start, "trigger", StringComparison.OrdinalIgnoreCase)
+                ? options.ResolveTriggers()
+                : [];
+            var triggerInfoChanged = !await HasDesiredTriggerInfoAsync(serviceKey, desiredTriggers, ct);
+            if (existingStart != options.StartDword || existingDelayed != desiredDelayed || triggerInfoChanged) {
                 changes.Add(new(
                     new(ChangeKind.Modified, service,
                         Before: Describe(existingStart.Value, existingDelayed),
                         After: Describe(options.StartDword, desiredDelayed)),
-                    serviceKey, options.StartDword, desiredDelayed, options.Triggers));
+                    serviceKey, options.StartDword, desiredDelayed, desiredTriggers, triggerInfoChanged));
             }
         }
 
         return changes;
     }
 
-    /// <summary>Offline TriggerInfo: subkey per trigger with Type/Action DWORDs (+ SubType GUID for device classes).</summary>
-    private async Task WriteTriggerInfoAsync(string serviceKey, IReadOnlyList<string> triggers, CancellationToken ct) {
+    /// <summary>Replaces offline TriggerInfo using the same 0-based layout emitted by the SCM.</summary>
+    private async Task WriteTriggerInfoAsync(
+        string serviceKey, IReadOnlyList<RegistryServiceOptions.ServiceTrigger> triggers, CancellationToken ct) {
+        var triggerRoot = $"{serviceKey}\\TriggerInfo";
+        await DeleteKeyWithAclRescueAsync(serviceKey, triggerRoot, ct);
+
         for (var i = 0; i < triggers.Count; i++) {
-            if (RegistryServiceOptions.ResolveTrigger(triggers[i]) is not { } kind) {
-                continue;
-            }
-            var key = $"{serviceKey}\\TriggerInfo\\{i + 1}";
-            await runner.RunAsync("reg.exe",
-                ["add", key, "/v", "Type", "/t", "REG_DWORD", "/d", kind.Type.ToString(), "/f"], cancellationToken: ct);
-            await runner.RunAsync("reg.exe",
-                ["add", key, "/v", "Action", "/t", "REG_DWORD", "/d", "1", "/f"], cancellationToken: ct);
-            if (kind.SubType is { } subType) {
-                await runner.RunAsync("reg.exe",
-                    ["add", key, "/v", "SubType", "/t", "REG_SZ", "/d", subType, "/f"], cancellationToken: ct);
-            }
+            var kind = triggers[i];
+            var key = $"{triggerRoot}\\{i}";
+            await AddDwordWithAclRescueAsync(key, "Type", kind.Type, ct, serviceKey);
+            await AddDwordWithAclRescueAsync(key, "Action", 1, ct, serviceKey);
+            await AddBinaryWithAclRescueAsync(key, "GUID", Convert.ToHexString(kind.SubType.ToByteArray()), ct, serviceKey);
         }
     }
 
-    private async Task AddDwordWithAclRescueAsync(string serviceKey, string name, int value, CancellationToken ct) {
+    private async Task<bool> HasDesiredTriggerInfoAsync(
+        string serviceKey, IReadOnlyList<RegistryServiceOptions.ServiceTrigger> triggers, CancellationToken ct) {
+        var triggerRoot = $"{serviceKey}\\TriggerInfo";
+        var root = await runner.RunAsync("reg.exe", ["query", triggerRoot, "/s"],
+            new() { IgnoreExitCode = true }, ct);
+        if (!root.Success) {
+            if (root.ExitCode == 1) {
+                return triggers.Count == 0;
+            }
+
+            throw new ProcessRunnerException("reg.exe", root);
+        }
+
+        var actualKeys = root.Output.Split('\n')
+            .Select(line => line.TrimEnd('\r').Trim())
+            .Where(line => line.StartsWith(triggerRoot + "\\", StringComparison.OrdinalIgnoreCase))
+            .Select(line => line[(triggerRoot.Length + 1)..])
+            .Where(name => !name.Contains('\\'))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var expectedKeys = Enumerable.Range(0, triggers.Count)
+            .Select(index => index.ToString())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!actualKeys.SetEquals(expectedKeys)) {
+            return false;
+        }
+
+        for (var i = 0; i < triggers.Count; i++) {
+            var result = await runner.RunAsync("reg.exe", ["query", $"{triggerRoot}\\{i}"],
+                new() { IgnoreExitCode = true }, ct);
+            if (!result.Success) {
+                if (result.ExitCode != 1) {
+                    throw new ProcessRunnerException("reg.exe", result);
+                }
+
+                return false;
+            }
+
+            var type = RegValues.ParseQueryValue(result.Output, "Type");
+            var action = RegValues.ParseQueryValue(result.Output, "Action");
+            var guid = RegValues.ParseQueryValue(result.Output, "GUID");
+            var expected = triggers[i];
+            if (type is null || action is null || guid is null
+                || !type.Type.Equals("REG_DWORD", StringComparison.OrdinalIgnoreCase)
+                || !action.Type.Equals("REG_DWORD", StringComparison.OrdinalIgnoreCase)
+                || !guid.Type.Equals("REG_BINARY", StringComparison.OrdinalIgnoreCase)
+                || !RegValues.Equals("REG_DWORD", type.Data, $"0x{expected.Type:x}")
+                || !RegValues.Equals("REG_DWORD", action.Data, "0x1")
+                || !BinaryEqualsGuid(guid.Data, expected.SubType)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private async Task DeleteKeyWithAclRescueAsync(string serviceKey, string key, CancellationToken ct) {
+        var result = await runner.RunAsync("reg.exe", ["delete", key, "/f"],
+            new() { IgnoreExitCode = true }, ct);
+        if (result.Success || result.ExitCode == 1) {
+            return;
+        }
+
+        await RegistryAcl.RescueAsync(runner, serviceKey, ct);
+        result = await runner.RunAsync("reg.exe", ["delete", key, "/f"],
+            new() { IgnoreExitCode = true }, ct);
+        if (!result.Success && result.ExitCode != 1) {
+            throw new ProcessRunnerException("reg.exe", result);
+        }
+    }
+
+    private async Task AddBinaryWithAclRescueAsync(
+        string key, string name, string value, CancellationToken ct, string aclKey) {
+        try {
+            await runner.RunAsync("reg.exe",
+                ["add", key, "/v", name, "/t", "REG_BINARY", "/d", value, "/f"], cancellationToken: ct);
+        }
+        catch (ProcessRunnerException) {
+            await RegistryAcl.RescueAsync(runner, aclKey, ct);
+            await runner.RunAsync("reg.exe",
+                ["add", key, "/v", name, "/t", "REG_BINARY", "/d", value, "/f"], cancellationToken: ct);
+        }
+    }
+
+    private static bool BinaryEqualsGuid(string data, Guid expected) =>
+        string.Equals(data.Replace(" ", "", StringComparison.Ordinal),
+            Convert.ToHexString(expected.ToByteArray()), StringComparison.OrdinalIgnoreCase);
+
+    private async Task AddDwordWithAclRescueAsync(
+        string serviceKey, string name, int value, CancellationToken ct, string? aclKey = null) {
         try {
             await RegAddDwordAsync(serviceKey, name, value, ct);
         }
         catch (ProcessRunnerException) {
             // TrustedInstaller-owned service keys (e.g. DPS) deny Administrators write:
             // claim ownership + FullControl for the group, then retry once.
-            await RegistryAcl.RescueAsync(runner, serviceKey, ct);
+            await RegistryAcl.RescueAsync(runner, aclKey ?? serviceKey, ct);
             await RegAddDwordAsync(serviceKey, name, value, ct);
         }
     }
@@ -148,7 +242,11 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
     private async Task<int?> ReadDwordAsync(string keyPath, string valueName, CancellationToken ct) {
         var result = await runner.RunAsync("reg.exe", ["query", keyPath, "/v", valueName],
             new() { IgnoreExitCode = true }, ct);
-        if (result.ExitCode != 0) {
+        if (!result.Success && result.ExitCode != 1) {
+            throw new ProcessRunnerException("reg.exe", result);
+        }
+
+        if (!result.Success) {
             return null;
         }
 
@@ -157,7 +255,7 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             return null;
         }
 
-        return Convert.ToInt32(value.Data.Trim(), 16);
+        return RegValues.TryParseDword(value.Data, out var parsed) ? parsed : null;
     }
 
     private static string Describe(int start, int delayed) => start switch {

@@ -77,7 +77,7 @@ public sealed class PreviewRunner(
                             }
                         }
                         finally {
-                            await hiveCache.UnloadAllAsync(log, ct);
+                            await hiveCache.UnloadAllAsync(log, CancellationToken.None);
                         }
                         previews.Add(new PlanPreview(
                             resolved.Definition.Id,

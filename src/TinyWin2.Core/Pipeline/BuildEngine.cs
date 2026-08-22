@@ -465,7 +465,7 @@ public sealed class BuildEngine(
         }
         finally {
             log.PlanId = null;
-            await hiveCache.UnloadAllAsync(log, ct);
+            await hiveCache.UnloadAllAsync(log, CancellationToken.None);
         }
     }
 

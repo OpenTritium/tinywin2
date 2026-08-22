@@ -28,7 +28,9 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
         var hive = await context.Hives.GetAsync(options.Hive, context.Log, ct);
         foreach (var change in changes) {
             if (change.DeleteKey is { } deleteKey) {
-                await runner.RunAsync("reg.exe", ["delete", hive.KeyUnderHive(deleteKey), "/f"], cancellationToken: ct);
+                var result = await runner.RunAsync("reg.exe", ["delete", hive.KeyUnderHive(deleteKey), "/f"],
+                    new() { IgnoreExitCode = true }, ct);
+                ThrowIfUnexpectedFailure(result);
                 context.Log.Info($"deleted registry key {hive.HiveId}\\{deleteKey}");
                 continue;
             }
@@ -38,7 +40,9 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
                 var args = string.IsNullOrEmpty(target.Name)
                     ? (string[])["delete", hive.KeyUnderHive(target.Key), "/ve", "/f"]
                     : ["delete", hive.KeyUnderHive(target.Key), "/v", target.Name, "/f"];
-                await runner.RunAsync("reg.exe", args, new() { IgnoreExitCode = true }, ct);
+                var result = await runner.RunAsync("reg.exe", args,
+                    new() { IgnoreExitCode = true }, ct);
+                ThrowIfUnexpectedFailure(result);
                 context.Log.Info($"deleted registry value {change.Change.Target}");
             }
             else {
@@ -71,6 +75,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
             var result = await runner.RunAsync("reg.exe",
                 string.IsNullOrEmpty(value.Name) ? ["query", keyPath, "/ve"] : ["query", keyPath, "/v", value.Name],
                 new() { IgnoreExitCode = true }, ct);
+            ThrowIfUnexpectedFailure(result);
             var existing = result.Success
                 ? RegValues.ParseQueryValue(result.Output, string.IsNullOrEmpty(value.Name) ? "(Default)" : value.Name)
                 : null;
@@ -105,6 +110,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
             foreach (var key in options.DeleteKeys) {
                 var result = await runner.RunAsync("reg.exe", ["query", hive.KeyUnderHive(key)],
                     new() { IgnoreExitCode = true }, ct);
+                ThrowIfUnexpectedFailure(result);
                 if (result.Success) {
                     changes.Add(new(
                         new(ChangeKind.Removed, $"{hive.HiveId}\\{key.Trim('\\')} (key)"),
@@ -114,5 +120,11 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
         }
 
         return changes;
+    }
+
+    private static void ThrowIfUnexpectedFailure(ProcessRunResult result) {
+        if (!result.Success && result.ExitCode != 1) {
+            throw new ProcessRunnerException("reg.exe", result);
+        }
     }
 }

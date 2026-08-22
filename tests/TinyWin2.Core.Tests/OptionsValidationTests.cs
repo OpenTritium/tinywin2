@@ -24,6 +24,16 @@ public sealed class OptionsValidationTests {
     }
 
     [Test]
+    public async Task TriggerKindsUseWindowsScmValuesAndGuidBytes() {
+        var domain = RegistryServiceOptions.ResolveTrigger("domain-join")!;
+        var device = RegistryServiceOptions.ResolveTrigger("device:{53f5630d-b6bf-11d0-94f2-00a0c91efb8b}")!;
+        await Assert.That(domain.Type).IsEqualTo(3);
+        await Assert.That(Convert.ToHexString(domain.SubType.ToByteArray())).IsEqualTo(
+            "BA0AE21C5198214494301DDEB766E809");
+        await Assert.That(device.Type).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task TriggersRequireTriggerStart() {
         var ex = Assert.Throws<ExecException>(() => RegistryServiceOptions.FromDesired(new JsonObject {
             ["services"] = new JsonArray("W32Time"),
