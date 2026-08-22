@@ -133,7 +133,7 @@ internal static class Cli {
         return options;
     }
 
-    public static WimCompression ParseWimCompression(string value) =>
+    private static WimCompression ParseWimCompression(string value) =>
         value.ToLowerInvariant() switch {
             "none" => WimCompression.None,
             "fast" => WimCompression.Fast,

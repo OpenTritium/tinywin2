@@ -342,8 +342,8 @@ internal static class CommandLine {
 
     private static SelectionRequest ReadSelection(ParseResult result, SelectionSymbols symbols) => new(
         result.GetValue(symbols.PlansDirectory),
-        result.GetValue(symbols.Profiles) ?? [],
-        result.GetValue(symbols.Plans) ?? [],
+        result.GetValue(symbols.ProfilesOption) ?? [],
+        result.GetValue(symbols.PlansOption) ?? [],
         result.GetValue(symbols.Sets) ?? []);
 
     private static Option<string> RequiredText(string name, string description) =>
@@ -376,8 +376,8 @@ internal static class CommandLine {
 
     private sealed record SelectionSymbols(
         Option<string?> PlansDirectory,
-        Option<string[]> Profiles,
-        Option<string[]> Plans,
+        Option<string[]> ProfilesOption,
+        Option<string[]> PlansOption,
         Option<string[]> Sets);
 
     private sealed record ExportSymbols(
