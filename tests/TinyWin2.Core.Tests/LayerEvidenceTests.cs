@@ -84,6 +84,20 @@ public sealed class LayerEvidenceTests : IDisposable {
 
         await Assert.That(loaded.ContainsKey("readable.txt")).IsTrue();
         await Assert.That(loaded.ContainsKey("inaccessible")).IsFalse();
+        await Assert.That(LayerEvidence.LoadManifestSnapshot(manifest).Complete).IsFalse();
+    }
+
+    [Test]
+    public async Task LoadManifestRejectsMalformedRowsAndDuplicatePaths() {
+        var manifest = Path.Combine(_root, "bad.tsv");
+        await File.WriteAllTextAsync(manifest, "# tinywin2-files-v1 complete\nnot-a-row\n");
+        var malformed = Assert.Throws<InvalidDataException>(() => LayerEvidence.LoadManifest(manifest));
+        await Assert.That(malformed.Message).Contains("malformed");
+
+        await File.WriteAllTextAsync(manifest,
+            "# tinywin2-files-v1 complete\n1\t2\ta.txt\n2\t3\ta.txt\n");
+        var duplicate = Assert.Throws<InvalidDataException>(() => LayerEvidence.LoadManifest(manifest));
+        await Assert.That(duplicate.Message).Contains("duplicate");
     }
 
     public void Dispose() {

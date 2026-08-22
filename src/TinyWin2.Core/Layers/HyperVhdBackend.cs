@@ -8,9 +8,13 @@ namespace TinyWin2.Core.Layers;
 /// chains — the preferred backend wherever the Hyper-V module is available.
 /// </summary>
 public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
+    private readonly Lock _attachmentGate = new();
+    private readonly HashSet<string> _ownedAttachments = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>This is the same machinery Hyper-V uses for its own checkpoint chains:
     /// arbitrarily deep differencing chains are native, so merging is never forced mid-build.</summary>
     public int MaxSafeChainDepth => int.MaxValue;
+
     public async Task CreateBaseAsync(string vhdxPath, long maximumMb, string volumeLabel, CancellationToken ct) {
         Directory.CreateDirectory(Path.GetDirectoryName(vhdxPath)!);
         var ps = $"""
@@ -40,25 +44,86 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
             throw new FileNotFoundException($"layer VHDX not found: {vhdxPath}");
         }
 
-        // Built via string.Join: raw interpolated strings and script blocks do not mix well.
+        // Reuse an existing attachment. A build workspace can be inspected or used by
+        // another process while the engine is paused; detaching it here would be invasive.
         var ps = string.Join('\n',
             "$ErrorActionPreference = 'Stop'",
-            $"if ((Get-VHD -Path {PsQuote(vhdxPath)}).Attached) {{ Dismount-VHD -Path {PsQuote(vhdxPath)} }}",
-            $"(Mount-VHD -Path {PsQuote(vhdxPath)} -PassThru | Get-Partition | Get-Volume | Where-Object DriveLetter | Select-Object -First 1).DriveLetter");
+            $"$image = Get-DiskImage -ImagePath {PsQuote(vhdxPath)}",
+            "$owned = $false",
+            $"if (-not $image.Attached) {{ Mount-VHD -Path {PsQuote(vhdxPath)} | Out-Null; $owned = $true; $image = Get-DiskImage -ImagePath {PsQuote(vhdxPath)} }}",
+            "$letter = (Get-Disk -Number $image.Number | Get-Partition | Get-Volume | Where-Object DriveLetter | Select-Object -First 1).DriveLetter",
+            "if ($owned) { \"tinywin2-owned|$letter\" } else { \"tinywin2-existing|$letter\" }");
         var output = await RunPsAsync(ps, ct);
-        var letter = output.Trim().LastOrDefault(char.IsLetter);
+        var marker = output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            .LastOrDefault(line => line.StartsWith("tinywin2-", StringComparison.OrdinalIgnoreCase));
+        var owned = marker?.StartsWith("tinywin2-owned|", StringComparison.OrdinalIgnoreCase) == true;
+        var markerSeparator = marker?.IndexOf('|') ?? -1;
+        var letterText = markerSeparator >= 0 ? marker![(markerSeparator + 1)..] : output.Trim();
+        var letter = letterText.Trim().LastOrDefault(char.IsLetter);
         if (letter == '\0') {
+            if (!owned) {
+                throw new IOException($"mounted '{vhdxPath}' but could not resolve its drive letter.");
+            }
+
+            try {
+                await RunPsAsync(
+                    $"$ErrorActionPreference = 'SilentlyContinue'\nDismount-VHD -Path {PsQuote(vhdxPath)}",
+                    CancellationToken.None);
+            }
+            catch {
+                /* best effort recovery after an owned attach with no volume */
+            }
+
             throw new IOException($"mounted '{vhdxPath}' but could not resolve its drive letter.");
+        }
+
+        if (!owned) {
+            return letter;
+        }
+
+        lock (_attachmentGate) {
+            _ownedAttachments.Add(Path.GetFullPath(vhdxPath));
         }
 
         return letter;
     }
 
-    public Task DetachAsync(string vhdxPath, CancellationToken ct) =>
-        RunPsAsync($"$ErrorActionPreference = 'Stop'\nDismount-VHD -Path {PsQuote(vhdxPath)}", ct);
+    public Task DetachAsync(string vhdxPath, CancellationToken ct) {
+        var path = Path.GetFullPath(vhdxPath);
+        lock (_attachmentGate) {
+            if (!_ownedAttachments.Contains(path)) {
+                return Task.CompletedTask;
+            }
+        }
 
-    public Task MergeAsync(string vhdxPath, int depth, CancellationToken ct) =>
-        RunPsAsync($"$ErrorActionPreference = 'Stop'\nMerge-VHD -Path {PsQuote(vhdxPath)} -Depth {depth}", ct);
+        return DetachOwnedAsync(path, ct);
+    }
+
+    private async Task DetachOwnedAsync(string path, CancellationToken ct) {
+        await RunPsAsync($"$ErrorActionPreference = 'Stop'\nDismount-VHD -Path {PsQuote(path)}", ct);
+        lock (_attachmentGate) {
+            _ownedAttachments.Remove(path);
+        }
+    }
+
+    public Task MergeAsync(string vhdxPath, int depth, CancellationToken ct) {
+        if (depth <= 0) {
+            throw new ArgumentOutOfRangeException(nameof(depth), depth, "merge depth must be positive");
+        }
+
+        // Merge-VHD has no -Depth parameter. Merge the leaf into each parent explicitly,
+        // from the leaf towards the base, which is the supported Hyper-V operation.
+        var ps = string.Join('\n',
+            "$ErrorActionPreference = 'Stop'",
+            $"$current = {PsQuote(vhdxPath)}",
+            $"for ($i = 0; $i -lt {depth}; $i++) {{",
+            "    $parent = (Get-VHD -Path $current -ErrorAction Stop).ParentPath",
+            "    if ([string]::IsNullOrWhiteSpace($parent)) { throw \"VHD chain ended before the requested merge depth.\" }",
+            "    Merge-VHD -Path $current -DestinationPath $parent -ErrorAction Stop",
+            "    $current = $parent",
+            "}");
+        return RunPsAsync(ps, ct);
+    }
 
     private static readonly Lock ProbeGate = new();
     private static bool? _available;

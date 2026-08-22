@@ -176,6 +176,22 @@ public sealed class VhdLayerStackTests : IDisposable {
     }
 
     [Test]
+    public async Task TruncateDoesNotReuseDeletedLayerIndexes() {
+        var stack = await CreateWithBaseAsync();
+        foreach (var title in new[] { "A", "B" }) {
+            var session = await stack.BeginLayerAsync(title, title, null, CancellationToken.None);
+            await stack.CommitLayerAsync(session, [], CancellationToken.None);
+        }
+
+        await stack.TruncateToAsync(1, CancellationToken.None);
+        var next = await stack.BeginLayerAsync("C", "C", null, CancellationToken.None);
+
+        await Assert.That(next.Record.Index).IsEqualTo(3);
+        await Assert.That(next.VhdxPath).EndsWith("L003.vhdx");
+        await stack.DiscardLayerAsync(next, "test cleanup", CancellationToken.None);
+    }
+
+    [Test]
     public async Task AutoConsolidationGuardTracksLiveChainDepth() {
         var stack = await CreateWithBaseAsync();
         for (var i = 0; i < 31; i++) { // crosses the chain-depth threshold of 30

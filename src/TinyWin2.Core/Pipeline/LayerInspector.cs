@@ -64,8 +64,14 @@ public sealed partial class LayerInspector(
         }
 
         log.Info($"diffing layer {fromIndex:000} → {toIndex:000} via evidence snapshots");
-        var before = LayerEvidence.LoadManifest(fromManifest);
-        var after = LayerEvidence.LoadManifest(toManifest);
+        var beforeSnapshot = LayerEvidence.LoadManifestSnapshot(fromManifest);
+        var afterSnapshot = LayerEvidence.LoadManifestSnapshot(toManifest);
+        if (!beforeSnapshot.Complete || !afterSnapshot.Complete) {
+            throw new InvalidDataException(
+                $"layer evidence is incomplete for {fromIndex:000}/{toIndex:000}; rebuild the affected layers before diffing.");
+        }
+        var before = beforeSnapshot.Entries;
+        var after = afterSnapshot.Entries;
         var files = new List<FileDiffEntry>();
         foreach (var (path, oldEntry) in before.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)) {
             if (!after.TryGetValue(path, out var newEntry)) {
@@ -85,20 +91,22 @@ public sealed partial class LayerInspector(
         var registry = new List<RegistryDiffEntry>();
         var fromRegistryPath = LayerEvidence.RegistryPathFor(snapshotsRoot, fromIndex);
         var toRegistryPath = LayerEvidence.RegistryPathFor(snapshotsRoot, toIndex);
-        if (File.Exists(fromRegistryPath) && File.Exists(toRegistryPath)) {
-            var fromHives = LayerEvidence.SplitByHive(File.ReadAllText(fromRegistryPath));
-            var toHives = LayerEvidence.SplitByHive(File.ReadAllText(toRegistryPath));
-            foreach (var hiveId in fromHives.Keys.Union(toHives.Keys)) {
-                fromHives.TryGetValue(hiveId, out var beforeText);
-                toHives.TryGetValue(hiveId, out var afterText);
-                if (beforeText is null || afterText is null) {
-                    registry.Add(new RegistryDiffEntry(hiveId, "(hive)", "(whole file)",
-                        beforeText is null ? "added" : "removed", null, null));
-                    continue;
-                }
-
-                registry.AddRange(RegTextDiff(hiveId, beforeText, afterText));
+        if (!File.Exists(fromRegistryPath) || !File.Exists(toRegistryPath)) {
+            throw new FileNotFoundException(
+                $"registry evidence snapshots missing for {fromIndex:000}/{toIndex:000} under '{snapshotsRoot}'.");
+        }
+        var fromHives = LayerEvidence.SplitByHive(File.ReadAllText(fromRegistryPath));
+        var toHives = LayerEvidence.SplitByHive(File.ReadAllText(toRegistryPath));
+        foreach (var hiveId in fromHives.Keys.Union(toHives.Keys)) {
+            fromHives.TryGetValue(hiveId, out var beforeText);
+            toHives.TryGetValue(hiveId, out var afterText);
+            if (beforeText is null || afterText is null) {
+                registry.Add(new RegistryDiffEntry(hiveId, "(hive)", "(whole file)",
+                    beforeText is null ? "added" : "removed", null, null));
+                continue;
             }
+
+            registry.AddRange(RegTextDiff(hiveId, beforeText, afterText));
         }
 
         return Task.FromResult(new LayerDiffReport(fromIndex, toIndex, files, registry));
@@ -196,8 +204,9 @@ public sealed partial class LayerInspector(
         var stack = VhdLayerStack.Load(workDirectory, backend, log);
         var vhdxPath = stack.VhdxForLayer(layerIndex);
         var letter = await backend.AttachAsync(vhdxPath, ct);
+        var operationSucceeded = false;
         try {
-            var source = $"{letter}:\\{imageRelativePath.Replace('/', '\\')}";
+            var source = ResolveImagePath($"{letter}:\\", imageRelativePath);
             if (!File.Exists(source)) {
                 throw new FileNotFoundException($"'{imageRelativePath}' not found in layer {layerIndex:000}.");
             }
@@ -205,9 +214,15 @@ public sealed partial class LayerInspector(
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(destinationPath))!);
             File.Copy(source, destinationPath, overwrite: true);
             log.Info($"extracted '{imageRelativePath}' from layer {layerIndex:000} → {destinationPath}");
+            operationSucceeded = true;
         }
         finally {
-            await backend.DetachAsync(vhdxPath, ct);
+            try {
+                await backend.DetachAsync(vhdxPath, CancellationToken.None);
+            }
+            catch (Exception ex) when (!operationSucceeded) {
+                log.Warn($"detach failed after extract failure for layer {layerIndex:000}: {ex.Message}");
+            }
         }
     }
 
@@ -223,6 +238,7 @@ public sealed partial class LayerInspector(
         var vhdxPath = stack.VhdxForLayer(layerIndex);
         var letter = await backend.AttachAsync(vhdxPath, ct);
         var builder = new OutputBuilder(runner, log);
+        var operationSucceeded = false;
         try {
             var name = $"TinyWin2 layer {layerIndex:000}";
             if (format == ImageFormat.Esd) {
@@ -246,10 +262,33 @@ public sealed partial class LayerInspector(
                 await builder.CaptureAsync($"{letter}:\\", destinationPath, name, null, ImageFormat.Wim, fast, ct);
             }
 
+            operationSucceeded = true;
             return destinationPath;
         }
         finally {
-            await backend.DetachAsync(vhdxPath, ct);
+            try {
+                await backend.DetachAsync(vhdxPath, CancellationToken.None);
+            }
+            catch (Exception ex) when (!operationSucceeded) {
+                log.Warn($"detach failed after rollback capture failure for layer {layerIndex:000}: {ex.Message}");
+            }
         }
+    }
+
+    private static string ResolveImagePath(string mountPath, string imageRelativePath) {
+        if (string.IsNullOrWhiteSpace(imageRelativePath)
+            || Path.IsPathRooted(imageRelativePath)
+            || Path.IsPathFullyQualified(imageRelativePath)) {
+            throw new ArgumentException("image path must be a non-empty relative path", nameof(imageRelativePath));
+        }
+
+        var root = Path.GetFullPath(mountPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                                    + Path.DirectorySeparatorChar);
+        var candidate = Path.GetFullPath(Path.Combine(root,
+            imageRelativePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar)));
+        if (!candidate.StartsWith(root, StringComparison.OrdinalIgnoreCase)) {
+            throw new ArgumentException("image path escapes the mounted layer", nameof(imageRelativePath));
+        }
+        return candidate;
     }
 }

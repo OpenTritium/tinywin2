@@ -89,11 +89,11 @@ public sealed class PreviewRunner(
                 return previews;
             }
             finally {
-                await layerBackend.DetachAsync(stack.BaseVhdxPath, ct);
+                await layerBackend.DetachAsync(stack.BaseVhdxPath, CancellationToken.None);
             }
         }
         finally {
-            await resolver.DismountIsoAsync(source, ct);
+            await resolver.DismountIsoAsync(source, CancellationToken.None);
         }
     }
 

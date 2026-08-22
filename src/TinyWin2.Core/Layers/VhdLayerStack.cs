@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Globalization;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
 
@@ -8,7 +9,7 @@ namespace TinyWin2.Core.Layers;
 /// <summary>Picks the Hyper-V cmdlet backend when available, diskpart otherwise.</summary>
 public static class LayerBackendFactory {
     public static ILayerBackend Create(IProcessRunner runner) =>
-        HyperVhdBackend.IsAvailable()
+        HyperVhdBackend.IsAvailable(runner)
             ? new HyperVhdBackend(runner)
             : new DiskPartVhdBackend(runner);
 }
@@ -32,10 +33,12 @@ public sealed record LayerRecord {
     public DateTimeOffset? EndedUtc { get; init; }
     public JsonObject? BoundArgs { get; init; }
     public JsonArray? ExecResults { get; init; }
+
     /// <summary>Sha256 of the step's exec specs — lets a resumed build tell a reusable layer from a diverged one.</summary>
     public string? StepFingerprint { get; init; }
+
     public string? Error { get; init; }
-    public long SizeBytes => VhdxPath is { } path && File.Exists(path) ? new FileInfo(path).Length : 0;
+    public long SizeBytes => VhdxPath != null && File.Exists(VhdxPath) ? new FileInfo(VhdxPath).Length : 0;
 
     public JsonObject ToJson() => new() {
         ["index"] = Index,
@@ -72,11 +75,10 @@ public sealed class VhdLayerStack(
     BuildLog log) {
     private const string BaseFileName = "base.vhdx";
     private const string ManifestFileName = "layers.json";
-
     private readonly object _gate = new();
     private readonly List<LayerRecord> _records = [];
-
-    private string WorkDirectory { get; } = workDirectory;
+    private int _nextIndex = 1;
+    private string WorkDirectory { get; } = Path.GetFullPath(workDirectory);
     public string BaseVhdxPath => Path.Combine(WorkDirectory, BaseFileName);
     private string ManifestPath => Path.Combine(WorkDirectory, ManifestFileName);
 
@@ -84,15 +86,17 @@ public sealed class VhdLayerStack(
     public string LeafVhdxPath {
         get {
             lock (_gate) {
-                foreach (var record in _records.Where(r => r.Status is LayerStatus.Committed or LayerStatus.Merged).Reverse()) {
+                foreach (var record in _records.Where(r => r.Status == LayerStatus.Committed).Reverse()) {
                     if (record.VhdxFileName == BaseFileName) {
                         return BaseVhdxPath;
                     }
+
                     if (record.VhdxPath is not null && File.Exists(record.VhdxPath)) {
                         return record.VhdxPath;
                     }
                     // Merged-away diffs fall through: their content lives in the base now.
                 }
+
                 return BaseVhdxPath;
             }
         }
@@ -120,7 +124,7 @@ public sealed class VhdLayerStack(
     public IReadOnlyList<LayerRecord> Records {
         get {
             lock (_gate) {
-                return _records.ToArray();
+                return [.. _records];
             }
         }
     }
@@ -129,37 +133,41 @@ public sealed class VhdLayerStack(
 
     public static VhdLayerStack Load(string workDirectory, ILayerBackend backend, BuildLog log) {
         var stack = new VhdLayerStack(workDirectory, backend, log);
-        if (File.Exists(stack.ManifestPath)) {
-            try {
-                var root = JsonNode.Parse(File.ReadAllText(stack.ManifestPath))?["layers"] as JsonArray ?? [];
-                foreach (var node in root.OfType<JsonObject>()) {
-                    var record = new LayerRecord {
-                        Index = node["index"]!.GetValue<int>(),
-                        StepId = node["stepId"]?.GetValue<string>(),
-                        Title = node["title"]?.GetValue<string>(),
-                        VhdxFileName = node["vhdx"]!.GetValue<string>(),
-                        Status = Enum.Parse<LayerStatus>(node["status"]!.GetValue<string>(), ignoreCase: true),
-                        StartedUtc = DateTimeOffset.Parse(node["startedUtc"]!.GetValue<string>()),
-                        EndedUtc = node["endedUtc"] is { } e ? DateTimeOffset.Parse(e.GetValue<string>()) : null,
-                        BoundArgs = node["boundArgs"] as JsonObject,
-                        ExecResults = node["execResults"] as JsonArray,
-                        Error = node["error"]?.GetValue<string>(),
-                        StepFingerprint = node["stepFingerprint"]?.GetValue<string>(),
-                        VhdxPath = Path.Combine(workDirectory, node["vhdx"]!.GetValue<string>()),
-                    };
-                    lock (stack._gate) {
-                        stack._records.Add(record);
-                    }
-                }
+        if (!File.Exists(stack.ManifestPath)) {
+            return stack;
+        }
+
+        try {
+            var parsed = JsonNode.Parse(File.ReadAllText(stack.ManifestPath));
+            if (parsed is not JsonObject root || root["layers"] is not JsonArray layers) {
+                throw new InvalidDataException("manifest root must contain a 'layers' array");
             }
-            catch (Exception ex) when (ex is JsonException or InvalidOperationException or ArgumentException or FormatException) {
-                // A manifest we cannot read is not resumable: fail with the recovery hint
-                // instead of a raw parser stack trace.
-                throw new IOException(
-                    $"layer manifest '{stack.ManifestPath}' is corrupt ({ex.Message}); delete the workspace and rebuild.",
-                    ex);
+
+            var records = new List<LayerRecord>(layers.Count);
+            foreach (var (node, ordinal) in layers.Select((node, ordinal) => (node, ordinal))) {
+                if (node is not JsonObject layer) {
+                    throw new InvalidDataException($"layer entry {ordinal} is not an object");
+                }
+
+                records.Add(ParseRecord(layer, stack.WorkDirectory, ordinal));
+            }
+
+            ValidateRecords(records);
+            lock (stack._gate) {
+                stack._records.AddRange(records);
+                stack._nextIndex = ReadNextIndex(root, records, stack.WorkDirectory);
             }
         }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or ArgumentException
+                                       or FormatException
+                                       or InvalidDataException or OverflowException) {
+            // A manifest we cannot read is not resumable: fail with the recovery hint
+            // instead of a raw parser stack trace.
+            throw new IOException(
+                $"layer manifest '{stack.ManifestPath}' is corrupt ({ex.Message}); delete the workspace and rebuild.",
+                ex);
+        }
+
         return stack;
     }
 
@@ -172,7 +180,8 @@ public sealed class VhdLayerStack(
             foreach (var record in _records) {
                 layers.Add(record.ToJson());
             }
-            var root = new JsonObject { ["layers"] = layers };
+
+            var root = new JsonObject { ["layers"] = layers, ["nextIndex"] = _nextIndex };
             var staging = ManifestPath + ".tmp";
             File.WriteAllText(staging, root.ToPrettyString());
             File.Move(staging, ManifestPath, overwrite: true);
@@ -182,11 +191,45 @@ public sealed class VhdLayerStack(
     /// <summary>Creates the base layer VHDX; no-op when one already exists (resumable).</summary>
     public async Task EnsureBaseAsync(long maximumMb, string volumeLabel, CancellationToken ct) {
         if (File.Exists(BaseVhdxPath)) {
+            bool hasRecord;
+            lock (_gate) {
+                hasRecord = _records.Any(r => r.Index == 0 && r.Status == LayerStatus.Committed);
+                _records.RemoveAll(r => r.Index == 0 && r.Status != LayerStatus.Committed);
+                if (!hasRecord) {
+                    _records.Insert(0, new LayerRecord {
+                        Index = 0,
+                        Title = "base image (applied from source index)",
+                        VhdxFileName = BaseFileName,
+                        Status = LayerStatus.Committed,
+                        VhdxPath = BaseVhdxPath,
+                    });
+                }
+            }
+
+            if (!hasRecord) {
+                Save();
+            }
+
             log.Info($"reusing existing base layer {BaseFileName}");
             return;
         }
+
         Directory.CreateDirectory(WorkDirectory);
-        await backend.CreateBaseAsync(BaseVhdxPath, maximumMb, volumeLabel, ct);
+        try {
+            await backend.CreateBaseAsync(BaseVhdxPath, maximumMb, volumeLabel, ct);
+        }
+        catch {
+            try {
+                await backend.DetachAsync(BaseVhdxPath, CancellationToken.None);
+            }
+            catch {
+                /* best effort */
+            }
+
+            TryDelete(BaseVhdxPath, strict: false);
+            throw;
+        }
+
         lock (_gate) {
             _records.Add(new LayerRecord {
                 Index = 0,
@@ -197,6 +240,7 @@ public sealed class VhdLayerStack(
                 VhdxPath = BaseVhdxPath,
             });
         }
+
         Save();
     }
 
@@ -209,33 +253,27 @@ public sealed class VhdLayerStack(
             // A failed apply leaves the base unusable anyway; a detach error here (often
             // "not attached" after disk-full) must not mask the original apply failure.
             try {
-                await backend.DetachAsync(BaseVhdxPath, ct);
+                await backend.DetachAsync(BaseVhdxPath, CancellationToken.None);
             }
             catch (Exception ex) {
                 log.Warn($"detach after a failed base apply also failed: {ex.Message}");
             }
+
             throw;
         }
-        await backend.DetachAsync(BaseVhdxPath, ct);
+
+        await backend.DetachAsync(BaseVhdxPath, CancellationToken.None);
     }
 
     /// <summary>Creates + attaches a fresh differencing layer for one plan step.</summary>
-    public async Task<LayerSession> BeginLayerAsync(string stepId, string title, JsonObject? boundArgs, CancellationToken ct,
+    public async Task<LayerSession> BeginLayerAsync(string stepId, string title, JsonObject? boundArgs,
+        CancellationToken ct,
         string? stepFingerprint = null) {
-        var index = 1 + Math.Max(0, Records.Count > 0 ? Records.Max(r => r.Index) : 0);
+        var index = NextLayerIndex();
         var fileName = $"L{index:D3}.vhdx";
         var vhdxPath = Path.Combine(WorkDirectory, fileName);
         var parent = LeafVhdxPath;
         log.Info($"creating layer {index:000} '{title}' on {Path.GetFileName(parent)}", layerIndex: index);
-        await backend.CreateDiffAsync(vhdxPath, parent, ct);
-        char letter;
-        try {
-            letter = await backend.AttachAsync(vhdxPath, ct);
-        }
-        catch {
-            TryDelete(vhdxPath, strict: false);
-            throw;
-        }
         var record = new LayerRecord {
             Index = index,
             StepId = stepId,
@@ -249,13 +287,38 @@ public sealed class VhdLayerStack(
         lock (_gate) {
             _records.Add(record);
         }
+
         Save();
-        return new LayerSession { Record = record, VhdxPath = vhdxPath, MountPath = $"{letter}:\\" };
+
+        char letter;
+        try {
+            await backend.CreateDiffAsync(vhdxPath, parent, ct);
+            letter = await backend.AttachAsync(vhdxPath, ct);
+        }
+        catch (Exception ex) {
+            try {
+                await backend.DetachAsync(vhdxPath, CancellationToken.None);
+            }
+            catch {
+                /* best effort */
+            }
+
+            var cleanupFailed = !TryDelete(vhdxPath, strict: false);
+            MarkFailedRecord(record.Index, ex.Message, discarded: !cleanupFailed);
+            if (cleanupFailed) {
+                log.Warn($"could not clean up failed layer {record.Index:000}; workspace retained for recovery",
+                    layerIndex: record.Index);
+            }
+
+            throw;
+        }
+
+        return new() { Record = record, VhdxPath = vhdxPath, MountPath = $"{letter}:\\" };
     }
 
     /// <summary>Detaches and keeps the layer (plan succeeded).</summary>
     public async Task CommitLayerAsync(LayerSession session, JsonArray? execResults, CancellationToken ct) {
-        await backend.DetachAsync(session.VhdxPath, ct);
+        await backend.DetachAsync(session.VhdxPath, CancellationToken.None);
         lock (_gate) {
             UpdateRecord(session.Record.Index, record => record with {
                 Status = LayerStatus.Committed,
@@ -263,8 +326,10 @@ public sealed class VhdLayerStack(
                 ExecResults = execResults ?? record.ExecResults,
             });
         }
+
         Save();
-        log.Info($"layer {session.Record.Index:000} committed ({new FileInfo(session.VhdxPath).Length / 1024.0 / 1024:F1} MB)",
+        log.Info(
+            $"layer {session.Record.Index:000} committed ({new FileInfo(session.VhdxPath).Length / 1024.0 / 1024:F1} MB)",
             layerIndex: session.Record.Index);
         // Merging is export-time work; mid-build it is only a safety valve for backends
         // whose deep-chain handling is unreliable (see ILayerBackend.MaxSafeChainDepth).
@@ -275,13 +340,25 @@ public sealed class VhdLayerStack(
 
     /// <summary>Detaches and deletes the layer — the image state equals pre-step (atomic rollback).</summary>
     public async Task DiscardLayerAsync(LayerSession session, string? error, CancellationToken ct) {
+        Exception? detachError = null;
         try {
-            await backend.DetachAsync(session.VhdxPath, ct);
+            await backend.DetachAsync(session.VhdxPath, CancellationToken.None);
         }
         catch (Exception ex) {
+            detachError = ex;
             log.Warn($"detach failed while discarding layer {session.Record.Index:000}: {ex.Message}");
         }
-        TryDelete(session.VhdxPath, strict: false);
+
+        var deleteFailed = !TryDelete(session.VhdxPath, strict: false);
+        if (deleteFailed) {
+            var cleanupMessage =
+                $"layer cleanup failed (detach: {detachError?.Message ?? "ok"}); original error: {error}";
+            MarkFailedRecord(session.Record.Index, cleanupMessage, discarded: false);
+            throw new IOException(
+                $"could not discard layer {session.Record.Index:000}; the workspace was retained for recovery.",
+                detachError);
+        }
+
         lock (_gate) {
             UpdateRecord(session.Record.Index, record => record with {
                 Status = LayerStatus.Discarded,
@@ -289,8 +366,10 @@ public sealed class VhdLayerStack(
                 Error = error,
             });
         }
+
         Save();
-        log.Warn($"layer {session.Record.Index:000} discarded; image state unchanged", layerIndex: session.Record.Index);
+        log.Warn($"layer {session.Record.Index:000} discarded; image state unchanged",
+            layerIndex: session.Record.Index);
     }
 
     /// <summary>
@@ -298,17 +377,39 @@ public sealed class VhdLayerStack(
     /// chain ends at a known checkpoint. The common prefix stays byte-identical; new layers branch on top.
     /// </summary>
     public async Task TruncateToAsync(int keepIndex, CancellationToken ct) {
+        if (keepIndex < 0) {
+            throw new ArgumentOutOfRangeException(nameof(keepIndex), keepIndex, "keep index cannot be negative");
+        }
+
         List<LayerRecord> drop;
         lock (_gate) {
             drop = [.. _records.Where(r => r.Index > keepIndex)];
-            _records.RemoveAll(r => r.Index > keepIndex);
         }
-        foreach (var record in drop.Where(r => r.Status is LayerStatus.Committed or LayerStatus.Merged && r.VhdxFileName != BaseFileName)) {
+
+        var removed = new HashSet<int>();
+        foreach (var record in drop.Where(r => r.VhdxFileName != BaseFileName).OrderByDescending(r => r.Index)) {
             if (record.VhdxPath is { } path) {
-                TryDelete(path, strict: false);
+                try {
+                    await backend.DetachAsync(path, CancellationToken.None);
+                }
+                catch {
+                    /* best effort */
+                }
+
+                var deleteFailed = !TryDelete(path, strict: false);
+                if (deleteFailed) {
+                    MarkFailedRecord(record.Index, "truncated; layer file could not be deleted", discarded: false);
+                }
+                else {
+                    removed.Add(record.Index);
+                }
             }
         }
-        await Task.CompletedTask;
+
+        lock (_gate) {
+            _records.RemoveAll(r => removed.Contains(r.Index));
+        }
+
         Save();
         if (drop.Count > 0) {
             log.Info($"resume: truncated {drop.Count} diverged layer(s) above index {keepIndex:000}");
@@ -324,19 +425,26 @@ public sealed class VhdLayerStack(
         if (diffs.Count == 0) {
             return;
         }
+
         var depth = diffs.Count;
         log.Info($"consolidating {depth} layers into the base (chain-depth guard)");
+        if (diffs.Any(diff => diff.VhdxPath is null || !File.Exists(diff.VhdxPath))) {
+            throw new IOException("cannot consolidate the layer chain because a committed VHDX is missing");
+        }
+
         var leaf = diffs[^1];
         await backend.MergeAsync(leaf.VhdxPath!, depth, ct);
         foreach (var diff in diffs) {
-            TryDelete(diff.VhdxPath!, strict: true);
+            var deleteFailed = !TryDelete(diff.VhdxPath!, strict: false);
             lock (_gate) {
                 UpdateRecord(diff.Index, record => record with {
                     Status = LayerStatus.Merged,
                     EndedUtc = DateTimeOffset.UtcNow,
+                    Error = deleteFailed ? "merged; VHDX cleanup is still pending" : record.Error,
                 });
             }
         }
+
         Save();
     }
 
@@ -360,9 +468,11 @@ public sealed class VhdLayerStack(
             if (index == 0) {
                 return BaseVhdxPath;
             }
-            var record = _records.LastOrDefault(r => r.Index == index && r.Status is LayerStatus.Committed or LayerStatus.Merged)
+
+            var record = _records.LastOrDefault(r => r.Index == index
+                                                     && (r.Status is LayerStatus.Committed or LayerStatus.Merged))
                          ?? throw new ArgumentException($"layer {index:000} is not committed");
-            return record.VhdxPath is not null && File.Exists(record.VhdxPath)
+            return record.Status == LayerStatus.Committed && record.VhdxPath is not null && File.Exists(record.VhdxPath)
                 ? record.VhdxPath
                 : BaseVhdxPath; // merged-away layer: its content is in the base
         }
@@ -371,17 +481,176 @@ public sealed class VhdLayerStack(
     /// <summary>Deletes a layer file. Strict (consolidation): failure aborts while the manifest
     /// still matches disk. Otherwise a locked file is only disk-space debt — layer indexes are
     /// monotonic, so the name is never reused — and must not mask the caller's real error.</summary>
-    private void TryDelete(string path, bool strict) {
+    private bool TryDelete(string path, bool strict) {
         try {
             if (File.Exists(path)) {
                 File.Delete(path);
             }
+
+            return true;
         }
         catch (Exception ex) {
             if (strict) {
                 throw new IOException($"failed to delete layer file '{path}': {ex.Message}", ex);
             }
+
             log.Warn($"could not delete layer file '{path}' ({ex.Message}); leaving it behind");
+            return false;
         }
+    }
+
+    private int NextLayerIndex() {
+        lock (_gate) {
+            return checked(_nextIndex++);
+        }
+    }
+
+    private static int ReadNextIndex(JsonObject root, IReadOnlyList<LayerRecord> records, string workDirectory) {
+        var next = records.Count == 0 ? 1 : checked(records.Max(r => r.Index) + 1);
+        if (root["nextIndex"] is { } nextNode) {
+            try {
+                var persisted = nextNode.GetValue<int>();
+                if (persisted < 1) {
+                    throw new InvalidDataException("layer manifest 'nextIndex' must be positive");
+                }
+
+                next = Math.Max(next, persisted);
+            }
+            catch (Exception ex) {
+                throw new InvalidDataException("layer manifest has invalid 'nextIndex'", ex);
+            }
+        }
+
+        if (!Directory.Exists(workDirectory)) {
+            return next;
+        }
+
+        foreach (var path in Directory.EnumerateFiles(workDirectory, "L*.vhdx")) {
+            var name = Path.GetFileNameWithoutExtension(path);
+            if (name.Length > 1
+                && int.TryParse(name[1..], NumberStyles.None, CultureInfo.InvariantCulture, out var index)) {
+                next = Math.Max(next, checked(index + 1));
+            }
+        }
+
+        return next;
+    }
+
+    private void MarkFailedRecord(int index, string? error, bool discarded) {
+        lock (_gate) {
+            UpdateRecord(index, record => record with {
+                Status = discarded ? LayerStatus.Discarded : LayerStatus.Pending,
+                EndedUtc = discarded ? DateTimeOffset.UtcNow : null,
+                Error = error,
+            });
+        }
+
+        Save();
+    }
+
+    private static LayerRecord ParseRecord(JsonObject node, string workDirectory, int ordinal) {
+        var index = RequiredInt(node, "index", ordinal);
+        if (index < 0) {
+            throw new InvalidDataException($"layer entry {ordinal} has a negative index");
+        }
+
+        var fileName = RequiredString(node, "vhdx", ordinal);
+        if (!string.Equals(Path.GetFileName(fileName), fileName, StringComparison.Ordinal)
+            || Path.IsPathFullyQualified(fileName)
+            || (!string.Equals(fileName, BaseFileName, StringComparison.OrdinalIgnoreCase)
+                && !fileName.StartsWith("L", StringComparison.OrdinalIgnoreCase))
+            || !fileName.EndsWith(".vhdx", StringComparison.OrdinalIgnoreCase)
+            || (index > 0 && !fileName.Equals($"L{index:D3}.vhdx", StringComparison.OrdinalIgnoreCase))) {
+            throw new InvalidDataException($"layer entry {ordinal} has an invalid VHDX file name");
+        }
+
+        if (!Enum.TryParse<LayerStatus>(RequiredString(node, "status", ordinal), true, out var status)
+            || !Enum.IsDefined(status)) {
+            throw new InvalidDataException($"layer entry {ordinal} has an invalid status");
+        }
+
+        var started = ParseTimestamp(node, "startedUtc", ordinal);
+        DateTimeOffset? ended = node["endedUtc"] is null ? null : ParseTimestamp(node, "endedUtc", ordinal);
+        return new() {
+            Index = index,
+            StepId = OptionalString(node, "stepId", ordinal),
+            Title = OptionalString(node, "title", ordinal),
+            VhdxFileName = fileName,
+            Status = status,
+            StartedUtc = started,
+            EndedUtc = ended,
+            BoundArgs = node["boundArgs"] is null
+                ? null
+                : node["boundArgs"] as JsonObject
+                  ?? throw new InvalidDataException($"layer entry {ordinal} has invalid boundArgs"),
+            ExecResults = node["execResults"] is null
+                ? null
+                : node["execResults"] as JsonArray
+                  ?? throw new InvalidDataException($"layer entry {ordinal} has invalid execResults"),
+            Error = OptionalString(node, "error", ordinal),
+            StepFingerprint = OptionalString(node, "stepFingerprint", ordinal),
+            VhdxPath = Path.Combine(workDirectory, fileName),
+        };
+    }
+
+    private static void ValidateRecords(IReadOnlyList<LayerRecord> records) {
+        if (records.Count == 0 || records[0].Index != 0
+                               || !records[0].VhdxFileName.Equals(BaseFileName, StringComparison.OrdinalIgnoreCase)
+                               || records[0].Status != LayerStatus.Committed) {
+            throw new InvalidDataException("layer manifest must start with a committed base.vhdx layer");
+        }
+
+        var previous = -1;
+        var indexes = new HashSet<int>();
+        foreach (var record in records) {
+            if (!indexes.Add(record.Index) || record.Index <= previous) {
+                throw new InvalidDataException("layer indexes must be unique and strictly increasing");
+            }
+
+            previous = record.Index switch {
+                0 when !record.VhdxFileName.Equals(BaseFileName, StringComparison.OrdinalIgnoreCase) =>
+                    throw new InvalidDataException("layer zero must use base.vhdx"),
+                > 0 when record.VhdxFileName.Equals(BaseFileName, StringComparison.OrdinalIgnoreCase) =>
+                    throw new InvalidDataException("only layer zero may use base.vhdx"),
+                _ => record.Index
+            };
+        }
+    }
+
+    private static int RequiredInt(JsonObject node, string name, int ordinal) {
+        try {
+            return node[name]?.GetValue<int>() ??
+                   throw new InvalidDataException($"layer entry {ordinal} is missing '{name}'");
+        }
+        catch (InvalidDataException) {
+            throw;
+        }
+        catch (Exception ex) {
+            throw new InvalidDataException($"layer entry {ordinal} has invalid '{name}'", ex);
+        }
+    }
+
+    private static string RequiredString(JsonObject node, string name, int ordinal) {
+        try {
+            return node[name]?.GetValue<string>() ??
+                   throw new InvalidDataException($"layer entry {ordinal} is missing '{name}'");
+        }
+        catch (InvalidDataException) {
+            throw;
+        }
+        catch (Exception ex) {
+            throw new InvalidDataException($"layer entry {ordinal} has invalid '{name}'", ex);
+        }
+    }
+
+    private static string? OptionalString(JsonObject node, string name, int ordinal) =>
+        node[name] is null ? null : RequiredString(node, name, ordinal);
+
+    private static DateTimeOffset ParseTimestamp(JsonObject node, string name, int ordinal) {
+        var value = RequiredString(node, name, ordinal);
+        return DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind,
+            out var result)
+            ? result
+            : throw new InvalidDataException($"layer entry {ordinal} has invalid '{name}'");
     }
 }

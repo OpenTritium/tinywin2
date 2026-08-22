@@ -97,7 +97,7 @@ public sealed class LayerBackendTests : IDisposable {
     // ---- HyperVhdBackend ---------------------------------------------------
 
     [Test]
-    public async Task HyperVhdAttachParsesDriveLetterFromVolumeOutput() {
+    public async Task HyperVhdAttachReusesExistingAttachmentWithoutDismounting() {
         var vhdx = Path.Combine(_root, "base.vhdx");
         File.WriteAllText(vhdx, "vhd");
         var backend = new HyperVhdBackend(_runner);
@@ -106,7 +106,8 @@ public sealed class LayerBackendTests : IDisposable {
         await Assert.That(letter).IsEqualTo('X');
         var script = _runner.ArgsOf(0)[4];
         await Assert.That(script).Contains("Mount-VHD");
-        await Assert.That(script).Contains("Dismount-VHD"); // self-heal if still mounted
+        await Assert.That(script).Contains("Get-DiskImage");
+        await Assert.That(script).DoesNotContain("Dismount-VHD");
     }
 
     [Test]
@@ -120,19 +121,54 @@ public sealed class LayerBackendTests : IDisposable {
     }
 
     [Test]
-    public async Task HyperVhdScriptsQuotePathsAndDoubleApostrophes() {
+    public async Task HyperVhdDetachLeavesPreExistingAttachmentAlone() {
+        var vhdx = Path.Combine(_root, "base.vhdx");
+        File.WriteAllText(vhdx, "vhd");
         var backend = new HyperVhdBackend(_runner);
-        await backend.DetachAsync(@"C:\it's\base.vhdx", CancellationToken.None);
-        var script = _runner.ArgsOf(0)[4];
-        await Assert.That(script).Contains("'C:\\it''s\\base.vhdx'");
+        _runner.Handler = (_, _) => FakeProcessRunner.Ok("tinywin2-existing|X");
+
+        await backend.AttachAsync(vhdx, CancellationToken.None);
+        await backend.DetachAsync(vhdx, CancellationToken.None);
+
+        await Assert.That(_runner.Calls.Count).IsEqualTo(1);
     }
 
     [Test]
-    public async Task HyperVhdMergeCarriesDepth() {
+    public async Task HyperVhdDetachReleasesAnAttachmentCreatedByThisBackend() {
+        var vhdx = Path.Combine(_root, "base.vhdx");
+        File.WriteAllText(vhdx, "vhd");
+        var backend = new HyperVhdBackend(_runner);
+        _runner.Handler = (_, args) => args[4].Contains("tinywin2-owned", StringComparison.Ordinal)
+            ? FakeProcessRunner.Ok("tinywin2-owned|X")
+            : FakeProcessRunner.Ok();
+
+        await backend.AttachAsync(vhdx, CancellationToken.None);
+        await backend.DetachAsync(vhdx, CancellationToken.None);
+
+        await Assert.That(_runner.Calls.Count).IsEqualTo(2);
+        await Assert.That(_runner.ArgsOf(1)[4]).Contains("Dismount-VHD");
+    }
+
+    [Test]
+    public async Task HyperVhdScriptsQuotePathsAndDoubleApostrophes() {
+        var vhdx = Path.Combine(_root, "it's", "base.vhdx");
+        Directory.CreateDirectory(Path.GetDirectoryName(vhdx)!);
+        File.WriteAllText(vhdx, "vhd");
+        var backend = new HyperVhdBackend(_runner);
+        _runner.Handler = (_, _) => FakeProcessRunner.Ok("tinywin2-existing|X");
+        await backend.AttachAsync(vhdx, CancellationToken.None);
+        var script = _runner.ArgsOf(0)[4];
+        await Assert.That(script).Contains("'" + vhdx.Replace("'", "''") + "'");
+    }
+
+    [Test]
+    public async Task HyperVhdMergeWalksParentsWithoutUnsupportedDepthParameter() {
         var backend = new HyperVhdBackend(_runner);
         await backend.MergeAsync(Path.Combine(_root, "L002.vhdx"), depth: 2, CancellationToken.None);
         await Assert.That(_runner.ArgsOf(0)[4]).Contains("Merge-VHD -Path");
-        await Assert.That(_runner.ArgsOf(0)[4]).Contains("-Depth 2");
+        await Assert.That(_runner.ArgsOf(0)[4]).Contains("-DestinationPath $parent");
+        await Assert.That(_runner.ArgsOf(0)[4]).Contains("$i -lt 2");
+        await Assert.That(_runner.ArgsOf(0)[4]).DoesNotContain("-Depth");
     }
 
     [Test]
@@ -182,6 +218,43 @@ public sealed class LayerBackendTests : IDisposable {
                 VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog()));
             await Assert.That(ex.Message).Contains("is corrupt");
             await Assert.That(ex.Message).Contains("delete the workspace");
+        }
+        finally {
+            try { Directory.Delete(directory, recursive: true); } catch { /* best effort */ }
+        }
+    }
+
+    [Test]
+    public async Task LoadRejectsLayerManifestWithoutLayersArray() {
+        var directory = TestPlans.CreateTempDirectory();
+        try {
+            File.WriteAllText(Path.Combine(directory, "layers.json"), "{\"version\":1}");
+            var ex = Assert.Throws<IOException>(() =>
+                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog()));
+            await Assert.That(ex.Message).Contains("layers");
+        }
+        finally {
+            try { Directory.Delete(directory, recursive: true); } catch { /* best effort */ }
+        }
+    }
+
+    [Test]
+    public async Task LoadRejectsLayerManifestPathTraversalAndDuplicateIndexes() {
+        var directory = TestPlans.CreateTempDirectory();
+        try {
+            var timestamp = DateTimeOffset.UtcNow.ToString("O");
+            var baseLayer = $"{{\"index\":0,\"vhdx\":\"base.vhdx\",\"status\":\"committed\",\"startedUtc\":\"{timestamp}\"}}";
+            var escaped = $"{{\"index\":1,\"vhdx\":\"..\\\\outside.vhdx\",\"status\":\"committed\",\"startedUtc\":\"{timestamp}\"}}";
+            File.WriteAllText(Path.Combine(directory, "layers.json"), $"{{\"layers\":[{baseLayer},{escaped}]}}");
+            var traversal = Assert.Throws<IOException>(() =>
+                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog()));
+            await Assert.That(traversal.Message).Contains("invalid VHDX");
+
+            var layer = $"{{\"index\":1,\"vhdx\":\"L001.vhdx\",\"status\":\"discarded\",\"startedUtc\":\"{timestamp}\"}}";
+            File.WriteAllText(Path.Combine(directory, "layers.json"), $"{{\"layers\":[{baseLayer},{layer},{layer}]}}");
+            var duplicate = Assert.Throws<IOException>(() =>
+                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog()));
+            await Assert.That(duplicate.Message).Contains("unique");
         }
         finally {
             try { Directory.Delete(directory, recursive: true); } catch { /* best effort */ }

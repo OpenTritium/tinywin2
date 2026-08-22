@@ -124,7 +124,8 @@ public sealed class BuildEngine(
             var stack = VhdLayerStack.Load(workspace, layerBackend, log);
             var baseReady = options.ResumeWorkspace is not null
                 && File.Exists(stack.BaseVhdxPath)
-                && stack.Records.Any(r => r.Index == 0 && r.Status is LayerStatus.Committed or LayerStatus.Merged);
+                && stack.Records.Any(r => r.Index == 0
+                                          && (r.Status is LayerStatus.Committed or LayerStatus.Merged));
             var (resolvedSource, stagingWim, sourceIndex) = await PrepareSourceAsync(options, workspace, resolver, ct, stageWim: !baseReady);
             source = resolvedSource;
             if (baseReady) {
@@ -180,7 +181,7 @@ public sealed class BuildEngine(
         }
         finally {
             if (source is not null) {
-                await resolver.DismountIsoAsync(source, ct);
+                await resolver.DismountIsoAsync(source, CancellationToken.None);
             }
         }
     }
@@ -283,7 +284,7 @@ public sealed class BuildEngine(
             return (failedSteps, capturedWim);
         }
         finally {
-            try { await layerBackend.DetachAsync(leaf, ct); } catch { /* already detached */ }
+            try { await layerBackend.DetachAsync(leaf, CancellationToken.None); } catch { /* already detached */ }
         }
     }
 
@@ -316,8 +317,27 @@ public sealed class BuildEngine(
                 await LayerEvidence.CaptureAsync(session.MountPath, workspace, session.Record.Index, runner, log, ct);
                 await stack.CommitLayerAsync(session, execResults, ct);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException) {
-                await stack.DiscardLayerAsync(session, ex.Message, ct);
+            catch (Exception ex) {
+                var stillPending = stack.Records.Any(r => r.Index == session.Record.Index
+                                                           && r.Status == LayerStatus.Pending);
+                if (!stillPending) {
+                    // CommitLayerAsync persists the committed state before an optional
+                    // chain consolidation. A consolidation failure must leave that state
+                    // available for resume instead of deleting a possibly merged layer.
+                    throw;
+                }
+                try {
+                    await stack.DiscardLayerAsync(session, ex.Message, CancellationToken.None);
+                }
+                catch (Exception cleanupError) {
+                    log.Error($"could not discard failed layer {session.Record.Index:000}: {cleanupError.Message}",
+                        layerIndex: session.Record.Index);
+                    throw new AggregateException(
+                        $"step '{step.Id}' failed and its layer could not be discarded", ex, cleanupError);
+                }
+                if (ex is OperationCanceledException) {
+                    throw;
+                }
                 failedSteps.Add((step.Id, session.Record.Index, ex.Message));
                 log.Error($"step '{step.Id}' failed and its layer was discarded: {ex.Message}", step.Id, session.Record.Index);
                 if (!options.ContinueOnError) {
@@ -356,7 +376,7 @@ public sealed class BuildEngine(
             return capturedWim;
         }
         finally {
-            try { await layerBackend.DetachAsync(leaf, ct); } catch { /* already detached */ }
+            try { await layerBackend.DetachAsync(leaf, CancellationToken.None); } catch { /* already detached */ }
         }
     }
 
@@ -394,7 +414,7 @@ public sealed class BuildEngine(
     /// </summary>
     private async Task<int> ResumePrefixAsync(BuildPlan plan, VhdLayerStack stack, CancellationToken ct) {
         var committed = stack.Records
-            .Where(r => r.Status is LayerStatus.Committed or LayerStatus.Merged && r.VhdxFileName != "base.vhdx"
+            .Where(r => r.Status == LayerStatus.Committed && r.VhdxFileName != "base.vhdx"
                         && r.VhdxPath is not null && File.Exists(r.VhdxPath))
             .OrderBy(r => r.Index)
             .ToList();

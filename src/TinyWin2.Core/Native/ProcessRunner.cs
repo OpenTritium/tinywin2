@@ -39,7 +39,7 @@ public sealed class ProcessRunner : IProcessRunner {
         IReadOnlyList<string> arguments,
         ProcessRunOptions? options = null,
         CancellationToken cancellationToken = default) {
-        options ??= new ProcessRunOptions();
+        options ??= new();
         var startInfo = new ProcessStartInfo {
             FileName = fileName,
             UseShellExecute = false,
@@ -61,7 +61,7 @@ public sealed class ProcessRunner : IProcessRunner {
         var errorBuilder = new StringBuilder();
         if (!process.Start()) {
             throw new ProcessRunnerException(fileName,
-                new ProcessRunResult(-1, "", $"Failed to start '{fileName}'.", commandLine));
+                new(-1, "", $"Failed to start '{fileName}'.", commandLine));
         }
 
         process.StandardInput.Close();
@@ -98,7 +98,8 @@ public sealed class ProcessRunner : IProcessRunner {
     }
 
     /// <summary>Drains a redirected stream line by line until EOF; single writer, no locking needed.</summary>
-    private static async Task ReadStreamAsync(StreamReader reader, StringBuilder builder, Action<string>? onLine = null) {
+    private static async Task
+        ReadStreamAsync(StreamReader reader, StringBuilder builder, Action<string>? onLine = null) {
         while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line) {
             builder.AppendLine(line);
             onLine?.Invoke(line);
