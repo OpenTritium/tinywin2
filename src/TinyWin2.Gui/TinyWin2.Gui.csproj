@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
@@ -18,17 +17,28 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <CsWinRTAotOptimizerEnabled>true</CsWinRTAotOptimizerEnabled>
+    <PublishAot>true</PublishAot>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <SatelliteResourceLanguages>zh-CN;en-US</SatelliteResourceLanguages>
   </PropertyGroup>
-
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <Optimize>true</Optimize>
+    <DebuggerSupport>false</DebuggerSupport>
+    <EventSourceSupport>false</EventSourceSupport>
+    <MetricsSupport>false</MetricsSupport>
+    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <StripSymbols>true</StripSymbols>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.4.0"/>
-
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2"/>
-
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\TinyWin2.Core\TinyWin2.Core.csproj"/>
   </ItemGroup>
-
 </Project>

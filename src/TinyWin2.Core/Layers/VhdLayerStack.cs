@@ -206,7 +206,7 @@ public sealed class VhdLayerStack(
             Directory.CreateDirectory(WorkDirectory);
             var layers = new JsonArray();
             foreach (var record in _records) {
-                layers.Add(record.ToJson());
+                layers.Add((JsonNode)record.ToJson());
             }
 
             var root = new JsonObject {

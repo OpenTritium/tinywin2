@@ -1,12 +1,20 @@
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace TinyWin2.Core.Tests;
 
 public sealed class JsonTests {
     [Test]
-    public async Task RecordsPolicyIsCamelCaseAndOmitsNulls() {
+    public async Task JsonSerializerPolicyIsCamelCaseAndOmitsNulls() {
         var sample = new Sample("n", 3);
-        var node = (JsonObject)Json.ToNode(sample);
+        var options = new JsonSerializerOptions {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+        var node = (JsonObject)JsonNode.Parse(JsonSerializer.Serialize(sample, options))!;
         await Assert.That(sample.Name).IsEqualTo("n");
         await Assert.That(sample.Count).IsEqualTo(3);
         await Assert.That(sample.Note).IsNull();

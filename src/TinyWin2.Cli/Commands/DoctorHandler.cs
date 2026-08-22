@@ -14,7 +14,14 @@ internal static class DoctorHandler {
         var checks = EnvironmentDoctor.Check(request.Workspace);
         var json = request.Json;
         if (json) {
-            var root = new JsonObject { ["checks"] = Json.ToNode(checks) };
+            var root = new JsonObject {
+                ["checks"] = new JsonArray(checks.Select(check => (JsonNode)new JsonObject {
+                    ["name"] = check.Name,
+                    ["ok"] = check.Ok,
+                    ["required"] = check.Required,
+                    ["detail"] = check.Detail
+                }).ToArray())
+            };
             Console.WriteLine(root.ToJsonString(Cli.JsonSerializerOptions));
             var failed = checks.Any(c => c is { Required: true, Ok: false });
             return failed ? 1 : 0;
