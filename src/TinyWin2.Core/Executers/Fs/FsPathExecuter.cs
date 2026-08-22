@@ -31,6 +31,7 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
         if (spec.Action is not (OperationAction.Remove or OperationAction.Copy)) {
             throw new ExecException($"{ResourceId} supports actions 'remove' and 'copy'.");
         }
+
         _ = FsPathOptions.FromDesired(spec.Spec, spec.Action);
     }
 
@@ -88,7 +89,7 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
                     assetPath, destination, "/E", "/COPY:DAT", "/DCOPY:DAT", "/IS", "/XJ", "/R:1", "/W:1",
                     "/NFL", "/NDL", "/NJH", "/NJS"
                 ],
-                new ProcessRunOptions { IgnoreExitCode = true }, ct);
+                new() { IgnoreExitCode = true }, ct);
             if (result.ExitCode >= 8) {
                 throw new IOException($"robocopy failed copying fs.path asset (exit {result.ExitCode}).");
             }
@@ -109,7 +110,7 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
                 }
 
                 EnsureTreeHasNoReparsePoints(target);
-                changes.Add(new(new ChangeItem(ChangeKind.Removed, relative), target));
+                changes.Add(new(new(ChangeKind.Removed, relative), target));
             }
 
             return changes;
@@ -127,8 +128,8 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
         return isSatisfied
             ? []
             : [
-                new PathChange(
-                    new ChangeItem(
+                new(
+                    new(
                         destinationKind == EntryKind.Missing ? ChangeKind.Created : ChangeKind.Modified,
                         options.Path!,
                         After: options.Source),

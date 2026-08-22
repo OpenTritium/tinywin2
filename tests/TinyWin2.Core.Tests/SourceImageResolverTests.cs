@@ -139,7 +139,7 @@ public sealed class SourceImageResolverTests : IDisposable {
 
     [Test]
     public async Task GetIndexQueriesOnlyTheSelectedIndex() {
-        _runner.Handler = (_, args) => FakeProcessRunner.Ok("""
+        _runner.Handler = (_, _) => FakeProcessRunner.Ok("""
             Index : 3
             Name : ServerDatacenter Eval
             Description : Datacenter image

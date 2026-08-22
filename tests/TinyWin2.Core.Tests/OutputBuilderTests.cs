@@ -79,8 +79,8 @@ public sealed class OutputBuilderTests : IDisposable {
         var outDir = Path.Combine(_root, "out");
         var sourcesDir = Path.Combine(outDir, "sources");
         Directory.CreateDirectory(sourcesDir);
-        File.WriteAllText(Path.Combine(sourcesDir, "install.esd"), "stale");
-        File.WriteAllText(Path.Combine(sourcesDir, "install.staging.wim"), "stale");
+        await File.WriteAllTextAsync(Path.Combine(sourcesDir, "install.esd"), "stale");
+        await File.WriteAllTextAsync(Path.Combine(sourcesDir, "install.staging.wim"), "stale");
         var captured = Path.Combine(_root, "captured.wim");
         await File.WriteAllTextAsync(captured, "payload");
 
@@ -89,7 +89,7 @@ public sealed class OutputBuilderTests : IDisposable {
 
         await Assert.That(finalPath).IsEqualTo(Path.Combine(sourcesDir, "install.wim"));
         await Assert.That(File.Exists(finalPath)).IsTrue();
-        await Assert.That(File.ReadAllText(finalPath)).IsEqualTo("payload");
+        await Assert.That(await File.ReadAllTextAsync(finalPath)).IsEqualTo("payload");
         await Assert.That(File.Exists(Path.Combine(sourcesDir, "install.esd"))).IsFalse();
         await Assert.That(File.Exists(Path.Combine(sourcesDir, "install.staging.wim"))).IsFalse();
         await Assert.That(File.Exists(captured)).IsFalse();
@@ -109,8 +109,8 @@ public sealed class OutputBuilderTests : IDisposable {
         var media = Path.Combine(_root, "media");
         Directory.CreateDirectory(Path.Combine(media, "boot"));
         Directory.CreateDirectory(Path.Combine(media, "efi", "microsoft", "boot"));
-        File.WriteAllText(Path.Combine(media, "boot", "etfsboot.com"), "b");
-        File.WriteAllText(Path.Combine(media, "efi", "microsoft", "boot", "efisys_noprompt.bin"), "e");
+        await File.WriteAllTextAsync(Path.Combine(media, "boot", "etfsboot.com"), "b");
+        await File.WriteAllTextAsync(Path.Combine(media, "efi", "microsoft", "boot", "efisys_noprompt.bin"), "e");
         _runner.Handler = (_, args) => {
             File.WriteAllText(args[^1], "iso");
             return FakeProcessRunner.Ok();

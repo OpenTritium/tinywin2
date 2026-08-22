@@ -24,7 +24,7 @@ internal static class RegistryAcl {
         var scriptPath = Path.Combine(Path.GetTempPath(), $"tinywin2-regini-{Guid.NewGuid():N}.txt");
         try {
             await File.WriteAllTextAsync(scriptPath,
-                "\\Registry\\Machine\\" + subKey + " " + GrantCodes, ct);
+                @"\Registry\Machine\" + subKey + " " + GrantCodes, ct);
             await runner.RunAsync("regini.exe", [scriptPath],
                 new() { Timeout = TimeSpan.FromSeconds(30) }, ct);
         }

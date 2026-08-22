@@ -1,4 +1,3 @@
-using System.Text;
 using TinyWin2.Core.Hashing;
 
 namespace TinyWin2.Core.Tests;
@@ -9,7 +8,7 @@ public sealed class FingerprintingTests : IDisposable {
     [Test]
     public async Task FingerprintsAreStable() {
         var first = Fingerprinting.Compute("tinywin2");
-        var second = Fingerprinting.Compute(Encoding.UTF8.GetBytes("tinywin2"));
+        var second = Fingerprinting.Compute("tinywin2"u8);
 
         await Assert.That(first).IsEqualTo(second);
         await Assert.That(first).Length().IsEqualTo(16);

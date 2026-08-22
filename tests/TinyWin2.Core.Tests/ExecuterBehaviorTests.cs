@@ -278,7 +278,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
     public async Task AbsentDeletesExistingPath() {
         var target = Path.Combine(_harness.MountPath, "Windows", "Web", "Wallpaper");
         Directory.CreateDirectory(target);
-        File.WriteAllText(Path.Combine(target, "img.jpg"), "x");
+        await File.WriteAllTextAsync(Path.Combine(target, "img.jpg"), "x");
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("fs.path", OperationAction.Remove,
                 ("paths", new JsonArray("Windows/Web/Wallpaper"))), CancellationToken.None);
@@ -307,13 +307,11 @@ public sealed class FilesystemExecuterTests : IDisposable {
     public async Task PresentDirectoryUsesRobocopy() {
         var assets = Path.Combine(_harness.MountPath, "assets");
         Directory.CreateDirectory(Path.Combine(assets, "tools", "sub"));
-        File.WriteAllText(Path.Combine(assets, "tools", "app.exe"), "bin");
-        File.WriteAllText(Path.Combine(assets, "tools", "sub", "lib.dll"), "dll");
+        await File.WriteAllTextAsync(Path.Combine(assets, "tools", "app.exe"), "bin");
+        await File.WriteAllTextAsync(Path.Combine(assets, "tools", "sub", "lib.dll"), "dll");
         var context = new ExecContext(_harness.MountPath, _harness.Log,
             new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
-        _harness.Runner.Handler = (file, _) => file == "robocopy.exe"
-            ? FakeProcessRunner.Ok()
-            : FakeProcessRunner.Ok();
+        _harness.Runner.Handler = (_, _) => FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(context,
             ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
                 ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None);
@@ -330,24 +328,24 @@ public sealed class FilesystemExecuterTests : IDisposable {
         var assets = Path.Combine(_harness.MountPath, "assets");
         Directory.CreateDirectory(assets);
         var source = Path.Combine(assets, "settings.ini");
-        File.WriteAllText(source, "new");
+        await File.WriteAllTextAsync(source, "new");
         var destination = Path.Combine(_harness.MountPath, "ProgramData", "settings.ini");
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-        File.WriteAllText(destination, "old");
+        await File.WriteAllTextAsync(destination, "old");
         var context = new ExecContext(_harness.MountPath, _harness.Log,
             new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
         var result = await _executer.ApplyAsync(context,
             ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
                 ("path", "ProgramData\\settings.ini"), ("source", "settings.ini")), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
-        await Assert.That(File.ReadAllText(destination)).IsEqualTo("new");
+        await Assert.That(await File.ReadAllTextAsync(destination)).IsEqualTo("new");
     }
 
     [Test]
     public async Task PresentDirectoryDetectsMissingAssetFiles() {
         var assets = Path.Combine(_harness.MountPath, "assets");
         Directory.CreateDirectory(Path.Combine(assets, "tools"));
-        File.WriteAllText(Path.Combine(assets, "tools", "required.dll"), "payload");
+        await File.WriteAllTextAsync(Path.Combine(assets, "tools", "required.dll"), "payload");
         Directory.CreateDirectory(Path.Combine(_harness.MountPath, "ProgramData", "Tools"));
         var context = new ExecContext(_harness.MountPath, _harness.Log,
             new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);

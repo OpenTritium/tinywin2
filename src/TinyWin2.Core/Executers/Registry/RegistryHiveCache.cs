@@ -19,7 +19,7 @@ public sealed class RegistryHive(
         $"{HiveKey}\\{keyPath.Trim('\\')}";
 
     internal string ValueUnderHive(string keyPath, string valueName) =>
-        $"{HiveId}\\{keyPath.Trim('\\')}\\{valueName}";
+        $@"{HiveId}\{keyPath.Trim('\\')}\{valueName}";
 }
 
 /// <summary>
@@ -107,7 +107,7 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
         string what,
         BuildLog log,
         CancellationToken ct) {
-        for (var attempt = 1; ; attempt++) {
+        for (var attempt = 1;; attempt++) {
             try {
                 await runner.RunAsync("reg.exe", ["unload", hiveKey], cancellationToken: ct);
                 return;
@@ -130,14 +130,14 @@ public static partial class RegValues {
     /// <summary>Extracts a named value from <c>reg query KEY /v NAME</c> output; null if absent.</summary>
     public static RegValue? ParseQueryValue(string output, string valueName) {
         return (from rawLine in output.Split('\n')
-                select rawLine.TrimEnd('\r')
+            select rawLine.TrimEnd('\r')
             into line
-                select ValueLine().Match(line)
+            select ValueLine().Match(line)
             into match
-                where match.Success
-                let name = match.Groups[1].Value.Trim()
-                where string.Equals(name, valueName, StringComparison.OrdinalIgnoreCase)
-                select new RegValue(match.Groups[2].Value, match.Groups[3].Value)).FirstOrDefault();
+            where match.Success
+            let name = match.Groups[1].Value.Trim()
+            where string.Equals(name, valueName, StringComparison.OrdinalIgnoreCase)
+            select new RegValue(match.Groups[2].Value, match.Groups[3].Value)).FirstOrDefault();
     }
 
     /// <summary>Renders desired data for reg.exe /d for each supported type.</summary>
@@ -154,7 +154,8 @@ public static partial class RegValues {
                 var items = data as System.Text.Json.Nodes.JsonArray
                             ?? throw new ExecException("REG_MULTI_SZ data must be a JSON array of strings.");
                 return string.Join("\\0", items.Select(i => i?.GetValue<string>()
-                    ?? throw new ExecException("REG_MULTI_SZ data must contain only strings.")));
+                                                            ?? throw new ExecException(
+                                                                "REG_MULTI_SZ data must contain only strings.")));
             case "REG_SZ":
             case "REG_EXPAND_SZ":
                 return data!.GetValue<string>();
@@ -165,22 +166,24 @@ public static partial class RegValues {
 
     /// <summary>Accepts non-negative JSON integers for DWORD/QWORD values.</summary>
     private static ulong ToUnsignedLong(System.Text.Json.Nodes.JsonNode? data, string type) {
-        if (data is System.Text.Json.Nodes.JsonValue value) {
-            if (value.TryGetValue<int>(out var integer) && integer >= 0) {
-                return (ulong)integer;
-            }
+        if (data is not System.Text.Json.Nodes.JsonValue value) {
+            throw new ExecException($"{type} data must be a non-negative integer.");
+        }
 
-            if (value.TryGetValue<uint>(out var unsignedInteger)) {
-                return unsignedInteger;
-            }
+        if (value.TryGetValue<int>(out var integer) && integer >= 0) {
+            return (ulong)integer;
+        }
 
-            if (value.TryGetValue<ulong>(out var unsigned)) {
-                return unsigned;
-            }
+        if (value.TryGetValue<uint>(out var unsignedInteger)) {
+            return unsignedInteger;
+        }
 
-            if (value.TryGetValue<long>(out var signed) && signed >= 0) {
-                return (ulong)signed;
-            }
+        if (value.TryGetValue<ulong>(out var unsigned)) {
+            return unsigned;
+        }
+
+        if (value.TryGetValue<long>(out var signed) && signed >= 0) {
+            return (ulong)signed;
         }
 
         throw new ExecException($"{type} data must be a non-negative integer.");

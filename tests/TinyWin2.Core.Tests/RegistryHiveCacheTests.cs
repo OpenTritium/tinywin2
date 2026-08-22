@@ -86,9 +86,7 @@ public sealed class RegistryHiveCacheTests : IDisposable {
         await Assert.That(errors.Count).IsEqualTo(1);
         await Assert.That(errors[0]).Contains("could not unload offline hive 'software'");
 
-        _runner.Handler = (_, args) => args.Count > 0 && args[0] == "unload"
-            ? FakeProcessRunner.Ok()
-            : FakeProcessRunner.Ok();
+        _runner.Handler = (_, _) => FakeProcessRunner.Ok();
         await _cache.UnloadAllAsync(log, CancellationToken.None);
     }
 

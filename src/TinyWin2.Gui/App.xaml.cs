@@ -1,9 +1,7 @@
 using Microsoft.UI.Xaml;
-using Windows.ApplicationModel.Core;
-
 namespace TinyWin2.Gui;
 
-public partial class App : Application {
+public partial class App {
     public static Window? MainAppWindow { get; private set; }
 
     public App() {

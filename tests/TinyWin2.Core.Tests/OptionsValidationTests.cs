@@ -39,7 +39,7 @@ public sealed class OptionsValidationTests {
             ["services"] = new JsonArray("W32Time"),
             ["start"] = "disabled",
             ["triggers"] = new JsonArray("domain-join"),
-        }))!;
+        }));
         await Assert.That(ex.Message).Contains("requires 'start'");
     }
 
@@ -49,7 +49,7 @@ public sealed class OptionsValidationTests {
             ["services"] = new JsonArray("W32Time"),
             ["start"] = "trigger",
             ["triggers"] = new JsonArray("magic-event"),
-        }))!;
+        }));
         await Assert.That(ex.Message).Contains("unknown trigger");
     }
 

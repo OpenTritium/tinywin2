@@ -19,7 +19,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
         var plan = BuildPlanResolver.Resolve(catalog,
             [new PlanSelection("a.one"), new PlanSelection("a.two"), new PlanSelection("b.three")]);
         await Assert.That(plan.Steps.Count).IsEqualTo(3);
-        await Assert.That(plan.Steps.All(s => s.Plan.Operation is not null)).IsTrue();
+        await Assert.That(plan.Steps.All(s => s.Plan.Operation is { Resource.Length: > 0 })).IsTrue();
     }
 
     [Test]

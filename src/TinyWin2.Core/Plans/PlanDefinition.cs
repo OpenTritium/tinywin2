@@ -27,9 +27,11 @@ public sealed record PlanParameter(
         if (Default is not null) {
             result["default"] = Default.DeepClone();
         }
+
         if (Options.Count > 0) {
-            result["options"] = new JsonArray(Options.Select(ToJson).ToArray());
+            result["options"] = new JsonArray([.. Options.Select(ToJson)]);
         }
+
         return result;
     }
 
@@ -41,6 +43,7 @@ public sealed record PlanParameter(
         if (option.RiskLevel is not null) {
             result["riskLevel"] = option.RiskLevel;
         }
+
         return result;
     }
 }
@@ -50,7 +53,7 @@ public sealed record PlanOperation(string Resource, OperationAction Action, Json
 
 /// <summary>A leaf plan definition loaded from <c>plans/*.json</c>.</summary>
 public sealed partial record PlanDefinition {
-    public const int CurrentSchemaVersion = 3;
+    private const int CurrentSchemaVersion = 3;
 
     public required string Id { get; init; }
     public required string Version { get; init; }
@@ -79,10 +82,12 @@ public sealed partial record PlanDefinition {
         if (id is not null && !IdPattern().IsMatch(id)) {
             errors.Add($"id '{id}' does not match required pattern.");
         }
+
         var version = ReadString(obj, "version", errors);
         if (version is not null && !VersionPattern().IsMatch(version)) {
             errors.Add($"version '{version}' is not semver (x.y.z).");
         }
+
         var title = ReadString(obj, "title", errors);
         var description = ReadString(obj, "description", errors);
         var category = ReadString(obj, "category", errors);
@@ -99,7 +104,7 @@ public sealed partial record PlanDefinition {
             throw new PlanValidationException(sourceFile ?? "<memory>", errors);
         }
 
-        return new PlanDefinition {
+        return new() {
             Id = id!,
             Version = version!,
             Title = title!,
@@ -120,15 +125,19 @@ public sealed partial record PlanDefinition {
             if (required) {
                 errors.Add($"'{name}' is required.");
             }
+
             return null;
         }
+
         if (node is JsonValue value && value.TryGetValue<string>(out var text)) {
-            if (string.IsNullOrWhiteSpace(text) && required) {
-                errors.Add($"'{name}' must not be empty.");
-                return null;
+            if (!string.IsNullOrWhiteSpace(text) || !required) {
+                return text;
             }
-            return text;
+
+            errors.Add($"'{name}' must not be empty.");
+            return null;
         }
+
         errors.Add($"'{name}' must be a string.");
         return null;
     }
@@ -138,9 +147,11 @@ public sealed partial record PlanDefinition {
             errors.Add($"'{name}' is required.");
             return null;
         }
+
         if (node is JsonValue value && value.TryGetValue<int>(out var number)) {
             return number;
         }
+
         errors.Add($"'{name}' must be an integer.");
         return null;
     }
@@ -149,22 +160,27 @@ public sealed partial record PlanDefinition {
         if (!obj.TryGetPropertyValue(name, out var node)) {
             return [];
         }
+
         if (node is not JsonArray array) {
             errors.Add($"'{name}' must be an array of strings.");
             return [];
         }
+
         var values = new List<string>();
         foreach (var item in array) {
-            if (item is JsonValue value && value.TryGetValue<string>(out var text) && !string.IsNullOrWhiteSpace(text)) {
+            if (item is JsonValue value && value.TryGetValue<string>(out var text) &&
+                !string.IsNullOrWhiteSpace(text)) {
                 values.Add(text);
             }
             else {
                 errors.Add($"'{name}' must contain non-empty strings.");
             }
         }
+
         if (values.Count != values.Distinct(StringComparer.Ordinal).Count()) {
             errors.Add($"'{name}' must not contain duplicates.");
         }
+
         return values;
     }
 
@@ -172,6 +188,7 @@ public sealed partial record PlanDefinition {
         if (!obj.TryGetPropertyValue("parameters", out var node)) {
             return [];
         }
+
         if (node is not JsonArray array) {
             errors.Add("'parameters' must be an array.");
             return [];
@@ -185,6 +202,7 @@ public sealed partial record PlanDefinition {
                 errors.Add($"parameters[{index}]: entry must be an object.");
                 continue;
             }
+
             RejectUnknownProperties(parameterObj, $"parameters[{index}]", [
                 "name", "type", "label", "default", "options",
             ], errors);
@@ -209,6 +227,7 @@ public sealed partial record PlanDefinition {
                         inner.Add($"parameters[{index}].options[{optionIndex}]: entry must be an object.");
                         continue;
                     }
+
                     RejectUnknownProperties(optionObj, $"parameters[{index}].options[{optionIndex}]", [
                         "value", "label", "riskLevel",
                     ], inner);
@@ -219,25 +238,32 @@ public sealed partial record PlanDefinition {
                     if (optionRisk is not null && !RiskLevels.Contains(optionRisk)) {
                         optionInner.Add($"option riskLevel '{optionRisk}' invalid (Low|Medium|High).");
                     }
+
                     if (optionInner.Count > 0) {
                         inner.AddRange(optionInner);
                         continue;
                     }
-                    options.Add(new PlanParameterOption(value!, optionLabel!, optionRisk));
+
+                    options.Add(new(value!, optionLabel!, optionRisk));
                 }
             }
+
             if (type == PlanParameterType.Enum && options.Count == 0) {
                 inner.Add("enum parameter requires at least one option.");
             }
+
             if (type is not null && type != PlanParameterType.Enum && options.Count > 0) {
                 inner.Add("only enum parameters may declare options.");
             }
+
             if (options.GroupBy(o => o.Value, StringComparer.Ordinal).Any(g => g.Count() > 1)) {
                 inner.Add("parameter option values must be unique.");
             }
+
             if (name is not null && !seenNames.Add(name)) {
                 inner.Add($"duplicate parameter name '{name}'.");
             }
+
             if (inner.Count > 0) {
                 errors.AddRange(inner.Select(e => e.StartsWith("parameters[", StringComparison.Ordinal)
                     ? e
@@ -246,19 +272,33 @@ public sealed partial record PlanDefinition {
             }
 
             var defaultNode = parameterObj["default"]?.DeepClone();
-            if (type == PlanParameterType.Enum) {
-                var defaultText = defaultNode is JsonValue dv && dv.TryGetValue<string>(out var s) ? s : null;
-                if (defaultText is not null && options.All(o => !string.Equals(o.Value, defaultText, StringComparison.Ordinal))) {
-                    errors.Add($"parameters[{index}]: default '{defaultText}' is not one of the declared options.");
-                    continue;
+            switch (type) {
+                case PlanParameterType.Enum: {
+                    var defaultText = defaultNode is JsonValue dv && dv.TryGetValue<string>(out var s) ? s : null;
+                    if (defaultText is not null &&
+                        options.All(o => !string.Equals(o.Value, defaultText, StringComparison.Ordinal))) {
+                        errors.Add($"parameters[{index}]: default '{defaultText}' is not one of the declared options.");
+
+                        continue;
+                    }
+
+                    defaultNode ??= options[0].Value;
+                    break;
                 }
-                defaultNode ??= options[0].Value;
+                case PlanParameterType.Bool:
+                    defaultNode ??= false;
+                    break;
+                case PlanParameterType.Int:
+                case PlanParameterType.String:
+                case null:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
-            else if (type == PlanParameterType.Bool) {
-                defaultNode ??= false;
-            }
-            result.Add(new PlanParameter(name!, type!.Value, label!, defaultNode, options));
+
+            result.Add(new(name!, type!.Value, label!, defaultNode, options));
         }
+
         return result;
     }
 
@@ -267,26 +307,31 @@ public sealed partial record PlanDefinition {
             errors.Add("'operation' must be an object.");
             return null;
         }
+
         RejectUnknownProperties(operationObj, "operation", ["resource", "action", "spec"], errors);
         var inner = new List<string>();
         var resource = ReadString(operationObj, "resource", inner);
         if (resource is not null && !ResourcePattern().IsMatch(resource)) {
             inner.Add($"resource '{resource}' must look like 'domain.name'.");
         }
+
         var actionText = ReadString(operationObj, "action", inner);
         if (!Enum.TryParse<OperationAction>(actionText, ignoreCase: true, out var action)
             || !Enum.IsDefined(action)) {
             inner.Add($"action '{actionText}' invalid (configure|set|remove|cleanup|copy).");
         }
+
         var spec = operationObj["spec"] as JsonObject;
         if (spec is null) {
             inner.Add("'spec' must be an object.");
         }
+
         if (inner.Count > 0) {
             errors.AddRange(inner.Select(e => $"operation: {e}"));
             return null;
         }
-        return new PlanOperation(resource!, action, spec!);
+
+        return new(resource!, action, spec!);
     }
 
     private static void RejectUnknownProperties(
@@ -294,13 +339,12 @@ public sealed partial record PlanDefinition {
         string path,
         IReadOnlyList<string> allowed,
         List<string> errors) {
-        foreach (var property in obj.Select(property => property.Key)
-                     .Where(name => !allowed.Contains(name, StringComparer.Ordinal))) {
-            errors.Add($"{path} contains unknown field '{property}'.");
-        }
+        errors.AddRange(obj.Select(property => property.Key)
+            .Where(name => !allowed.Contains(name, StringComparer.Ordinal))
+            .Select(property => $"{path} contains unknown field '{property}'."));
     }
 
-    [System.Text.RegularExpressions.GeneratedRegex(@"^[a-z0-9]+(?:[.-][a-z0-9]+)*$")]
+    [System.Text.RegularExpressions.GeneratedRegex("^[a-z0-9]+(?:[.-][a-z0-9]+)*$")]
     private static partial System.Text.RegularExpressions.Regex IdPattern();
 
     [System.Text.RegularExpressions.GeneratedRegex(@"^[0-9]+\.[0-9]+\.[0-9]+$")]

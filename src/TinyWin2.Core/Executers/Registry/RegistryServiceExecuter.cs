@@ -14,13 +14,19 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
     /// One structured difference carrying its own service key and desired start values —
     /// apply never re-parses options or re-resolves the control set.
     /// </summary>
-    private sealed record ServiceChange(ChangeItem Change, string ServiceKey, int Start, int Delayed,
-        IReadOnlyList<RegistryServiceOptions.ServiceTrigger> Triggers, bool TriggerInfoChanged = false);
+    private sealed record ServiceChange(
+        ChangeItem Change,
+        string ServiceKey,
+        int Start,
+        int Delayed,
+        IReadOnlyList<RegistryServiceOptions.ServiceTrigger> Triggers,
+        bool TriggerInfoChanged = false);
 
     public void Validate(OperationSpec spec) {
         if (spec.Action != OperationAction.Configure) {
             throw new ExecException($"{ResourceId} supports only action 'configure'.");
         }
+
         _ = RegistryServiceOptions.FromDesired(spec.Spec);
     }
 
@@ -39,19 +45,18 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         }
 
         var applied = new List<ChangeItem>();
-        foreach (var entry in changes) {
-            if (entry.Change.Kind == ChangeKind.Skipped) {
-                continue;
-            }
-
+        foreach (var entry in changes.Where(entry => entry.Change.Kind != ChangeKind.Skipped)) {
             await AddDwordWithAclRescueAsync(entry.ServiceKey, "Start", entry.Start, ct);
             await AddDwordWithAclRescueAsync(entry.ServiceKey, "DelayedAutoStart", entry.Delayed, ct);
             if (entry.TriggerInfoChanged) {
                 await WriteTriggerInfoAsync(entry.ServiceKey, entry.Triggers, ct);
+
                 if (entry.Triggers.Count > 0) {
-                    context.Log.Info($"service {entry.Change.Target}: start=manual + {entry.Triggers.Count} trigger(s)");
+                    context.Log.Info(
+                        $"service {entry.Change.Target}: start=manual + {entry.Triggers.Count} trigger(s)");
                 }
             }
+
             context.Log.Info($"service {entry.Change.Target} → {entry.Change.After}");
             applied.Add(entry.Change);
         }
@@ -59,7 +64,8 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         return ExecResult.Applied(applied);
     }
 
-    private async Task<List<ServiceChange>> InspectCoreAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+    private async Task<List<ServiceChange>> InspectCoreAsync(ExecContext context, OperationSpec spec,
+        CancellationToken ct) {
         var options = RegistryServiceOptions.FromDesired(spec.Spec);
         var hive = await context.Hives.GetAsync("system", context.Log, ct);
         var controlSet = await ResolveControlSetAsync(hive, ct);
@@ -71,6 +77,7 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         if (!enumerated.Success && enumerated.ExitCode != 1) {
             throw new ProcessRunnerException("reg.exe", enumerated);
         }
+
         var allNames = enumerated.Output.Split('\n')
             .Select(l => l.TrimEnd('\r').Trim())
             .Where(l => l.StartsWith(servicesRoot + "\\", StringComparison.OrdinalIgnoreCase))
@@ -127,7 +134,8 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             var key = $"{triggerRoot}\\{i}";
             await AddDwordWithAclRescueAsync(key, "Type", kind.Type, ct, serviceKey);
             await AddDwordWithAclRescueAsync(key, "Action", 1, ct, serviceKey);
-            await AddBinaryWithAclRescueAsync(key, "GUID", Convert.ToHexString(kind.SubType.ToByteArray()), ct, serviceKey);
+            await AddBinaryWithAclRescueAsync(key, "GUID", Convert.ToHexString(kind.SubType.ToByteArray()), ct,
+                serviceKey);
         }
     }
 
@@ -231,7 +239,7 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         }
     }
 
-    private Task RegAddDwordAsync(string serviceKey, string name, int value, CancellationToken ct) =>
+    private Task<ProcessRunResult> RegAddDwordAsync(string serviceKey, string name, int value, CancellationToken ct) =>
         runner.RunAsync("reg.exe",
             ["add", serviceKey, "/v", name, "/t", "REG_DWORD", "/d", value.ToString(), "/f"],
             cancellationToken: ct);

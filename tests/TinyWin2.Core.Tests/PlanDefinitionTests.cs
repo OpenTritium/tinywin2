@@ -5,7 +5,7 @@ using TinyWin2.Core.Plans;
 namespace TinyWin2.Core.Tests;
 
 public static class TestPlans {
-    public static string WritePlan(string directory, string id, Action<JsonObject>? mutate = null) {
+    public static void WritePlan(string directory, string id, Action<JsonObject>? mutate = null) {
         var obj = new JsonObject {
             ["schemaVersion"] = 3,
             ["id"] = id,
@@ -23,7 +23,6 @@ public static class TestPlans {
         mutate?.Invoke(obj);
         var path = Path.Combine(directory, $"{id.Replace('.', '_')}.json");
         File.WriteAllText(path, obj.ToJsonString());
-        return path;
     }
 
     public static string CreateTempDirectory() {
@@ -75,7 +74,8 @@ public sealed class PlanDefinitionTests {
     [Test]
     public async Task MissingRequiredFieldReportsError() {
         var obj = new JsonObject { ["schemaVersion"] = 3, ["id"] = "ok.id", ["version"] = "1.0.0" };
-        var ex = Assert.Throws<PlanValidationException>(() => PlanDefinition.FromJson(obj));
+        var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
+        await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
         await Assert.That(ex.Message).Contains("'title'");
         await Assert.That(ex.Message).Contains("'operation'");
     }
@@ -83,7 +83,8 @@ public sealed class PlanDefinitionTests {
     [Test]
     public async Task RejectsWrongSchemaVersion() {
         var obj = new JsonObject { ["schemaVersion"] = 4, ["id"] = "a.b", ["version"] = "1.0.0" };
-        var ex = Assert.Throws<PlanValidationException>(() => PlanDefinition.FromJson(obj));
+        var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
+        await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
         await Assert.That(ex.Message).Contains("schemaVersion");
     }
 
@@ -107,7 +108,8 @@ public sealed class PlanDefinitionTests {
                 ["spec"] = new JsonObject { ["paths"] = new JsonArray("x") },
             },
         };
-        var ex = Assert.Throws<PlanValidationException>(() => PlanDefinition.FromJson(obj));
+        var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
+        await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
         await Assert.That(ex.Message).Contains("enum parameter requires at least one option");
     }
 
@@ -133,7 +135,8 @@ public sealed class PlanDefinitionTests {
                 ["options"] = new JsonArray(new JsonObject { ["value"] = "yes" }),
             }),
         };
-        var ex = Assert.Throws<PlanValidationException>(() => PlanDefinition.FromJson(obj));
+        var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
+        await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
         await Assert.That(ex.Message).Contains("not one of the declared options");
     }
 
@@ -153,7 +156,8 @@ public sealed class PlanDefinitionTests {
             },
             ["legacyField"] = true,
         };
-        var ex = Assert.Throws<PlanValidationException>(() => PlanDefinition.FromJson(obj));
+        var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
+        await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
         await Assert.That(ex.Message).Contains("unknown field 'legacyField'");
     }
 }
@@ -176,14 +180,16 @@ public sealed class PlanCatalogTests : IDisposable {
         TestPlans.WritePlan(_directory, "dup.thing", o => o["category"] = "A");
         File.Move(Path.Combine(_directory, "dup_thing.json"), Path.Combine(_directory, "dup_thing_copy.json"));
         TestPlans.WritePlan(_directory, "dup.thing", o => o["category"] = "B");
-        var ex = Assert.Throws<PlanValidationException>(() => PlanCatalog.LoadDirectory(_directory));
+        var ex = Assert.Throws<Exception>(() => PlanCatalog.LoadDirectory(_directory));
+        await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
         await Assert.That(ex.Message).Contains("duplicate plan id 'dup.thing'");
     }
 
     [Test]
     public async Task UnknownRequiresAreRejected() {
         TestPlans.WritePlan(_directory, "dep.user", o => o["requires"] = new JsonArray("missing.dep"));
-        var ex = Assert.Throws<PlanValidationException>(() => PlanCatalog.LoadDirectory(_directory));
+        var ex = Assert.Throws<Exception>(() => PlanCatalog.LoadDirectory(_directory));
+        await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
         await Assert.That(ex.Message).Contains("unknown plan 'missing.dep'");
     }
 

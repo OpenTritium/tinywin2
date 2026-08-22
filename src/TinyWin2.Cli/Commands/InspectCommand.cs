@@ -8,7 +8,7 @@ internal static class InspectCommand {
     public static async Task<int> RunAsync(List<string> args) {
         var options = Program.ParseOptions(args);
         if (args.Count == 0 || args[0].StartsWith("--")) {
-            Console.Error.WriteLine("usage: tinywin2 inspect <iso|folder> [--json]");
+            await Console.Error.WriteLineAsync("usage: tinywin2 inspect <iso|folder> [--json]");
             return 2;
         }
         var source = args[0];

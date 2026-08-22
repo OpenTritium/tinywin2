@@ -29,7 +29,7 @@ internal static class Program {
         }
         catch (Exception ex) {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.Error.WriteLine($"error: {ex.Message}");
+            await Console.Error.WriteLineAsync($"error: {ex.Message}");
             Console.ResetColor();
             return 1;
         }
@@ -41,7 +41,7 @@ internal static class Program {
         for (var i = 0; i < args.Count; i++) {
             var arg = args[i];
             var isLong = arg.StartsWith("--", StringComparison.Ordinal);
-            var isShort = !isLong && arg.Length == 2 && arg[0] == '-' && char.IsLetter(arg[1]);
+            var isShort = arg is ['-', var shortOption] && char.IsLetter(shortOption);
             if (!isLong && !isShort) {
                 continue;
             }
@@ -50,7 +50,7 @@ internal static class Program {
             if (i + 1 < args.Count) {
                 var next = args[i + 1];
                 var nextIsOption = next.StartsWith("--", StringComparison.Ordinal)
-                    || (next.Length == 2 && next[0] == '-' && char.IsLetter(next[1]));
+                    || next is ['-', var nextShortOption] && char.IsLetter(nextShortOption);
                 if (!nextIsOption) {
                     value = next;
                     i++;

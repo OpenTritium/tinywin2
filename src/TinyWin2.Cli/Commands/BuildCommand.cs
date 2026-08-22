@@ -51,6 +51,7 @@ internal static class BuildCommand {
         var (runner, executers, layers) = Cli.CreateEngineParts();
         var engine = new BuildEngine(runner, executers, layers, log);
         using var cts = new CancellationTokenSource();
+        var ctsReference = new WeakReference<CancellationTokenSource>(cts);
         Console.CancelKeyPress += OnCancel;
         try {
             var result = await engine.BuildAsync(new BuildOptions {
@@ -73,7 +74,7 @@ internal static class BuildCommand {
                 BaseVhdxMaximumMb = baseVhdxMaximumMb,
             }, cts.Token);
             if (jsonEvents) {
-                Console.Out.WriteLine(new JsonObject {
+                await Console.Out.WriteLineAsync(new JsonObject {
                     ["seq"] = -1,
                     ["ts"] = DateTimeOffset.UtcNow.ToString("O"),
                     ["level"] = "info",
@@ -111,14 +112,14 @@ internal static class BuildCommand {
         }
         catch (BuildStepFailedException ex) {
             if (!jsonEvents) {
-                Console.Error.WriteLine($"✘ step '{ex.StepId}' failed at layer {ex.LayerIndex:000}; the layer was discarded and the workspace kept.");
-                Console.Error.WriteLine($"  post-mortem: tinywin2 layer diff <workspace> {Math.Max(0, ex.LayerIndex - 1)} {ex.LayerIndex}");
-                Console.Error.WriteLine($"  retry without the offender, e.g. add: --plan ... minus {ex.StepId}");
+                await Console.Error.WriteLineAsync($"✘ step '{ex.StepId}' failed at layer {ex.LayerIndex:000}; the layer was discarded and the workspace kept.");
+                await Console.Error.WriteLineAsync($"  post-mortem: tinywin2 layer diff <workspace> {Math.Max(0, ex.LayerIndex - 1)} {ex.LayerIndex}");
+                await Console.Error.WriteLineAsync($"  retry without the offender, e.g. add: --plan ... minus {ex.StepId}");
             }
             return 1;
         }
         catch (OperationCanceledException) {
-            Console.Error.WriteLine("cancelled.");
+            await Console.Error.WriteLineAsync("cancelled.");
             return 130;
         }
         finally {
@@ -129,7 +130,9 @@ internal static class BuildCommand {
             e.Cancel = true;
             log.Warn("cancellation requested; rolling back the current layer…");
             try {
-                cts.Cancel();
+                if (ctsReference.TryGetTarget(out var source)) {
+                    source.Cancel();
+                }
             }
             catch (ObjectDisposedException) {
                 // the build finished between the keypress and the handler deregistration
@@ -192,10 +195,13 @@ internal static class PreviewCommand {
                 $"tinywin2-preview-{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfff}-{Guid.NewGuid():N}.log"),
             echoConsole: !json);
         using var cts = new CancellationTokenSource();
+        var ctsReference = new WeakReference<CancellationTokenSource>(cts);
         ConsoleCancelEventHandler onCancel = (_, e) => {
             e.Cancel = true;
             log.Warn("cancellation requested; stopping preview…");
-            cts.Cancel();
+            if (ctsReference.TryGetTarget(out var source)) {
+                source.Cancel();
+            }
         };
         Console.CancelKeyPress += onCancel;
         try {
@@ -229,7 +235,7 @@ internal static class PreviewCommand {
             return 0;
         }
         catch (OperationCanceledException) {
-            Console.Error.WriteLine("preview cancelled.");
+            await Console.Error.WriteLineAsync("preview cancelled.");
             return 130;
         }
         finally {
@@ -255,7 +261,7 @@ internal static class LayerCommand {
         var options = Program.ParseOptions(args);
         var positional = args.Where(a => !a.StartsWith("--")).ToList();
         if (positional.Count == 0) {
-            Console.Error.WriteLine("""
+            await Console.Error.WriteLineAsync("""
                 usage: tinywin2 layer list    <workspace> [--json]
                        tinywin2 layer diff    <workspace> <from> <to> [--json]
                        tinywin2 layer extract <workspace> <layer> <image-relative-path> <dest>
@@ -272,7 +278,7 @@ internal static class LayerCommand {
                 return List(layers, log, workDirectory, options.ContainsKey("json"));
             case "diff": {
                     if (positional.Count < 4) {
-                        Console.Error.WriteLine("usage: tinywin2 layer diff <workspace> <from> <to> [--json]");
+                        await Console.Error.WriteLineAsync("usage: tinywin2 layer diff <workspace> <from> <to> [--json]");
                         return 2;
                     }
                     var report = await inspector.DiffAsync(workDirectory, int.Parse(positional[2]), int.Parse(positional[3]));
@@ -304,7 +310,7 @@ internal static class LayerCommand {
                 }
             case "extract": {
                     if (positional.Count < 5) {
-                        Console.Error.WriteLine("usage: tinywin2 layer extract <workspace> <layer> <image-relative-path> <dest>");
+                        await Console.Error.WriteLineAsync("usage: tinywin2 layer extract <workspace> <layer> <image-relative-path> <dest>");
                         return 2;
                     }
                     await inspector.ExtractAsync(workDirectory, int.Parse(positional[2]), positional[3], positional[4], CancellationToken.None);
@@ -314,7 +320,7 @@ internal static class LayerCommand {
             case "rollback-to": {
                     var output = options.GetValueOrDefault("out")?.FirstOrDefault() ?? options.GetValueOrDefault("o")?.FirstOrDefault();
                     if (positional.Count < 3 || output is null) {
-                        Console.Error.WriteLine("usage: tinywin2 layer rollback-to <workspace> <layer> -o <out.wim|esd> [--fast]");
+                        await Console.Error.WriteLineAsync("usage: tinywin2 layer rollback-to <workspace> <layer> -o <out.wim|esd> [--fast]");
                         return 2;
                     }
                     var format = output.EndsWith(".esd", StringComparison.OrdinalIgnoreCase) ? OutputFormat.Esd : OutputFormat.Wim;
@@ -324,7 +330,7 @@ internal static class LayerCommand {
                     return 0;
                 }
             default:
-                Console.Error.WriteLine($"unknown layer subcommand: {positional[0]}");
+                await Console.Error.WriteLineAsync($"unknown layer subcommand: {positional[0]}");
                 return 2;
         }
     }

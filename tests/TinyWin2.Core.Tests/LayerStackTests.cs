@@ -109,7 +109,7 @@ public sealed class VhdLayerStackTests : IDisposable {
     public async Task DiscardLayerDeletesVhdxAndKeepsPreviousLeaf() {
         var stack = await CreateWithBaseAsync();
         var session = await stack.BeginLayerAsync("step1", "S1", CancellationToken.None);
-        await stack.DiscardLayerAsync(session, "boom", CancellationToken.None);
+        await stack.DiscardLayerAsync(session, "boom");
         await Assert.That(File.Exists(session.VhdxPath)).IsFalse();
         await Assert.That(stack.LeafVhdxPath).EndsWith("base.vhdx");
         await Assert.That(stack.Records[1].Status).IsEqualTo(LayerStatus.Discarded);
@@ -238,7 +238,7 @@ public sealed class VhdLayerStackTests : IDisposable {
 
         await Assert.That(next.Record.Index).IsEqualTo(3);
         await Assert.That(next.VhdxPath).EndsWith("L003.vhdx");
-        await stack.DiscardLayerAsync(next, "test cleanup", CancellationToken.None);
+        await stack.DiscardLayerAsync(next, "test cleanup");
     }
 
     [Test]
@@ -260,7 +260,7 @@ public sealed class VhdLayerStackTests : IDisposable {
     public async Task VhdxForLayerRejectsUncommitted() {
         var stack = await CreateWithBaseAsync();
         var session = await stack.BeginLayerAsync("step1", "S1", CancellationToken.None);
-        await stack.DiscardLayerAsync(session, "x", CancellationToken.None);
+        await stack.DiscardLayerAsync(session, "x");
         Assert.Throws<ArgumentException>(() => stack.VhdxForLayer(1));
     }
 

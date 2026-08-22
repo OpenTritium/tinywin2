@@ -43,7 +43,10 @@ public partial class PlanItemViewModel : ObservableObject {
         _ => new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.DarkGreen),
     };
 
-    partial void OnIsSelectedChanged(bool value) => SelectedChanged?.Invoke();
+    partial void OnIsSelectedChanged(bool value) {
+        _ = value;
+        SelectedChanged?.Invoke();
+    }
 
     public event Action? SelectedChanged;
 }
@@ -75,12 +78,20 @@ public partial class ParameterViewModel : ObservableObject {
         _ => SelectedValue,
     };
 
-    partial void OnSelectedValueChanged(string value) => ValueChanged?.Invoke();
+    partial void OnSelectedValueChanged(string value) {
+        _ = value;
+        ValueChanged?.Invoke();
+    }
 
     public event Action? ValueChanged;
 }
 
-public sealed record ImageIndexItem(int Index, string Name, string EditionId, string Version, string Display);
+public sealed class ImageIndexItem(int index, string display) {
+    public int Index { get; } = index;
+    private string Display { get; } = display;
+
+    public override string ToString() => Display;
+}
 
 /// <summary>Shared wizard state across the four pages.</summary>
 public sealed class WizardState {

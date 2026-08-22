@@ -38,16 +38,23 @@ public sealed class LayerBackendTests : IDisposable {
     [Test]
     public async Task DiskPartCreateDiffRequiresExistingParent() {
         var backend = new DiskPartVhdBackend(_runner);
-        var ex = Assert.Throws<FileNotFoundException>(() => backend.CreateDiffAsync(
-            Path.Combine(_root, "L001.vhdx"), Path.Combine(_root, "missing.vhdx"), CancellationToken.None)
-            .GetAwaiter().GetResult());
+        var ex = Assert.Throws<FileNotFoundException>(() =>
+            backend
+                .CreateDiffAsync(
+                    Path.Combine(_root, "L001.vhdx"),
+                    Path.Combine(_root, "missing.vhdx"),
+                    CancellationToken.None
+                )
+                .GetAwaiter()
+                .GetResult()
+        );
         await Assert.That(ex.Message).Contains("differencing parent not found");
     }
 
     [Test]
     public async Task DiskPartCreateDiffScriptsParentChain() {
         var parent = Path.Combine(_root, "base.vhdx");
-        File.WriteAllText(parent, "vhd");
+        await File.WriteAllTextAsync(parent, "vhd");
         var backend = new DiskPartVhdBackend(_runner);
         await backend.CreateDiffAsync(Path.Combine(_root, "L001.vhdx"), parent, CancellationToken.None);
         await Assert.That(_scripts[0]).Contains("create vdisk");
@@ -57,7 +64,7 @@ public sealed class LayerBackendTests : IDisposable {
     [Test]
     public async Task DiskPartAttachRecoversFromAnAlreadyAttachedDisk() {
         var vhdx = Path.Combine(_root, "base.vhdx");
-        File.WriteAllText(vhdx, "vhd");
+        await File.WriteAllTextAsync(vhdx, "vhd");
         var backend = new DiskPartVhdBackend(_runner);
         var attempts = 0;
         _runner.Handler = (file, args) => {
@@ -65,7 +72,10 @@ public sealed class LayerBackendTests : IDisposable {
                 _scripts.Add(File.ReadAllText(args[1]));
             }
             return ++attempts == 1
-                ? throw new ProcessRunnerException("diskpart.exe", FakeProcessRunner.Fail(1, "the virtual disk is already attached"))
+                ? throw new ProcessRunnerException(
+                    "diskpart.exe",
+                    FakeProcessRunner.Fail(1, "the virtual disk is already attached")
+                )
                 : FakeProcessRunner.Ok();
         };
 
@@ -81,16 +91,21 @@ public sealed class LayerBackendTests : IDisposable {
     public async Task DiskPartScriptErrorsSurfaceAsIoException() {
         var backend = new DiskPartVhdBackend(_runner);
         _runner.Handler = (_, _) => FakeProcessRunner.Ok("diskpart has encountered an error");
-        var ex = Assert.Throws<IOException>(() => backend.CreateBaseAsync(
-            Path.Combine(_root, "b.vhdx"), 512, "l", CancellationToken.None).GetAwaiter().GetResult());
+        var ex = Assert.Throws<IOException>(() =>
+            backend
+                .CreateBaseAsync(Path.Combine(_root, "b.vhdx"), 512, "l", CancellationToken.None)
+                .GetAwaiter()
+                .GetResult()
+        );
         await Assert.That(ex.Message).Contains("diskpart reported an error");
     }
 
     [Test]
     public async Task DiskPartAttachRequiresExistingVhdx() {
         var backend = new DiskPartVhdBackend(_runner);
-        var ex = Assert.Throws<FileNotFoundException>(() => backend.AttachAsync(
-            Path.Combine(_root, "ghost.vhdx"), CancellationToken.None).GetAwaiter().GetResult());
+        var ex = Assert.Throws<FileNotFoundException>(() =>
+            backend.AttachAsync(Path.Combine(_root, "ghost.vhdx"), CancellationToken.None).GetAwaiter().GetResult()
+        );
         await Assert.That(ex.Message).Contains("layer VHDX not found");
     }
 
@@ -99,7 +114,7 @@ public sealed class LayerBackendTests : IDisposable {
     [Test]
     public async Task HyperVhdAttachReusesExistingAttachmentWithoutDismounting() {
         var vhdx = Path.Combine(_root, "base.vhdx");
-        File.WriteAllText(vhdx, "vhd");
+        await File.WriteAllTextAsync(vhdx, "vhd");
         var backend = new HyperVhdBackend(_runner);
         _runner.Handler = (_, _) => FakeProcessRunner.Ok("X");
         var letter = await backend.AttachAsync(vhdx, CancellationToken.None);
@@ -113,17 +128,19 @@ public sealed class LayerBackendTests : IDisposable {
     [Test]
     public async Task HyperVhdAttachWithoutDriveLetterThrows() {
         var vhdx = Path.Combine(_root, "base.vhdx");
-        File.WriteAllText(vhdx, "vhd");
+        await File.WriteAllTextAsync(vhdx, "vhd");
         var backend = new HyperVhdBackend(_runner);
         _runner.Handler = (_, _) => FakeProcessRunner.Ok();
-        var ex = Assert.Throws<IOException>(() => backend.AttachAsync(vhdx, CancellationToken.None).GetAwaiter().GetResult());
+        var ex = Assert.Throws<IOException>(() =>
+            backend.AttachAsync(vhdx, CancellationToken.None).GetAwaiter().GetResult()
+        );
         await Assert.That(ex.Message).Contains("could not resolve its drive letter");
     }
 
     [Test]
     public async Task HyperVhdDetachLeavesPreExistingAttachmentAlone() {
         var vhdx = Path.Combine(_root, "base.vhdx");
-        File.WriteAllText(vhdx, "vhd");
+        await File.WriteAllTextAsync(vhdx, "vhd");
         var backend = new HyperVhdBackend(_runner);
         _runner.Handler = (_, _) => FakeProcessRunner.Ok("tinywin2-existing|X");
 
@@ -136,11 +153,12 @@ public sealed class LayerBackendTests : IDisposable {
     [Test]
     public async Task HyperVhdDetachReleasesAnAttachmentCreatedByThisBackend() {
         var vhdx = Path.Combine(_root, "base.vhdx");
-        File.WriteAllText(vhdx, "vhd");
+        await File.WriteAllTextAsync(vhdx, "vhd");
         var backend = new HyperVhdBackend(_runner);
-        _runner.Handler = (_, args) => args[4].Contains("tinywin2-owned", StringComparison.Ordinal)
-            ? FakeProcessRunner.Ok("tinywin2-owned|X")
-            : FakeProcessRunner.Ok();
+        _runner.Handler = (_, args) =>
+            args[4].Contains("tinywin2-owned", StringComparison.Ordinal)
+                ? FakeProcessRunner.Ok("tinywin2-owned|X")
+                : FakeProcessRunner.Ok();
 
         await backend.AttachAsync(vhdx, CancellationToken.None);
         await backend.DetachAsync(vhdx, CancellationToken.None);
@@ -153,7 +171,7 @@ public sealed class LayerBackendTests : IDisposable {
     public async Task HyperVhdScriptsQuotePathsAndDoubleApostrophes() {
         var vhdx = Path.Combine(_root, "it's", "base.vhdx");
         Directory.CreateDirectory(Path.GetDirectoryName(vhdx)!);
-        File.WriteAllText(vhdx, "vhd");
+        await File.WriteAllTextAsync(vhdx, "vhd");
         var backend = new HyperVhdBackend(_runner);
         _runner.Handler = (_, _) => FakeProcessRunner.Ok("tinywin2-existing|X");
         await backend.AttachAsync(vhdx, CancellationToken.None);
@@ -174,9 +192,16 @@ public sealed class LayerBackendTests : IDisposable {
     [Test]
     public async Task HyperVhdCreateDiffRequiresExistingParent() {
         var backend = new HyperVhdBackend(_runner);
-        var ex = Assert.Throws<FileNotFoundException>(() => backend.CreateDiffAsync(
-            Path.Combine(_root, "L001.vhdx"), Path.Combine(_root, "missing.vhdx"), CancellationToken.None)
-            .GetAwaiter().GetResult());
+        var ex = Assert.Throws<FileNotFoundException>(() =>
+            backend
+                .CreateDiffAsync(
+                    Path.Combine(_root, "L001.vhdx"),
+                    Path.Combine(_root, "missing.vhdx"),
+                    CancellationToken.None
+                )
+                .GetAwaiter()
+                .GetResult()
+        );
         await Assert.That(ex.Message).Contains("differencing parent not found");
     }
 
@@ -213,14 +238,19 @@ public sealed class LayerBackendTests : IDisposable {
         var directory = TestPlans.CreateTempDirectory();
         try {
             Directory.CreateDirectory(directory);
-            File.WriteAllText(Path.Combine(directory, "layers.json"), "{ not json");
+            await File.WriteAllTextAsync(Path.Combine(directory, "layers.json"), "{ not json");
             var ex = Assert.Throws<IOException>(() =>
-                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog()));
+                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog())
+            );
             await Assert.That(ex.Message).Contains("is corrupt");
             await Assert.That(ex.Message).Contains("delete the workspace");
         }
         finally {
-            try { Directory.Delete(directory, recursive: true); } catch { /* best effort */ }
+            try {
+                Directory.Delete(directory, recursive: true);
+            }
+            catch { /* best effort */
+            }
         }
     }
 
@@ -228,13 +258,18 @@ public sealed class LayerBackendTests : IDisposable {
     public async Task LoadRejectsLayerManifestWithoutLayersArray() {
         var directory = TestPlans.CreateTempDirectory();
         try {
-            File.WriteAllText(Path.Combine(directory, "layers.json"), "{\"version\":1}");
+            await File.WriteAllTextAsync(Path.Combine(directory, "layers.json"), "{\"version\":1}");
             var ex = Assert.Throws<IOException>(() =>
-                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog()));
+                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog())
+            );
             await Assert.That(ex.Message).Contains("layers");
         }
         finally {
-            try { Directory.Delete(directory, recursive: true); } catch { /* best effort */ }
+            try {
+                Directory.Delete(directory, recursive: true);
+            }
+            catch { /* best effort */
+            }
         }
     }
 
@@ -243,28 +278,47 @@ public sealed class LayerBackendTests : IDisposable {
         var directory = TestPlans.CreateTempDirectory();
         try {
             var timestamp = DateTimeOffset.UtcNow.ToString("O");
-            var baseLayer = $"{{\"index\":0,\"vhdx\":\"base.vhdx\",\"status\":\"committed\",\"startedUtc\":\"{timestamp}\"}}";
-            var escaped = $"{{\"index\":1,\"vhdx\":\"..\\\\outside.vhdx\",\"status\":\"committed\",\"startedUtc\":\"{timestamp}\"}}";
-            File.WriteAllText(Path.Combine(directory, "layers.json"), $"{{\"layers\":[{baseLayer},{escaped}]}}");
+            var baseLayer =
+                $"{{\"index\":0,\"vhdx\":\"base.vhdx\",\"status\":\"committed\",\"startedUtc\":\"{timestamp}\"}}";
+            var escaped =
+                $"{{\"index\":1,\"vhdx\":\"..\\\\outside.vhdx\",\"status\":\"committed\",\"startedUtc\":\"{timestamp}\"}}";
+            await File.WriteAllTextAsync(
+                Path.Combine(directory, "layers.json"),
+                $"{{\"layers\":[{baseLayer},{escaped}]}}"
+            );
             var traversal = Assert.Throws<IOException>(() =>
-                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog()));
+                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog())
+            );
             await Assert.That(traversal.Message).Contains("invalid VHDX");
 
-            var layer = $"{{\"index\":1,\"vhdx\":\"L001.vhdx\",\"status\":\"discarded\",\"startedUtc\":\"{timestamp}\"}}";
-            File.WriteAllText(Path.Combine(directory, "layers.json"), $"{{\"layers\":[{baseLayer},{layer},{layer}]}}");
+            var layer =
+                $"{{\"index\":1,\"vhdx\":\"L001.vhdx\",\"status\":\"discarded\",\"startedUtc\":\"{timestamp}\"}}";
+            await File.WriteAllTextAsync(
+                Path.Combine(directory, "layers.json"),
+                $"{{\"layers\":[{baseLayer},{layer},{layer}]}}"
+            );
             var duplicate = Assert.Throws<IOException>(() =>
-                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog()));
+                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog())
+            );
             await Assert.That(duplicate.Message).Contains("unique");
         }
         finally {
-            try { Directory.Delete(directory, recursive: true); } catch { /* best effort */ }
+            try {
+                Directory.Delete(directory, recursive: true);
+            }
+            catch { /* best effort */
+            }
         }
     }
 
     [Test]
     public async Task DuplicateRegistrationIsRejected() {
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            new ExecuterRegistry([new FakeExecuter("dup.resource", fail: false), new FakeExecuter("dup.resource", fail: false)]));
+            _ = new ExecuterRegistry([
+                new FakeExecuter("dup.resource", fail: false),
+                new FakeExecuter("dup.resource", fail: false),
+            ])
+        );
         await Assert.That(ex.Message).Contains("duplicate executer registration for resource 'dup.resource'");
     }
 
@@ -273,7 +327,8 @@ public sealed class LayerBackendTests : IDisposable {
         var registry = new ExecuterRegistry([new FakeExecuter("known.resource", fail: false)]);
         var plan = BuildPlan(
             new OperationSpec("known.resource", OperationAction.Remove, []),
-            new OperationSpec("ghost.resource", OperationAction.Set, []));
+            new OperationSpec("ghost.resource", OperationAction.Set, [])
+        );
         var ex = Assert.Throws<ExecException>(() => registry.ValidateBuildPlan(plan));
         await Assert.That(ex.Message).Contains("no executer registered for resource 'ghost.resource'");
     }
@@ -285,20 +340,30 @@ public sealed class LayerBackendTests : IDisposable {
         registry.ValidateBuildPlan(plan);
     }
 
-    private static BuildPlan BuildPlan(params OperationSpec[] execs) => new(
-            execs.Select((operation, index) => {
-                var definition = new PlanDefinition {
-                    Id = $"p.{index}",
-                    Version = "1.0.0",
-                    Title = $"P {index}",
-                    Description = "d",
-                    Category = "G",
-                    Operation = new PlanOperation(operation.Resource, operation.Action, operation.Spec),
-                };
-                return new PlanStep(new ResolvedPlan(definition, operation));
-            }).ToArray());
+    private static BuildPlan BuildPlan(params OperationSpec[] execs) =>
+        new(
+            execs
+                .Select(
+                    (operation, index) => {
+                        var definition = new PlanDefinition {
+                            Id = $"p.{index}",
+                            Version = "1.0.0",
+                            Title = $"P {index}",
+                            Description = "d",
+                            Category = "G",
+                            Operation = new PlanOperation(operation.Resource, operation.Action, operation.Spec),
+                        };
+                        return new PlanStep(new ResolvedPlan(definition, operation));
+                    }
+                )
+                .ToArray()
+        );
 
     public void Dispose() {
-        try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
+        try {
+            Directory.Delete(_root, recursive: true);
+        }
+        catch { /* best effort */
+        }
     }
 }

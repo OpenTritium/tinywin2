@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text.Json.Nodes;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using TinyWin2.Gui.Services;
@@ -22,7 +21,7 @@ public sealed class ColoredLogLine {
     };
 }
 
-public sealed partial class ProgressPage : Page {
+public sealed partial class ProgressPage {
     private readonly ObservableCollection<ColoredLogLine> _lines = [];
     private CancellationTokenSource? _cts;
     private bool _finished;
@@ -34,13 +33,13 @@ public sealed partial class ProgressPage : Page {
 
     private WizardState State => WizardState.Current;
 
-    protected override async void OnNavigatedTo(NavigationEventArgs e) {
+    protected override void OnNavigatedTo(NavigationEventArgs e) {
         base.OnNavigatedTo(e);
         if (_finished) {
             return; // back-navigation guard: do not restart a finished build
         }
         _cts = new CancellationTokenSource();
-        await RunBuildAsync(_cts.Token);
+        _ = RunBuildAsync(_cts.Token);
     }
 
     private List<string> BuildArguments() {
@@ -107,16 +106,30 @@ public sealed partial class ProgressPage : Page {
             });
         }
 
-        var exitCode = await new CliRunner().RunAsync(
-            arguments,
-            HandleEvent,
-            rawLine => { },
-            ex => dispatcher.TryEnqueue(() => _lines.Add(new ColoredLogLine {
+        int exitCode;
+        try {
+            exitCode = await new CliRunner().RunAsync(
+                arguments,
+                HandleEvent,
+                _ => { },
+                ex => dispatcher.TryEnqueue(() => _lines.Add(new ColoredLogLine {
+                    Timestamp = DateTimeOffset.Now,
+                    Level = "error",
+                    Message = "CLI 运行失败: " + ex.Message,
+                })),
+                ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) {
+            exitCode = 130;
+        }
+        catch (Exception ex) {
+            exitCode = 1;
+            dispatcher.TryEnqueue(() => _lines.Add(new ColoredLogLine {
                 Timestamp = DateTimeOffset.Now,
                 Level = "error",
                 Message = "CLI 运行失败: " + ex.Message,
-            })),
-            ct);
+            }));
+        }
 
         _finished = true;
         State.BuildSucceeded = exitCode == 0 && State.BuildSucceeded;

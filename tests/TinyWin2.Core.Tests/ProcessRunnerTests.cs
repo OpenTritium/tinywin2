@@ -52,9 +52,10 @@ public sealed class ProcessRunnerTests {
     [Test]
     public async Task BoundsCapturedOutput() {
         var runner = new ProcessRunner();
-        var (exe, args) = OperatingSystem.IsWindows()
-            ? ("cmd.exe", new[] { "/c", "for /L %i in (1,1,20) do @echo 1234567890" })
-            : ("/bin/sh", new[] { "-c", "yes 1234567890 | head -n 20" });
+        var exe = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh";
+        IReadOnlyList<string> args = OperatingSystem.IsWindows()
+            ? ["/c", "for /L %i in (1,1,20) do @echo 1234567890"]
+            : ["-c", "yes 1234567890 | head -n 20"];
 
         var result = await runner.RunAsync(exe, args,
             new ProcessRunOptions { MaxOutputCharacters = 150 });
@@ -66,9 +67,10 @@ public sealed class ProcessRunnerTests {
     [Test]
     public async Task OutputCallbackFailureTerminatesTheProcess() {
         var runner = new ProcessRunner();
-        var (exe, args) = OperatingSystem.IsWindows()
-            ? ("cmd.exe", new[] { "/c", "echo callback & ping -n 30 127.0.0.1 > nul" })
-            : ("/bin/sh", new[] { "-c", "printf 'callback\\n'; sleep 30" });
+        var exe = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh";
+        IReadOnlyList<string> args = OperatingSystem.IsWindows()
+            ? ["/c", "echo callback & ping -n 30 127.0.0.1 > nul"]
+            : ["-c", "printf 'callback\\n'; sleep 30"];
         var stopwatch = Stopwatch.StartNew();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => runner.RunAsync(exe, args,

@@ -7,13 +7,10 @@ namespace TinyWin2.Core.Tests;
 /// <see cref="RequiresTestSource"/> to also demand TINYWIN2_TEST_ISO (ISO file or media
 /// folder) and enough free space on the test root drive (TINYWIN2_TEST_ROOT or %TEMP%).
 /// </summary>
-public sealed class ItGateAttribute : SkipAttribute {
+public sealed class ItGateAttribute() : SkipAttribute("integration tests are gated behind TINYWIN2_IT=1") {
     private const long RequiredFreeBytes = 55L * 1024 * 1024 * 1024;
 
     public bool RequiresTestSource { get; init; }
-
-    public ItGateAttribute() : base("integration tests are gated behind TINYWIN2_IT=1") {
-    }
 
     public override Task<bool> ShouldSkip(TestRegisteredContext context) =>
         Task.FromResult(GateIsClosed(RequiresTestSource));
@@ -27,7 +24,7 @@ public sealed class ItGateAttribute : SkipAttribute {
                     ? "needs TINYWIN2_TEST_ISO pointing at an ISO file or unpacked media folder"
                     : "not enough free space for an image build (set TINYWIN2_TEST_ROOT to a drive with 55+ GB free)";
 
-    internal static bool GateIsClosed(bool requiresTestSource) =>
+    private static bool GateIsClosed(bool requiresTestSource) =>
         Environment.GetEnvironmentVariable("TINYWIN2_IT") != "1"
         || !OperatingSystem.IsWindows()
         || !EnvironmentDoctor.IsAdministrator()
@@ -43,7 +40,7 @@ public sealed class ItGateAttribute : SkipAttribute {
         && !EnvironmentDoctor.CheckFreeSpace(TestRoot(), RequiredFreeBytes).Ok;
 
     /// <summary>Big-disk support: the ISO builds need far more room than %TEMP% usually has.</summary>
-    internal static string TestRoot() {
+    private static string TestRoot() {
         var configured = Environment.GetEnvironmentVariable("TINYWIN2_TEST_ROOT");
         return string.IsNullOrWhiteSpace(configured) ? Path.GetTempPath() : Path.GetFullPath(configured);
     }

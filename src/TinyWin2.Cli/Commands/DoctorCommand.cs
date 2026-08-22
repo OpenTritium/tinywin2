@@ -15,7 +15,7 @@ internal static class DoctorCommand {
         if (json) {
             var root = new JsonObject { ["checks"] = Json.ToNode(checks) };
             Console.WriteLine(root.ToJsonString(JsonSerializerOptions));
-            var failed = checks.Any(c => c.Required && !c.Ok);
+            var failed = checks.Any(c => c is { Required: true, Ok: false });
             return failed ? 1 : 0;
         }
         var width = Math.Max("administrator".Length, checks.Max(c => c.Name.Length));
@@ -27,7 +27,7 @@ internal static class DoctorCommand {
             Console.ForegroundColor = previous;
             Console.WriteLine($"{check.Name.PadRight(width)}  {check.Detail}{(check.Required ? "" : "  (optional)")}");
         }
-        var failedRequired = checks.Count(c => c.Required && !c.Ok);
+        var failedRequired = checks.Count(c => c is { Required: true, Ok: false });
         Console.WriteLine(failedRequired == 0
             ? "environment is ready."
             : $"{failedRequired} required check(s) failed.");

@@ -15,7 +15,7 @@ public sealed class RowItem {
     public bool IsHeader => Plan is null;
 }
 
-public sealed class RowTemplateSelector : DataTemplateSelector {
+public sealed partial class RowTemplateSelector : DataTemplateSelector {
     public DataTemplate? HeaderTemplate { get; set; }
     public DataTemplate? PlanTemplate { get; set; }
 
@@ -23,7 +23,7 @@ public sealed class RowTemplateSelector : DataTemplateSelector {
         item is RowItem { IsHeader: true } ? HeaderTemplate : PlanTemplate;
 }
 
-public sealed partial class ItemsPage : Page {
+public sealed partial class ItemsPage {
     private readonly ObservableCollection<RowItem> _rows = [];
 
     public ItemsPage() {
@@ -63,11 +63,16 @@ public sealed partial class ItemsPage : Page {
 
         bool Filter(PlanItemViewModel p) =>
             search.Length == 0
-                || p.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || p.Id.Contains(search, StringComparison.OrdinalIgnoreCase);
+            || p.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || p.Id.Contains(search, StringComparison.OrdinalIgnoreCase);
 
         _rows.Clear();
-        foreach (var group in State.Plans.Where(Filter).GroupBy(p => p.Category).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)) {
+        foreach (
+            var group in State
+                .Plans.Where(Filter)
+                .GroupBy(p => p.Category)
+                .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+        ) {
             var headerRow = new RowItem { Header = group.Key, Plans = [.. group] };
             _rows.Add(headerRow);
             foreach (var plan in group) {
@@ -106,13 +111,12 @@ public sealed partial class ItemsPage : Page {
         foreach (var parameter in plan.Parameters) {
             var header = new TextBlock { Text = parameter.Label, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
             ArgumentPanel.Children.Add(header);
-            if (parameter.Type == "enum" && parameter.Options.Count > 0) {
+            if (parameter is { Type: "enum", Options.Count: > 0 }) {
                 var combo = new ComboBox { Width = 260 };
                 foreach (var option in parameter.Options) {
                     combo.Items.Add($"{option.Label}（风险 {option.RiskLevel ?? "?"}）|{option.Value}");
                 }
-                var current = parameter.Options.ToList().FindIndex(o =>
-                    o.Value == parameter.SelectedValue);
+                var current = parameter.Options.ToList().FindIndex(o => o.Value == parameter.SelectedValue);
                 combo.SelectedIndex = current >= 0 ? current : 0;
                 combo.SelectionChanged += (_, _) => {
                     if (combo.SelectedItem is string selected) {
@@ -129,15 +133,20 @@ public sealed partial class ItemsPage : Page {
         }
     }
 
-    private async void ImportProfile(object sender, RoutedEventArgs e) {
-        var picker = new Windows.Storage.Pickers.FileOpenPicker { FileTypeFilter = { ".json" } };
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!));
-        var file = await picker.PickSingleFileAsync();
-        if (file is null) {
-            return;
-        }
-        var dialog = new { FileName = file.Path };
+    private void ImportProfile(object sender, RoutedEventArgs e) => _ = ImportProfileAsync();
+
+    private async Task ImportProfileAsync() {
         try {
+            var picker = new Windows.Storage.Pickers.FileOpenPicker { FileTypeFilter = { ".json" } };
+            WinRT.Interop.InitializeWithWindow.Initialize(
+                picker,
+                WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!)
+            );
+            var file = await picker.PickSingleFileAsync();
+            if (file is null) {
+                return;
+            }
+            var dialog = new { FileName = file.Path };
             var profile = ProfileStore.Load(dialog.FileName);
             var unknown = ProfileStore.UnknownPlans(profile, State.Catalog!);
             foreach (var plan in State.Plans) {
@@ -152,12 +161,17 @@ public sealed partial class ItemsPage : Page {
                 item.IsSelected = true;
                 applied++;
                 foreach (var parameter in item.Parameters) {
-                    if (selection.Parameters is not null && selection.Parameters.TryGetValue(parameter.Name, out var value) && value is not null) {
+                    if (
+                        selection.Parameters is not null
+                        && selection.Parameters.TryGetValue(parameter.Name, out var value)
+                        && value is not null
+                    ) {
                         parameter.SelectedValue = value.ToString();
                     }
                 }
             }
-            var warning = unknown.Count > 0 ? $"\n\n缺失 {unknown.Count} 个 plan: {string.Join(", ", unknown.Take(5))}" : "";
+            var warning =
+                unknown.Count > 0 ? $"\n\n缺失 {unknown.Count} 个 plan: {string.Join(", ", unknown.Take(5))}" : "";
             await new ContentDialog {
                 Title = "Profile 已导入",
                 Content = $"已启用 {applied} 个精简项。{warning}",
@@ -175,34 +189,46 @@ public sealed partial class ItemsPage : Page {
         }
     }
 
-    private async void ExportProfile(object sender, RoutedEventArgs e) {
-        var picker = new Windows.Storage.Pickers.FileSavePicker {
-            SuggestedFileName = "my-profile",
-            FileTypeChoices = { ["TinyWin2 Profile"] = new List<string> { ".json" } },
-        };
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!));
-        var file = await picker.PickSaveFileAsync();
-        if (file is null) {
-            return;
-        }
-        var dialog = new { FileName = file.Path };
-        var selections = State.Plans
-        .Where(p => p.IsSelected)
-        .Select(p => {
-            var parameters = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
-            foreach (var parameter in p.Parameters) {
-                parameters[parameter.Name] = JsonValue.Create(parameter.SelectedValue);
+    private void ExportProfile(object sender, RoutedEventArgs e) => _ = ExportProfileAsync();
+
+    private async Task ExportProfileAsync() {
+        try {
+            var picker = new Windows.Storage.Pickers.FileSavePicker {
+                SuggestedFileName = "my-profile",
+                FileTypeChoices = { ["TinyWin2 Profile"] = new List<string> { ".json" } },
+            };
+            WinRT.Interop.InitializeWithWindow.Initialize(
+                picker,
+                WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!)
+            );
+            var file = await picker.PickSaveFileAsync();
+            if (file is null) {
+                return;
             }
-            return new PlanSelection(
-                p.Id,
-                true,
-                parameters);
-        })
-        .ToList();
-        ProfileStore.Save(new Profile(
-            Path.GetFileNameWithoutExtension(dialog.FileName),
-            "导出自 TinyWin2 GUI",
-            selections), dialog.FileName);
+            var dialog = new { FileName = file.Path };
+            var selections = State
+                .Plans.Where(p => p.IsSelected)
+                .Select(p => {
+                    var parameters = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
+                    foreach (var parameter in p.Parameters) {
+                        parameters[parameter.Name] = JsonValue.Create(parameter.SelectedValue);
+                    }
+                    return new PlanSelection(p.Id, true, parameters);
+                })
+                .ToList();
+            ProfileStore.Save(
+                new Profile(Path.GetFileNameWithoutExtension(dialog.FileName), "导出自 TinyWin2 GUI", selections),
+                dialog.FileName
+            );
+        }
+        catch (Exception ex) {
+            await new ContentDialog {
+                Title = "导出失败",
+                Content = ex.Message,
+                CloseButtonText = "确定",
+                XamlRoot = XamlRoot,
+            }.ShowAsync();
+        }
     }
 
     private void UpdateSelectionCount() =>

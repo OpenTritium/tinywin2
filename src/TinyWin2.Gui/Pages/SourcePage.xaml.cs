@@ -5,42 +5,62 @@ using TinyWin2.Gui.Services;
 
 namespace TinyWin2.Gui.Pages;
 
-public sealed partial class SourcePage : Page {
+public sealed partial class SourcePage {
     public SourcePage() {
         InitializeComponent();
     }
 
     private WizardState State => WizardState.Current;
 
-    private async void PickIso(object sender, RoutedEventArgs e) {
-        var picker = new Windows.Storage.Pickers.FileOpenPicker {
-            SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder,
-            FileTypeFilter = { ".iso" },
-        };
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!));
-        var file = await picker.PickSingleFileAsync();
-        if (file is not null) {
-            SourceBox.Text = file.Path;
-            await RefreshIndexesAsync();
+    private void PickIso(object sender, RoutedEventArgs e) => _ = PickIsoAsync();
+
+    private async Task PickIsoAsync() {
+        try {
+            var picker = new Windows.Storage.Pickers.FileOpenPicker {
+                SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder,
+                FileTypeFilter = { ".iso" },
+            };
+            WinRT.Interop.InitializeWithWindow.Initialize(
+                picker,
+                WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!)
+            );
+            var file = await picker.PickSingleFileAsync();
+            if (file is not null) {
+                SourceBox.Text = file.Path;
+                await RefreshIndexesAsync();
+            }
+        }
+        catch (Exception ex) {
+            HintText.Text = "读取失败: " + ex.Message;
         }
     }
 
-    private async void PickFolder(object sender, RoutedEventArgs e) {
-        var picker = new Windows.Storage.Pickers.FolderPicker {
-            SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder,
-            FileTypeFilter = { "*" },
-        };
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!));
-        var folder = await picker.PickSingleFolderAsync();
-        if (folder is not null) {
-            SourceBox.Text = folder.Path;
-            await RefreshIndexesAsync();
+    private void PickFolder(object sender, RoutedEventArgs e) => _ = PickFolderAsync();
+
+    private async Task PickFolderAsync() {
+        try {
+            var picker = new Windows.Storage.Pickers.FolderPicker {
+                SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder,
+                FileTypeFilter = { "*" },
+            };
+            WinRT.Interop.InitializeWithWindow.Initialize(
+                picker,
+                WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!)
+            );
+            var folder = await picker.PickSingleFolderAsync();
+            if (folder is not null) {
+                SourceBox.Text = folder.Path;
+                await RefreshIndexesAsync();
+            }
+        }
+        catch (Exception ex) {
+            HintText.Text = "读取失败: " + ex.Message;
         }
     }
 
-    private async void SourceBox_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e) {
+    private void SourceBox_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e) {
         if (e.Key == Windows.System.VirtualKey.Enter) {
-            await RefreshIndexesAsync();
+            _ = RefreshIndexesAsync();
         }
     }
 
@@ -61,10 +81,9 @@ public sealed partial class SourcePage : Page {
             foreach (var node in indexes.OfType<JsonObject>()) {
                 var item = new ImageIndexItem(
                     node["index"]!.GetValue<int>(),
-                    node["name"]?.GetValue<string>() ?? "",
-                    node["editionId"]?.GetValue<string>() ?? "",
-                    node["version"]?.GetValue<string>() ?? "",
-                    $"{node["index"]}: {node["name"]}" + (node["editionId"] is not null ? $" [{node["editionId"]}]" : ""));
+                    $"{node["index"]}: {node["name"]}"
+                        + (node["editionId"] is not null ? $" [{node["editionId"]}]" : "")
+                );
                 State.ImageIndexes.Add(item);
                 IndexCombo.Items.Add(item);
             }
@@ -86,10 +105,11 @@ public sealed partial class SourcePage : Page {
         var lines = new List<string>();
         var exit = await new CliRunner().RunAsync(
             ["inspect", source, "--json"],
-            evt => { },
-            line => lines.Add(line),
             _ => { },
-            CancellationToken.None);
+            lines.Add,
+            _ => { },
+            CancellationToken.None
+        );
         var text = string.Join(Environment.NewLine, lines).Trim();
         if (text.StartsWith('{')) {
             try {
@@ -108,7 +128,7 @@ public sealed partial class SourcePage : Page {
     }
 
     private void OutputFormatSelected(object sender, SelectionChangedEventArgs e) {
-        if (OutputFormatCombo.SelectedItem is ComboBoxItem item && item.Tag is string format) {
+        if (OutputFormatCombo.SelectedItem is ComboBoxItem { Tag: string format }) {
             State.OutputFormat = format;
             var isVhdx = string.Equals(format, "vhdx", StringComparison.OrdinalIgnoreCase);
             IsoToggle.IsEnabled = !isVhdx;
@@ -125,11 +145,7 @@ public sealed partial class SourcePage : Page {
 
     private void OutputChanged(object sender, TextChangedEventArgs e) => State.OutputRoot = OutputBox.Text.Trim();
 
-    private void UpdateNextEnabled() {
-        NextButton.IsEnabled = State.SelectedIndex is not null;
-    }
+    private void UpdateNextEnabled() => NextButton.IsEnabled = State.SelectedIndex is not null;
 
-    private void GoNext(object sender, RoutedEventArgs e) {
-        ((MainWindow)App.MainAppWindow!).GoTo(2);
-    }
+    private void GoNext(object sender, RoutedEventArgs e) => ((MainWindow)App.MainAppWindow!).GoTo(2);
 }

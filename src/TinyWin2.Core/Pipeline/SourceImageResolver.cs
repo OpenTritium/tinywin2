@@ -92,7 +92,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
     public async Task<ImageIndexInfo> GetIndexAsync(string installImagePath, int index, CancellationToken ct) {
         var result = await runner.RunAsync("dism.exe",
             ["/Get-WimInfo", $"/WimFile:{installImagePath}", $"/Index:{index}", "/English"],
-            new ProcessRunOptions { IgnoreExitCode = true }, ct);
+            new() { IgnoreExitCode = true }, ct);
         if (!result.Success) {
             var summaries = await GetIndexSummaryAsync(installImagePath, ct);
             return summaries.FirstOrDefault(item => item.Index == index)
@@ -119,14 +119,14 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         foreach (var summary in indexes) {
             var result = await runner.RunAsync("dism.exe",
                 ["/Get-WimInfo", $"/WimFile:{installImagePath}", $"/Index:{summary.Index}", "/English"],
-                new ProcessRunOptions { IgnoreExitCode = true }, ct);
+                new() { IgnoreExitCode = true }, ct);
             if (!result.Success) {
                 detailed.Add(summary);
                 continue;
             }
 
             var fields = ParseKeyValueLines(result.Output);
-            detailed.Add(new ImageIndexInfo(
+            detailed.Add(new(
                 summary.Index,
                 fields.GetValueOrDefault("Name", summary.Name),
                 fields.GetValueOrDefault("Description", summary.Description ?? ""),
@@ -168,7 +168,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
                     indexes.Add(current);
                 }
 
-                current = new ImageIndexInfo(int.Parse(value), "", null, null, null, null, 0);
+                current = new(int.Parse(value), "", null, null, null, null, 0);
                 continue;
             }
 

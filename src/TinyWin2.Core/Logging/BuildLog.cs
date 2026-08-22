@@ -52,11 +52,6 @@ public sealed class BuildLog {
 
     /// <summary>Ambient context stamped onto every event unless overridden per call.</summary>
     public string Phase {
-        get {
-            lock (_gate) {
-                return _phase;
-            }
-        }
         set {
             ArgumentNullException.ThrowIfNull(value);
             lock (_gate) {
@@ -66,11 +61,6 @@ public sealed class BuildLog {
     }
 
     public string? PlanId {
-        get {
-            lock (_gate) {
-                return _planId;
-            }
-        }
         set {
             lock (_gate) {
                 _planId = value;

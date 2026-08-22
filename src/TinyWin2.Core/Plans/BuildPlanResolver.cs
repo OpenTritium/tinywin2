@@ -76,11 +76,9 @@ public static class BuildPlanResolver {
         // Conflict rejection over the final enabled set.
         var enabled = ordered.ToHashSet(StringComparer.Ordinal);
         foreach (var planId in ordered) {
-            foreach (var conflict in catalog.Get(planId).Conflicts) {
-                if (enabled.Contains(conflict)) {
-                    errors.Add($"plan '{planId}' conflicts with '{conflict}'.");
-                }
-            }
+            errors.AddRange(from conflict in catalog.Get(planId).Conflicts
+                where enabled.Contains(conflict)
+                select $"plan '{planId}' conflicts with '{conflict}'.");
         }
 
         if (errors.Count > 0) {
@@ -101,7 +99,7 @@ public static class BuildPlanResolver {
                 return new PlanStep(resolved);
             })
             .ToList();
-        return new BuildPlan(steps);
+        return new(steps);
     }
 
     private static void Visit(
@@ -155,16 +153,16 @@ public static class BuildPlanResolver {
         }
 
         errors.AddRange(from name in userParameters.Keys
-                        where definition.Parameters.All(p => p.Name != name)
-                        select $"parameter '{name}' is not declared by plan '{definition.Id}'.");
+            where definition.Parameters.All(p => p.Name != name)
+            select $"parameter '{name}' is not declared by plan '{definition.Id}'.");
 
         if (errors.Count > 0) {
             throw new PlanResolutionException([.. errors.Select(e => $"plan '{definition.Id}': {e}")]);
         }
 
         var operation = definition.Operation;
-        return new ResolvedPlan(definition,
-            new OperationSpec(operation.Resource, operation.Action,
+        return new(definition,
+            new(operation.Resource, operation.Action,
                 ParameterBinder.BindOperation(operation.Spec, values)));
     }
 

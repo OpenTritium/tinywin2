@@ -348,7 +348,7 @@ public sealed class BuildEngine(
                 }
 
                 try {
-                    await stack.DiscardLayerAsync(session, ex.Message, CancellationToken.None);
+                    await stack.DiscardLayerAsync(session, ex.Message);
                 }
                 catch (Exception cleanupError) {
                     log.Error($"could not discard failed layer {session.Record.Index:000}: {cleanupError.Message}",

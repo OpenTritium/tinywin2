@@ -88,11 +88,11 @@ public sealed class DismClassifierTests {
         var executer = new FeatureExecuter(harness.Runner);
         harness.Runner.Handler = (_, _) => FakeProcessRunner.Ok("The operation completed successfully.\r\n");
 
-        var ex = Assert.Throws<ExecException>(() =>
-            executer.InspectAsync(harness.NewContext(),
-                ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
-                    ("features", new JsonArray("Feature"))), CancellationToken.None)
-                .GetAwaiter().GetResult());
+        var context = harness.NewContext();
+        var spec = ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
+            ("features", new JsonArray("Feature")));
+        var ex = (await Assert.ThrowsAsync<ExecException>(() =>
+            executer.InspectAsync(context, spec, CancellationToken.None)))!;
         await Assert.That(ex.Message).Contains("returned no dism.feature records");
     }
 }
@@ -187,9 +187,8 @@ public sealed class RegistryValueExecuterTests : IDisposable {
     }
 
     [Test]
-    public async Task MultiStringComparisonIgnoresRegQueryTerminator() {
+    public async Task MultiStringComparisonIgnoresRegQueryTerminator() =>
         await Assert.That(RegValues.Equals("REG_MULTI_SZ", "a\\0b\\0", "a\\0b")).IsTrue();
-    }
 
     [Test]
     public async Task RegistryQueryAccessFailureIsNotTreatedAsMissing() {

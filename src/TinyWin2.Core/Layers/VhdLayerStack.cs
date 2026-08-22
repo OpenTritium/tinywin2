@@ -474,7 +474,7 @@ public sealed class VhdLayerStack(
     }
 
     /// <summary>Detaches and deletes the layer — the image state equals pre-step (atomic rollback).</summary>
-    public async Task DiscardLayerAsync(LayerSession session, string? error, CancellationToken ct) {
+    public async Task DiscardLayerAsync(LayerSession session, string? error) {
         Exception? detachError = null;
         try {
             await backend.DetachAsync(session.VhdxPath, CancellationToken.None);

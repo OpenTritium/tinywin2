@@ -16,7 +16,7 @@
             <ProgressRing x:Name="IndexSpinner" IsActive="False" Width="24" Height="24" HorizontalAlignment="Left"/>
 
             <TextBlock Text="镜像索引" Style="{ThemeResource SubtitleTextBlockStyle}"/>
-            <ComboBox x:Name="IndexCombo" Width="560" DisplayMemberPath="Display" SelectionChanged="IndexSelected"
+            <ComboBox x:Name="IndexCombo" Width="560" SelectionChanged="IndexSelected"
                       PlaceholderText="选择源后自动列出索引"/>
 
             <TextBlock Text="输出" Style="{ThemeResource SubtitleTextBlockStyle}"/>

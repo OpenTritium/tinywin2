@@ -60,19 +60,16 @@ public sealed class PlanCatalog(IReadOnlyList<PlanDefinition> plans) {
         }
 
         foreach (var plan in plans) {
-            foreach (var required in plan.Requires) {
-                if (!seenIds.ContainsKey(required)) {
-                    errors.Add($"plan '{plan.Id}' requires unknown plan '{required}'.");
-                }
-            }
-
+            errors.AddRange(from required in plan.Requires
+                where !seenIds.ContainsKey(required)
+                select $"plan '{plan.Id}' requires unknown plan '{required}'.");
             if (plan.Requires.Contains(plan.Id, StringComparer.Ordinal)) {
                 errors.Add($"plan '{plan.Id}' cannot require itself.");
             }
 
             errors.AddRange(from conflict in plan.Conflicts
-                            where !seenIds.ContainsKey(conflict)
-                            select $"plan '{plan.Id}' conflicts with unknown plan '{conflict}'.");
+                where !seenIds.ContainsKey(conflict)
+                select $"plan '{plan.Id}' conflicts with unknown plan '{conflict}'.");
 
             if (plan.Conflicts.Contains(plan.Id)) {
                 errors.Add($"plan '{plan.Id}' cannot conflict with itself.");
