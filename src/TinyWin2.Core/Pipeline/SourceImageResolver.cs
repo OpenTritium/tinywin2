@@ -40,6 +40,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
             Validate(media);
             return media;
         }
+
         if (File.Exists(fullPath) && fullPath.EndsWith(".iso", StringComparison.OrdinalIgnoreCase)) {
             var driveRoot = await MountIsoAsync(fullPath, ct);
             try {
@@ -56,7 +57,8 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
                 try {
                     var cleanup = await DismountIsoPathAsync(fullPath, CancellationToken.None);
                     if (!cleanup.Success) {
-                        log.Warn($"could not clean up source ISO after resolution failed '{fullPath}' (exit {cleanup.ExitCode}).");
+                        log.Warn(
+                            $"could not clean up source ISO after resolution failed '{fullPath}' (exit {cleanup.ExitCode}).");
                     }
                 }
                 catch (Exception ex) {
@@ -66,6 +68,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
                 throw;
             }
         }
+
         throw new FileNotFoundException($"source '{sourcePath}' is neither a folder nor an .iso file.");
     }
 
@@ -73,6 +76,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         if (!media.IsMountedIso) {
             return;
         }
+
         try {
             var result = await DismountIsoPathAsync(media.IsoPath, ct);
             if (!result.Success) {
@@ -120,6 +124,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
                 detailed.Add(summary);
                 continue;
             }
+
             var fields = ParseKeyValueLines(result.Output);
             detailed.Add(new ImageIndexInfo(
                 summary.Index,
@@ -130,6 +135,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
                 fields.GetValueOrDefault("Edition ID", fields.GetValueOrDefault("EditionId", summary.EditionId ?? "")),
                 ParseByteSize(fields.GetValueOrDefault("Size"), summary.SizeBytes)));
         }
+
         return detailed;
     }
 
@@ -138,8 +144,10 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
             ["/Get-WimInfo", $"/WimFile:{installImagePath}", "/English"],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
         if (!result.Success) {
-            throw new InvalidOperationException($"dism.exe could not read image info from '{installImagePath}' (exit {result.ExitCode}).");
+            throw new InvalidOperationException(
+                $"dism.exe could not read image info from '{installImagePath}' (exit {result.ExitCode}).");
         }
+
         var indexes = new List<ImageIndexInfo>();
         ImageIndexInfo? current = null;
         foreach (var rawLine in result.Output.Split('\n')) {
@@ -147,22 +155,27 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
             if (line.Length == 0) {
                 continue;
             }
+
             var separator = line.IndexOf(':', StringComparison.Ordinal);
             if (separator <= 0) {
                 continue;
             }
+
             var key = line[..separator].Trim();
             var value = line[(separator + 1)..].Trim();
             if (key.Equals("Index", StringComparison.Ordinal)) {
                 if (current is not null) {
                     indexes.Add(current);
                 }
+
                 current = new ImageIndexInfo(int.Parse(value), "", null, null, null, null, 0);
                 continue;
             }
+
             if (current is null) {
                 continue;
             }
+
             current = key switch {
                 "Name" => current with { Name = value },
                 "Description" => current with { Description = value },
@@ -170,9 +183,11 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
                 _ => current,
             };
         }
+
         if (current is not null) {
             indexes.Add(current);
         }
+
         return indexes;
     }
 
@@ -183,12 +198,15 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
             if (trimmed.Length == 0) {
                 continue;
             }
+
             var separator = trimmed.IndexOf(':', StringComparison.Ordinal);
             if (separator <= 0) {
                 continue;
             }
+
             fields[trimmed[..separator].Trim()] = trimmed[(separator + 1)..].Trim();
         }
+
         return fields;
     }
 
@@ -217,8 +235,10 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         var temporaryTarget = $"{targetWimPath}.{Guid.NewGuid():N}.tmp.wim";
         try {
             await runner.RunAsync("dism.exe",
-                ["/English", "/Export-Image", $"/SourceImageFile:{sourceImagePath}", $"/SourceIndex:{index}",
-                 $"/DestinationImageFile:{temporaryTarget}", $"/Compress:{compress}"], cancellationToken: ct);
+            [
+                "/English", "/Export-Image", $"/SourceImageFile:{sourceImagePath}", $"/SourceIndex:{index}",
+                $"/DestinationImageFile:{temporaryTarget}", $"/Compress:{compress}"
+            ], cancellationToken: ct);
 
             if (!File.Exists(temporaryTarget) || new FileInfo(temporaryTarget).Length == 0) {
                 throw new IOException($"DISM reported a successful export but did not create '{temporaryTarget}'.");
@@ -228,7 +248,12 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
             await File.WriteAllTextAsync(metadataPath, BuildExportMetadata(sourceImagePath, index, compress), ct);
         }
         finally {
-            try { File.Delete(temporaryTarget); } catch { /* best effort */ }
+            try {
+                File.Delete(temporaryTarget);
+            }
+            catch {
+                /* best effort */
+            }
         }
 
         return targetWimPath;
@@ -239,21 +264,31 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         CancellationToken ct) {
         if (!source.IsEsd) {
             File.Copy(source.InstallImagePath, targetWimPath, overwrite: true);
-            try { File.Delete(targetWimPath + ".tinywin2.json"); } catch { /* stale metadata is harmless */ }
+            try {
+                File.Delete(targetWimPath + ".tinywin2.json");
+            }
+            catch {
+                /* stale metadata is harmless */
+            }
+
             return;
         }
+
         await ExportIndexToWimAsync(source.InstallImagePath, imageIndex, targetWimPath, fast, ct);
     }
 
     private async Task<string> MountIsoAsync(string isoPath, CancellationToken ct) {
         var result = await runner.RunAsync("pwsh.exe",
-            ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
-             $"$ErrorActionPreference = 'Stop'; (Mount-DiskImage -ImagePath {PsQuote(isoPath)} -PassThru -ErrorAction Stop | Get-Volume).DriveLetter"],
+            [
+                "-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
+                $"$ErrorActionPreference = 'Stop'; (Mount-DiskImage -ImagePath {PsQuote(isoPath)} -PassThru -ErrorAction Stop | Get-Volume).DriveLetter"
+            ],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
         var letter = result.Output.Trim().LastOrDefault(char.IsLetter);
         if (result.ExitCode != 0 || letter == '\0') {
             throw new IOException($"could not mount ISO '{isoPath}': {result.Output} {result.Error}");
         }
+
         var root = $"{letter}:\\";
         log.Info($"mounted source ISO at {root}");
         return root;
@@ -277,20 +312,24 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
 
     private async Task<ProcessRunResult> DismountIsoPathAsync(string isoPath, CancellationToken ct) {
         return await runner.RunAsync("pwsh.exe",
-            ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
-             $"$ErrorActionPreference = 'Stop'; Dismount-DiskImage -ImagePath {PsQuote(isoPath)} -ErrorAction Stop | Out-Null"],
+            [
+                "-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
+                $"$ErrorActionPreference = 'Stop'; Dismount-DiskImage -ImagePath {PsQuote(isoPath)} -ErrorAction Stop | Out-Null"
+            ],
             new ProcessRunOptions { IgnoreExitCode = true }, ct);
     }
 
     private static bool IsReusableExport(string sourceImagePath, int index, string compress,
         string targetWimPath, string metadataPath) {
         if (!File.Exists(targetWimPath) || !File.Exists(metadataPath)
-            || new FileInfo(targetWimPath).Length == 0) {
+                                        || new FileInfo(targetWimPath).Length == 0) {
             return false;
         }
 
         try {
-            var metadata = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(metadataPath)) as System.Text.Json.Nodes.JsonObject;
+            var metadata =
+                System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(metadataPath)) as
+                    System.Text.Json.Nodes.JsonObject;
             return metadata?["source"]?.GetValue<string>() == Path.GetFullPath(sourceImagePath)
                    && metadata["sourceStamp"]?.GetValue<string>() == FileStamp(sourceImagePath)
                    && metadata["index"]?.GetValue<int>() == index
@@ -326,16 +365,19 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         if (File.Exists(wim)) {
             return wim;
         }
+
         var esd = Path.Combine(root, "sources", "install.esd");
         if (File.Exists(esd)) {
             return esd;
         }
+
         throw new FileNotFoundException($"no sources\\install.wim or sources\\install.esd under '{root}'.");
     }
 
     private void Validate(SourceMedia media) {
         if (!File.Exists(media.BootWimPath)) {
-            throw new FileNotFoundException($"sources\\boot.wim missing under '{media.RootPath}' — not a bootable media folder.");
+            throw new FileNotFoundException(
+                $"sources\\boot.wim missing under '{media.RootPath}' — not a bootable media folder.");
         }
     }
 }

@@ -158,7 +158,7 @@ public sealed class BuildEngine(
 
                 await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, options.Fast, ct);
                 await ApplyBaseAsync(stack, options, buildId, workspace, stagingWim, sourceIndex, ct,
-                    captureEvidence: options.CaptureEvidence && !options.NoLayers);
+                    captureEvidence: options is { CaptureEvidence: true, NoLayers: false });
             }
 
             List<(string StepId, int LayerIndex, string Error)> failedSteps;
@@ -264,8 +264,8 @@ public sealed class BuildEngine(
     /// </summary>
     private async Task<(List<(string StepId, int LayerIndex, string Error)>, string? InstallPath)>
         RunStepsAndCaptureLayerlessAsync(
-        BuildOptions options, BuildPlan plan, VhdLayerStack stack, string workspace, OutputBuilder builder,
-        ImageIndexInfo sourceIndex, CancellationToken ct) {
+            BuildOptions options, BuildPlan plan, VhdLayerStack stack, string workspace, OutputBuilder builder,
+            ImageIndexInfo sourceIndex, CancellationToken ct) {
         var failedSteps = new List<(string, int, string)>();
         return await WithMountedAsync(stack.LeafVhdxPath, async mountPath => {
             var stepNumber = 0;
@@ -337,8 +337,10 @@ public sealed class BuildEngine(
                 }
 
                 if (options.CaptureEvidence) {
-                    await LayerEvidence.CaptureAsync(session.MountPath, workspace, session.Record.Index, runner, log, ct);
+                    await LayerEvidence.CaptureAsync(session.MountPath, workspace, session.Record.Index, runner, log,
+                        ct);
                 }
+
                 await stack.CommitLayerAsync(session, execResults, ct);
             }
             catch (Exception ex) {
