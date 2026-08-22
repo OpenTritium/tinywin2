@@ -10,8 +10,11 @@ using WinRT.Interop;
 namespace TinyWin2.Gui.Pages;
 
 public sealed partial class SourcePage {
+    private readonly bool _isInitialized;
+
     public SourcePage() {
         InitializeComponent();
+        _isInitialized = true;
     }
 
     private WizardState State => WizardState.Current;
@@ -154,6 +157,10 @@ public sealed partial class SourcePage {
     }
 
     private void UpdateNextEnabled() {
+        if (!_isInitialized) {
+            return;
+        }
+
         var expectedExtension = "." + State.OutputFormat;
         NextButton.IsEnabled = State.SelectedIndex is not null
                                && State.OutputPath.Length > 0
