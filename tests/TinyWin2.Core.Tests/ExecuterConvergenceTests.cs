@@ -81,6 +81,20 @@ public sealed class DismClassifierTests {
         await Assert.That(DismListParser.Get(records[0], "State")).IsEqualTo("Enabled");
         await Assert.That(DismListParser.Get(records[1], "Feature Name")).IsEqualTo("NetFx3");
     }
+
+    [Test]
+    public async Task SuccessfulEmptyDismListingIsRejectedByExecuter() {
+        using var harness = new ExecuterTestHarness();
+        var executer = new FeatureExecuter(harness.Runner);
+        harness.Runner.Handler = (_, _) => FakeProcessRunner.Ok("The operation completed successfully.\r\n");
+
+        var ex = Assert.Throws<ExecException>(() =>
+            executer.InspectAsync(harness.NewContext(),
+                ExecuterTestHarness.Spec("dism.feature", Ensure.Absent,
+                    ("features", new JsonArray("Feature"))), CancellationToken.None)
+                .GetAwaiter().GetResult());
+        await Assert.That(ex.Message).Contains("returned no dism.feature records");
+    }
 }
 
 public sealed class RegistryValueExecuterTests : IDisposable {

@@ -61,8 +61,20 @@ internal static class Desired {
 
     internal static List<JsonObject> ObjectArray(JsonObject desired, string key) {
         var result = new List<JsonObject>();
-        if (desired.TryGetPropertyValue(key, out var node) && node is JsonArray array) {
-            result.AddRange(array.OfType<JsonObject>());
+        if (!desired.TryGetPropertyValue(key, out var node) || node is null) {
+            return result;
+        }
+
+        if (node is not JsonArray array) {
+            throw new ExecException($"'{key}' must be an array of objects.");
+        }
+
+        foreach (var item in array) {
+            if (item is not JsonObject obj) {
+                throw new ExecException($"'{key}' must contain only objects.");
+            }
+
+            result.Add(obj);
         }
 
         return result;

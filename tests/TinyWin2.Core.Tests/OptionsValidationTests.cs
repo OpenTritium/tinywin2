@@ -124,6 +124,23 @@ public sealed class OptionsValidationTests {
     }
 
     [Test]
+    public async Task RegistryValueRejectsMalformedObjectArray() {
+        var scalarArray = Assert.Throws<ExecException>(() =>
+            RegistryValueOptions.FromDesired(new JsonObject {
+                ["hive"] = "software",
+                ["values"] = new JsonArray("not-an-object"),
+            }, Ensure.Absent));
+        await Assert.That(scalarArray.Message).Contains("only objects");
+
+        var scalar = Assert.Throws<ExecException>(() =>
+            RegistryValueOptions.FromDesired(new JsonObject {
+                ["hive"] = "software",
+                ["values"] = "not-an-array",
+            }, Ensure.Absent));
+        await Assert.That(scalar.Message).Contains("array of objects");
+    }
+
+    [Test]
     public async Task FeatureDefaultsRemovePayloadAndValidatesList() {
         var options = FeatureOptions.FromDesired(new JsonObject {
             ["features"] = new JsonArray("Microsoft-Hyper-V"),

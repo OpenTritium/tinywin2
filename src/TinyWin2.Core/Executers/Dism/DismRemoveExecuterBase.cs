@@ -55,7 +55,13 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
             throw new ExecException($"dism.exe failed to list {Resource} targets (exit {exitCode}).");
         }
 
-        var differences = SelectTargets(DismListParser.Parse(output, RecordStartKey), context, spec)
+        var records = DismListParser.Parse(output, RecordStartKey);
+        if (records.Count == 0) {
+            throw new ExecException(
+                $"dism.exe returned no {Resource} records despite a successful listing (exit {exitCode}).");
+        }
+
+        var differences = SelectTargets(records, context, spec)
             .Select(t => t.SkipReason is not null
                 ? new ChangeItem(ChangeKind.Skipped, t.RemoveKey, t.SkipReason)
                 : new ChangeItem(ChangeKind.Removed, t.RemoveKey, Before: t.Before))

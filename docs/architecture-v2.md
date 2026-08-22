@@ -41,7 +41,7 @@ interface IExecuter {
 资源集合（v1 对等 + 统一化）：`registry.value`（增改删值/删键）、`registry.service`
 （统一了 v1 Disable/Configure 两个 handler：start ∈ auto|delayedAuto|manual|disabled）、
 `dism.feature`、`dism.capability`、`dism.package`、`dism.component-store`（4350 降级跳过）、
-`appx.provisioned`、`driver.store`（FileRepository 白名单约束）、`fs.path`（absent 删除/防穿越，
+`appx.provisioned`、`driver.store`（通过 DISM 按发布名移除第三方驱动，inbox 驱动明确跳过）、`fs.path`（absent 删除/防穿越，
 present 从 plan assets 复制入镜像）。预留：`dism.driver` / `dism.update` / `image.unattend`。
 
 ### 2. Plan 与组合（需求 2、5、7）

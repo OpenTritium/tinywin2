@@ -386,29 +386,28 @@ public sealed class DriverStoreExecuterTests : IDisposable {
         _executer = new DriverStoreExecuter(_harness.Runner);
     }
 
-    private string CreateRepository(params string[] directoryNames) {
-        var root = Path.Combine(_harness.MountPath, "Windows", "System32", "DriverStore", "FileRepository");
-        foreach (var name in directoryNames) {
-            Directory.CreateDirectory(Path.Combine(root, name));
-        }
-
-        return root;
-    }
-
     [Test]
-    public async Task RemovesDirectoriesNamedAfterInf() {
-        var root = CreateRepository("mdm.inf_amd64_1234abcd", "usb.inf_amd64_5678ef");
+    public async Task RemovesThirdPartyDriverThroughDism() {
+        _harness.Runner.Handler = (_, args) => args.Contains("/Get-Drivers")
+            ? FakeProcessRunner.Ok("Published Name : oem42.inf\r\n"
+                                   + "Original File Name : mdm.inf\r\n"
+                                   + "Inbox : No\r\n")
+            : FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
                 ("infNames", new JsonArray("mdm.inf"))), CancellationToken.None);
         await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
-        await Assert.That(Directory.Exists(Path.Combine(root, "mdm.inf_amd64_1234abcd"))).IsFalse();
-        await Assert.That(Directory.Exists(Path.Combine(root, "usb.inf_amd64_5678ef"))).IsTrue();
+        var remove = _harness.Runner.Calls.Last(c => c.Args.Contains("/Remove-Driver"));
+        await Assert.That(remove.Args).Contains("/Driver:oem42.inf");
     }
 
     [Test]
     public async Task UnknownInfIsSkipped() {
-        CreateRepository("usb.inf_amd64_5678ef");
+        _harness.Runner.Handler = (_, args) => args.Contains("/Get-Drivers")
+            ? FakeProcessRunner.Ok("Published Name : oem42.inf\r\n"
+                                   + "Original File Name : usb.inf\r\n"
+                                   + "Inbox : No\r\n")
+            : FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
                 ("infNames", new JsonArray("ghost.inf"))), CancellationToken.None);
@@ -417,7 +416,11 @@ public sealed class DriverStoreExecuterTests : IDisposable {
 
     [Test]
     public async Task ApplyPreservesSkippedInfNamesWhenSomeDriversAreRemoved() {
-        var root = CreateRepository("mdm.inf_amd64_1234abcd");
+        _harness.Runner.Handler = (_, args) => args.Contains("/Get-Drivers")
+            ? FakeProcessRunner.Ok("Published Name : oem42.inf\r\n"
+                                   + "Original File Name : mdm.inf\r\n"
+                                   + "Inbox : No\r\n")
+            : FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
                 ("infNames", new JsonArray("mdm.inf", "ghost.inf"))), CancellationToken.None);
@@ -425,7 +428,23 @@ public sealed class DriverStoreExecuterTests : IDisposable {
         await Assert.That(result.Changes.Count).IsEqualTo(2);
         await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Removed)).IsEqualTo(1);
         await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Skipped)).IsEqualTo(1);
-        await Assert.That(Directory.Exists(Path.Combine(root, "mdm.inf_amd64_1234abcd"))).IsFalse();
+        await Assert.That(_harness.Runner.Calls.Count(c => c.Args.Contains("/Remove-Driver"))).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task InboxDriverIsSkippedWithoutDeletingFiles() {
+        _harness.Runner.Handler = (_, args) => args.Contains("/Get-Drivers")
+            ? FakeProcessRunner.Ok("Published Name : mdm.inf\r\n"
+                                   + "Original File Name : mdm.inf\r\n"
+                                   + "Inbox : Yes\r\n")
+            : FakeProcessRunner.Ok();
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("driver.store", Ensure.Absent,
+                ("infNames", new JsonArray("mdm.inf"))), CancellationToken.None);
+        await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
+        await Assert.That(result.Changes[0].Before)
+            .Contains("inbox driver packages cannot be removed by DISM");
+        await Assert.That(_harness.Runner.Calls.Any(c => c.Args.Contains("/Remove-Driver"))).IsFalse();
     }
 
     [Test]
