@@ -17,8 +17,10 @@ public sealed record BuildEvent {
     public int Sequence { get; init; }
     public DateTimeOffset Timestamp { get; init; }
     public BuildEventLevel Level { get; init; }
+
     /// <summary>Coarse build phase, e.g. <c>prepare</c>, <c>base-layer</c>, <c>plan</c>, <c>capture</c>, <c>package</c>.</summary>
     public string Phase { get; init; } = "init";
+
     public string Message { get; init; } = "";
     public string? PlanId { get; init; }
     public int? LayerIndex { get; init; }
@@ -45,10 +47,36 @@ public sealed class BuildLog {
     private readonly Lock _gate = new();
     private readonly List<Action<BuildEvent>> _sinks = [];
     private int _sequence;
+    private string _phase = "init";
+    private string? _planId;
 
     /// <summary>Ambient context stamped onto every event unless overridden per call.</summary>
-    public string Phase { get; set; } = "init";
-    public string? PlanId { get; set; }
+    public string Phase {
+        get {
+            lock (_gate) {
+                return _phase;
+            }
+        }
+        set {
+            ArgumentNullException.ThrowIfNull(value);
+            lock (_gate) {
+                _phase = value;
+            }
+        }
+    }
+
+    public string? PlanId {
+        get {
+            lock (_gate) {
+                return _planId;
+            }
+        }
+        set {
+            lock (_gate) {
+                _planId = value;
+            }
+        }
+    }
 
     public void Debug(string message, string? planId = null, int? layerIndex = null, JsonObject? data = null)
         => Write(BuildEventLevel.Debug, message, planId, layerIndex, data);
@@ -70,14 +98,15 @@ public sealed class BuildLog {
                 Sequence = _sequence++,
                 Timestamp = DateTimeOffset.UtcNow,
                 Level = level,
-                Phase = Phase,
+                Phase = _phase,
                 Message = message,
-                PlanId = planId ?? PlanId,
+                PlanId = planId ?? _planId,
                 LayerIndex = layerIndex,
-                Data = data,
+                Data = data?.DeepClone().AsObject(),
             };
             sinks = _sinks.ToArray();
         }
+
         foreach (var sink in sinks) {
             try {
                 sink(evt);
@@ -90,9 +119,11 @@ public sealed class BuildLog {
 
     /// <summary>Attaches a sink; dispose the token to detach. Sinks must not throw.</summary>
     public IDisposable Attach(Action<BuildEvent> sink) {
+        ArgumentNullException.ThrowIfNull(sink);
         lock (_gate) {
             _sinks.Add(sink);
         }
+
         return new SinkToken(this, sink);
     }
 
@@ -103,6 +134,12 @@ public sealed class BuildLog {
     }
 
     private sealed class SinkToken(BuildLog owner, Action<BuildEvent> sink) : IDisposable {
-        public void Dispose() => owner.Detach(sink);
+        private int _disposed;
+
+        public void Dispose() {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0) {
+                owner.Detach(sink);
+            }
+        }
     }
 }

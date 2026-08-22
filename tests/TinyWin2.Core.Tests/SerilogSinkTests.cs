@@ -21,6 +21,9 @@ public sealed class SerilogSinkTests : IDisposable {
         await Assert.That(content).Contains("boom");
         await Assert.That(content).Contains("[WRN]");
         await Assert.That(content).Contains("[ERR]");
+        await Assert.That(content).Contains("\"phase\":\"plan\"");
+        await Assert.That(content).Contains("\"planId\":\"fs.inetpub\"");
+        await Assert.That(content).Contains("\"layerIndex\":1");
     }
 
     [Test]

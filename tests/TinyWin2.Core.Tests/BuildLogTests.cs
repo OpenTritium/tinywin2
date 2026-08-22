@@ -36,6 +36,19 @@ public sealed class BuildLogTests {
     }
 
     [Test]
+    public async Task EventDataIsSnapshottedAtWriteTime() {
+        var log = new BuildLog();
+        var events = new List<BuildEvent>();
+        using var token = log.Attach(events.Add);
+        var data = new JsonObject { ["progress"] = 55 };
+
+        log.Info("snapshot", data: data);
+        data["progress"] = 99;
+
+        await Assert.That(events[0].Data!["progress"]!.GetValue<int>()).IsEqualTo(55);
+    }
+
+    [Test]
     public async Task SequenceNumbersAreMonotonic() {
         var log = new BuildLog();
         var events = new List<BuildEvent>();

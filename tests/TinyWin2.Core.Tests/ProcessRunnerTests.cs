@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Tests;
@@ -49,6 +50,35 @@ public sealed class ProcessRunnerTests {
     }
 
     [Test]
+    public async Task BoundsCapturedOutput() {
+        var runner = new ProcessRunner();
+        var (exe, args) = OperatingSystem.IsWindows()
+            ? ("cmd.exe", new[] { "/c", "for /L %i in (1,1,20) do @echo 1234567890" })
+            : ("/bin/sh", new[] { "-c", "yes 1234567890 | head -n 20" });
+
+        var result = await runner.RunAsync(exe, args,
+            new ProcessRunOptions { MaxOutputCharacters = 150 });
+
+        await Assert.That(result.Output.Length).IsLessThanOrEqualTo(150);
+        await Assert.That(result.Output).Contains("...[");
+    }
+
+    [Test]
+    public async Task OutputCallbackFailureTerminatesTheProcess() {
+        var runner = new ProcessRunner();
+        var (exe, args) = OperatingSystem.IsWindows()
+            ? ("cmd.exe", new[] { "/c", "echo callback & ping -n 30 127.0.0.1 > nul" })
+            : ("/bin/sh", new[] { "-c", "printf 'callback\\n'; sleep 30" });
+        var stopwatch = Stopwatch.StartNew();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => runner.RunAsync(exe, args,
+            new ProcessRunOptions { OnOutputLine = _ => throw new InvalidOperationException("callback failed") }));
+
+        stopwatch.Stop();
+        await Assert.That(stopwatch.Elapsed.TotalSeconds).IsLessThan(5);
+    }
+
+    [Test]
     public async Task TimeoutKillsTheProcess() {
         var runner = new ProcessRunner();
         // `pause` returns immediately once stdin closes; ping actually blocks for ~30s.
@@ -56,8 +86,11 @@ public sealed class ProcessRunnerTests {
             ? "/c ping -n 30 127.0.0.1 > nul"
             : "-c 'sleep 30'";
         var (exe, args) = SplitCommand(hangCommand);
+        var stopwatch = Stopwatch.StartNew();
         await Assert.ThrowsAsync<TimeoutException>(
             () => runner.RunAsync(exe, args, new ProcessRunOptions { Timeout = TimeSpan.FromSeconds(1) }));
+        stopwatch.Stop();
+        await Assert.That(stopwatch.Elapsed.TotalSeconds).IsLessThan(5);
     }
 
     [Test]

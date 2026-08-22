@@ -21,7 +21,8 @@ public static class SerilogBuildLogExtensions {
             .Enrich.FromLogContext()
             .WriteTo.File(
                 logFilePath,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+                outputTemplate:
+                "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}",
                 formatProvider: System.Globalization.CultureInfo.InvariantCulture,
                 encoding: System.Text.Encoding.UTF8);
         if (echoConsole) {

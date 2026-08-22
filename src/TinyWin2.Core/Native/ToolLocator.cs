@@ -9,7 +9,8 @@ public static class ToolLocator {
         }
 
         if (Path.IsPathRooted(fileName)) {
-            return File.Exists(fileName) ? fileName : null;
+            var fullPath = Path.GetFullPath(fileName);
+            return File.Exists(fullPath) ? fullPath : null;
         }
 
         var path = Environment.GetEnvironmentVariable("PATH");
