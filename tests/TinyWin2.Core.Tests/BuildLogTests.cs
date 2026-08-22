@@ -9,11 +9,12 @@ public sealed class BuildLogTests {
         var log = new BuildLog { Phase = "plan", PlanId = "fs.inetpub" };
         var events = new List<BuildEvent>();
         using var token = log.Attach(events.Add);
-        log.Warn("hello 世界", layerIndex: 3, data: new JsonObject { ["progress"] = 55 });
+        log.Warn("hello 世界", layerIndex: 3, data: new() { ["progress"] = 55 });
 
         var json = events[0].ToJson();
         await Assert.That(json["seq"]!.GetValue<int>()).IsEqualTo(0);
-        await Assert.That(DateTimeOffset.Parse(json["ts"]!.GetValue<string>())).IsGreaterThan(DateTimeOffset.UtcNow.AddMinutes(-5));
+        await Assert.That(DateTimeOffset.Parse(json["ts"]!.GetValue<string>()))
+            .IsGreaterThan(DateTimeOffset.UtcNow.AddMinutes(-5));
         await Assert.That(json["level"]!.GetValue<string>()).IsEqualTo("warn");
         await Assert.That(json["phase"]!.GetValue<string>()).IsEqualTo("plan");
         await Assert.That(json["message"]!.GetValue<string>()).IsEqualTo("hello 世界");
@@ -28,7 +29,7 @@ public sealed class BuildLogTests {
         var events = new List<BuildEvent>();
         using var token = log.Attach(events.Add);
         log.Info("a");
-        log.Info("b", planId: "explicit.plan", layerIndex: 7);
+        log.Info("b", "explicit.plan", 7);
         await Assert.That(events[0].PlanId).IsEqualTo("ambient.plan");
         await Assert.That(events[0].LayerIndex).IsNull();
         await Assert.That(events[1].PlanId).IsEqualTo("explicit.plan");

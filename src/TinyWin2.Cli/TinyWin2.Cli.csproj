@@ -13,7 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TinyWin2.Core\TinyWin2.Core.csproj" />
+    <ProjectReference Include="..\TinyWin2.Core\TinyWin2.Core.csproj"/>
   </ItemGroup>
 
 </Project>

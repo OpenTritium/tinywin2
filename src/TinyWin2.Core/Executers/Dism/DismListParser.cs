@@ -1,6 +1,5 @@
 namespace TinyWin2.Core.Executers.Dism;
 
-/// <summary>Parses dism.exe <c>/Format:List</c> output into records of key/value pairs.</summary>
 public static class DismListParser {
     public static IReadOnlyList<IReadOnlyDictionary<string, string>> Parse(
         string output,
@@ -21,7 +20,7 @@ public static class DismListParser {
             var key = line[..separator].Trim();
             var value = line[(separator + 1)..].Trim();
             if (key.Equals(recordStartKey, StringComparison.OrdinalIgnoreCase)) {
-                current = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                current = new(StringComparer.OrdinalIgnoreCase);
                 records.Add(current);
             }
 

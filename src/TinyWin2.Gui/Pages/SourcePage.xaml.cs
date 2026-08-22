@@ -1,7 +1,11 @@
 using System.Text.Json.Nodes;
+using Windows.Storage.Pickers;
+using Windows.System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using TinyWin2.Gui.Services;
+using WinRT.Interop;
 
 namespace TinyWin2.Gui.Pages;
 
@@ -16,13 +20,13 @@ public sealed partial class SourcePage {
 
     private async Task PickIsoAsync() {
         try {
-            var picker = new Windows.Storage.Pickers.FileOpenPicker {
-                SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder,
-                FileTypeFilter = { ".iso" },
+            var picker = new FileOpenPicker {
+                SuggestedStartLocation = PickerLocationId.ComputerFolder,
+                FileTypeFilter = { ".iso" }
             };
-            WinRT.Interop.InitializeWithWindow.Initialize(
+            InitializeWithWindow.Initialize(
                 picker,
-                WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!)
+                WindowNative.GetWindowHandle(App.MainAppWindow!)
             );
             var file = await picker.PickSingleFileAsync();
             if (file is not null) {
@@ -39,13 +43,13 @@ public sealed partial class SourcePage {
 
     private async Task PickFolderAsync() {
         try {
-            var picker = new Windows.Storage.Pickers.FolderPicker {
-                SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder,
-                FileTypeFilter = { "*" },
+            var picker = new FolderPicker {
+                SuggestedStartLocation = PickerLocationId.ComputerFolder,
+                FileTypeFilter = { "*" }
             };
-            WinRT.Interop.InitializeWithWindow.Initialize(
+            InitializeWithWindow.Initialize(
                 picker,
-                WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!)
+                WindowNative.GetWindowHandle(App.MainAppWindow!)
             );
             var folder = await picker.PickSingleFolderAsync();
             if (folder is not null) {
@@ -58,18 +62,19 @@ public sealed partial class SourcePage {
         }
     }
 
-    private void SourceBox_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e) {
-        if (e.Key == Windows.System.VirtualKey.Enter) {
+    private void SourceBox_KeyDown(object sender, KeyRoutedEventArgs e) {
+        if (e.Key == VirtualKey.Enter) {
             _ = RefreshIndexesAsync();
         }
     }
 
     private async Task RefreshIndexesAsync() {
         var source = SourceBox.Text.Trim();
-        if (source.Length == 0 || !File.Exists(source) && !Directory.Exists(source)) {
+        if (source.Length == 0 || (!File.Exists(source) && !Directory.Exists(source))) {
             HintText.Text = "源不存在";
             return;
         }
+
         State.SourcePath = source;
         IndexCombo.Items.Clear();
         IndexSpinner.IsActive = true;
@@ -82,11 +87,12 @@ public sealed partial class SourcePage {
                 var item = new ImageIndexItem(
                     node["index"]!.GetValue<int>(),
                     $"{node["index"]}: {node["name"]}"
-                        + (node["editionId"] is not null ? $" [{node["editionId"]}]" : "")
+                    + (node["editionId"] is not null ? $" [{node["editionId"]}]" : "")
                 );
                 State.ImageIndexes.Add(item);
                 IndexCombo.Items.Add(item);
             }
+
             HintText.Text = State.ImageIndexes.Count > 0 ? $"{State.ImageIndexes.Count} 个索引" : "未读到索引";
             if (State.ImageIndexes.Count > 0) {
                 IndexCombo.SelectedIndex = 0;
@@ -119,6 +125,7 @@ public sealed partial class SourcePage {
                 parsed = null;
             }
         }
+
         return exit == 0 ? parsed : throw new InvalidOperationException(text.Length > 300 ? text[..300] : text);
     }
 

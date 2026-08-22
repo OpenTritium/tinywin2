@@ -1,8 +1,9 @@
+using Windows.UI;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 using TinyWin2.Gui.Pages;
-using Windows.UI;
 
 namespace TinyWin2.Gui;
 
@@ -24,7 +25,7 @@ public sealed partial class MainWindow {
             2 => RootFrame.Navigate(typeof(ItemsPage)),
             3 => RootFrame.Navigate(typeof(ProgressPage)),
             4 => RootFrame.Navigate(typeof(ResultPage)),
-            _ => false,
+            _ => false
         };
         UpdateSteps(step);
     }
@@ -40,18 +41,18 @@ public sealed partial class MainWindow {
         var dot = (Ellipse)panel.Children[0];
         var text = (TextBlock)panel.Children[1];
         (dot.Fill, text.Foreground) = state switch {
-            StepState.Active => (new SolidColorBrush(ActiveColor), new SolidColorBrush(ActiveColor)),
-            StepState.Done => (new SolidColorBrush(DoneColor), new SolidColorBrush(DoneColor)),
-            _ => (new SolidColorBrush(IdleColor), new SolidColorBrush(IdleColor)),
+            StepState.Active => (new(ActiveColor), new(ActiveColor)),
+            StepState.Done => (new(DoneColor), new(DoneColor)),
+            _ => (new SolidColorBrush(IdleColor), new SolidColorBrush(IdleColor))
         };
         text.FontWeight = state == StepState.Active
-            ? Microsoft.UI.Text.FontWeights.Bold
-            : Microsoft.UI.Text.FontWeights.Normal;
+            ? FontWeights.Bold
+            : FontWeights.Normal;
     }
 
     private enum StepState {
         Idle,
         Active,
-        Done,
+        Done
     }
 }

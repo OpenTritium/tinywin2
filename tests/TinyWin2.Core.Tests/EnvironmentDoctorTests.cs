@@ -7,6 +7,15 @@ namespace TinyWin2.Core.Tests;
 public sealed class EnvironmentDoctorTests : IDisposable {
     private readonly string _root = TestPlans.CreateTempDirectory();
 
+    public void Dispose() {
+        try {
+            Directory.Delete(_root, true);
+        }
+        catch {
+            /* best effort */
+        }
+    }
+
     [Test]
     public async Task FreeSpaceBelowMinimumFailsWithGbDetail() {
         var result = EnvironmentDoctor.CheckFreeSpace(_root, long.MaxValue);
@@ -46,9 +55,5 @@ public sealed class EnvironmentDoctorTests : IDisposable {
         // System32-first resolution must defeat PATH shadowing on this host.
         var dism = results.First(r => r.Name == "dism.exe");
         await Assert.That(dism.Ok).IsTrue();
-    }
-
-    public void Dispose() {
-        try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
     }
 }

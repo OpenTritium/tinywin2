@@ -2,12 +2,20 @@ using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using TinyWin2.Core.Layers;
-using TinyWin2.Core.Logging;
 
 namespace TinyWin2.Core.Tests;
 
 public sealed class LayerEvidenceTests : IDisposable {
     private readonly string _root = TestPlans.CreateTempDirectory();
+
+    public void Dispose() {
+        try {
+            Directory.Delete(_root, true);
+        }
+        catch {
+            /* best effort */
+        }
+    }
 
     [Test]
     public async Task ManifestRoundTripsAndFiltersHiveTransactionNoise() {
@@ -29,7 +37,7 @@ public sealed class LayerEvidenceTests : IDisposable {
             Path.Combine(imageDir, "Users"));
         var manifest = LayerEvidence.ManifestPathFor(LayerEvidence.SnapshotsRoot(_root), 0);
         await LayerEvidence.CaptureAsync(imageDir, _root, 0, new FakeProcessRunner(),
-            new BuildLog(), CancellationToken.None);
+            new(), CancellationToken.None);
         var loaded = LayerEvidence.LoadManifest(manifest);
         await Assert.That(loaded.ContainsKey("Windows\\notepad.exe")).IsTrue();
         await Assert.That(loaded.ContainsKey("inetpub\\wwwroot")).IsFalse(); // directories are not listed
@@ -44,8 +52,9 @@ public sealed class LayerEvidenceTests : IDisposable {
 
     [Test]
     public async Task RegistrySnapshotSplitsByHive() {
-        var snapshot = ";;hive software\r\nWindows Registry Editor Version 5.00\r\n[HKEY_LOCAL_MACHINE\\TinyWin\\K]\r\n\"A\"=dword:1\r\n" +
-                       ";;hive system\r\n[HKEY_LOCAL_MACHINE\\TinyWin\\S]\r\n";
+        var snapshot =
+            ";;hive software\r\nWindows Registry Editor Version 5.00\r\n[HKEY_LOCAL_MACHINE\\TinyWin\\K]\r\n\"A\"=dword:1\r\n" +
+            ";;hive system\r\n[HKEY_LOCAL_MACHINE\\TinyWin\\S]\r\n";
         var hives = LayerEvidence.SplitByHive(snapshot);
         await Assert.That(hives.Count).IsEqualTo(2);
         await Assert.That(hives["software"]).Contains("\"A\"=dword:1");
@@ -73,13 +82,14 @@ public sealed class LayerEvidenceTests : IDisposable {
         var manifest = LayerEvidence.ManifestPathFor(LayerEvidence.SnapshotsRoot(_root), 0);
         try {
             await LayerEvidence.CaptureAsync(imageDir, _root, 0, new FakeProcessRunner(),
-                new BuildLog(), CancellationToken.None);
+                new(), CancellationToken.None);
         }
         finally {
             security = inaccessibleDirectory.GetAccessControl();
             security.RemoveAccessRule(rule);
             inaccessibleDirectory.SetAccessControl(security);
         }
+
         var loaded = LayerEvidence.LoadManifest(manifest);
 
         await Assert.That(loaded.ContainsKey("readable.txt")).IsTrue();
@@ -98,9 +108,5 @@ public sealed class LayerEvidenceTests : IDisposable {
             "# tinywin2-files-v1 complete\n1\t2\ta.txt\n2\t3\ta.txt\n");
         var duplicate = Assert.Throws<InvalidDataException>(() => LayerEvidence.LoadManifest(manifest));
         await Assert.That(duplicate.Message).Contains("duplicate");
-    }
-
-    public void Dispose() {
-        try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
     }
 }

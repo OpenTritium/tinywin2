@@ -10,35 +10,28 @@ namespace TinyWin2.Core.Executers.Dism;
 public sealed record DismRemovalTarget(string RemoveKey, string? Before = null, string? SkipReason = null);
 
 /// <summary>
-/// Template-method base for the four dism "remove-by-listing" executers
-/// (feature / capability / package / provisioned appx): list targets, diff against
-/// desired-absent, then run the per-target remove command and classify the outcome.
-/// Subclasses only describe WHAT to list/remove; the convergence loop lives here once.
+///     Template-method base for the four dism "remove-by-listing" executers
+///     (feature / capability / package / provisioned appx): list targets, diff against
+///     desired-absent, then run the per-target remove command and classify the outcome.
+///     Subclasses only describe WHAT to list/remove; the convergence loop lives here once.
 /// </summary>
 public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecuterBase(runner), IExecuter {
-    public abstract string Resource { get; }
-
     protected abstract IReadOnlyList<string> ListArguments { get; }
 
     protected abstract string RecordStartKey { get; }
 
-    /// <summary>Maps one /Format:List record to a removal target; may log skips.</summary>
-    protected abstract IEnumerable<DismRemovalTarget> SelectTargets(
-        IReadOnlyList<IReadOnlyDictionary<string, string>> records,
-        ExecContext context,
-        OperationSpec spec);
-
-    protected abstract IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, OperationSpec spec);
-
     /// <summary>Outcome that downgrades a failed removal to Skipped (e.g. CBS_E_CANNOT_UNINSTALL); null for none.</summary>
     protected virtual DismOutcome? DowngradeOutcome => null;
 
-    /// <summary>Exit codes meaning "this listing does not apply to the image" — treated as
-    /// provider-unavailable (satisfied no-op) instead of a hard failure. Server without
-    /// provisioning (appx) answers 87, ERROR_INVALID_PARAMETER.</summary>
+    /// <summary>
+    ///     Exit codes meaning "this listing does not apply to the image" — treated as
+    ///     provider-unavailable (satisfied no-op) instead of a hard failure. Server without
+    ///     provisioning (appx) answers 87, ERROR_INVALID_PARAMETER.
+    /// </summary>
     protected virtual FrozenSet<int> InapplicableExitCodes => FrozenSet<int>.Empty;
 
     protected abstract string SatisfiedSkipReason { get; }
+    public abstract string Resource { get; }
 
     public virtual void Validate(OperationSpec spec) {
         if (spec.Action != OperationAction.Remove) {
@@ -67,10 +60,10 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
 
         var differences = SelectTargets(records, context, spec)
             .Select(t => t.SkipReason is not null
-                ? new ChangeItem(ChangeKind.Skipped, t.RemoveKey, t.SkipReason)
-                : new ChangeItem(ChangeKind.Removed, t.RemoveKey, Before: t.Before))
+                ? new(ChangeKind.Skipped, t.RemoveKey, t.SkipReason)
+                : new ChangeItem(ChangeKind.Removed, t.RemoveKey, t.Before))
             .ToList();
-        return new ResourceDiff(differences.All(d => d.Kind == ChangeKind.Skipped), differences);
+        return new(differences.All(d => d.Kind == ChangeKind.Skipped), differences);
     }
 
     public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
@@ -103,4 +96,12 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
 
         return ExecResult.Applied(applied);
     }
+
+    /// <summary>Maps one /Format:List record to a removal target; may log skips.</summary>
+    protected abstract IEnumerable<DismRemovalTarget> SelectTargets(
+        IReadOnlyList<IReadOnlyDictionary<string, string>> records,
+        ExecContext context,
+        OperationSpec spec);
+
+    protected abstract IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, OperationSpec spec);
 }

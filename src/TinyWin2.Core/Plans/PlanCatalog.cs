@@ -38,7 +38,7 @@ public sealed class PlanCatalog(IReadOnlyList<PlanDefinition> plans) {
                     throw new PlanValidationException(file, ["root must be a JSON object."]);
                 }
 
-                plan = PlanDefinition.FromJson(obj, sourceFile: file);
+                plan = PlanDefinition.FromJson(obj, file);
             }
             catch (JsonException ex) {
                 errors.Add($"'{Path.GetFileName(file)}': invalid JSON ({ex.Message}).");

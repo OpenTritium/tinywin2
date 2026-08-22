@@ -1,9 +1,8 @@
 using Microsoft.UI.Xaml;
+
 namespace TinyWin2.Gui;
 
 public partial class App {
-    public static Window? MainAppWindow { get; private set; }
-
     public App() {
         try {
             InitializeComponent();
@@ -13,6 +12,8 @@ public partial class App {
             throw;
         }
     }
+
+    public static Window? MainAppWindow { get; private set; }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args) {
         try {

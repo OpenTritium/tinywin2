@@ -14,6 +14,7 @@ public sealed record PreviewOptions {
     public required IReadOnlyList<PlanSelection> Selections { get; init; }
     public required string WorkDirectory { get; init; }
     public required PlanCatalog Catalog { get; init; }
+
     /// <summary>Plans directory: fs.path-present previews need each plan's assets root.</summary>
     public string? PlansDirectory { get; init; }
 
@@ -29,13 +30,13 @@ public sealed record PlanPreview(
         ["planId"] = PlanId,
         ["title"] = Title,
         ["alreadyInDesiredState"] = Satisfied,
-        ["differences"] = new JsonArray(Differences.Select(d => (JsonNode)d.ToJson()).ToArray()),
+        ["differences"] = new JsonArray(Differences.Select(d => (JsonNode)d.ToJson()).ToArray())
     };
 }
 
 /// <summary>
-/// The inspection phase: applies the base layer, then runs <c>InspectAsync</c> for
-/// every operation (read-only) and reports what each plan would change. No plan layers, no output.
+///     The inspection phase: applies the base layer, then runs <c>InspectAsync</c> for
+///     every operation (read-only) and reports what each plan would change. No plan layers, no output.
 /// </summary>
 public sealed class PreviewRunner(
     IProcessRunner runner,
@@ -58,7 +59,7 @@ public sealed class PreviewRunner(
             await stack.EnsureBaseAsync(options.BaseVhdxMaximumMb, "TinyWin2-preview", ct);
             if (!stack.BaseReady) {
                 var stagingWim = Path.Combine(options.WorkDirectory, "install.source.wim");
-                await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, fast: true, ct);
+                await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, true, ct);
                 log.Info("applying source image into the preview base layer");
                 await stack.ApplyImageToBaseAsync(async (mount, token) => {
                     await runner.RunAsync("dism.exe",
@@ -67,7 +68,7 @@ public sealed class PreviewRunner(
                             "/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}",
                             $"/ApplyDir:{mount}"
                         ],
-                        new ProcessRunOptions { Timeout = TimeSpan.FromHours(2) }, token);
+                        new() { Timeout = TimeSpan.FromHours(2) }, token);
                 }, ct);
             }
             else {
@@ -93,7 +94,7 @@ public sealed class PreviewRunner(
                         await hiveCache.UnloadAllAsync(log, CancellationToken.None);
                     }
 
-                    previews.Add(new PlanPreview(
+                    previews.Add(new(
                         resolved.Definition.Id,
                         resolved.Definition.Title,
                         differences.Count == 0,

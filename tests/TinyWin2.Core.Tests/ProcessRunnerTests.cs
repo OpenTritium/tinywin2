@@ -26,8 +26,8 @@ public sealed class ProcessRunnerTests {
     public async Task NonZeroExitThrowsWithOutput() {
         var runner = new ProcessRunner();
         var (exe, args) = SplitCommand(FailCommand());
-        var ex = Assert.Throws<ProcessRunnerException>(
-            () => runner.RunAsync(exe, args, new ProcessRunOptions { Timeout = TimeSpan.FromSeconds(10) }).GetAwaiter().GetResult());
+        var ex = Assert.Throws<ProcessRunnerException>(() =>
+            runner.RunAsync(exe, args, new() { Timeout = TimeSpan.FromSeconds(10) }).GetAwaiter().GetResult());
         await Assert.That(ex.Result.ExitCode).IsEqualTo(3);
     }
 
@@ -35,7 +35,7 @@ public sealed class ProcessRunnerTests {
     public async Task IgnoreExitCodeReturnsResult() {
         var runner = new ProcessRunner();
         var (exe, args) = SplitCommand(FailCommand());
-        var result = await runner.RunAsync(exe, args, new ProcessRunOptions { IgnoreExitCode = true });
+        var result = await runner.RunAsync(exe, args, new() { IgnoreExitCode = true });
         await Assert.That(result.ExitCode).IsEqualTo(3);
     }
 
@@ -44,7 +44,7 @@ public sealed class ProcessRunnerTests {
         var runner = new ProcessRunner();
         var lines = new List<string>();
         var (exe, args) = SplitCommand(EchoCommand("streamed"));
-        await runner.RunAsync(exe, args, new ProcessRunOptions { OnOutputLine = lines.Add });
+        await runner.RunAsync(exe, args, new() { OnOutputLine = lines.Add });
         await Assert.That(lines.Count).IsEqualTo(1);
         await Assert.That(lines[0].Trim()).IsEqualTo("streamed");
     }
@@ -58,7 +58,7 @@ public sealed class ProcessRunnerTests {
             : ["-c", "yes 1234567890 | head -n 20"];
 
         var result = await runner.RunAsync(exe, args,
-            new ProcessRunOptions { MaxOutputCharacters = 150 });
+            new() { MaxOutputCharacters = 150 });
 
         await Assert.That(result.Output.Length).IsLessThanOrEqualTo(150);
         await Assert.That(result.Output).Contains("...[");
@@ -74,7 +74,7 @@ public sealed class ProcessRunnerTests {
         var stopwatch = Stopwatch.StartNew();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => runner.RunAsync(exe, args,
-            new ProcessRunOptions { OnOutputLine = _ => throw new InvalidOperationException("callback failed") }));
+            new() { OnOutputLine = _ => throw new InvalidOperationException("callback failed") }));
 
         stopwatch.Stop();
         await Assert.That(stopwatch.Elapsed.TotalSeconds).IsLessThan(5);
@@ -89,8 +89,8 @@ public sealed class ProcessRunnerTests {
             : "-c 'sleep 30'";
         var (exe, args) = SplitCommand(hangCommand);
         var stopwatch = Stopwatch.StartNew();
-        await Assert.ThrowsAsync<TimeoutException>(
-            () => runner.RunAsync(exe, args, new ProcessRunOptions { Timeout = TimeSpan.FromSeconds(1) }));
+        await Assert.ThrowsAsync<TimeoutException>(() =>
+            runner.RunAsync(exe, args, new() { Timeout = TimeSpan.FromSeconds(1) }));
         stopwatch.Stop();
         await Assert.That(stopwatch.Elapsed.TotalSeconds).IsLessThan(5);
     }

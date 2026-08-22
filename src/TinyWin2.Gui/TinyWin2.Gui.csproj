@@ -21,14 +21,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.4.0" />
-    
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.4.0"/>
+
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2"/>
+
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TinyWin2.Core\TinyWin2.Core.csproj" />
+    <ProjectReference Include="..\TinyWin2.Core\TinyWin2.Core.csproj"/>
   </ItemGroup>
 
 </Project>

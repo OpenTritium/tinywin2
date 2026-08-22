@@ -17,8 +17,18 @@ public sealed class LayerBackendTests : IDisposable {
             if (file == "diskpart.exe" && args.Count > 1 && args[0] == "/s") {
                 _scripts.Add(File.ReadAllText(args[1]));
             }
+
             return FakeProcessRunner.Ok();
         };
+    }
+
+    public void Dispose() {
+        try {
+            Directory.Delete(_root, true);
+        }
+        catch {
+            /* best effort */
+        }
     }
 
     // ---- DiskPartVhdBackend ------------------------------------------------
@@ -71,6 +81,7 @@ public sealed class LayerBackendTests : IDisposable {
             if (file == "diskpart.exe" && args.Count > 1 && args[0] == "/s") {
                 _scripts.Add(File.ReadAllText(args[1]));
             }
+
             return ++attempts == 1
                 ? throw new ProcessRunnerException(
                     "diskpart.exe",
@@ -182,7 +193,7 @@ public sealed class LayerBackendTests : IDisposable {
     [Test]
     public async Task HyperVhdMergeWalksParentsWithoutUnsupportedDepthParameter() {
         var backend = new HyperVhdBackend(_runner);
-        await backend.MergeAsync(Path.Combine(_root, "L002.vhdx"), depth: 2, CancellationToken.None);
+        await backend.MergeAsync(Path.Combine(_root, "L002.vhdx"), 2, CancellationToken.None);
         await Assert.That(_runner.ArgsOf(0)[4]).Contains("Merge-VHD -Path");
         await Assert.That(_runner.ArgsOf(0)[4]).Contains("-DestinationPath $parent");
         await Assert.That(_runner.ArgsOf(0)[4]).Contains("$i -lt 2");
@@ -221,7 +232,7 @@ public sealed class LayerBackendTests : IDisposable {
             Handler = (_, _) => {
                 probes++;
                 return FakeProcessRunner.Ok("True");
-            },
+            }
         };
         try {
             await Assert.That(HyperVhdBackend.IsAvailable(runner)).IsTrue();
@@ -240,16 +251,17 @@ public sealed class LayerBackendTests : IDisposable {
             Directory.CreateDirectory(directory);
             await File.WriteAllTextAsync(Path.Combine(directory, "layers.json"), "{ not json");
             var ex = Assert.Throws<IOException>(() =>
-                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog())
+                VhdLayerStack.Load(directory, new FakeLayerBackend(), new())
             );
             await Assert.That(ex.Message).Contains("is corrupt");
             await Assert.That(ex.Message).Contains("delete the workspace");
         }
         finally {
             try {
-                Directory.Delete(directory, recursive: true);
+                Directory.Delete(directory, true);
             }
-            catch { /* best effort */
+            catch {
+                /* best effort */
             }
         }
     }
@@ -260,15 +272,16 @@ public sealed class LayerBackendTests : IDisposable {
         try {
             await File.WriteAllTextAsync(Path.Combine(directory, "layers.json"), "{\"version\":1}");
             var ex = Assert.Throws<IOException>(() =>
-                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog())
+                VhdLayerStack.Load(directory, new FakeLayerBackend(), new())
             );
             await Assert.That(ex.Message).Contains("layers");
         }
         finally {
             try {
-                Directory.Delete(directory, recursive: true);
+                Directory.Delete(directory, true);
             }
-            catch { /* best effort */
+            catch {
+                /* best effort */
             }
         }
     }
@@ -287,7 +300,7 @@ public sealed class LayerBackendTests : IDisposable {
                 $"{{\"layers\":[{baseLayer},{escaped}]}}"
             );
             var traversal = Assert.Throws<IOException>(() =>
-                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog())
+                VhdLayerStack.Load(directory, new FakeLayerBackend(), new())
             );
             await Assert.That(traversal.Message).Contains("invalid VHDX");
 
@@ -298,15 +311,16 @@ public sealed class LayerBackendTests : IDisposable {
                 $"{{\"layers\":[{baseLayer},{layer},{layer}]}}"
             );
             var duplicate = Assert.Throws<IOException>(() =>
-                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog())
+                VhdLayerStack.Load(directory, new FakeLayerBackend(), new())
             );
             await Assert.That(duplicate.Message).Contains("unique");
         }
         finally {
             try {
-                Directory.Delete(directory, recursive: true);
+                Directory.Delete(directory, true);
             }
-            catch { /* best effort */
+            catch {
+                /* best effort */
             }
         }
     }
@@ -315,8 +329,8 @@ public sealed class LayerBackendTests : IDisposable {
     public async Task DuplicateRegistrationIsRejected() {
         var ex = Assert.Throws<InvalidOperationException>(() =>
             _ = new ExecuterRegistry([
-                new FakeExecuter("dup.resource", fail: false),
-                new FakeExecuter("dup.resource", fail: false),
+                new FakeExecuter("dup.resource", false),
+                new FakeExecuter("dup.resource", false)
             ])
         );
         await Assert.That(ex.Message).Contains("duplicate executer registration for resource 'dup.resource'");
@@ -324,7 +338,7 @@ public sealed class LayerBackendTests : IDisposable {
 
     [Test]
     public async Task ValidateBuildPlanRejectsUnknownResources() {
-        var registry = new ExecuterRegistry([new FakeExecuter("known.resource", fail: false)]);
+        var registry = new ExecuterRegistry([new FakeExecuter("known.resource", false)]);
         var plan = BuildPlan(
             new OperationSpec("known.resource", OperationAction.Remove, []),
             new OperationSpec("ghost.resource", OperationAction.Set, [])
@@ -335,7 +349,7 @@ public sealed class LayerBackendTests : IDisposable {
 
     [Test]
     public void ValidateBuildPlanAcceptsFullyRegisteredPlans() {
-        var registry = new ExecuterRegistry([new FakeExecuter("known.resource", fail: false)]);
+        var registry = new ExecuterRegistry([new FakeExecuter("known.resource", false)]);
         var plan = BuildPlan(new OperationSpec("known.resource", OperationAction.Remove, []));
         registry.ValidateBuildPlan(plan);
     }
@@ -343,27 +357,18 @@ public sealed class LayerBackendTests : IDisposable {
     private static BuildPlan BuildPlan(params OperationSpec[] execs) =>
         new(
             execs
-                .Select(
-                    (operation, index) => {
+                .Select((operation, index) => {
                         var definition = new PlanDefinition {
                             Id = $"p.{index}",
                             Version = "1.0.0",
                             Title = $"P {index}",
                             Description = "d",
                             Category = "G",
-                            Operation = new PlanOperation(operation.Resource, operation.Action, operation.Spec),
+                            Operation = new(operation.Resource, operation.Action, operation.Spec)
                         };
-                        return new PlanStep(new ResolvedPlan(definition, operation));
+                        return new PlanStep(new(definition, operation));
                     }
                 )
                 .ToArray()
         );
-
-    public void Dispose() {
-        try {
-            Directory.Delete(_root, recursive: true);
-        }
-        catch { /* best effort */
-        }
-    }
 }

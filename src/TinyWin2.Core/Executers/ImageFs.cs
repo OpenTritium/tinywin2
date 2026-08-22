@@ -7,7 +7,7 @@ internal static class ImageFs {
     /// <summary>Deletes a file or directory (recursively) when it exists; a no-op otherwise.</summary>
     internal static void DeleteIfExists(string target) {
         if (Directory.Exists(target)) {
-            Directory.Delete(target, recursive: true);
+            Directory.Delete(target, true);
         }
         else if (File.Exists(target)) {
             File.Delete(target);

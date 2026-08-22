@@ -2,7 +2,6 @@ using System.Text.Json.Nodes;
 
 namespace TinyWin2.Core.Executers.Driver;
 
-/// <summary>Strongly-typed bound payload for <c>driver.store</c>.</summary>
 public sealed record DriverStoreOptions {
     public required IReadOnlyList<string> InfNames { get; init; }
 
@@ -13,13 +12,13 @@ public sealed record DriverStoreOptions {
         }
 
         foreach (var infName in from infName in infNames
-                                let normalized = Path.GetFileName(infName)
-                                where !string.Equals(normalized, infName, StringComparison.Ordinal)
-                                      || !infName.EndsWith(".inf", StringComparison.OrdinalIgnoreCase)
-                                      || infName.Contains('*')
-                                      || infName.Contains('?')
-                                      || infName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
-                                select infName) {
+                 let normalized = Path.GetFileName(infName)
+                 where !string.Equals(normalized, infName, StringComparison.Ordinal)
+                       || !infName.EndsWith(".inf", StringComparison.OrdinalIgnoreCase)
+                       || infName.Contains('*')
+                       || infName.Contains('?')
+                       || infName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
+                 select infName) {
             throw new ExecException($"invalid driver INF name '{infName}'.");
         }
 

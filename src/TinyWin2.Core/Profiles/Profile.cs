@@ -15,7 +15,7 @@ public sealed record Profile(
         var result = new JsonObject {
             ["schemaVersion"] = CurrentSchemaVersion,
             ["name"] = Name,
-            ["selections"] = new JsonArray([.. Selections.Select(ToJson)]),
+            ["selections"] = new JsonArray([.. Selections.Select(ToJson)])
         };
         if (Description is not null) {
             result["description"] = Description;
@@ -76,7 +76,7 @@ public sealed record Profile(
                 ToParameterMap(parametersNode as JsonObject)));
         }
 
-        return new Profile(name, description, selections);
+        return new(name, description, selections);
     }
 
     private static void RejectUnknownProperties(JsonObject obj, string path, IReadOnlyList<string> allowed) {
@@ -90,7 +90,7 @@ public sealed record Profile(
     private static JsonObject ToJson(PlanSelection selection) {
         var result = new JsonObject {
             ["planId"] = selection.PlanId,
-            ["enabled"] = selection.Enabled,
+            ["enabled"] = selection.Enabled
         };
         if (selection.Parameters is not { Count: > 0 } parameters) {
             return result;

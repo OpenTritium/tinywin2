@@ -6,12 +6,12 @@ public enum BuildEventLevel {
     Debug = 0,
     Info = 1,
     Warn = 2,
-    Error = 3,
+    Error = 3
 }
 
 /// <summary>
-/// One structured, serializable build event. The CLI streams these as JSONL
-/// (<c>--json-events</c>); the GUI renders them as the live progress/log feed.
+///     One structured, serializable build event. The CLI streams these as JSONL
+///     (<c>--json-events</c>); the GUI renders them as the live progress/log feed.
 /// </summary>
 public sealed record BuildEvent {
     public int Sequence { get; init; }
@@ -34,21 +34,21 @@ public sealed record BuildEvent {
         ["message"] = Message,
         ["planId"] = PlanId,
         ["layerIndex"] = LayerIndex,
-        ["data"] = Data?.DeepClone(),
+        ["data"] = Data?.DeepClone()
     };
 }
 
 /// <summary>
-/// Central structured log. The engine writes through it; sinks (Serilog file/console
-/// bridge, JSONL stream for the GUI) subscribe via <see cref="Attach"/>. Events are
-/// pushed to sinks only — nothing is buffered, so a long build costs no memory.
+///     Central structured log. The engine writes through it; sinks (Serilog file/console
+///     bridge, JSONL stream for the GUI) subscribe via <see cref="Attach" />. Events are
+///     pushed to sinks only — nothing is buffered, so a long build costs no memory.
 /// </summary>
 public sealed class BuildLog {
     private readonly Lock _gate = new();
     private readonly List<Action<BuildEvent>> _sinks = [];
-    private int _sequence;
     private string _phase = "init";
     private string? _planId;
+    private int _sequence;
 
     /// <summary>Ambient context stamped onto every event unless overridden per call.</summary>
     public string Phase {
@@ -84,7 +84,7 @@ public sealed class BuildLog {
         BuildEvent evt;
         Action<BuildEvent>[] sinks;
         lock (_gate) {
-            evt = new BuildEvent {
+            evt = new() {
                 Sequence = _sequence++,
                 Timestamp = DateTimeOffset.UtcNow,
                 Level = level,
@@ -92,7 +92,7 @@ public sealed class BuildLog {
                 Message = message,
                 PlanId = planId ?? _planId,
                 LayerIndex = layerIndex,
-                Data = data?.DeepClone().AsObject(),
+                Data = data?.DeepClone().AsObject()
             };
             sinks = [.. _sinks];
         }

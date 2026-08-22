@@ -6,21 +6,24 @@ namespace TinyWin2.Cli.Commands;
 internal static class PlanCommand {
     public static int Run(List<string> args) {
         var options = Program.ParseOptions(args);
-        var catalog = PlanCatalog.LoadDirectory(Cli.FindPlansDirectory(options.GetValueOrDefault("plans")?.FirstOrDefault()));
+        var catalog =
+            PlanCatalog.LoadDirectory(Cli.FindPlansDirectory(options.GetValueOrDefault("plans")?.FirstOrDefault()));
         if (args.Count > 0 && !args[0].StartsWith("--")) {
             return args[0] switch {
                 "list" => List(catalog, options),
                 "show" => Show(catalog, args.Skip(1).ToList()),
-                _ => Unknown(args[0]),
+                _ => Unknown(args[0])
             };
         }
+
         return List(catalog, options);
     }
 
     private static int List(PlanCatalog catalog, Dictionary<string, List<string>> options) {
         var categoryFilter = options.GetValueOrDefault("category")?.FirstOrDefault();
         var plans = catalog.Plans
-            .Where(p => categoryFilter is null || string.Equals(p.Category, categoryFilter, StringComparison.OrdinalIgnoreCase))
+            .Where(p => categoryFilter is null ||
+                        string.Equals(p.Category, categoryFilter, StringComparison.OrdinalIgnoreCase))
             .OrderBy(p => p.Category, StringComparer.OrdinalIgnoreCase)
             .ThenBy(p => p.Id, StringComparer.OrdinalIgnoreCase);
         if (options.ContainsKey("json")) {
@@ -32,12 +35,13 @@ internal static class PlanCommand {
                     ["riskLevel"] = p.RiskLevel,
                     ["requires"] = new JsonArray(p.Requires.Select(r => (JsonNode)r).ToArray()),
                     ["conflicts"] = new JsonArray(p.Conflicts.Select(c => (JsonNode)c).ToArray()),
-                    ["parameters"] = new JsonArray(p.Parameters.Select(a => (JsonNode)a.ToJson()).ToArray()),
-                }).ToArray()),
+                    ["parameters"] = new JsonArray(p.Parameters.Select(a => (JsonNode)a.ToJson()).ToArray())
+                }).ToArray())
             };
             Console.WriteLine(root.ToJsonString(DoctorCommand.JsonSerializerOptions));
             return 0;
         }
+
         string? currentCategory = null;
         foreach (var plan in plans) {
             if (currentCategory != plan.Category) {
@@ -45,14 +49,18 @@ internal static class PlanCommand {
                 Console.WriteLine();
                 Console.WriteLine($"== {plan.Category} ==");
             }
+
             var risk = plan.RiskLevel.ToLowerInvariant() switch {
                 "high" => "‼",
                 "medium" => "! ",
-                _ => "· ",
+                _ => "· "
             };
-            var parameters = plan.Parameters.Count == 0 ? "" : $"  (parameters: {string.Join(", ", plan.Parameters.Select(a => a.Name))})";
+            var parameters = plan.Parameters.Count == 0
+                ? ""
+                : $"  (parameters: {string.Join(", ", plan.Parameters.Select(a => a.Name))})";
             Console.WriteLine($"  {risk}{plan.Id,-46} {plan.Title}{parameters}");
         }
+
         Console.WriteLine();
         Console.WriteLine($"{catalog.Plans.Count} plans. Details: tinywin2 plan show <id>");
         return 0;
@@ -63,6 +71,7 @@ internal static class PlanCommand {
             Console.Error.WriteLine("usage: tinywin2 plan show <id>");
             return 2;
         }
+
         var plan = catalog.Get(args[0]);
         Console.WriteLine(new JsonObject {
             ["id"] = plan.Id,
@@ -77,8 +86,8 @@ internal static class PlanCommand {
             ["operation"] = new JsonObject {
                 ["resource"] = plan.Operation.Resource,
                 ["action"] = plan.Operation.Action.ToString().ToLowerInvariant(),
-                ["spec"] = plan.Operation.Spec.DeepClone(),
-            },
+                ["spec"] = plan.Operation.Spec.DeepClone()
+            }
         }.ToJsonString(DoctorCommand.JsonSerializerOptions));
         return 0;
     }

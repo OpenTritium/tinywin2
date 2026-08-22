@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI;
+using Microsoft.UI.Xaml.Media;
 using TinyWin2.Core.Plans;
 
 namespace TinyWin2.Gui;
@@ -9,8 +11,9 @@ public partial class PlanItemViewModel : ObservableObject {
     public PlanItemViewModel(PlanDefinition definition) {
         Definition = definition;
         foreach (var parameter in definition.Parameters) {
-            Parameters.Add(new ParameterViewModel(parameter));
+            Parameters.Add(new(parameter));
         }
+
         foreach (var parameter in Parameters) {
             parameter.ValueChanged += () => OnPropertyChanged(nameof(Summary));
         }
@@ -24,8 +27,7 @@ public partial class PlanItemViewModel : ObservableObject {
     public string Description => Definition.Description;
     public ObservableCollection<ParameterViewModel> Parameters { get; } = [];
 
-    [ObservableProperty]
-    public partial bool IsSelected { get; set; }
+    [ObservableProperty] public partial bool IsSelected { get; set; }
 
     public string Summary => Parameters.Count == 0
         ? ""
@@ -34,13 +36,13 @@ public partial class PlanItemViewModel : ObservableObject {
     public string RiskBadge => RiskLevel switch {
         "High" => "‼高",
         "Medium" => "!中",
-        _ => "·低",
+        _ => "·低"
     };
 
-    public Microsoft.UI.Xaml.Media.Brush RiskBrush => RiskLevel switch {
-        "High" => new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.DarkRed),
-        "Medium" => new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.DarkGoldenrod),
-        _ => new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.DarkGreen),
+    public Brush RiskBrush => RiskLevel switch {
+        "High" => new SolidColorBrush(Colors.DarkRed),
+        "Medium" => new SolidColorBrush(Colors.DarkGoldenrod),
+        _ => new SolidColorBrush(Colors.DarkGreen)
     };
 
     partial void OnIsSelectedChanged(bool value) {
@@ -70,12 +72,11 @@ public partial class ParameterViewModel : ObservableObject {
     public string Type => Parameter.Type.ToString().ToLowerInvariant();
     public IReadOnlyList<PlanParameterOption> Options => Parameter.Options;
 
-    [ObservableProperty]
-    public partial string SelectedValue { get; set; }
+    [ObservableProperty] public partial string SelectedValue { get; set; }
 
     public string Display => Type switch {
         "enum" => Options.FirstOrDefault(o => o.Value == SelectedValue)?.Label ?? SelectedValue,
-        _ => SelectedValue,
+        _ => SelectedValue
     };
 
     partial void OnSelectedValueChanged(string value) {
@@ -127,11 +128,13 @@ public sealed class WizardState {
                 parameters[parameter.Name] = parameter.Type switch {
                     "int" when int.TryParse(parameter.SelectedValue, out var n) => n,
                     "bool" when bool.TryParse(parameter.SelectedValue, out var b) => b,
-                    _ => parameter.SelectedValue,
+                    _ => parameter.SelectedValue
                 };
             }
+
             result.Add((plan.Id, parameters));
         }
+
         return result;
     }
 }

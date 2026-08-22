@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Serilog;
 using Serilog.Events;
 
@@ -5,10 +7,10 @@ namespace TinyWin2.Core.Logging;
 
 public static class SerilogBuildLogExtensions {
     /// <summary>
-    /// Bridges every <see cref="BuildEvent"/> into a Serilog pipeline:
-    /// colored console + a rolling-free, UTF-8 log file with the structured
-    /// domain fields (phase/planId/layerIndex) as Serilog properties.
-    /// Console output is suppressed when the JSONL event stream owns stdout.
+    ///     Bridges every <see cref="BuildEvent" /> into a Serilog pipeline:
+    ///     colored console + a rolling-free, UTF-8 log file with the structured
+    ///     domain fields (phase/planId/layerIndex) as Serilog properties.
+    ///     Console output is suppressed when the JSONL event stream owns stdout.
     /// </summary>
     /// <returns>The sink token; dispose to flush and close the file.</returns>
     public static IDisposable UseSerilog(
@@ -23,8 +25,8 @@ public static class SerilogBuildLogExtensions {
                 logFilePath,
                 outputTemplate:
                 "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}",
-                formatProvider: System.Globalization.CultureInfo.InvariantCulture,
-                encoding: System.Text.Encoding.UTF8);
+                formatProvider: CultureInfo.InvariantCulture,
+                encoding: Encoding.UTF8);
         if (echoConsole) {
             configuration = configuration.WriteTo.Console(
                 outputTemplate: "{Timestamp:HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}");
@@ -32,12 +34,14 @@ public static class SerilogBuildLogExtensions {
 
         var logger = configuration.CreateLogger();
 
-        LogEventLevel ToSerilogLevel(BuildEventLevel level) => level switch {
-            BuildEventLevel.Debug => LogEventLevel.Debug,
-            BuildEventLevel.Info => LogEventLevel.Information,
-            BuildEventLevel.Warn => LogEventLevel.Warning,
-            _ => LogEventLevel.Error,
-        };
+        LogEventLevel ToSerilogLevel(BuildEventLevel level) {
+            return level switch {
+                BuildEventLevel.Debug => LogEventLevel.Debug,
+                BuildEventLevel.Info => LogEventLevel.Information,
+                BuildEventLevel.Warn => LogEventLevel.Warning,
+                _ => LogEventLevel.Error
+            };
+        }
 
         var token = log.Attach(evt => {
             var level = ToSerilogLevel(evt.Level);
@@ -49,7 +53,7 @@ public static class SerilogBuildLogExtensions {
                 .ForContext("phase", evt.Phase)
                 .ForContext("planId", evt.PlanId)
                 .ForContext("layerIndex", evt.LayerIndex)
-                .Write(level, exception: null, messageTemplate: "{message}", propertyValue: evt.Message);
+                .Write(level, null, "{message}", propertyValue: evt.Message);
         });
         return new CompositeDisposable(token, logger);
     }

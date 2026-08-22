@@ -1,16 +1,24 @@
 using System.Text.Json.Nodes;
-using TinyWin2.Core.Logging;
 using TinyWin2.Core.Pipeline;
 
 namespace TinyWin2.Core.Tests;
 
 public sealed class SourceImageResolverTests : IDisposable {
+    private readonly SourceImageResolver _resolver;
     private readonly string _root = TestPlans.CreateTempDirectory();
     private readonly FakeProcessRunner _runner = new();
-    private readonly SourceImageResolver _resolver;
 
     public SourceImageResolverTests() {
-        _resolver = new SourceImageResolver(_runner, new BuildLog());
+        _resolver = new(_runner, new());
+    }
+
+    public void Dispose() {
+        try {
+            Directory.Delete(_root, true);
+        }
+        catch {
+            /* best effort */
+        }
     }
 
     // ---- pure parsers ------------------------------------------------------
@@ -19,13 +27,13 @@ public sealed class SourceImageResolverTests : IDisposable {
     public async Task ParseKeyValueLinesSkipsNoiseAndTrims() {
         var output = """
 
-            Index : 1
-            Name : ServerStandard
+                     Index : 1
+                     Name : ServerStandard
 
-            not a colon line
-            Version: 10.0.26100.1
+                     not a colon line
+                     Version: 10.0.26100.1
 
-            """;
+                     """;
         var fields = SourceImageResolver.ParseKeyValueLines(output);
         await Assert.That(fields["Index"]).IsEqualTo("1");
         await Assert.That(fields["Name"]).IsEqualTo("ServerStandard");
@@ -45,7 +53,7 @@ public sealed class SourceImageResolverTests : IDisposable {
 
     [Test]
     public async Task FolderSourcePrefersInstallWimOverEsd() {
-        var media = CreateMediaFolder(installWim: true, installEsd: true);
+        var media = CreateMediaFolder(true, true);
         var source = await _resolver.ResolveAsync(media, CancellationToken.None);
         await Assert.That(source.IsMountedIso).IsFalse();
         await Assert.That(source.InstallImagePath).IsEqualTo(Path.Combine(media, "sources", "install.wim"));
@@ -54,7 +62,7 @@ public sealed class SourceImageResolverTests : IDisposable {
 
     [Test]
     public async Task FolderSourceFallsBackToEsd() {
-        var media = CreateMediaFolder(installWim: false, installEsd: true);
+        var media = CreateMediaFolder(false, true);
         var source = await _resolver.ResolveAsync(media, CancellationToken.None);
         await Assert.That(source.InstallImagePath).IsEqualTo(Path.Combine(media, "sources", "install.esd"));
         await Assert.That(source.IsEsd).IsTrue();
@@ -62,15 +70,17 @@ public sealed class SourceImageResolverTests : IDisposable {
 
     [Test]
     public async Task FolderSourceWithoutInstallImageThrows() {
-        var media = CreateMediaFolder(installWim: false, installEsd: false);
-        var ex = Assert.Throws<FileNotFoundException>(() => _resolver.ResolveAsync(media, CancellationToken.None).GetAwaiter().GetResult());
+        var media = CreateMediaFolder(false, false);
+        var ex = Assert.Throws<FileNotFoundException>(() =>
+            _resolver.ResolveAsync(media, CancellationToken.None).GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("install.wim");
     }
 
     [Test]
     public async Task FolderSourceWithoutBootWimIsRejected() {
-        var media = CreateMediaFolder(installWim: true, installEsd: false, bootWim: false);
-        var ex = Assert.Throws<FileNotFoundException>(() => _resolver.ResolveAsync(media, CancellationToken.None).GetAwaiter().GetResult());
+        var media = CreateMediaFolder(true, false, false);
+        var ex = Assert.Throws<FileNotFoundException>(() =>
+            _resolver.ResolveAsync(media, CancellationToken.None).GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("boot.wim");
     }
 
@@ -87,28 +97,28 @@ public sealed class SourceImageResolverTests : IDisposable {
     public async Task GetIndexesMergesSummaryWithPerIndexDetails() {
         _runner.Handler = (_, args) => args.Contains("/Index:1")
             ? FakeProcessRunner.Ok("""
-                Name : ServerStandard Eval
-                Description : Server Standard Evaluation
-                Architecture : x64
-                Version : 10.0.26100.1
-                Edition ID : ServerStandardEval
-                Size : 11,831,247,965 bytes
+                                   Name : ServerStandard Eval
+                                   Description : Server Standard Evaluation
+                                   Architecture : x64
+                                   Version : 10.0.26100.1
+                                   Edition ID : ServerStandardEval
+                                   Size : 11,831,247,965 bytes
 
-                """)
+                                   """)
             : args.Contains("/Index:2")
                 ? FakeProcessRunner.Ok("""
-                    Name : ServerDatacenter Eval
-                    Architecture : x64
+                                       Name : ServerDatacenter Eval
+                                       Architecture : x64
 
-                    """)
+                                       """)
                 : FakeProcessRunner.Ok("""
-                    Index : 1
-                    Name : stub one
+                                       Index : 1
+                                       Name : stub one
 
-                    Index : 2
-                    Name : stub two
+                                       Index : 2
+                                       Name : stub two
 
-                    """);
+                                       """);
         var indexes = await _resolver.GetIndexesAsync(Path.Combine(_root, "install.wim"), CancellationToken.None);
         await Assert.That(indexes).Count().IsEqualTo(2);
         await Assert.That(indexes[0].Index).IsEqualTo(1);
@@ -133,21 +143,22 @@ public sealed class SourceImageResolverTests : IDisposable {
     public async Task GetIndexesThrowsWhenDismCannotReadImage() {
         _runner.Handler = (_, _) => FakeProcessRunner.Fail(2);
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            _resolver.GetIndexesAsync(Path.Combine(_root, "install.wim"), CancellationToken.None).GetAwaiter().GetResult());
+            _resolver.GetIndexesAsync(Path.Combine(_root, "install.wim"), CancellationToken.None).GetAwaiter()
+                .GetResult());
         await Assert.That(ex.Message).Contains("could not read image info");
     }
 
     [Test]
     public async Task GetIndexQueriesOnlyTheSelectedIndex() {
         _runner.Handler = (_, _) => FakeProcessRunner.Ok("""
-            Index : 3
-            Name : ServerDatacenter Eval
-            Description : Datacenter image
-            Architecture : x64
-            Version : 10.0.26100.1
-            Edition ID : ServerDatacenterEval
-            Size : 42 bytes
-            """);
+                                                         Index : 3
+                                                         Name : ServerDatacenter Eval
+                                                         Description : Datacenter image
+                                                         Architecture : x64
+                                                         Version : 10.0.26100.1
+                                                         Edition ID : ServerDatacenterEval
+                                                         Size : 42 bytes
+                                                         """);
 
         var index = await _resolver.GetIndexAsync(
             Path.Combine(_root, "install.wim"), 3, CancellationToken.None);
@@ -171,9 +182,9 @@ public sealed class SourceImageResolverTests : IDisposable {
             ["source"] = sourceFullPath,
             ["sourceStamp"] = $"missing:{sourceFullPath}",
             ["index"] = 3,
-            ["compress"] = "fast",
+            ["compress"] = "fast"
         }.ToJsonString());
-        var result = await _resolver.ExportIndexToWimAsync(source, 3, target, fast: true,
+        var result = await _resolver.ExportIndexToWimAsync(source, 3, target, true,
             CancellationToken.None);
         await Assert.That(result).IsEqualTo(target);
         await Assert.That(_runner.Called("dism.exe")).IsFalse();
@@ -189,7 +200,7 @@ public sealed class SourceImageResolverTests : IDisposable {
             File.WriteAllText(destination, "exported");
             return FakeProcessRunner.Ok();
         };
-        var result = await _resolver.ExportIndexToWimAsync("src.esd", 3, target, fast: false, CancellationToken.None);
+        var result = await _resolver.ExportIndexToWimAsync("src.esd", 3, target, false, CancellationToken.None);
         await Assert.That(result).IsEqualTo(target);
         await Assert.That(_runner.Calls).Count().IsEqualTo(1);
         await Assert.That(string.Join(' ', _runner.ArgsOf(0))).Contains("/Export-Image");
@@ -203,7 +214,7 @@ public sealed class SourceImageResolverTests : IDisposable {
             RootPath = "X:\\",
             IsMountedIso = true,
             IsoPath = "C:\\source's.iso",
-            InstallImagePath = "X:\\sources\\install.wim",
+            InstallImagePath = "X:\\sources\\install.wim"
         };
 
         await _resolver.DismountIsoAsync(media, CancellationToken.None);
@@ -219,16 +230,15 @@ public sealed class SourceImageResolverTests : IDisposable {
         if (installWim) {
             File.WriteAllText(Path.Combine(media, "sources", "install.wim"), "wim");
         }
+
         if (installEsd) {
             File.WriteAllText(Path.Combine(media, "sources", "install.esd"), "esd");
         }
+
         if (bootWim) {
             File.WriteAllText(Path.Combine(media, "sources", "boot.wim"), "boot");
         }
-        return media;
-    }
 
-    public void Dispose() {
-        try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
+        return media;
     }
 }

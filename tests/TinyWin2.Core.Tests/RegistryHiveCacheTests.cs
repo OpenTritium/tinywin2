@@ -6,25 +6,34 @@ using TinyWin2.Core.Native;
 namespace TinyWin2.Core.Tests;
 
 public sealed class RegistryHiveCacheTests : IDisposable {
+    private readonly RegistryHiveCache _cache;
     private readonly string _root = TestPlans.CreateTempDirectory();
     private readonly FakeProcessRunner _runner = new();
-    private readonly RegistryHiveCache _cache;
 
     public RegistryHiveCacheTests() {
-        _cache = new RegistryHiveCache(_root, _runner);
+        _cache = new(_root, _runner);
+    }
+
+    public void Dispose() {
+        try {
+            Directory.Delete(_root, true);
+        }
+        catch {
+            /* best effort */
+        }
     }
 
     [Test]
     public async Task UnknownHiveIdThrows() {
         var ex = Assert.Throws<ExecException>(() =>
-            _cache.GetAsync("bogus", new BuildLog(), CancellationToken.None).GetAwaiter().GetResult());
+            _cache.GetAsync("bogus", new(), CancellationToken.None).GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("unknown registry hive");
     }
 
     [Test]
     public async Task MissingHiveFileThrows() {
         var ex = Assert.Throws<ExecException>(() =>
-            _cache.GetAsync("software", new BuildLog(), CancellationToken.None).GetAwaiter().GetResult());
+            _cache.GetAsync("software", new(), CancellationToken.None).GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("was not found at");
     }
 
@@ -43,7 +52,7 @@ public sealed class RegistryHiveCacheTests : IDisposable {
     public async Task SessionPrefixFlowsIntoHiveKey() {
         CreateHiveFile("system");
         _cache.SetSessionPrefix("TinyWin2_L003");
-        var hive = await _cache.GetAsync("system", new BuildLog(), CancellationToken.None);
+        var hive = await _cache.GetAsync("system", new(), CancellationToken.None);
         await Assert.That(hive.HiveKey).IsEqualTo("HKLM\\TinyWin2_L003_system");
     }
 
@@ -92,7 +101,7 @@ public sealed class RegistryHiveCacheTests : IDisposable {
 
     [Test]
     public async Task UnloadWithoutLoadedHivesIsANoOp() {
-        await _cache.UnloadAllAsync(new BuildLog(), CancellationToken.None);
+        await _cache.UnloadAllAsync(new(), CancellationToken.None);
         await Assert.That(_runner.Calls).IsEmpty();
     }
 
@@ -101,9 +110,5 @@ public sealed class RegistryHiveCacheTests : IDisposable {
         var path = Path.Combine(_root, relative.Replace('\\', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, "hive");
-    }
-
-    public void Dispose() {
-        try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
     }
 }

@@ -44,10 +44,19 @@ public sealed class FakeLayerBackend : ILayerBackend {
 }
 
 public sealed class VhdLayerStackTests : IDisposable {
-    private readonly string _workDir = TestPlans.CreateTempDirectory();
     private readonly FakeLayerBackend _backend = new();
     private readonly BuildLog _log = new();
+    private readonly string _workDir = TestPlans.CreateTempDirectory();
     private VhdLayerStack Stack => VhdLayerStack.Load(_workDir, _backend, _log);
+
+    public void Dispose() {
+        try {
+            Directory.Delete(_workDir, true);
+        }
+        catch {
+            /* best effort */
+        }
+    }
 
     private async Task<VhdLayerStack> CreateWithBaseAsync() {
         var stack = Stack;
@@ -125,7 +134,7 @@ public sealed class VhdLayerStackTests : IDisposable {
     public async Task OperationResultRoundTripsAcrossLoads() {
         var stack = await CreateWithBaseAsync();
         var session = await stack.BeginLayerAsync("step1", "S1", CancellationToken.None);
-        await stack.CommitLayerAsync(session, new JsonObject { ["status"] = "applied" }, CancellationToken.None);
+        await stack.CommitLayerAsync(session, new() { ["status"] = "applied" }, CancellationToken.None);
         stack.Save();
         var reloaded = Stack;
         await Assert.That(reloaded.Records.Count).IsEqualTo(2);
@@ -141,6 +150,7 @@ public sealed class VhdLayerStackTests : IDisposable {
             var session = await stack.BeginLayerAsync(title, title, CancellationToken.None);
             await stack.CommitLayerAsync(session, null, CancellationToken.None);
         }
+
         await stack.ConsolidateAsync(CancellationToken.None);
         await Assert.That(_backend.MergeDepth).IsEqualTo(3);
         await Assert.That(stack.ConsolidationPending).IsFalse();
@@ -182,6 +192,7 @@ public sealed class VhdLayerStackTests : IDisposable {
             var session = await stack.BeginLayerAsync(title, title, CancellationToken.None);
             await stack.CommitLayerAsync(session, null, CancellationToken.None);
         }
+
         await stack.ConsolidateAsync(CancellationToken.None);
         var reborn = await stack.BeginLayerAsync("D", "D", CancellationToken.None);
         await stack.CommitLayerAsync(reborn, null, CancellationToken.None);
@@ -196,10 +207,12 @@ public sealed class VhdLayerStackTests : IDisposable {
     public async Task DeepChainNeverMergesMidBuildWhenTheBackendSupportsIt() {
         _backend.MaxSafeChainDepth = int.MaxValue; // Hyper-V-shaped backend
         var stack = await CreateWithBaseAsync();
-        for (var i = 0; i < 35; i++) { // past diskpart's limit — must not matter here
+        for (var i = 0; i < 35; i++) {
+            // past diskpart's limit — must not matter here
             var session = await stack.BeginLayerAsync($"s{i}", $"S{i}", CancellationToken.None);
             await stack.CommitLayerAsync(session, null, CancellationToken.None);
         }
+
         await Assert.That(_backend.Calls.Count(c => c.StartsWith("merge:"))).IsEqualTo(0);
 
         // Merging is export-time work: one merge pass when the artifact demands it.
@@ -217,9 +230,10 @@ public sealed class VhdLayerStackTests : IDisposable {
             await stack.CommitLayerAsync(session, null, CancellationToken.None);
             sessions.Add(session);
         }
+
         await stack.TruncateToAsync(sessions[0].Record.Index, CancellationToken.None);
         var records = stack.Records.Where(r => r.VhdxFileName != "base.vhdx").ToList();
-        await Assert.That(records.Count).IsEqualTo(1);            // only layer A survives
+        await Assert.That(records.Count).IsEqualTo(1); // only layer A survives
         await Assert.That(File.Exists(sessions[1].VhdxPath)).IsFalse();
         await Assert.That(File.Exists(sessions[2].VhdxPath)).IsFalse();
         await Assert.That(stack.LeafVhdxPath).IsEqualTo(sessions[0].VhdxPath);
@@ -244,10 +258,12 @@ public sealed class VhdLayerStackTests : IDisposable {
     [Test]
     public async Task AutoConsolidationGuardTracksLiveChainDepth() {
         var stack = await CreateWithBaseAsync();
-        for (var i = 0; i < 31; i++) { // crosses the chain-depth threshold of 30
+        for (var i = 0; i < 31; i++) {
+            // crosses the chain-depth threshold of 30
             var session = await stack.BeginLayerAsync($"s{i}", $"S{i}", CancellationToken.None);
             await stack.CommitLayerAsync(session, null, CancellationToken.None);
         }
+
         await Assert.That(_backend.Calls.Count(c => c.StartsWith("merge:"))).IsEqualTo(1);
         await Assert.That(_backend.MergeDepth).IsEqualTo(31);
         var after = await stack.BeginLayerAsync("after", "after", CancellationToken.None);
@@ -263,39 +279,45 @@ public sealed class VhdLayerStackTests : IDisposable {
         await stack.DiscardLayerAsync(session, "x");
         Assert.Throws<ArgumentException>(() => stack.VhdxForLayer(1));
     }
-
-    public void Dispose() {
-        try { Directory.Delete(_workDir, recursive: true); } catch { /* best effort */ }
-    }
 }
 
 /// <summary>Fake executer registered under "test.noop" / "test.boom" for engine tests.</summary>
 public sealed class FakeExecuter(string resource, bool fail) : IExecuter {
-    public string Resource { get; } = resource;
     private int ApplyCount { get; set; }
+    public string Resource { get; } = resource;
 
-    public void Validate(OperationSpec spec) { }
+    public void Validate(OperationSpec spec) {
+    }
 
     public Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) =>
-        Task.FromResult(new ResourceDiff(false, [new ChangeItem(ChangeKind.Modified, Resource)]));
+        Task.FromResult(new ResourceDiff(false, [new(ChangeKind.Modified, Resource)]));
 
     public Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
         ApplyCount++;
         return Task.FromResult(fail
             ? throw new ExecException("boom from " + Resource)
-            : ExecResult.Applied([new ChangeItem(ChangeKind.Modified, Resource)]));
+            : ExecResult.Applied([new(ChangeKind.Modified, Resource)]));
     }
 }
 
 public sealed class BuildEngineDryRunTests : IDisposable {
     private readonly string _plansDir = TestPlans.CreateTempDirectory();
 
+    public void Dispose() {
+        try {
+            Directory.Delete(_plansDir, true);
+        }
+        catch {
+            /* best effort */
+        }
+    }
+
     private PlanCatalog Catalog() {
         TestPlans.WritePlan(_plansDir, "engine.sample", o => {
             o["operation"] = new JsonObject {
                 ["resource"] = "test.noop",
                 ["action"] = "remove",
-                ["spec"] = new JsonObject(),
+                ["spec"] = new JsonObject()
             };
         });
         return PlanCatalog.LoadDirectory(_plansDir);
@@ -306,45 +328,48 @@ public sealed class BuildEngineDryRunTests : IDisposable {
         TestPlans.WritePlan(_plansDir, "no.a", o => o["operation"] = new JsonObject {
             ["resource"] = "test.noop",
             ["action"] = "remove",
-            ["spec"] = new JsonObject(),
+            ["spec"] = new JsonObject()
         });
         TestPlans.WritePlan(_plansDir, "no.b", o => o["operation"] = new JsonObject {
             ["resource"] = "test.noop",
             ["action"] = "remove",
-            ["spec"] = new JsonObject(),
+            ["spec"] = new JsonObject()
         });
         var runner = new FakeProcessRunner {
             Handler = (_, args) => {
                 if (args.Contains("/Get-WimInfo")) {
                     return FakeProcessRunner.Ok("Index : 1\r\nName : Fake Edition\r\n");
                 }
+
                 // fake dism capture/export: materialize the target file so packaging can move it
-                var target = args.FirstOrDefault(a => a.StartsWith("/ImageFile:") || a.StartsWith("/DestinationImageFile:"));
+                var target = args.FirstOrDefault(a =>
+                    a.StartsWith("/ImageFile:") || a.StartsWith("/DestinationImageFile:"));
                 if (target is not null) {
                     var path = target.Split(':', 2)[1];
                     Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
                     File.WriteAllText(path, "captured");
                 }
+
                 return FakeProcessRunner.Ok();
-            },
+            }
         };
         var media = TestPlans.CreateTempDirectory();
         Directory.CreateDirectory(Path.Combine(media, "sources"));
         await File.WriteAllTextAsync(Path.Combine(media, "sources", "install.wim"), "wim");
         await File.WriteAllTextAsync(Path.Combine(media, "sources", "boot.wim"), "boot");
-        var executers = new ExecuterRegistry([new FakeExecuter("test.noop", fail: false)]);
+        var executers = new ExecuterRegistry([new FakeExecuter("test.noop", false)]);
         var backend = new FakeLayerBackend();
-        var engine = new BuildEngine(runner, executers, backend, new BuildLog());
-        var result = await engine.BuildAsync(new BuildOptions {
+        var engine = new BuildEngine(runner, executers, backend, new());
+        var result = await engine.BuildAsync(new() {
             SourcePath = media,
             ImageIndex = 1,
-            Selections = [new PlanSelection("no.a"), new PlanSelection("no.b")],
+            Selections = [new("no.a"), new("no.b")],
             OutputRoot = TestPlans.CreateTempDirectory(),
             Catalog = PlanCatalog.LoadDirectory(_plansDir),
             DryRun = false,
             NoLayers = true,
             OutputFormat = OutputFormat.Wim,
-            SkipEnvironmentChecks = true,
+            SkipEnvironmentChecks = true
         }, CancellationToken.None);
         await Assert.That(result.Succeeded).IsTrue();
         // layerless: no differencing layers at all; exactly two attaches (base image apply + the single working mount)
@@ -363,7 +388,7 @@ public sealed class BuildEngineDryRunTests : IDisposable {
         TestPlans.WritePlan(_plansDir, "vhdx.noop", o => o["operation"] = new JsonObject {
             ["resource"] = "test.noop",
             ["action"] = "remove",
-            ["spec"] = new JsonObject(),
+            ["spec"] = new JsonObject()
         });
         var runner = new FakeProcessRunner {
             Handler = (_, args) => {
@@ -372,7 +397,7 @@ public sealed class BuildEngineDryRunTests : IDisposable {
                 }
 
                 return FakeProcessRunner.Ok();
-            },
+            }
         };
         var media = TestPlans.CreateTempDirectory();
         Directory.CreateDirectory(Path.Combine(media, "sources"));
@@ -382,19 +407,19 @@ public sealed class BuildEngineDryRunTests : IDisposable {
         var backend = new FakeLayerBackend();
         var engine = new BuildEngine(
             runner,
-            new ExecuterRegistry([new FakeExecuter("test.noop", fail: false)]),
+            new([new FakeExecuter("test.noop", false)]),
             backend,
-            new BuildLog());
+            new());
 
-        var result = await engine.BuildAsync(new BuildOptions {
+        var result = await engine.BuildAsync(new() {
             SourcePath = media,
             ImageIndex = 1,
-            Selections = [new PlanSelection("vhdx.noop")],
+            Selections = [new("vhdx.noop")],
             OutputRoot = outputRoot,
             Catalog = PlanCatalog.LoadDirectory(_plansDir),
             NoLayers = true,
             OutputFormat = OutputFormat.Vhdx,
-            SkipEnvironmentChecks = true,
+            SkipEnvironmentChecks = true
         }, CancellationToken.None);
 
         await Assert.That(result.OutputFormat).IsEqualTo(OutputFormat.Vhdx);
@@ -416,21 +441,17 @@ public sealed class BuildEngineDryRunTests : IDisposable {
     [Test]
     public async Task DryRunResolvesAndTouchesNothing() {
         var runner = new FakeProcessRunner();
-        var executers = new ExecuterRegistry([new FakeExecuter("test.noop", fail: false)]);
-        var engine = new BuildEngine(runner, executers, new FakeLayerBackend(), new BuildLog());
-        var result = await engine.BuildAsync(new BuildOptions {
+        var executers = new ExecuterRegistry([new FakeExecuter("test.noop", false)]);
+        var engine = new BuildEngine(runner, executers, new FakeLayerBackend(), new());
+        var result = await engine.BuildAsync(new() {
             SourcePath = @"C:\does\not\exist.iso",
             ImageIndex = 1,
-            Selections = [new PlanSelection("engine.sample")],
+            Selections = [new("engine.sample")],
             OutputRoot = Path.GetTempPath(),
             Catalog = Catalog(),
-            DryRun = true,
+            DryRun = true
         }, CancellationToken.None);
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(runner.Calls.Count).IsEqualTo(0);
-    }
-
-    public void Dispose() {
-        try { Directory.Delete(_plansDir, recursive: true); } catch { /* best effort */ }
     }
 }

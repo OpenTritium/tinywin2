@@ -4,30 +4,30 @@ namespace TinyWin2.Core.Tests;
 
 public sealed class RegTextDiffTests {
     private const string Before = """
-        Windows Registry Editor Version 5.00
+                                  Windows Registry Editor Version 5.00
 
-        [HKEY_LOCAL_MACHINE\TinyWin2Diff_abc\Services\LanmanWorkstation]
-        "Start"=dword:00000003
-        "DelayedAutoStart"=dword:00000000
-        "Keep"="value"
+                                  [HKEY_LOCAL_MACHINE\TinyWin2Diff_abc\Services\LanmanWorkstation]
+                                  "Start"=dword:00000003
+                                  "DelayedAutoStart"=dword:00000000
+                                  "Keep"="value"
 
-        [HKEY_LOCAL_MACHINE\TinyWin2Diff_abc\Policies]
-        "Policy"=dword:00000001
+                                  [HKEY_LOCAL_MACHINE\TinyWin2Diff_abc\Policies]
+                                  "Policy"=dword:00000001
 
-        """;
+                                  """;
 
     private const string After = """
-        Windows Registry Editor Version 5.00
+                                 Windows Registry Editor Version 5.00
 
-        [HKEY_LOCAL_MACHINE\TinyWin2Diff_abc\Services\LanmanWorkstation]
-        "Start"=dword:00000004
-        "Keep"="value"
-        "New"="added"
+                                 [HKEY_LOCAL_MACHINE\TinyWin2Diff_abc\Services\LanmanWorkstation]
+                                 "Start"=dword:00000004
+                                 "Keep"="value"
+                                 "New"="added"
 
-        [HKEY_LOCAL_MACHINE\TinyWin2Diff_abc\Policies\Extra]
-        @="default value"
+                                 [HKEY_LOCAL_MACHINE\TinyWin2Diff_abc\Policies\Extra]
+                                 @="default value"
 
-        """;
+                                 """;
 
     [Test]
     public async Task ParsesKeysAndValues() {

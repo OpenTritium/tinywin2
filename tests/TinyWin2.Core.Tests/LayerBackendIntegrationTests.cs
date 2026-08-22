@@ -9,14 +9,23 @@ using TinyWin2.Core.Plans;
 namespace TinyWin2.Core.Tests;
 
 /// <summary>
-/// Integration tests gated behind TINYWIN2_IT=1 (+ admin, <see cref="ItGateAttribute"/>).
-/// They create real VHDX layers and run real dism/reg tooling, but every write stays inside
-/// %TEMP% workspaces and the mounted image — the host system is never modified (ISO mounts
-/// are dismounted in finally). TINYWIN2_TEST_ISO points at an ISO file or a media folder.
+///     Integration tests gated behind TINYWIN2_IT=1 (+ admin, <see cref="ItGateAttribute" />).
+///     They create real VHDX layers and run real dism/reg tooling, but every write stays inside
+///     %TEMP% workspaces and the mounted image — the host system is never modified (ISO mounts
+///     are dismounted in finally). TINYWIN2_TEST_ISO points at an ISO file or a media folder.
 /// </summary>
 [NotInParallel] // every test claims drive letters, diskpart and ISO mounts — global resources
 public sealed class LayerBackendIntegrationTests : IDisposable {
     private readonly string _root = ItGateAttribute.CreateTestRoot();
+
+    public void Dispose() {
+        try {
+            Directory.Delete(_root, true);
+        }
+        catch {
+            /* best effort */
+        }
+    }
 
     [Test]
     [ItGate]
@@ -61,7 +70,12 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
             }
         }
         finally {
-            try { Directory.Delete(directory, recursive: true); } catch { /* best effort */ }
+            try {
+                Directory.Delete(directory, true);
+            }
+            catch {
+                /* best effort */
+            }
         }
     }
 
@@ -78,18 +92,18 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         WriteRegistryProbePlan(plansDir);
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var log = new BuildLog();
-        using var logSink = log.UseSerilog(Path.Combine(_root, "it-mini.log"), echoConsole: true);
+        using var logSink = log.UseSerilog(Path.Combine(_root, "it-mini.log"), true);
         var engine = new BuildEngine(runner, executers, backend, log);
-        var result = await engine.BuildAsync(new BuildOptions {
+        var result = await engine.BuildAsync(new() {
             SourcePath = sourcePath,
             ImageIndex = 1,
-            Selections = [new PlanSelection("it.registry-probe")],
+            Selections = [new("it.registry-probe")],
             OutputRoot = outputRoot,
             Catalog = catalog,
             OutputFormat = OutputFormat.Wim,
             Fast = true, // skip the per-layer dism health check to keep the run light
             PlansDirectory = plansDir,
-            BaseVhdxMaximumMb = 8_192,
+            BaseVhdxMaximumMb = 8_192
         }, CancellationToken.None);
         await Assert.That(result.Succeeded).IsTrue();
         await Assert.That(result.FailedStepId).IsNull();
@@ -118,25 +132,25 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
                     ["key"] = "SOFTWARE\\X",
                     ["name"] = "N",
                     ["type"] = "dword",
-                    ["data"] = 1,
-                },
+                    ["data"] = 1
+                }
             };
         });
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var log = new BuildLog();
-        using var logSink = log.UseSerilog(Path.Combine(_root, "it-continue.log"), echoConsole: true);
+        using var logSink = log.UseSerilog(Path.Combine(_root, "it-continue.log"));
         var engine = new BuildEngine(runner, executers, backend, log);
-        var result = await engine.BuildAsync(new BuildOptions {
+        var result = await engine.BuildAsync(new() {
             SourcePath = sourcePath,
             ImageIndex = 1,
-            Selections = [new PlanSelection("it.registry-probe"), new PlanSelection("it.registry-boom")],
+            Selections = [new("it.registry-probe"), new("it.registry-boom")],
             OutputRoot = outputRoot,
             Catalog = catalog,
             OutputFormat = OutputFormat.Wim,
             Fast = true,
             ContinueOnError = true,
             PlansDirectory = plansDir,
-            BaseVhdxMaximumMb = 8_192,
+            BaseVhdxMaximumMb = 8_192
         }, CancellationToken.None);
 
         // The build completes; only the healthy step's layer survives in the chain.
@@ -160,7 +174,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
             o["operation"] = new JsonObject {
                 ["resource"] = "fs.path",
                 ["action"] = "remove",
-                ["spec"] = new JsonObject { ["paths"] = new JsonArray("Windows/System32") },
+                ["spec"] = new JsonObject { ["paths"] = new JsonArray("Windows/System32") }
             };
         });
         // fs.path-present needs the plan assets root: previews must resolve it exactly like builds.
@@ -173,25 +187,25 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
                 ["action"] = "copy",
                 ["spec"] = new JsonObject {
                     ["path"] = "TinyWin2/pinned.txt",
-                    ["source"] = "payload/pinned.txt",
-                },
+                    ["source"] = "payload/pinned.txt"
+                }
             };
         });
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var log = new BuildLog();
-        using var logSink = log.UseSerilog(Path.Combine(_root, "it-preview.log"), echoConsole: true);
+        using var logSink = log.UseSerilog(Path.Combine(_root, "it-preview.log"));
         var previewer = new PreviewRunner(runner, executers, backend, log);
-        var previews = await previewer.RunAsync(new PreviewOptions {
+        var previews = await previewer.RunAsync(new() {
             SourcePath = sourcePath,
             ImageIndex = 1,
             Selections = [
-                new PlanSelection("it.registry-probe"),
-                new PlanSelection("it.fs-remove"),
-                new PlanSelection("it.fs-copy"),
+                new("it.registry-probe"),
+                new("it.fs-remove"),
+                new("it.fs-copy")
             ],
             WorkDirectory = Path.Combine(_root, "work", "preview"),
             Catalog = catalog,
-            PlansDirectory = plansDir,
+            PlansDirectory = plansDir
         }, CancellationToken.None);
 
         await Assert.That(previews).Count().IsEqualTo(3);
@@ -216,13 +230,9 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
                     ["key"] = "SOFTWARE\\TinyWin2IT",
                     ["name"] = "Probe",
                     ["type"] = "dword",
-                    ["data"] = 42,
-                },
+                    ["data"] = 42
+                }
             };
         });
-    }
-
-    public void Dispose() {
-        try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
     }
 }

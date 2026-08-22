@@ -1,9 +1,13 @@
 using System.Collections.ObjectModel;
 using System.Text.Json.Nodes;
+using Windows.Storage.Pickers;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using TinyWin2.Core.Plans;
 using TinyWin2.Core.Profiles;
+using TinyWin2.Gui.Services;
+using WinRT.Interop;
 
 namespace TinyWin2.Gui.Pages;
 
@@ -37,7 +41,7 @@ public sealed partial class ItemsPage {
     private void LoadCatalog() {
         try {
             if (State.Catalog is null) {
-                State.PlansDirectory = Services.RepositoryLocator.FindPlansDirectory();
+                State.PlansDirectory = RepositoryLocator.FindPlansDirectory();
                 State.Catalog = PlanCatalog.LoadDirectory(State.PlansDirectory);
                 foreach (var definition in State.Catalog.Plans) {
                     var item = new PlanItemViewModel(definition);
@@ -51,20 +55,22 @@ public sealed partial class ItemsPage {
                 Title = "加载 plan 目录失败",
                 Content = ex.Message,
                 CloseButtonText = "确定",
-                XamlRoot = XamlRoot,
+                XamlRoot = XamlRoot
             }.ShowAsync();
             return;
         }
+
         RebuildRows();
     }
 
     private void RebuildRows() {
         var search = (SearchBox.Text ?? "").Trim();
 
-        bool Filter(PlanItemViewModel p) =>
-            search.Length == 0
-            || p.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || p.Id.Contains(search, StringComparison.OrdinalIgnoreCase);
+        bool Filter(PlanItemViewModel p) {
+            return search.Length == 0
+                   || p.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
+                   || p.Id.Contains(search, StringComparison.OrdinalIgnoreCase);
+        }
 
         _rows.Clear();
         foreach (
@@ -76,9 +82,10 @@ public sealed partial class ItemsPage {
             var headerRow = new RowItem { Header = group.Key, Plans = [.. group] };
             _rows.Add(headerRow);
             foreach (var plan in group) {
-                _rows.Add(new RowItem { Plan = plan, Plans = [plan] });
+                _rows.Add(new() { Plan = plan, Plans = [plan] });
             }
         }
+
         UpdateSelectionCount();
     }
 
@@ -96,6 +103,7 @@ public sealed partial class ItemsPage {
                 plan.IsSelected = checkedState;
             }
         }
+
         UpdateSelectionCount();
     }
 
@@ -103,19 +111,21 @@ public sealed partial class ItemsPage {
         if (PlanList.SelectedItem is not RowItem { Plan: { } plan }) {
             return;
         }
+
         DetailTitle.Text = plan.Title;
         DetailId.Text = $"{plan.Id} · {plan.Category} · 风险 {plan.RiskLevel}";
         DetailDescription.Text = plan.Description;
 
         ArgumentPanel.Children.Clear();
         foreach (var parameter in plan.Parameters) {
-            var header = new TextBlock { Text = parameter.Label, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
+            var header = new TextBlock { Text = parameter.Label, FontWeight = FontWeights.SemiBold };
             ArgumentPanel.Children.Add(header);
             if (parameter is { Type: "enum", Options.Count: > 0 }) {
                 var combo = new ComboBox { Width = 260 };
                 foreach (var option in parameter.Options) {
                     combo.Items.Add($"{option.Label}（风险 {option.RiskLevel ?? "?"}）|{option.Value}");
                 }
+
                 var current = parameter.Options.ToList().FindIndex(o => o.Value == parameter.SelectedValue);
                 combo.SelectedIndex = current >= 0 ? current : 0;
                 combo.SelectionChanged += (_, _) => {
@@ -137,27 +147,30 @@ public sealed partial class ItemsPage {
 
     private async Task ImportProfileAsync() {
         try {
-            var picker = new Windows.Storage.Pickers.FileOpenPicker { FileTypeFilter = { ".json" } };
-            WinRT.Interop.InitializeWithWindow.Initialize(
+            var picker = new FileOpenPicker { FileTypeFilter = { ".json" } };
+            InitializeWithWindow.Initialize(
                 picker,
-                WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!)
+                WindowNative.GetWindowHandle(App.MainAppWindow!)
             );
             var file = await picker.PickSingleFileAsync();
             if (file is null) {
                 return;
             }
+
             var dialog = new { FileName = file.Path };
             var profile = ProfileStore.Load(dialog.FileName);
             var unknown = ProfileStore.UnknownPlans(profile, State.Catalog!);
             foreach (var plan in State.Plans) {
                 plan.IsSelected = false;
             }
+
             var applied = 0;
             foreach (var selection in profile.Selections.Where(s => s.Enabled)) {
                 var item = State.Plans.FirstOrDefault(p => p.Id == selection.PlanId);
                 if (item is null) {
                     continue;
                 }
+
                 item.IsSelected = true;
                 applied++;
                 foreach (var parameter in item.Parameters) {
@@ -170,13 +183,14 @@ public sealed partial class ItemsPage {
                     }
                 }
             }
+
             var warning =
                 unknown.Count > 0 ? $"\n\n缺失 {unknown.Count} 个 plan: {string.Join(", ", unknown.Take(5))}" : "";
             await new ContentDialog {
                 Title = "Profile 已导入",
                 Content = $"已启用 {applied} 个精简项。{warning}",
                 CloseButtonText = "确定",
-                XamlRoot = XamlRoot,
+                XamlRoot = XamlRoot
             }.ShowAsync();
         }
         catch (Exception ex) {
@@ -184,7 +198,7 @@ public sealed partial class ItemsPage {
                 Title = "导入失败",
                 Content = ex.Message,
                 CloseButtonText = "确定",
-                XamlRoot = XamlRoot,
+                XamlRoot = XamlRoot
             }.ShowAsync();
         }
     }
@@ -193,18 +207,19 @@ public sealed partial class ItemsPage {
 
     private async Task ExportProfileAsync() {
         try {
-            var picker = new Windows.Storage.Pickers.FileSavePicker {
+            var picker = new FileSavePicker {
                 SuggestedFileName = "my-profile",
-                FileTypeChoices = { ["TinyWin2 Profile"] = new List<string> { ".json" } },
+                FileTypeChoices = { ["TinyWin2 Profile"] = new List<string> { ".json" } }
             };
-            WinRT.Interop.InitializeWithWindow.Initialize(
+            InitializeWithWindow.Initialize(
                 picker,
-                WinRT.Interop.WindowNative.GetWindowHandle(App.MainAppWindow!)
+                WindowNative.GetWindowHandle(App.MainAppWindow!)
             );
             var file = await picker.PickSaveFileAsync();
             if (file is null) {
                 return;
             }
+
             var dialog = new { FileName = file.Path };
             var selections = State
                 .Plans.Where(p => p.IsSelected)
@@ -213,11 +228,12 @@ public sealed partial class ItemsPage {
                     foreach (var parameter in p.Parameters) {
                         parameters[parameter.Name] = JsonValue.Create(parameter.SelectedValue);
                     }
+
                     return new PlanSelection(p.Id, true, parameters);
                 })
                 .ToList();
             ProfileStore.Save(
-                new Profile(Path.GetFileNameWithoutExtension(dialog.FileName), "导出自 TinyWin2 GUI", selections),
+                new(Path.GetFileNameWithoutExtension(dialog.FileName), "导出自 TinyWin2 GUI", selections),
                 dialog.FileName
             );
         }
@@ -226,7 +242,7 @@ public sealed partial class ItemsPage {
                 Title = "导出失败",
                 Content = ex.Message,
                 CloseButtonText = "确定",
-                XamlRoot = XamlRoot,
+                XamlRoot = XamlRoot
             }.ShowAsync();
         }
     }
@@ -242,10 +258,11 @@ public sealed partial class ItemsPage {
                 Title = "尚未选择任何精简项",
                 Content = "至少勾选一项，或导入一个 Profile。",
                 CloseButtonText = "确定",
-                XamlRoot = XamlRoot,
+                XamlRoot = XamlRoot
             }.ShowAsync();
             return;
         }
+
         ((MainWindow)App.MainAppWindow!).GoTo(3);
     }
 }

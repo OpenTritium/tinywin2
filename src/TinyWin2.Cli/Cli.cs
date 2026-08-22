@@ -3,6 +3,7 @@ using TinyWin2.Core.Executers;
 using TinyWin2.Core.Layers;
 using TinyWin2.Core.Native;
 using TinyWin2.Core.Plans;
+using TinyWin2.Core.Profiles;
 
 namespace TinyWin2.Cli;
 
@@ -14,6 +15,7 @@ internal static class Cli {
                 ? Path.GetFullPath(explicitPath)
                 : throw new DirectoryNotFoundException($"plans directory not found: {explicitPath}");
         }
+
         return PlansDirectoryLocator.TryLocate()
                ?? throw new DirectoryNotFoundException("could not locate a 'plans' directory (pass --plans <dir>).");
     }
@@ -27,43 +29,50 @@ internal static class Cli {
         var selections = new List<PlanSelection>();
         if (options.TryGetValue("profile", out var profilePaths)) {
             foreach (var profilePath in profilePaths) {
-                var profile = Core.Profiles.ProfileStore.Load(profilePath);
-                var unknown = Core.Profiles.ProfileStore.UnknownPlans(profile, catalog);
+                var profile = ProfileStore.Load(profilePath);
+                var unknown = ProfileStore.UnknownPlans(profile, catalog);
                 if (unknown.Count > 0) {
                     throw new InvalidOperationException(
                         $"profile '{profilePath}' references unknown plans: {string.Join(", ", unknown)}");
                 }
-                selections.AddRange(Core.Profiles.ProfileStore.ToPlanSelections(profile));
+
+                selections.AddRange(ProfileStore.ToPlanSelections(profile));
             }
         }
+
         void EnsureSelected(string planId) {
             if (!catalog.ById.ContainsKey(planId)) {
                 throw new ArgumentException($"unknown plan '{planId}' (see: tinywin2 plan list)");
             }
+
             var existing = selections.FindIndex(s => s.PlanId == planId);
             if (existing < 0) {
-                selections.Add(new PlanSelection(planId));
+                selections.Add(new(planId));
             }
             else if (!selections[existing].Enabled) {
                 selections[existing] = selections[existing] with { Enabled = true };
             }
         }
+
         if (options.TryGetValue("plan", out var planIds)) {
             foreach (var planId in planIds) {
                 EnsureSelected(planId);
             }
         }
+
         if (options.TryGetValue("set", out var sets)) {
             foreach (var set in sets) {
                 var separator = set.IndexOf('=');
                 if (separator <= 0) {
                     throw new ArgumentException($"--set expects planId.parameter=value, got '{set}'");
                 }
+
                 var target = set[..separator];
                 var dot = target.LastIndexOf('.');
                 if (dot <= 0) {
                     throw new ArgumentException($"--set expects planId.parameter=value, got '{set}'");
                 }
+
                 var planId = target[..dot];
                 var parameterName = target[(dot + 1)..];
                 var value = ParseValue(set[(separator + 1)..]);
@@ -73,13 +82,15 @@ internal static class Cli {
                                  ?? new Dictionary<string, JsonNode?>();
                 parameters[parameterName] = value;
                 selections[index] = selections[index] with {
-                    Parameters = (IReadOnlyDictionary<string, JsonNode?>?)parameters,
+                    Parameters = (IReadOnlyDictionary<string, JsonNode?>?)parameters
                 };
             }
         }
+
         if (selections.Count == 0 || selections.All(s => !s.Enabled)) {
             throw new ArgumentException("no plans selected: pass --profile, --plan and/or --set.");
         }
+
         return selections;
     }
 
@@ -88,11 +99,11 @@ internal static class Cli {
             "true" => JsonValue.Create(true),
             "false" => JsonValue.Create(false),
             _ when int.TryParse(text, out var number) => JsonValue.Create(number),
-            _ => JsonValue.Create(text),
+            _ => JsonValue.Create(text)
         };
 
     public static (IProcessRunner Runner, ExecuterRegistry Executers, ILayerBackend Layers) CreateEngineParts() {
         var runner = new ProcessRunner();
-        return (runner, new ExecuterRegistry(runner), LayerBackendFactory.Create(runner));
+        return (runner, new(runner), LayerBackendFactory.Create(runner));
     }
 }

@@ -17,8 +17,8 @@ public static class TestPlans {
             ["operation"] = new JsonObject {
                 ["resource"] = "fs.path",
                 ["action"] = "remove",
-                ["spec"] = new JsonObject { ["paths"] = new JsonArray("Windows/Web/Wallpaper") },
-            },
+                ["spec"] = new JsonObject { ["paths"] = new JsonArray("Windows/Web/Wallpaper") }
+            }
         };
         mutate?.Invoke(obj);
         var path = Path.Combine(directory, $"{id.Replace('.', '_')}.json");
@@ -52,16 +52,16 @@ public sealed class PlanDefinitionTests {
                 ["default"] = "delayed",
                 ["options"] = new JsonArray(
                     new JsonObject { ["value"] = "delayed", ["label"] = "延迟" },
-                    new JsonObject { ["value"] = "manual", ["label"] = "手动" }),
+                    new JsonObject { ["value"] = "manual", ["label"] = "手动" })
             }),
             ["operation"] = new JsonObject {
                 ["resource"] = "registry.service",
                 ["action"] = "configure",
                 ["spec"] = new JsonObject {
                     ["services"] = new JsonArray("LanmanWorkstation"),
-                    ["start"] = "manual",
-                },
-            },
+                    ["start"] = "manual"
+                }
+            }
         };
         var plan = PlanDefinition.FromJson(obj);
         await Assert.That(plan.Id).IsEqualTo("service.workstation");
@@ -100,13 +100,13 @@ public sealed class PlanDefinitionTests {
             ["parameters"] = new JsonArray(new JsonObject {
                 ["name"] = "mode",
                 ["type"] = "enum",
-                ["options"] = new JsonArray(),
+                ["options"] = new JsonArray()
             }),
             ["operation"] = new JsonObject {
                 ["resource"] = "fs.path",
                 ["action"] = "remove",
-                ["spec"] = new JsonObject { ["paths"] = new JsonArray("x") },
-            },
+                ["spec"] = new JsonObject { ["paths"] = new JsonArray("x") }
+            }
         };
         var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
         await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
@@ -126,14 +126,14 @@ public sealed class PlanDefinitionTests {
             ["operation"] = new JsonObject {
                 ["resource"] = "fs.path",
                 ["action"] = "remove",
-                ["spec"] = new JsonObject { ["paths"] = new JsonArray("x") },
+                ["spec"] = new JsonObject { ["paths"] = new JsonArray("x") }
             },
             ["parameters"] = new JsonArray(new JsonObject {
                 ["name"] = "mode",
                 ["type"] = "enum",
                 ["default"] = "nonexistent",
-                ["options"] = new JsonArray(new JsonObject { ["value"] = "yes" }),
-            }),
+                ["options"] = new JsonArray(new JsonObject { ["value"] = "yes" })
+            })
         };
         var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
         await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
@@ -152,9 +152,9 @@ public sealed class PlanDefinitionTests {
             ["operation"] = new JsonObject {
                 ["resource"] = "fs.path",
                 ["action"] = "remove",
-                ["spec"] = new JsonObject { ["paths"] = new JsonArray("x") },
+                ["spec"] = new JsonObject { ["paths"] = new JsonArray("x") }
             },
-            ["legacyField"] = true,
+            ["legacyField"] = true
         };
         var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
         await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
@@ -164,6 +164,15 @@ public sealed class PlanDefinitionTests {
 
 public sealed class PlanCatalogTests : IDisposable {
     private readonly string _directory = TestPlans.CreateTempDirectory();
+
+    public void Dispose() {
+        try {
+            Directory.Delete(_directory, true);
+        }
+        catch {
+            /* best effort */
+        }
+    }
 
     [Test]
     public async Task LoadsDirectoryAndRecordsHashes() {
@@ -191,9 +200,5 @@ public sealed class PlanCatalogTests : IDisposable {
         var ex = Assert.Throws<Exception>(() => PlanCatalog.LoadDirectory(_directory));
         await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
         await Assert.That(ex.Message).Contains("unknown plan 'missing.dep'");
-    }
-
-    public void Dispose() {
-        try { Directory.Delete(_directory, recursive: true); } catch { /* best effort */ }
     }
 }

@@ -3,16 +3,20 @@ using TinyWin2.Core.Native;
 namespace TinyWin2.Core.Layers;
 
 /// <summary>
-/// Hyper-V VHD cmdlets backend (via pwsh). This is the same machinery Hyper-V uses for
-/// its own differencing checkpoints, with correct parent-locator handling for deep
-/// chains — the preferred backend wherever the Hyper-V module is available.
+///     Hyper-V VHD cmdlets backend (via pwsh). This is the same machinery Hyper-V uses for
+///     its own differencing checkpoints, with correct parent-locator handling for deep
+///     chains — the preferred backend wherever the Hyper-V module is available.
 /// </summary>
 public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
+    private static readonly Lock ProbeGate = new();
+    private static bool? _available;
     private readonly Lock _attachmentGate = new();
     private readonly HashSet<string> _ownedAttachments = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>This is the same machinery Hyper-V uses for its own checkpoint chains:
-    /// arbitrarily deep differencing chains are native, so merging is never forced mid-build.</summary>
+    /// <summary>
+    ///     This is the same machinery Hyper-V uses for its own checkpoint chains:
+    ///     arbitrarily deep differencing chains are native, so merging is never forced mid-build.
+    /// </summary>
     public int MaxSafeChainDepth => int.MaxValue;
 
     public async Task CreateBaseAsync(string vhdxPath, long maximumMb, string volumeLabel, CancellationToken ct) {
@@ -99,13 +103,6 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
         return DetachOwnedAsync(path, ct);
     }
 
-    private async Task DetachOwnedAsync(string path, CancellationToken ct) {
-        await RunPsAsync($"$ErrorActionPreference = 'Stop'\nDismount-VHD -Path {PsQuote(path)}", ct);
-        lock (_attachmentGate) {
-            _ownedAttachments.Remove(path);
-        }
-    }
-
     public Task MergeAsync(string vhdxPath, int depth, CancellationToken ct) {
         if (depth <= 0) {
             throw new ArgumentOutOfRangeException(nameof(depth), depth, "merge depth must be positive");
@@ -125,14 +122,18 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
         return RunPsAsync(ps, ct);
     }
 
-    private static readonly Lock ProbeGate = new();
-    private static bool? _available;
+    private async Task DetachOwnedAsync(string path, CancellationToken ct) {
+        await RunPsAsync($"$ErrorActionPreference = 'Stop'\nDismount-VHD -Path {PsQuote(path)}", ct);
+        lock (_attachmentGate) {
+            _ownedAttachments.Remove(path);
+        }
+    }
 
     /// <summary>
-    /// Probes the Hyper-V module once per process (cached — the pwsh round-trip is slow and
-    /// <see cref="LayerBackendFactory"/> asks on every engine wiring). The probe runner is
-    /// injectable for tests. Stays sync because the factory contract is sync; the blocking
-    /// wait is bounded by the 30s probe timeout and happens at most once.
+    ///     Probes the Hyper-V module once per process (cached — the pwsh round-trip is slow and
+    ///     <see cref="LayerBackendFactory" /> asks on every engine wiring). The probe runner is
+    ///     injectable for tests. Stays sync because the factory contract is sync; the blocking
+    ///     wait is bounded by the 30s probe timeout and happens at most once.
     /// </summary>
     public static bool IsAvailable(IProcessRunner? probeRunner = null) {
         lock (ProbeGate) {
@@ -158,7 +159,7 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
                     "-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
                     "[bool](Get-Command New-VHD -ErrorAction SilentlyContinue)"
                 ],
-                new ProcessRunOptions { IgnoreExitCode = true, Timeout = TimeSpan.FromSeconds(30) },
+                new() { IgnoreExitCode = true, Timeout = TimeSpan.FromSeconds(30) },
                 CancellationToken.None).GetAwaiter().GetResult();
             return result.Success && result.Output.Trim().EndsWith("True", StringComparison.OrdinalIgnoreCase);
         }
@@ -173,7 +174,7 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
     private async Task<string> RunPsAsync(string script, CancellationToken ct) {
         var result = await runner.RunAsync("pwsh.exe",
             ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script],
-            new ProcessRunOptions { Timeout = TimeSpan.FromMinutes(15) }, ct);
+            new() { Timeout = TimeSpan.FromMinutes(15) }, ct);
         return result.Output + result.Error;
     }
 }

@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using TinyWin2.Core.Hashing;
 using TinyWin2.Core.Logging;
@@ -35,7 +37,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
                 RootPath = fullPath,
                 IsMountedIso = false,
                 IsoPath = fullPath,
-                InstallImagePath = FindInstallImage(fullPath),
+                InstallImagePath = FindInstallImage(fullPath)
             };
             Validate(media);
             return media;
@@ -48,7 +50,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
                     RootPath = driveRoot,
                     IsMountedIso = true,
                     IsoPath = fullPath,
-                    InstallImagePath = FindInstallImage(driveRoot),
+                    InstallImagePath = FindInstallImage(driveRoot)
                 };
                 Validate(media);
                 return media;
@@ -102,7 +104,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         }
 
         var fields = ParseKeyValueLines(result.Output);
-        return new ImageIndexInfo(
+        return new(
             index,
             fields.GetValueOrDefault("Name", ""),
             fields.GetValueOrDefault("Description"),
@@ -142,7 +144,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
     private async Task<List<ImageIndexInfo>> GetIndexSummaryAsync(string installImagePath, CancellationToken ct) {
         var result = await runner.RunAsync("dism.exe",
             ["/Get-WimInfo", $"/WimFile:{installImagePath}", "/English"],
-            new ProcessRunOptions { IgnoreExitCode = true }, ct);
+            new() { IgnoreExitCode = true }, ct);
         if (!result.Success) {
             throw new InvalidOperationException(
                 $"dism.exe could not read image info from '{installImagePath}' (exit {result.ExitCode}).");
@@ -180,7 +182,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
                 "Name" => current with { Name = value },
                 "Description" => current with { Description = value },
                 "Size" => current with { SizeBytes = long.TryParse(value.Replace(",", ""), out var size) ? size : 0 },
-                _ => current,
+                _ => current
             };
         }
 
@@ -244,7 +246,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
                 throw new IOException($"DISM reported a successful export but did not create '{temporaryTarget}'.");
             }
 
-            File.Move(temporaryTarget, targetWimPath, overwrite: true);
+            File.Move(temporaryTarget, targetWimPath, true);
             await File.WriteAllTextAsync(metadataPath, BuildExportMetadata(sourceImagePath, index, compress), ct);
         }
         finally {
@@ -263,7 +265,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
     public async Task StageAsWimAsync(SourceMedia source, int imageIndex, string targetWimPath, bool fast,
         CancellationToken ct) {
         if (!source.IsEsd) {
-            File.Copy(source.InstallImagePath, targetWimPath, overwrite: true);
+            File.Copy(source.InstallImagePath, targetWimPath, true);
             try {
                 File.Delete(targetWimPath + ".tinywin2.json");
             }
@@ -283,7 +285,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
                 "-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
                 $"$ErrorActionPreference = 'Stop'; (Mount-DiskImage -ImagePath {PsQuote(isoPath)} -PassThru -ErrorAction Stop | Get-Volume).DriveLetter"
             ],
-            new ProcessRunOptions { IgnoreExitCode = true }, ct);
+            new() { IgnoreExitCode = true }, ct);
         var letter = result.Output.Trim().LastOrDefault(char.IsLetter);
         if (result.ExitCode != 0 || letter == '\0') {
             throw new IOException($"could not mount ISO '{isoPath}': {result.Output} {result.Error}");
@@ -295,7 +297,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
     }
 
     public static string ComputeSourceFingerprint(SourceMedia media, int imageIndex) {
-        var identity = new System.Text.StringBuilder();
+        var identity = new StringBuilder();
         identity.Append(media.IsMountedIso ? Path.GetFullPath(media.IsoPath) : Path.GetFullPath(media.RootPath))
             .Append('|').Append(imageIndex)
             .Append('|').Append(media.IsEsd);
@@ -316,7 +318,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
                 "-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
                 $"$ErrorActionPreference = 'Stop'; Dismount-DiskImage -ImagePath {PsQuote(isoPath)} -ErrorAction Stop | Out-Null"
             ],
-            new ProcessRunOptions { IgnoreExitCode = true }, ct);
+            new() { IgnoreExitCode = true }, ct);
     }
 
     private static bool IsReusableExport(string sourceImagePath, int index, string compress,
@@ -328,8 +330,8 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
 
         try {
             var metadata =
-                System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(metadataPath)) as
-                    System.Text.Json.Nodes.JsonObject;
+                JsonNode.Parse(File.ReadAllText(metadataPath)) as
+                    JsonObject;
             return metadata?["source"]?.GetValue<string>() == Path.GetFullPath(sourceImagePath)
                    && metadata["sourceStamp"]?.GetValue<string>() == FileStamp(sourceImagePath)
                    && metadata["index"]?.GetValue<int>() == index
@@ -341,11 +343,11 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
     }
 
     private static string BuildExportMetadata(string sourceImagePath, int index, string compress) =>
-        new System.Text.Json.Nodes.JsonObject {
+        new JsonObject {
             ["source"] = Path.GetFullPath(sourceImagePath),
             ["sourceStamp"] = FileStamp(sourceImagePath),
             ["index"] = index,
-            ["compress"] = compress,
+            ["compress"] = compress
         }.ToJsonString();
 
     private static string FileStamp(string path) {

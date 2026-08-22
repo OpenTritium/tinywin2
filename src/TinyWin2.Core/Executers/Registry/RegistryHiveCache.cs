@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
@@ -23,17 +25,10 @@ public sealed class RegistryHive(
 }
 
 /// <summary>
-/// Loads offline registry hives on demand (reg.exe load) and unloads them all with retry,
-/// shared by every registry executer working against one mounted layer.
+///     Loads offline registry hives on demand (reg.exe load) and unloads them all with retry,
+///     shared by every registry executer working against one mounted layer.
 /// </summary>
 public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
-    private readonly Lock _gate = new();
-    private readonly Dictionary<string, RegistryHive> _loaded = new(StringComparer.OrdinalIgnoreCase);
-    private string _sessionPrefix = "TinyWin2";
-
-    private string MountPath { get; } = mountPath;
-    private IProcessRunner Runner { get; } = runner;
-
     /// <summary>Hive id → file path inside the image, including SECURITY/SAM.</summary>
     public static readonly IReadOnlyDictionary<string, string> HiveFiles =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
@@ -42,8 +37,15 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
             ["security"] = @"Windows\System32\config\SECURITY",
             ["sam"] = @"Windows\System32\config\SAM",
             ["default"] = @"Windows\System32\config\default",
-            ["default-user"] = @"Users\Default\NTUSER.DAT",
+            ["default-user"] = @"Users\Default\NTUSER.DAT"
         };
+
+    private readonly Lock _gate = new();
+    private readonly Dictionary<string, RegistryHive> _loaded = new(StringComparer.OrdinalIgnoreCase);
+    private string _sessionPrefix = "TinyWin2";
+
+    private string MountPath { get; } = mountPath;
+    private IProcessRunner Runner { get; } = runner;
 
     public void SetSessionPrefix(string prefix) => _sessionPrefix = prefix;
 
@@ -125,8 +127,6 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
 
 /// <summary>Parses and renders reg.exe query/add value representations.</summary>
 public static partial class RegValues {
-    public sealed record RegValue(string Type, string Data);
-
     /// <summary>Extracts a named value from <c>reg query KEY /v NAME</c> output; null if absent.</summary>
     public static RegValue? ParseQueryValue(string output, string valueName) {
         return (from rawLine in output.Split('\n')
@@ -141,7 +141,7 @@ public static partial class RegValues {
     }
 
     /// <summary>Renders desired data for reg.exe /d for each supported type.</summary>
-    public static string RenderData(string type, System.Text.Json.Nodes.JsonNode? data) {
+    public static string RenderData(string type, JsonNode? data) {
         switch (type) {
             case "REG_DWORD":
                 var dword = ToUnsignedLong(data, type);
@@ -151,7 +151,7 @@ public static partial class RegValues {
             case "REG_QWORD":
                 return $"0x{ToUnsignedLong(data, type):x16}";
             case "REG_MULTI_SZ":
-                var items = data as System.Text.Json.Nodes.JsonArray
+                var items = data as JsonArray
                             ?? throw new ExecException("REG_MULTI_SZ data must be a JSON array of strings.");
                 return string.Join("\\0", items.Select(i => i?.GetValue<string>()
                                                             ?? throw new ExecException(
@@ -165,8 +165,8 @@ public static partial class RegValues {
     }
 
     /// <summary>Accepts non-negative JSON integers for DWORD/QWORD values.</summary>
-    private static ulong ToUnsignedLong(System.Text.Json.Nodes.JsonNode? data, string type) {
-        if (data is not System.Text.Json.Nodes.JsonValue value) {
+    private static ulong ToUnsignedLong(JsonNode? data, string type) {
+        if (data is not JsonValue value) {
             throw new ExecException($"{type} data must be a non-negative integer.");
         }
 
@@ -231,11 +231,13 @@ public static partial class RegValues {
             trimmed = trimmed[2..];
         }
 
-        return ulong.TryParse(trimmed, System.Globalization.NumberStyles.HexNumber,
-            System.Globalization.CultureInfo.InvariantCulture, out number);
+        return ulong.TryParse(trimmed, NumberStyles.HexNumber,
+            CultureInfo.InvariantCulture, out number);
     }
 
     /// <summary>reg query value line: four-space separated name, type, data.</summary>
     [GeneratedRegex(@"^\s+(.+?)(?:\s{4})(REG_[A-Z_]+)(?:\s{4})(.*)$")]
     private static partial Regex ValueLine();
+
+    public sealed record RegValue(string Type, string Data);
 }

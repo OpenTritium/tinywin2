@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
+using System.Threading.Channels;
 using TinyWin2.Core.Plans;
 
 namespace TinyWin2.Gui.Services;
@@ -16,19 +17,23 @@ public static class RepositoryLocator {
         if (File.Exists(beside)) {
             return beside;
         }
+
         var parent = Directory.GetParent(AppContext.BaseDirectory);
         while (parent is not null) {
             var candidate = Path.Combine(parent.FullName, "TinyWin2.Cli", "bin", "Debug", "net10.0", "tinywin2.exe");
             if (File.Exists(candidate)) {
                 return candidate;
             }
+
             // Release layout
             candidate = Path.Combine(parent.FullName, "TinyWin2.Cli", "bin", "Release", "net10.0", "tinywin2.exe");
             if (File.Exists(candidate)) {
                 return candidate;
             }
+
             parent = parent.Parent;
         }
+
         throw new FileNotFoundException("未找到 tinywin2.exe（先构建 CLI: dotnet build src/TinyWin2.Cli）.");
     }
 }
@@ -47,20 +52,30 @@ public sealed class CliRunner {
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            CreateNoWindow = true,
+            CreateNoWindow = true
         };
         foreach (var argument in arguments) {
             startInfo.ArgumentList.Add(argument);
         }
+
         using var process = new Process();
         process.StartInfo = startInfo;
-        var queue = System.Threading.Channels.Channel.CreateUnbounded<string>();
-        process.OutputDataReceived += (_, e) => { if (e.Data is not null) { queue.Writer.TryWrite(e.Data); } };
-        process.ErrorDataReceived += (_, e) => { if (e.Data is not null) { queue.Writer.TryWrite(e.Data); } };
+        var queue = Channel.CreateUnbounded<string>();
+        process.OutputDataReceived += (_, e) => {
+            if (e.Data is not null) {
+                queue.Writer.TryWrite(e.Data);
+            }
+        };
+        process.ErrorDataReceived += (_, e) => {
+            if (e.Data is not null) {
+                queue.Writer.TryWrite(e.Data);
+            }
+        };
         try {
             if (!process.Start()) {
                 throw new InvalidOperationException("无法启动 tinywin2.exe");
             }
+
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
             var reading = Task.Run(async () => {
@@ -73,6 +88,7 @@ public sealed class CliRunner {
                     catch {
                         // non-JSON line (rare): already surfaced via onRawLine
                     }
+
                     if (evt is not null && (evt.ContainsKey("phase") || evt.ContainsKey("seq"))) {
                         onEvent(evt);
                     }
@@ -82,9 +98,16 @@ public sealed class CliRunner {
                 await process.WaitForExitAsync(cancellationToken);
             }
             catch (OperationCanceledException) {
-                try { process.Kill(entireProcessTree: true); } catch { /* raced */ }
+                try {
+                    process.Kill(true);
+                }
+                catch {
+                    /* raced */
+                }
+
                 throw;
             }
+
             queue.Writer.TryComplete();
             await reading;
             return process.ExitCode;

@@ -17,10 +17,12 @@ public sealed class FakeProcessRunner : IProcessRunner {
         if (Handler is null) {
             return Task.FromResult(Ok());
         }
+
         var result = Handler(fileName, arguments);
         foreach (var line in result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries)) {
             options?.OnOutputLine?.Invoke(line.TrimEnd('\r'));
         }
+
         return Task.FromResult(result);
     }
 

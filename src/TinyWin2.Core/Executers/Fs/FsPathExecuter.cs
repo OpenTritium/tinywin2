@@ -4,28 +4,12 @@ using TinyWin2.Core.Native;
 namespace TinyWin2.Core.Executers.Fs;
 
 /// <summary>
-/// Converges image paths. absent = delete paths inside the mount; present = copy a plan
-/// asset (file or directory) into the image.
+///     Converges image paths. absent = delete paths inside the mount; present = copy a plan
+///     asset (file or directory) into the image.
 /// </summary>
 public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
     private const string ResourceId = "fs.path";
     public string Resource => ResourceId;
-
-    /// <summary>
-    /// One structured difference carrying its resolved targets — apply never re-parses
-    /// options, re-validates paths, or re-resolves the asset source.
-    /// </summary>
-    private enum EntryKind {
-        Missing,
-        File,
-        Directory,
-    }
-
-    private sealed record PathChange(
-        ChangeItem Change,
-        string AbsoluteTarget,
-        string? AssetSource = null,
-        EntryKind AssetKind = EntryKind.Missing);
 
     public void Validate(OperationSpec spec) {
         if (spec.Action is not (OperationAction.Remove or OperationAction.Copy)) {
@@ -81,7 +65,7 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
 
         if (assetKind == EntryKind.File) {
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-            File.Copy(assetPath, destination, overwrite: true);
+            File.Copy(assetPath, destination, true);
         }
         else {
             var result = await runner.RunAsync("robocopy.exe",
@@ -120,11 +104,11 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
         var destination = ResolveInsideMount(context.MountPath, options.Path!);
         var assetKind = GetEntryKind(assetSource);
         var destinationKind = GetEntryKind(destination);
-        var isSatisfied = destinationKind == assetKind && (assetKind switch {
+        var isSatisfied = destinationKind == assetKind && assetKind switch {
             EntryKind.File => FilesEqual(assetSource, destination),
             EntryKind.Directory => DirectoryContainsAsset(assetSource, destination),
-            _ => false,
-        });
+            _ => false
+        };
         return isSatisfied
             ? []
             : [
@@ -294,4 +278,20 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
 
     [GeneratedRegex(@"(^|\\)\.\.?(\\|$)")]
     private static partial Regex DotSegment();
+
+    /// <summary>
+    ///     One structured difference carrying its resolved targets — apply never re-parses
+    ///     options, re-validates paths, or re-resolves the asset source.
+    /// </summary>
+    private enum EntryKind {
+        Missing,
+        File,
+        Directory
+    }
+
+    private sealed record PathChange(
+        ChangeItem Change,
+        string AbsoluteTarget,
+        string? AssetSource = null,
+        EntryKind AssetKind = EntryKind.Missing);
 }

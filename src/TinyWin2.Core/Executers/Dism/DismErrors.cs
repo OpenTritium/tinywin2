@@ -2,10 +2,6 @@ using System.Text.RegularExpressions;
 
 namespace TinyWin2.Core.Executers.Dism;
 
-/// <summary>
-/// Classifies dism.exe outcomes by exit code (and, where needed, English/Chinese text hints),
-/// using stable numeric contracts instead of localized output parsing.
-/// </summary>
 public enum DismOutcome {
     Success,
     SuccessRebootRequired,
@@ -13,7 +9,7 @@ public enum DismOutcome {
     InvalidInstallState,
     CannotUninstall,
     ComponentCleanupUnsupported,
-    Fatal,
+    Fatal
 }
 
 public static partial class DismErrors {

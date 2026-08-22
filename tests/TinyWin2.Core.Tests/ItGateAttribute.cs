@@ -3,9 +3,9 @@ using TinyWin2.Core.Env;
 namespace TinyWin2.Core.Tests;
 
 /// <summary>
-/// Skips integration tests unless TINYWIN2_IT=1 on Windows with an admin shell; set
-/// <see cref="RequiresTestSource"/> to also demand TINYWIN2_TEST_ISO (ISO file or media
-/// folder) and enough free space on the test root drive (TINYWIN2_TEST_ROOT or %TEMP%).
+///     Skips integration tests unless TINYWIN2_IT=1 on Windows with an admin shell; set
+///     <see cref="RequiresTestSource" /> to also demand TINYWIN2_TEST_ISO (ISO file or media
+///     folder) and enough free space on the test root drive (TINYWIN2_TEST_ROOT or %TEMP%).
 /// </summary>
 public sealed class ItGateAttribute() : SkipAttribute("integration tests are gated behind TINYWIN2_IT=1") {
     private const long RequiredFreeBytes = 55L * 1024 * 1024 * 1024;

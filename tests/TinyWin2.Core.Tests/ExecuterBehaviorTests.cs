@@ -3,18 +3,19 @@ using TinyWin2.Core.Executers;
 using TinyWin2.Core.Executers.Dism;
 using TinyWin2.Core.Executers.Driver;
 using TinyWin2.Core.Executers.Fs;
-using TinyWin2.Core.Executers.Registry;
 using DismErrors = TinyWin2.Core.Executers.Dism.DismErrors;
 
 namespace TinyWin2.Core.Tests;
 
 public sealed class FeatureExecuterTests : IDisposable {
-    private readonly ExecuterTestHarness _harness = new();
     private readonly FeatureExecuter _executer;
+    private readonly ExecuterTestHarness _harness = new();
 
     public FeatureExecuterTests() {
-        _executer = new FeatureExecuter(_harness.Runner);
+        _executer = new(_harness.Runner);
     }
+
+    public void Dispose() => _harness.Dispose();
 
     private void SetupFeatures(params (string Name, string State)[] features) {
         var blocks = string.Join("\r\n\r\n", features.Select(f => $"Feature Name : {f.Name}\r\nState : {f.State}"));
@@ -82,12 +83,12 @@ public sealed class FeatureExecuterTests : IDisposable {
                 ("features", new JsonArray("AnyFeature"))), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsTrue();
     }
-
-    public void Dispose() => _harness.Dispose();
 }
 
 public sealed class CapabilityAndPackageTests : IDisposable {
     private readonly ExecuterTestHarness _harness = new();
+
+    public void Dispose() => _harness.Dispose();
 
     [Test]
     public async Task InstalledCapabilityIsRemoved() {
@@ -158,17 +159,17 @@ public sealed class CapabilityAndPackageTests : IDisposable {
         await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Skipped)).IsEqualTo(1);
         await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Removed)).IsEqualTo(1);
     }
-
-    public void Dispose() => _harness.Dispose();
 }
 
 public sealed class ComponentStoreExecuterTests : IDisposable {
-    private readonly ExecuterTestHarness _harness = new();
     private readonly ComponentStoreExecuter _executer;
+    private readonly ExecuterTestHarness _harness = new();
 
     public ComponentStoreExecuterTests() {
-        _executer = new ComponentStoreExecuter(_harness.Runner);
+        _executer = new(_harness.Runner);
     }
+
+    public void Dispose() => _harness.Dispose();
 
     [Test]
     public async Task CleanupRunsAndApplies() {
@@ -193,22 +194,22 @@ public sealed class ComponentStoreExecuterTests : IDisposable {
     public async Task NonCleanupActionIsRejected() {
         var ex = Assert.Throws<ExecException>(() =>
             _executer.ApplyAsync(_harness.NewContext(),
-                ExecuterTestHarness.Spec("dism.component-store", OperationAction.Set), CancellationToken.None)
+                    ExecuterTestHarness.Spec("dism.component-store", OperationAction.Set), CancellationToken.None)
                 .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("action 'cleanup'");
         await Assert.That(_harness.Runner.Calls).IsEmpty();
     }
-
-    public void Dispose() => _harness.Dispose();
 }
 
 public sealed class AppxProvisionedExecuterTests : IDisposable {
-    private readonly ExecuterTestHarness _harness = new();
     private readonly AppxProvisionedExecuter _executer;
+    private readonly ExecuterTestHarness _harness = new();
 
     public AppxProvisionedExecuterTests() {
-        _executer = new AppxProvisionedExecuter(_harness.Runner);
+        _executer = new(_harness.Runner);
     }
+
+    public void Dispose() => _harness.Dispose();
 
     [Test]
     public async Task WildcardsMatchDisplayNameAndRemove() {
@@ -262,17 +263,17 @@ public sealed class AppxProvisionedExecuterTests : IDisposable {
                 ("patterns", new JsonArray("Microsoft.Xbox*"))), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsTrue();
     }
-
-    public void Dispose() => _harness.Dispose();
 }
 
 public sealed class FilesystemExecuterTests : IDisposable {
-    private readonly ExecuterTestHarness _harness = new();
     private readonly FsPathExecuter _executer;
+    private readonly ExecuterTestHarness _harness = new();
 
     public FilesystemExecuterTests() {
-        _executer = new FsPathExecuter(_harness.Runner);
+        _executer = new(_harness.Runner);
     }
+
+    public void Dispose() => _harness.Dispose();
 
     [Test]
     public async Task AbsentDeletesExistingPath() {
@@ -310,7 +311,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
         await File.WriteAllTextAsync(Path.Combine(assets, "tools", "app.exe"), "bin");
         await File.WriteAllTextAsync(Path.Combine(assets, "tools", "sub", "lib.dll"), "dll");
         var context = new ExecContext(_harness.MountPath, _harness.Log,
-            new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
+            new(_harness.MountPath, _harness.Runner), assets);
         _harness.Runner.Handler = (_, _) => FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(context,
             ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
@@ -333,7 +334,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
         await File.WriteAllTextAsync(destination, "old");
         var context = new ExecContext(_harness.MountPath, _harness.Log,
-            new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
+            new(_harness.MountPath, _harness.Runner), assets);
         var result = await _executer.ApplyAsync(context,
             ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
                 ("path", "ProgramData\\settings.ini"), ("source", "settings.ini")), CancellationToken.None);
@@ -348,7 +349,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
         await File.WriteAllTextAsync(Path.Combine(assets, "tools", "required.dll"), "payload");
         Directory.CreateDirectory(Path.Combine(_harness.MountPath, "ProgramData", "Tools"));
         var context = new ExecContext(_harness.MountPath, _harness.Log,
-            new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
+            new(_harness.MountPath, _harness.Runner), assets);
         var diff = await _executer.InspectAsync(context,
             ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
                 ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None);
@@ -361,28 +362,28 @@ public sealed class FilesystemExecuterTests : IDisposable {
         var assets = Path.Combine(_harness.MountPath, "assets");
         Directory.CreateDirectory(Path.Combine(assets, "tools"));
         var context = new ExecContext(_harness.MountPath, _harness.Log,
-            new RegistryHiveCache(_harness.MountPath, _harness.Runner), assets);
+            new(_harness.MountPath, _harness.Runner), assets);
         _harness.Runner.Handler = (file, _) => file == "robocopy.exe"
             ? FakeProcessRunner.Fail(8)
             : FakeProcessRunner.Ok();
         var ex = Assert.Throws<IOException>(() =>
             _executer.ApplyAsync(context,
-                ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
-                    ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None)
+                    ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
+                        ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None)
                 .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("robocopy");
     }
-
-    public void Dispose() => _harness.Dispose();
 }
 
 public sealed class DriverStoreExecuterTests : IDisposable {
-    private readonly ExecuterTestHarness _harness = new();
     private readonly DriverStoreExecuter _executer;
+    private readonly ExecuterTestHarness _harness = new();
 
     public DriverStoreExecuterTests() {
-        _executer = new DriverStoreExecuter(_harness.Runner);
+        _executer = new(_harness.Runner);
     }
+
+    public void Dispose() => _harness.Dispose();
 
     [Test]
     public async Task RemovesThirdPartyDriverThroughDism() {
@@ -449,7 +450,7 @@ public sealed class DriverStoreExecuterTests : IDisposable {
     public async Task NonRemoveActionIsRejectedBeforeInspectingStore() {
         var ex = Assert.Throws<ExecException>(() =>
             _executer.ApplyAsync(_harness.NewContext(),
-                ExecuterTestHarness.Spec("driver.store", OperationAction.Set), CancellationToken.None)
+                    ExecuterTestHarness.Spec("driver.store", OperationAction.Set), CancellationToken.None)
                 .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("action 'remove'");
         await Assert.That(_harness.Runner.Calls).IsEmpty();
@@ -466,8 +467,6 @@ public sealed class DriverStoreExecuterTests : IDisposable {
             await Assert.That(ex.Message).Contains("invalid driver INF name");
         }
     }
-
-    public void Dispose() => _harness.Dispose();
 }
 
 public sealed class ExecuterRegistryTests {
@@ -476,7 +475,7 @@ public sealed class ExecuterRegistryTests {
         var registry = new ExecuterRegistry(new FakeProcessRunner());
         foreach (var resource in new[] {
                      "registry.value", "registry.service", "dism.feature", "dism.capability",
-                     "dism.package", "dism.component-store", "appx.provisioned", "driver.store", "fs.path",
+                     "dism.package", "dism.component-store", "appx.provisioned", "driver.store", "fs.path"
                  }) {
             await Assert.That(registry.Get(resource).Resource).IsEqualTo(resource);
         }

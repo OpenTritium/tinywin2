@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using TinyWin2.Core.Executers;
 
 namespace TinyWin2.Core.Plans;
@@ -7,7 +8,7 @@ public enum PlanParameterType {
     Enum,
     Int,
     Bool,
-    String,
+    String
 }
 
 public sealed record PlanParameterOption(string Value, string Label, string? RiskLevel = null);
@@ -22,7 +23,7 @@ public sealed record PlanParameter(
         var result = new JsonObject {
             ["name"] = Name,
             ["type"] = Type.ToString().ToLowerInvariant(),
-            ["label"] = Label,
+            ["label"] = Label
         };
         if (Default is not null) {
             result["default"] = Default.DeepClone();
@@ -38,7 +39,7 @@ public sealed record PlanParameter(
     private static JsonObject ToJson(PlanParameterOption option) {
         var result = new JsonObject {
             ["value"] = option.Value,
-            ["label"] = option.Label,
+            ["label"] = option.Label
         };
         if (option.RiskLevel is not null) {
             result["riskLevel"] = option.RiskLevel;
@@ -54,6 +55,8 @@ public sealed record PlanOperation(string Resource, OperationAction Action, Json
 /// <summary>A leaf plan definition loaded from <c>plans/*.json</c>.</summary>
 public sealed partial record PlanDefinition {
     private const int CurrentSchemaVersion = 3;
+
+    private static readonly string[] RiskLevels = ["Low", "Medium", "High"];
 
     public required string Id { get; init; }
     public required string Version { get; init; }
@@ -71,7 +74,7 @@ public sealed partial record PlanDefinition {
         var errors = new List<string>();
         RejectUnknownProperties(obj, "plan", [
             "schemaVersion", "id", "version", "title", "description", "category", "riskLevel",
-            "requires", "conflicts", "parameters", "operation",
+            "requires", "conflicts", "parameters", "operation"
         ], errors);
         var schemaVersion = ReadInt(obj, "schemaVersion", errors);
         if (schemaVersion is not null && schemaVersion != CurrentSchemaVersion) {
@@ -114,11 +117,9 @@ public sealed partial record PlanDefinition {
             Requires = requires,
             Conflicts = conflicts,
             Parameters = parameters,
-            Operation = operation!,
+            Operation = operation!
         };
     }
-
-    private static readonly string[] RiskLevels = ["Low", "Medium", "High"];
 
     private static string? ReadString(JsonObject obj, string name, List<string> errors, bool required = true) {
         if (!obj.TryGetPropertyValue(name, out var node)) {
@@ -204,14 +205,14 @@ public sealed partial record PlanDefinition {
             }
 
             RejectUnknownProperties(parameterObj, $"parameters[{index}]", [
-                "name", "type", "label", "default", "options",
+                "name", "type", "label", "default", "options"
             ], errors);
             var inner = new List<string>();
             var name = ReadString(parameterObj, "name", inner);
             var typeText = ReadString(parameterObj, "type", inner);
-            var label = ReadString(parameterObj, "label", inner, required: false) ?? name;
+            var label = ReadString(parameterObj, "label", inner, false) ?? name;
             PlanParameterType? type = null;
-            if (Enum.TryParse<PlanParameterType>(typeText, ignoreCase: true, out var parsedType)
+            if (Enum.TryParse<PlanParameterType>(typeText, true, out var parsedType)
                 && Enum.IsDefined(parsedType)) {
                 type = parsedType;
             }
@@ -229,12 +230,12 @@ public sealed partial record PlanDefinition {
                     }
 
                     RejectUnknownProperties(optionObj, $"parameters[{index}].options[{optionIndex}]", [
-                        "value", "label", "riskLevel",
+                        "value", "label", "riskLevel"
                     ], inner);
                     var optionInner = new List<string>();
                     var value = ReadString(optionObj, "value", optionInner);
-                    var optionLabel = ReadString(optionObj, "label", optionInner, required: false) ?? value;
-                    var optionRisk = ReadString(optionObj, "riskLevel", optionInner, required: false);
+                    var optionLabel = ReadString(optionObj, "label", optionInner, false) ?? value;
+                    var optionRisk = ReadString(optionObj, "riskLevel", optionInner, false);
                     if (optionRisk is not null && !RiskLevels.Contains(optionRisk)) {
                         optionInner.Add($"option riskLevel '{optionRisk}' invalid (Low|Medium|High).");
                     }
@@ -316,7 +317,7 @@ public sealed partial record PlanDefinition {
         }
 
         var actionText = ReadString(operationObj, "action", inner);
-        if (!Enum.TryParse<OperationAction>(actionText, ignoreCase: true, out var action)
+        if (!Enum.TryParse<OperationAction>(actionText, true, out var action)
             || !Enum.IsDefined(action)) {
             inner.Add($"action '{actionText}' invalid (configure|set|remove|cleanup|copy).");
         }
@@ -344,14 +345,14 @@ public sealed partial record PlanDefinition {
             .Select(property => $"{path} contains unknown field '{property}'."));
     }
 
-    [System.Text.RegularExpressions.GeneratedRegex("^[a-z0-9]+(?:[.-][a-z0-9]+)*$")]
-    private static partial System.Text.RegularExpressions.Regex IdPattern();
+    [GeneratedRegex("^[a-z0-9]+(?:[.-][a-z0-9]+)*$")]
+    private static partial Regex IdPattern();
 
-    [System.Text.RegularExpressions.GeneratedRegex(@"^[0-9]+\.[0-9]+\.[0-9]+$")]
-    private static partial System.Text.RegularExpressions.Regex VersionPattern();
+    [GeneratedRegex(@"^[0-9]+\.[0-9]+\.[0-9]+$")]
+    private static partial Regex VersionPattern();
 
-    [System.Text.RegularExpressions.GeneratedRegex(@"^[a-z0-9]+(?:\.[a-z0-9-]+)+$")]
-    private static partial System.Text.RegularExpressions.Regex ResourcePattern();
+    [GeneratedRegex(@"^[a-z0-9]+(?:\.[a-z0-9-]+)+$")]
+    private static partial Regex ResourcePattern();
 }
 
 public sealed class PlanValidationException(string source, IReadOnlyList<string> errors)

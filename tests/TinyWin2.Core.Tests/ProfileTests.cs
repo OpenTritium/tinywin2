@@ -8,15 +8,24 @@ namespace TinyWin2.Core.Tests;
 public sealed class ProfileTests : IDisposable {
     private readonly string _root = TestPlans.CreateTempDirectory();
 
+    public void Dispose() {
+        try {
+            Directory.Delete(_root, true);
+        }
+        catch {
+            /* best effort */
+        }
+    }
+
     [Test]
     public async Task ToJsonFromJsonRoundTrips() {
         var parameters = new JsonObject { ["level"] = 3, ["note"] = "测试" };
         var profile = new Profile("my-profile", "desc", [
-            new PlanSelection("fs.inetpub", false),
-            new PlanSelection("dism.feature", true, new Dictionary<string, JsonNode?> {
+            new("fs.inetpub", false),
+            new("dism.feature", true, new Dictionary<string, JsonNode?> {
                 ["level"] = parameters["level"]!.DeepClone(),
-                ["note"] = parameters["note"]!.DeepClone(),
-            }),
+                ["note"] = parameters["note"]!.DeepClone()
+            })
         ]);
         var restored = Profile.FromJson(profile.ToJson());
         await Assert.That(restored.Name).IsEqualTo("my-profile");
@@ -31,7 +40,7 @@ public sealed class ProfileTests : IDisposable {
 
     [Test]
     public async Task MissingNameThrows() {
-        var ex = Assert.Throws<JsonException>(() => Profile.FromJson(new JsonObject { ["schemaVersion"] = 3 }));
+        var ex = Assert.Throws<JsonException>(() => Profile.FromJson(new() { ["schemaVersion"] = 3 }));
         await Assert.That(ex.Message).Contains("'name'");
     }
 
@@ -40,7 +49,7 @@ public sealed class ProfileTests : IDisposable {
         var obj = new JsonObject {
             ["schemaVersion"] = 3,
             ["name"] = "p",
-            ["selections"] = new JsonArray(new JsonObject { ["enabled"] = true }),
+            ["selections"] = new JsonArray(new JsonObject { ["enabled"] = true })
         };
         var ex = Assert.Throws<JsonException>(() => Profile.FromJson(obj));
         await Assert.That(ex.Message).Contains("'planId'");
@@ -53,7 +62,7 @@ public sealed class ProfileTests : IDisposable {
             ["name"] = "p",
             ["selections"] = new JsonArray(
                 new JsonObject { ["planId"] = "a" },
-                (JsonNode)"just a string"),
+                (JsonNode)"just a string")
         };
         var ex = Assert.Throws<JsonException>(() => Profile.FromJson(obj));
         await Assert.That(ex.Message).Contains("selection at index 1");
@@ -66,7 +75,7 @@ public sealed class ProfileTests : IDisposable {
             ["name"] = "p",
             ["selections"] = new JsonArray(
                 new JsonObject { ["planId"] = "a" },
-                new JsonObject { ["planId"] = "a" }),
+                new JsonObject { ["planId"] = "a" })
         };
         var ex = Assert.Throws<JsonException>(() => Profile.FromJson(obj));
         await Assert.That(ex.Message).Contains("duplicate selection");
@@ -79,8 +88,8 @@ public sealed class ProfileTests : IDisposable {
             ["name"] = "p",
             ["selections"] = new JsonArray(new JsonObject {
                 ["planId"] = "a",
-                ["enabled"] = null,
-            }),
+                ["enabled"] = null
+            })
         };
         var ex = Assert.Throws<JsonException>(() => Profile.FromJson(obj));
         await Assert.That(ex.Message).Contains("enabled must be a boolean");
@@ -88,7 +97,7 @@ public sealed class ProfileTests : IDisposable {
 
     [Test]
     public async Task SaveCreatesDirectoryAndLoadReadsBack() {
-        var profile = new Profile("round", null, [new PlanSelection("a.b")]);
+        var profile = new Profile("round", null, [new("a.b")]);
         var path = Path.Combine(_root, "nested", "dir", "profile.json");
         ProfileStore.Save(profile, path);
         await Assert.That(File.Exists(path)).IsTrue();
@@ -108,8 +117,8 @@ public sealed class ProfileTests : IDisposable {
     [Test]
     public async Task ToPlanSelectionsMapsEnabledAndParameters() {
         var profile = new Profile("p", null, [
-            new PlanSelection("x", true, new Dictionary<string, JsonNode?> { ["k"] = "v" }),
-            new PlanSelection("y", false),
+            new("x", true, new Dictionary<string, JsonNode?> { ["k"] = "v" }),
+            new("y", false)
         ]);
         var selections = ProfileStore.ToPlanSelections(profile);
         await Assert.That(selections[0].PlanId).IsEqualTo("x");
@@ -126,15 +135,11 @@ public sealed class ProfileTests : IDisposable {
         TestPlans.WritePlan(plansDir, "known.two");
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var profile = new Profile("p", null, [
-            new PlanSelection("known.one"),
-            new PlanSelection("ghost.plan"),
+            new("known.one"),
+            new("ghost.plan")
         ]);
         var unknown = ProfileStore.UnknownPlans(profile, catalog);
         await Assert.That(unknown).Count().IsEqualTo(1);
         await Assert.That(unknown[0]).IsEqualTo("ghost.plan");
-    }
-
-    public void Dispose() {
-        try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
     }
 }

@@ -15,7 +15,7 @@ public sealed record ResolvedPlan(
     OperationSpec Operation);
 
 /// <summary>
-/// One top-level unit of the build: exactly one VHDX differencing layer and one plan.
+///     One top-level unit of the build: exactly one VHDX differencing layer and one plan.
 /// </summary>
 public sealed record PlanStep(
     ResolvedPlan Plan) {
@@ -34,8 +34,8 @@ public sealed class PlanResolutionException(IReadOnlyList<string> errors)
 
 public static class BuildPlanResolver {
     /// <summary>
-    /// Resolves selections against the catalog: expands requires (cycle-safe), rejects conflicts,
-    /// validates/binds parameters, and produces the ordered sequence of atomic steps.
+    ///     Resolves selections against the catalog: expands requires (cycle-safe), rejects conflicts,
+    ///     validates/binds parameters, and produces the ordered sequence of atomic steps.
     /// </summary>
     public static BuildPlan Resolve(
         PlanCatalog catalog,

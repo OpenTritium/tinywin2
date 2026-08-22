@@ -5,6 +5,15 @@ namespace TinyWin2.Core.Tests;
 public sealed class FingerprintingTests : IDisposable {
     private readonly string _root = TestPlans.CreateTempDirectory();
 
+    public void Dispose() {
+        try {
+            Directory.Delete(_root, true);
+        }
+        catch {
+            /* best effort */
+        }
+    }
+
     [Test]
     public async Task FingerprintsAreStable() {
         var first = Fingerprinting.Compute("tinywin2");
@@ -24,9 +33,5 @@ public sealed class FingerprintingTests : IDisposable {
         var second = await Fingerprinting.ComputeFileAsync(path, CancellationToken.None);
 
         await Assert.That(first).IsNotEqualTo(second);
-    }
-
-    public void Dispose() {
-        try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
     }
 }

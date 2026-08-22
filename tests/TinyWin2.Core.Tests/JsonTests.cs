@@ -3,12 +3,6 @@ using System.Text.Json.Nodes;
 namespace TinyWin2.Core.Tests;
 
 public sealed class JsonTests {
-    private sealed class Sample(string name, int count, string? note = null) {
-        public string Name { get; } = name;
-        public int Count { get; } = count;
-        public string? Note { get; } = note;
-    }
-
     [Test]
     public async Task RecordsPolicyIsCamelCaseAndOmitsNulls() {
         var sample = new Sample("n", 3);
@@ -38,5 +32,11 @@ public sealed class JsonTests {
         await Assert.That(compact.Contains('\n')).IsFalse();
         await Assert.That(JsonNode.Parse(pretty)!.ToJsonString())
             .IsEqualTo(JsonNode.Parse(compact)!.ToJsonString());
+    }
+
+    private sealed class Sample(string name, int count, string? note = null) {
+        public string Name { get; } = name;
+        public int Count { get; } = count;
+        public string? Note { get; } = note;
     }
 }

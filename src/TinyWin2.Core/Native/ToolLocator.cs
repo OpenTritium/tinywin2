@@ -1,7 +1,9 @@
 namespace TinyWin2.Core.Native;
 
-/// <summary>Locates a native tool on PATH. Callers pass full file names ("dism.exe").
-/// No PATHEXT probing by design: every caller in this repo knows its exact tool name.</summary>
+/// <summary>
+///     Locates a native tool on PATH. Callers pass full file names ("dism.exe").
+///     No PATHEXT probing by design: every caller in this repo knows its exact tool name.
+/// </summary>
 public static class ToolLocator {
     public static string? Locate(string fileName) {
         if (string.IsNullOrWhiteSpace(fileName)) {

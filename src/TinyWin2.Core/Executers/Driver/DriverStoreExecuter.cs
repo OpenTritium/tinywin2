@@ -4,20 +4,19 @@ using TinyWin2.Core.Native;
 namespace TinyWin2.Core.Executers.Driver;
 
 /// <summary>
-/// Converges offline third-party driver packages through DISM. The requested INF
-/// names match <c>Original File Name</c>; removal uses DISM's <c>Published Name</c>
-/// so the driver store metadata remains consistent.
+///     Converges offline third-party driver packages through DISM. The requested INF
+///     names match <c>Original File Name</c>; removal uses DISM's <c>Published Name</c>
+///     so the driver store metadata remains consistent.
 /// </summary>
 public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBase(runner), IExecuter {
     private const string ResourceId = "driver.store";
     public string Resource => ResourceId;
 
-    private sealed record DriverChange(ChangeItem Change, string? PublishedName = null);
-
     public void Validate(OperationSpec spec) {
         if (spec.Action != OperationAction.Remove) {
             throw new ExecException($"{ResourceId} supports only action 'remove'.");
         }
+
         _ = DriverStoreOptions.FromDesired(spec.Spec);
     }
 
@@ -103,11 +102,12 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
                 }
 
                 changes.Add(new(
-                    new(ChangeKind.Removed, infName, Before: publishedName), publishedName));
+                    new(ChangeKind.Removed, infName, publishedName), publishedName));
             }
         }
 
         return changes;
     }
 
+    private sealed record DriverChange(ChangeItem Change, string? PublishedName = null);
 }

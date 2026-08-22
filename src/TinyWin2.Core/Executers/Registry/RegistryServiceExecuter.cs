@@ -4,23 +4,11 @@ using TinyWin2.Core.Native;
 namespace TinyWin2.Core.Executers.Registry;
 
 /// <summary>
-/// Converges offline service start modes: every start mode is present-with-a-value.
+///     Converges offline service start modes: every start mode is present-with-a-value.
 /// </summary>
 public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IExecuter {
     private const string ResourceId = "registry.service";
     public string Resource => ResourceId;
-
-    /// <summary>
-    /// One structured difference carrying its own service key and desired start values —
-    /// apply never re-parses options or re-resolves the control set.
-    /// </summary>
-    private sealed record ServiceChange(
-        ChangeItem Change,
-        string ServiceKey,
-        int Start,
-        int Delayed,
-        IReadOnlyList<RegistryServiceOptions.ServiceTrigger> Triggers,
-        bool TriggerInfoChanged = false);
 
     public void Validate(OperationSpec spec) {
         if (spec.Action != OperationAction.Configure) {
@@ -114,8 +102,8 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             if (existingStart != options.StartDword || existingDelayed != desiredDelayed || triggerInfoChanged) {
                 changes.Add(new(
                     new(ChangeKind.Modified, service,
-                        Before: Describe(existingStart.Value, existingDelayed),
-                        After: Describe(options.StartDword, desiredDelayed)),
+                        Describe(existingStart.Value, existingDelayed),
+                        Describe(options.StartDword, desiredDelayed)),
                     serviceKey, options.StartDword, desiredDelayed, desiredTriggers, triggerInfoChanged));
             }
         }
@@ -277,9 +265,21 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
     private static string Describe(int start, int delayed) => start switch {
         4 => "disabled",
         3 => "manual",
-        _ => delayed == 1 ? "delayedAuto" : "auto",
+        _ => delayed == 1 ? "delayedAuto" : "auto"
     };
 
     [GeneratedRegex("0x([0-9A-Fa-f]+)")]
     private static partial Regex HexRegex();
+
+    /// <summary>
+    ///     One structured difference carrying its own service key and desired start values —
+    ///     apply never re-parses options or re-resolves the control set.
+    /// </summary>
+    private sealed record ServiceChange(
+        ChangeItem Change,
+        string ServiceKey,
+        int Start,
+        int Delayed,
+        IReadOnlyList<RegistryServiceOptions.ServiceTrigger> Triggers,
+        bool TriggerInfoChanged = false);
 }

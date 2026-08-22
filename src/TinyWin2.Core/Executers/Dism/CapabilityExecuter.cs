@@ -2,7 +2,6 @@ using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Executers.Dism;
 
-/// <summary>Converges capabilities (Features on Demand). absent = remove capability.</summary>
 public sealed class CapabilityExecuter(IProcessRunner runner) : DismRemoveExecuterBase(runner) {
     private const string ResourceId = "dism.capability";
     public override string Resource => ResourceId;
@@ -27,13 +26,13 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismRemoveExecut
         foreach (var capability in options.Capabilities) {
             if (!states.TryGetValue(capability, out var state)) {
                 context.Log.Info($"capability '{capability}' is not present in this image; skipping.");
-                yield return new DismRemovalTarget(capability, SkipReason: "capability not present in image");
+                yield return new(capability, SkipReason: "capability not present in image");
             }
             else if (!state.Contains("Installed", StringComparison.OrdinalIgnoreCase)) {
                 // Already absent: no difference entry at all.
             }
             else {
-                yield return new(capability, Before: state);
+                yield return new(capability, state);
             }
         }
     }

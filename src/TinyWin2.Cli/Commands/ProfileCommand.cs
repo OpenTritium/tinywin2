@@ -12,7 +12,7 @@ internal static class ProfileCommand {
             "show" => Show(args.Skip(1).ToList()),
             "export" => Export(options),
             "import" => Import(args.Skip(1).ToList(), options),
-            _ => Unknown(subcommand),
+            _ => Unknown(subcommand)
         };
     }
 
@@ -20,6 +20,7 @@ internal static class ProfileCommand {
         if (options.GetValueOrDefault("profiles")?.FirstOrDefault() is { } explicitDir) {
             return explicitDir;
         }
+
         var plansDir = new DirectoryInfo(Cli.FindPlansDirectory(options.GetValueOrDefault("plans")?.FirstOrDefault()));
         var candidate = Path.Combine(plansDir.Parent!.FullName, "profiles");
         return candidate;
@@ -31,15 +32,18 @@ internal static class ProfileCommand {
             Console.WriteLine($"no profiles directory at {directory}");
             return 0;
         }
+
         var files = Directory.GetFiles(directory, "*.json");
         if (files.Length == 0) {
             Console.WriteLine($"no profiles found in {directory}");
             return 0;
         }
+
         foreach (var file in files) {
             var profile = ProfileStore.Load(file);
             Console.WriteLine($"{Path.GetFileName(file),-34} {profile.Name,-24} {profile.Selections.Count} selections");
         }
+
         return 0;
     }
 
@@ -48,17 +52,22 @@ internal static class ProfileCommand {
             Console.Error.WriteLine("usage: tinywin2 profile show <file>");
             return 2;
         }
+
         Console.WriteLine(ProfileStore.Load(args[0]).ToJson().ToJsonString(DoctorCommand.JsonSerializerOptions));
         return 0;
     }
 
     private static int Export(Dictionary<string, List<string>> options) {
-        var output = options.GetValueOrDefault("out")?.FirstOrDefault() ?? options.GetValueOrDefault("o")?.FirstOrDefault();
+        var output = options.GetValueOrDefault("out")?.FirstOrDefault() ??
+                     options.GetValueOrDefault("o")?.FirstOrDefault();
         if (output is null) {
-            Console.Error.WriteLine("usage: tinywin2 profile export -o <file> [--name x] [--profile p] [--plan id ...] [--set planId.parameter=v ...]");
+            Console.Error.WriteLine(
+                "usage: tinywin2 profile export -o <file> [--name x] [--profile p] [--plan id ...] [--set planId.parameter=v ...]");
             return 2;
         }
-        var catalog = PlanCatalog.LoadDirectory(Cli.FindPlansDirectory(options.GetValueOrDefault("plans")?.FirstOrDefault()));
+
+        var catalog =
+            PlanCatalog.LoadDirectory(Cli.FindPlansDirectory(options.GetValueOrDefault("plans")?.FirstOrDefault()));
         var selections = Cli.BuildSelections(options, catalog);
         var profile = new Profile(
             options.GetValueOrDefault("name")?.FirstOrDefault() ?? Path.GetFileNameWithoutExtension(output),
@@ -74,18 +83,24 @@ internal static class ProfileCommand {
             Console.Error.WriteLine("usage: tinywin2 profile import <file>");
             return 2;
         }
-        var catalog = PlanCatalog.LoadDirectory(Cli.FindPlansDirectory(options.GetValueOrDefault("plans")?.FirstOrDefault()));
+
+        var catalog =
+            PlanCatalog.LoadDirectory(Cli.FindPlansDirectory(options.GetValueOrDefault("plans")?.FirstOrDefault()));
         var profile = ProfileStore.Load(args[0]);
         var unknown = ProfileStore.UnknownPlans(profile, catalog);
-        Console.WriteLine($"profile '{profile.Name}': {profile.Selections.Count} selections, {profile.Selections.Count(s => s.Enabled)} enabled");
+        Console.WriteLine(
+            $"profile '{profile.Name}': {profile.Selections.Count} selections, {profile.Selections.Count(s => s.Enabled)} enabled");
         foreach (var selection in profile.Selections) {
             var marker = unknown.Contains(selection.PlanId) ? "MISSING" : selection.Enabled ? "on " : "off";
             Console.WriteLine($"  [{marker}] {selection.PlanId}");
         }
+
         if (unknown.Count > 0) {
-            Console.Error.WriteLine($"unknown plans (not importable with the current catalog): {string.Join(", ", unknown)}");
+            Console.Error.WriteLine(
+                $"unknown plans (not importable with the current catalog): {string.Join(", ", unknown)}");
             return 1;
         }
+
         return 0;
     }
 

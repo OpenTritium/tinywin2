@@ -6,10 +6,20 @@ namespace TinyWin2.Core.Tests;
 public sealed class BuildPlanResolverTests : IDisposable {
     private readonly string _directory = TestPlans.CreateTempDirectory();
 
+    public void Dispose() {
+        try {
+            Directory.Delete(_directory, true);
+        }
+        catch {
+            /* best effort */
+        }
+    }
+
     private PlanCatalog Catalog(params string[] ids) {
         foreach (var id in ids) {
             TestPlans.WritePlan(_directory, id);
         }
+
         return PlanCatalog.LoadDirectory(_directory);
     }
 
@@ -17,7 +27,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
     public async Task EveryResolvedPlanIsOneAtomicStep() {
         var catalog = Catalog("a.one", "a.two", "b.three");
         var plan = BuildPlanResolver.Resolve(catalog,
-            [new PlanSelection("a.one"), new PlanSelection("a.two"), new PlanSelection("b.three")]);
+            [new("a.one"), new("a.two"), new("b.three")]);
         await Assert.That(plan.Steps.Count).IsEqualTo(3);
         await Assert.That(plan.Steps.All(s => s.Plan.Operation is { Resource.Length: > 0 })).IsTrue();
     }
@@ -27,7 +37,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
         TestPlans.WritePlan(_directory, "dep.dependent", o => o["requires"] = new JsonArray("dep.base"));
         TestPlans.WritePlan(_directory, "dep.base");
         var plan = BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory),
-            [new PlanSelection("dep.dependent")]);
+            [new("dep.dependent")]);
         await Assert.That(plan.PlanIds).IsEquivalentTo(["dep.base", "dep.dependent"]);
         await Assert.That(plan.Steps.Count).IsEqualTo(2);
     }
@@ -37,7 +47,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
         TestPlans.WritePlan(_directory, "cyc.a", o => o["requires"] = new JsonArray("cyc.b"));
         TestPlans.WritePlan(_directory, "cyc.b", o => o["requires"] = new JsonArray("cyc.a"));
         var ex = Assert.Throws<PlanResolutionException>(() =>
-            BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory), [new PlanSelection("cyc.a")]));
+            BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory), [new("cyc.a")]));
         await Assert.That(ex.Message).Contains("cycle");
     }
 
@@ -47,7 +57,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
         TestPlans.WritePlan(_directory, "con.b");
         var ex = Assert.Throws<PlanResolutionException>(() =>
             BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory),
-                [new PlanSelection("con.a"), new PlanSelection("con.b")]));
+                [new("con.a"), new("con.b")]));
         await Assert.That(ex.Message).Contains("conflicts with");
     }
 
@@ -57,7 +67,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
         TestPlans.WritePlan(_directory, "dis.dep");
         var ex = Assert.Throws<PlanResolutionException>(() =>
             BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory),
-                [new PlanSelection("dis.dependent"), new PlanSelection("dis.dep", Enabled: false)]));
+                [new("dis.dependent"), new("dis.dep", false)]));
         await Assert.That(ex.Message).Contains("explicitly disabled");
     }
 
@@ -69,7 +79,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
             o["requires"] = new JsonArray("cat.provider");
         });
         var plan = BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory),
-            [new PlanSelection("cat.consumer")]);
+            [new("cat.consumer")]);
         await Assert.That(plan.Steps.Select(s => s.Id)).IsEquivalentTo(["cat.provider", "cat.consumer"]);
     }
 
@@ -82,7 +92,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
                 ["default"] = "safe",
                 ["options"] = new JsonArray(
                     new JsonObject { ["value"] = "safe", ["label"] = "安全" },
-                    new JsonObject { ["value"] = "hard", ["label"] = "激进" }),
+                    new JsonObject { ["value"] = "hard", ["label"] = "激进" })
             });
             o["operation"] = new JsonObject {
                 ["resource"] = "fs.path",
@@ -92,19 +102,19 @@ public sealed class BuildPlanResolverTests : IDisposable {
                     ["level"] = new JsonObject {
                         ["$map"] = new JsonObject {
                             ["parameter"] = "mode",
-                            ["cases"] = new JsonObject { ["safe"] = 1, ["hard"] = 2 },
-                        },
-                    },
-                },
+                            ["cases"] = new JsonObject { ["safe"] = 1, ["hard"] = 2 }
+                        }
+                    }
+                }
             };
         });
         var catalog = PlanCatalog.LoadDirectory(_directory);
         var bad = Assert.Throws<PlanResolutionException>(() => BuildPlanResolver.Resolve(catalog,
-            [new PlanSelection("arg.plan", Parameters: new Dictionary<string, JsonNode?> { ["mode"] = "bogus" })]));
+            [new("arg.plan", Parameters: new Dictionary<string, JsonNode?> { ["mode"] = "bogus" })]));
         await Assert.That(bad.Message).Contains("parameter 'mode'");
 
         var plan = BuildPlanResolver.Resolve(catalog,
-            [new PlanSelection("arg.plan", Parameters: new Dictionary<string, JsonNode?> { ["mode"] = "hard" })]);
+            [new("arg.plan", Parameters: new Dictionary<string, JsonNode?> { ["mode"] = "hard" })]);
         await Assert.That(plan.Steps[0].Plan.Operation.Spec["level"]!.GetValue<int>()).IsEqualTo(2);
     }
 
@@ -115,15 +125,17 @@ public sealed class BuildPlanResolverTests : IDisposable {
                 ["name"] = "mode",
                 ["type"] = "enum",
                 ["default"] = "safe",
-                ["options"] = new JsonArray(new JsonObject { ["value"] = "safe" }, new JsonObject { ["value"] = "hard" }),
+                ["options"] = new JsonArray(new JsonObject { ["value"] = "safe" },
+                    new JsonObject { ["value"] = "hard" })
             });
             o["operation"] = new JsonObject {
                 ["resource"] = "fs.path",
                 ["action"] = "remove",
-                ["spec"] = new JsonObject { ["paths"] = new JsonArray("X"), ["p"] = new JsonObject { ["$parameter"] = "mode" } },
+                ["spec"] = new JsonObject
+                    { ["paths"] = new JsonArray("X"), ["p"] = new JsonObject { ["$parameter"] = "mode" } }
             };
         });
-        var plan = BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory), [new PlanSelection("def.plan")]);
+        var plan = BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory), [new("def.plan")]);
         await Assert.That(plan.Steps[0].Plan.Operation.Spec["p"]!.GetValue<string>()).IsEqualTo("safe");
     }
 
@@ -132,7 +144,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
         TestPlans.WritePlan(_directory, "unk.plan");
         var ex = Assert.Throws<PlanResolutionException>(() => BuildPlanResolver.Resolve(
             PlanCatalog.LoadDirectory(_directory),
-            [new PlanSelection("unk.plan", Parameters: new Dictionary<string, JsonNode?> { ["nope"] = "x" })]));
+            [new("unk.plan", Parameters: new Dictionary<string, JsonNode?> { ["nope"] = "x" })]));
         await Assert.That(ex.Message).Contains("not declared");
     }
 
@@ -140,13 +152,9 @@ public sealed class BuildPlanResolverTests : IDisposable {
     public async Task DuplicateSelectionsAreRejected() {
         var catalog = Catalog("dup.plan");
         var ex = Assert.Throws<PlanResolutionException>(() => BuildPlanResolver.Resolve(catalog, [
-            new PlanSelection("dup.plan"),
-            new PlanSelection("dup.plan", Parameters: new Dictionary<string, JsonNode?>()),
+            new("dup.plan"),
+            new("dup.plan", Parameters: new Dictionary<string, JsonNode?>())
         ]));
         await Assert.That(ex.Message).Contains("selected more than once");
-    }
-
-    public void Dispose() {
-        try { Directory.Delete(_directory, recursive: true); } catch { /* best effort */ }
     }
 }

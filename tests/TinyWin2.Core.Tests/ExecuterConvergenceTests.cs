@@ -13,7 +13,16 @@ public sealed class ExecuterTestHarness : IDisposable {
     public FakeProcessRunner Runner { get; } = new();
     public BuildLog Log { get; } = new() { Phase = "test" };
 
-    public ExecContext NewContext() => new(MountPath, Log, new RegistryHiveCache(MountPath, Runner));
+    public void Dispose() {
+        try {
+            Directory.Delete(MountPath, true);
+        }
+        catch {
+            /* best effort */
+        }
+    }
+
+    public ExecContext NewContext() => new(MountPath, Log, new(MountPath, Runner));
 
     /// <summary>Creates the offline hive file the cache requires before loading.</summary>
     public void CreateHiveFile(string hiveId) {
@@ -23,22 +32,14 @@ public sealed class ExecuterTestHarness : IDisposable {
         File.WriteAllBytes(path, "QFIB"u8); // arbitrary non-empty content
     }
 
-    public static OperationSpec Spec(string resource, OperationAction action, params (string Key, JsonNode? Value)[] desired) {
+    public static OperationSpec Spec(string resource, OperationAction action,
+        params (string Key, JsonNode? Value)[] desired) {
         var obj = new JsonObject();
         foreach (var (key, value) in desired) {
             obj[key] = value?.DeepClone();
         }
 
-        return new OperationSpec(resource, action, obj);
-    }
-
-    public void Dispose() {
-        try {
-            Directory.Delete(MountPath, recursive: true);
-        }
-        catch {
-            /* best effort */
-        }
+        return new(resource, action, obj);
     }
 }
 
@@ -98,13 +99,15 @@ public sealed class DismClassifierTests {
 }
 
 public sealed class RegistryValueExecuterTests : IDisposable {
-    private readonly ExecuterTestHarness _harness = new();
     private readonly RegistryValueExecuter _executer;
+    private readonly ExecuterTestHarness _harness = new();
 
     public RegistryValueExecuterTests() {
-        _executer = new RegistryValueExecuter(_harness.Runner);
+        _executer = new(_harness.Runner);
         _harness.CreateHiveFile("software");
     }
+
+    public void Dispose() => _harness.Dispose();
 
     private static string QueryOutput(string valueName, string type, string data) =>
         $"\r\nHKEY_LOCAL_MACHINE\\TinyWin2_software\\Policies\\Test\r\n    {valueName}    {type}    {data}\r\n";
@@ -197,25 +200,25 @@ public sealed class RegistryValueExecuterTests : IDisposable {
             : FakeProcessRunner.Ok();
         var ex = Assert.Throws<ProcessRunnerException>(() =>
             _executer.InspectAsync(_harness.NewContext(),
-                ExecuterTestHarness.Spec("registry.value", OperationAction.Remove,
-                    ("hive", "software"),
-                    ("key", "Policies\\Test"),
-                    ("name", "EnableSpyware")), CancellationToken.None)
+                    ExecuterTestHarness.Spec("registry.value", OperationAction.Remove,
+                        ("hive", "software"),
+                        ("key", "Policies\\Test"),
+                        ("name", "EnableSpyware")), CancellationToken.None)
                 .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("code 5");
     }
-
-    public void Dispose() => _harness.Dispose();
 }
 
 public sealed class RegistryServiceExecuterTests : IDisposable {
-    private readonly ExecuterTestHarness _harness = new();
     private readonly RegistryServiceExecuter _executer;
+    private readonly ExecuterTestHarness _harness = new();
 
     public RegistryServiceExecuterTests() {
-        _executer = new RegistryServiceExecuter(_harness.Runner);
+        _executer = new(_harness.Runner);
         _harness.CreateHiveFile("system");
     }
+
+    public void Dispose() => _harness.Dispose();
 
     private void SetupServices(params (string Name, string Start, string? Delayed)[] services) {
         var hiveKey = "HKLM\\TinyWin2_system";
@@ -318,10 +321,12 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
         await Assert.That(adds.Any(a => a.Contains($"{key32} /v Start") && a.Contains("/d 3"))).IsTrue(); // manual
         var trigger1 = $"{key32}\\TriggerInfo\\0";
         await Assert.That(adds.Any(a => a.Contains(trigger1) && a.Contains("/v Type") && a.Contains("/d 3"))).IsTrue();
-        await Assert.That(adds.Any(a => a.Contains(trigger1) && a.Contains("/v Action") && a.Contains("/d 1"))).IsTrue();
+        await Assert.That(adds.Any(a => a.Contains(trigger1) && a.Contains("/v Action") && a.Contains("/d 1")))
+            .IsTrue();
         var trigger2 = $"{key32}\\TriggerInfo\\1";
         await Assert.That(adds.Any(a => a.Contains(trigger2) && a.Contains("/v GUID")
-                                        && a.Contains("0D63F553BFB6D01194F200A0C91EFB8B"))).IsTrue();
+                                                             && a.Contains("0D63F553BFB6D01194F200A0C91EFB8B")))
+            .IsTrue();
     }
 
     [Test]
@@ -365,9 +370,9 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
 
             if (args.Count == 2 && args[1] == triggerKey) {
                 return FakeProcessRunner.Ok($"\r\n{triggerKey}\r\n"
-                    + "    Action    REG_DWORD    0x1\r\n"
-                    + "    GUID    REG_BINARY    BA0AE21C5198214494301DDEB766E809\r\n"
-                    + "    Type    REG_DWORD    0x3\r\n");
+                                            + "    Action    REG_DWORD    0x1\r\n"
+                                            + "    GUID    REG_BINARY    BA0AE21C5198214494301DDEB766E809\r\n"
+                                            + "    Type    REG_DWORD    0x3\r\n");
             }
 
             if (args.Count > 3 && args[1] == serviceKey && args[3] == "Start") {
@@ -402,28 +407,36 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
                 if (!script.Contains(expected) || script.Contains("HKLM\\") || !script.Contains("[1 17]")) {
                     throw new InvalidOperationException("regini script malformed: " + script);
                 }
+
                 return FakeProcessRunner.Ok();
             }
+
             if (args[0] == "add" && args[1] == deniedKey && args.Contains("/v") && args.Contains("Start")) {
                 return ++startAdds == 1
                     ? throw new ProcessRunnerException("reg.exe", FakeProcessRunner.Fail(1, "Access is denied."))
                     : FakeProcessRunner.Ok();
             }
+
             if (args[0] == "load" || args[0] == "add") {
                 return FakeProcessRunner.Ok();
             }
+
             if (args[0] != "query") {
                 return FakeProcessRunner.Ok();
             }
+
             if (args.Count == 4 && args[1] == hiveKey + "\\Select" && args[2] == "/v") {
                 return FakeProcessRunner.Ok("\r\n    Current    REG_DWORD    0x1\r\n");
             }
+
             if (args.Count == 2 && args[1] == servicesRoot) {
                 return FakeProcessRunner.Ok($"\r\n{servicesRoot}\r\n{deniedKey}\r\n");
             }
+
             if (args.Count >= 2 && args[1].ToString().Contains("\\TriggerInfo", StringComparison.OrdinalIgnoreCase)) {
                 return FakeProcessRunner.Fail(1);
             }
+
             return args.Count > 3 && args[3] == "Start"
                 ? FakeProcessRunner.Ok("\r\n    Start    REG_DWORD    0x2\r\n")
                 : FakeProcessRunner.Fail(1);
@@ -448,6 +461,4 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
         await Assert.That(adds.Count).IsEqualTo(2); // Start + DelayedAutoStart for one service
         await Assert.That(string.Join(" ", adds[0].Args)).Contains("/d 4");
     }
-
-    public void Dispose() => _harness.Dispose();
 }

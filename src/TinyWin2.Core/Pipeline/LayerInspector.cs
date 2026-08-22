@@ -28,7 +28,7 @@ public sealed record LayerDiffReport(
             ["path"] = f.RelativePath,
             ["kind"] = f.Kind,
             ["oldSize"] = f.OldSize,
-            ["newSize"] = f.NewSize,
+            ["newSize"] = f.NewSize
         }).ToArray()),
         ["registry"] = new JsonArray(Registry.Select(r => (JsonNode)new JsonObject {
             ["hive"] = r.Hive,
@@ -36,22 +36,22 @@ public sealed record LayerDiffReport(
             ["name"] = r.ValueName,
             ["kind"] = r.Kind,
             ["before"] = r.Before,
-            ["after"] = r.After,
-        }).ToArray()),
+            ["after"] = r.After
+        }).ToArray())
     };
 }
 
 /// <summary>
-/// Post-mortem tooling over a build's layer chain: list layers, diff two layers
-/// (file tree + registry hives), extract files, capture output from an earlier layer.
+///     Post-mortem tooling over a build's layer chain: list layers, diff two layers
+///     (file tree + registry hives), extract files, capture output from an earlier layer.
 /// </summary>
 public sealed partial class LayerInspector(
     IProcessRunner runner,
     ILayerBackend backend,
     BuildLog log) {
     /// <summary>
-    /// Diffs two layers via their commit-time evidence snapshots (file manifests + registry
-    /// exports) — no VHDX re-attach needed, which some Windows builds reject after a build.
+    ///     Diffs two layers via their commit-time evidence snapshots (file manifests + registry
+    ///     exports) — no VHDX re-attach needed, which some Windows builds reject after a build.
     /// </summary>
     public Task<LayerDiffReport> DiffAsync(string workDirectory, int fromIndex, int toIndex) {
         var snapshotsRoot = LayerEvidence.SnapshotsRoot(workDirectory);
@@ -76,16 +76,16 @@ public sealed partial class LayerInspector(
         var files = new List<FileDiffEntry>();
         foreach (var (path, oldEntry) in before.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)) {
             if (!after.TryGetValue(path, out var newEntry)) {
-                files.Add(new FileDiffEntry(path, "removed", oldEntry.Size, 0));
+                files.Add(new(path, "removed", oldEntry.Size, 0));
             }
             else if (newEntry.Size != oldEntry.Size || newEntry.WriteTicks != oldEntry.WriteTicks) {
-                files.Add(new FileDiffEntry(path, "modified", oldEntry.Size, newEntry.Size));
+                files.Add(new(path, "modified", oldEntry.Size, newEntry.Size));
             }
         }
 
         foreach (var (path, entry) in after.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)) {
             if (!before.ContainsKey(path)) {
-                files.Add(new FileDiffEntry(path, "added", 0, entry.Size));
+                files.Add(new(path, "added", 0, entry.Size));
             }
         }
 
@@ -103,7 +103,7 @@ public sealed partial class LayerInspector(
             fromHives.TryGetValue(hiveId, out var beforeText);
             toHives.TryGetValue(hiveId, out var afterText);
             if (beforeText is null || afterText is null) {
-                registry.Add(new RegistryDiffEntry(hiveId, "(hive)", "(whole file)",
+                registry.Add(new(hiveId, "(hive)", "(whole file)",
                     beforeText is null ? "added" : "removed", null, null));
                 continue;
             }
@@ -122,8 +122,8 @@ public sealed partial class LayerInspector(
         foreach (var key in before.Keys.Union(after.Keys).OrderBy(k => k, StringComparer.OrdinalIgnoreCase)) {
             before.TryGetValue(key, out var oldValues);
             after.TryGetValue(key, out var newValues);
-            oldValues ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            newValues ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            oldValues ??= new(StringComparer.OrdinalIgnoreCase);
+            newValues ??= new(StringComparer.OrdinalIgnoreCase);
             foreach (var name in oldValues.Keys.Union(newValues.Keys)) {
                 oldValues.TryGetValue(name, out var oldValue);
                 newValues.TryGetValue(name, out var newValue);
@@ -131,7 +131,7 @@ public sealed partial class LayerInspector(
                     continue;
                 }
 
-                result.Add(new RegistryDiffEntry(
+                result.Add(new(
                     hiveId,
                     key,
                     name,
@@ -214,7 +214,7 @@ public sealed partial class LayerInspector(
             }
 
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(destinationPath))!);
-            File.Copy(source, destinationPath, overwrite: true);
+            File.Copy(source, destinationPath, true);
             log.Info($"extracted '{imageRelativePath}' from layer {layerIndex:000} → {destinationPath}");
             operationSucceeded = true;
         }
@@ -252,7 +252,7 @@ public sealed partial class LayerInspector(
                 try {
                     // uncompressed staging: the recovery export re-encodes anyway
                     await builder.CaptureAsync($"{letter}:\\", intermediate, name, null,
-                        compress: "none", verify: false, ct);
+                        "none", false, ct);
                     await builder.ExportEsdAsync(intermediate, destinationPath, ct);
                 }
                 finally {

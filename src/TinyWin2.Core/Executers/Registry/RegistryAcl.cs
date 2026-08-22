@@ -3,10 +3,10 @@ using TinyWin2.Core.Native;
 namespace TinyWin2.Core.Executers.Registry;
 
 /// <summary>
-/// Registry-key ACL rescue: fresh-image service keys (e.g. DPS) are TrustedInstaller-locked
-/// against reg.exe writes. regini.exe - the native offline-ACL tool - grants Administrators +
-/// SYSTEM full control in one shot; no privilege dance, no .NET RegistryKey open (which the
-/// loaded-hive path denies even for owners).
+///     Registry-key ACL rescue: fresh-image service keys (e.g. DPS) are TrustedInstaller-locked
+///     against reg.exe writes. regini.exe - the native offline-ACL tool - grants Administrators +
+///     SYSTEM full control in one shot; no privilege dance, no .NET RegistryKey open (which the
+///     loaded-hive path denies even for owners).
 /// </summary>
 internal static class RegistryAcl {
     /// <summary>regini script codes: Administrators Full and SYSTEM Full.</summary>

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text.Json.Nodes;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
@@ -13,11 +14,12 @@ public sealed class ColoredLogLine {
     public string Level { get; init; } = "info";
     public string Message { get; init; } = "";
     public string Display => $"{Timestamp:HH:mm:ss} {Message}";
+
     public Brush Brush => Level switch {
-        "warn" => new SolidColorBrush(Microsoft.UI.Colors.DarkGoldenrod),
-        "error" => new SolidColorBrush(Microsoft.UI.Colors.DarkRed),
-        "debug" => new SolidColorBrush(Microsoft.UI.Colors.Gray),
-        _ => new SolidColorBrush(Microsoft.UI.Colors.Black),
+        "warn" => new SolidColorBrush(Colors.DarkGoldenrod),
+        "error" => new SolidColorBrush(Colors.DarkRed),
+        "debug" => new SolidColorBrush(Colors.Gray),
+        _ => new SolidColorBrush(Colors.Black)
     };
 }
 
@@ -38,34 +40,38 @@ public sealed partial class ProgressPage {
         if (_finished) {
             return; // back-navigation guard: do not restart a finished build
         }
-        _cts = new CancellationTokenSource();
+
+        _cts = new();
         _ = RunBuildAsync(_cts.Token);
     }
 
     private List<string> BuildArguments() {
-        var arguments = new List<string>
-        {
+        var arguments = new List<string> {
             "build",
             "-s", State.SourcePath,
             "-i", State.SelectedIndex!.Index.ToString(),
             "--out", State.OutputFormat,
-            "--json-events",
+            "--json-events"
         };
         if (State.OutputRoot.Length > 0) {
             arguments.AddRange(["-o", State.OutputRoot]);
         }
+
         if (State.Fast) {
             arguments.Add("--fast");
         }
+
         if (!State.CreateIso) {
             arguments.Add("--no-iso");
         }
+
         foreach (var (planId, parameters) in State.CollectSelections()) {
             arguments.AddRange(["--plan", planId]);
             foreach (var (name, value) in parameters) {
                 arguments.AddRange(["--set", $"{planId}.{name}={value}"]);
             }
         }
+
         return arguments;
     }
 
@@ -81,6 +87,7 @@ public sealed partial class ProgressPage {
                 if (evt["data"]?["progress"] is { } progressNode && progressNode.GetValue<int>() is var pct) {
                     Progress.Value = pct;
                 }
+
                 if (phase is "result") {
                     var data = evt["data"]?.AsObject();
                     State.BuildSucceeded = data?["succeeded"]?.GetValue<bool>() ?? false;
@@ -91,17 +98,20 @@ public sealed partial class ProgressPage {
                     State.IsoPath = data?["isoPath"]?.GetValue<string>();
                     State.ManifestPath = data?["manifestPath"]?.GetValue<string>() ?? "";
                     State.LayerCount = data?["layerCount"]?.GetValue<int>() ?? 0;
-                    _lines.Add(new ColoredLogLine { Timestamp = DateTimeOffset.Now, Level = "info", Message = "构建结束。" });
+                    _lines.Add(new() { Timestamp = DateTimeOffset.Now, Level = "info", Message = "构建结束。" });
                     return;
                 }
+
                 if (phase is not null && phase != State.CurrentPhase) {
                     State.CurrentPhase = phase;
                     PhaseText.Text = PhaseLabel(phase);
                 }
-                _lines.Add(new ColoredLogLine { Timestamp = DateTimeOffset.Now, Level = level, Message = message });
+
+                _lines.Add(new() { Timestamp = DateTimeOffset.Now, Level = level, Message = message });
                 if (_lines.Count > 2000) {
                     _lines.RemoveAt(0); // keep the log bounded during very long builds
                 }
+
                 LogList.ScrollIntoView(LogList.Items.LastOrDefault());
             });
         }
@@ -112,10 +122,10 @@ public sealed partial class ProgressPage {
                 arguments,
                 HandleEvent,
                 _ => { },
-                ex => dispatcher.TryEnqueue(() => _lines.Add(new ColoredLogLine {
+                ex => dispatcher.TryEnqueue(() => _lines.Add(new() {
                     Timestamp = DateTimeOffset.Now,
                     Level = "error",
-                    Message = "CLI 运行失败: " + ex.Message,
+                    Message = "CLI 运行失败: " + ex.Message
                 })),
                 ct);
         }
@@ -124,10 +134,10 @@ public sealed partial class ProgressPage {
         }
         catch (Exception ex) {
             exitCode = 1;
-            dispatcher.TryEnqueue(() => _lines.Add(new ColoredLogLine {
+            dispatcher.TryEnqueue(() => _lines.Add(new() {
                 Timestamp = DateTimeOffset.Now,
                 Level = "error",
-                Message = "CLI 运行失败: " + ex.Message,
+                Message = "CLI 运行失败: " + ex.Message
             }));
         }
 
@@ -146,7 +156,7 @@ public sealed partial class ProgressPage {
         "package" => "重建媒体 / 生成 ISO",
         "done" => "完成",
         "failed" => "失败",
-        _ => phase,
+        _ => phase
     };
 
     private void CancelBuild(object sender, RoutedEventArgs e) {

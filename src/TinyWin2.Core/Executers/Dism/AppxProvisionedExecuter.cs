@@ -3,7 +3,6 @@ using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Executers.Dism;
 
-/// <summary>Converges provisioned Appx packages. absent = remove apps matching wildcards against DisplayName.</summary>
 public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismRemoveExecuterBase(runner) {
     private const string ResourceId = "appx.provisioned";
     public override string Resource => ResourceId;
@@ -12,8 +11,10 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismRemoveE
 
     protected override string RecordStartKey => "DisplayName";
 
-    /// <summary>Server editions without appx provisioning answer ERROR_INVALID_PARAMETER —
-    /// there is simply nothing provisioned, so the resource is satisfied.</summary>
+    /// <summary>
+    ///     Server editions without appx provisioning answer ERROR_INVALID_PARAMETER —
+    ///     there is simply nothing provisioned, so the resource is satisfied.
+    /// </summary>
     protected override FrozenSet<int> InapplicableExitCodes => [87];
 
     protected override string SatisfiedSkipReason => "no provisioned appx packages matched";
@@ -32,7 +33,7 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismRemoveE
                 continue;
             }
 
-            yield return new(packageName, Before: displayName);
+            yield return new(packageName, displayName);
         }
     }
 

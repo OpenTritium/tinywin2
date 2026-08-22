@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json.Nodes;
 using TinyWin2.Core.Env;
 using TinyWin2.Core.Executers;
@@ -13,12 +14,12 @@ namespace TinyWin2.Core.Pipeline;
 public enum OutputFormat {
     Wim,
     Esd,
-    Vhdx,
+    Vhdx
 }
 
 /// <summary>
-/// Build phases exactly as they appear in the JSONL event stream and the GUI's routing.
-/// Renaming a value here changes the wire contract — the GUI mirrors these strings.
+///     Build phases exactly as they appear in the JSONL event stream and the GUI's routing.
+///     Renaming a value here changes the wire contract — the GUI mirrors these strings.
 /// </summary>
 public static class BuildPhases {
     public const string Prepare = "prepare";
@@ -50,8 +51,10 @@ public sealed record BuildOptions {
     public bool DryRun { get; init; }
     public bool CaptureEvidence { get; init; } = true;
 
-    /// <summary>Layerless fast mode: one working mount, steps applied in place. No atomic rollback,
-    /// no layer diff trail, no resume checkpoints — a failed step just leaves the exec's own work undone.</summary>
+    /// <summary>
+    ///     Layerless fast mode: one working mount, steps applied in place. No atomic rollback,
+    ///     no layer diff trail, no resume checkpoints — a failed step just leaves the exec's own work undone.
+    /// </summary>
     public bool NoLayers { get; init; }
 
     /// <summary>Test hook: skip the environment doctor (unit tests run without 50GB free on TEMP).</summary>
@@ -88,8 +91,8 @@ public sealed class BuildStepFailedException(
 }
 
 /// <summary>
-/// Orchestrates a build: media prep → base layer (apply) → per-step VHDX diff layers
-/// (atomic) → capture WIM/ESD or export VHDX → optional ISO packaging → manifest.
+///     Orchestrates a build: media prep → base layer (apply) → per-step VHDX diff layers
+///     (atomic) → capture WIM/ESD or export VHDX → optional ISO packaging → manifest.
 /// </summary>
 public sealed class BuildEngine(
     IProcessRunner runner,
@@ -157,7 +160,7 @@ public sealed class BuildEngine(
 
                 await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, options.Fast, ct);
                 await ApplyBaseAsync(stack, options, buildId, workspace, stagingWim, sourceIndex, ct,
-                    captureEvidence: options is { CaptureEvidence: true, NoLayers: false });
+                    options is { CaptureEvidence: true, NoLayers: false });
             }
 
             List<(string StepId, int LayerIndex, string Error)> failedSteps;
@@ -178,7 +181,7 @@ public sealed class BuildEngine(
             var manifestPath = await WriteManifestAsync(buildId, options, plan, stack, mediaPath, outputPath,
                 isoPath, sourceIndex, failedSteps, ct);
             log.Phase = BuildPhases.Done;
-            log.Info($"build complete: {outputPath}", data: new JsonObject { ["progress"] = ProgressComplete });
+            log.Info($"build complete: {outputPath}", data: new() { ["progress"] = ProgressComplete });
             if (isoPath is not null) {
                 log.Info($"ISO: {isoPath}");
             }
@@ -191,7 +194,7 @@ public sealed class BuildEngine(
                 await TryDeleteDirectoryAsync(workspace);
             }
 
-            return new BuildResult {
+            return new() {
                 BuildId = buildId,
                 OutputFormat = options.OutputFormat,
                 MediaPath = mediaPath,
@@ -200,7 +203,7 @@ public sealed class BuildEngine(
                 ManifestPath = manifestPath,
                 LayerCount = stack.CommittedDepth,
                 Succeeded = true,
-                FailedStepId = failedSteps.Count > 0 ? failedSteps[0].StepId : null,
+                FailedStepId = failedSteps.Count > 0 ? failedSteps[0].StepId : null
             };
         }
         catch (Exception ex) {
@@ -227,7 +230,7 @@ public sealed class BuildEngine(
         CancellationToken ct) {
         log.Phase = BuildPhases.Media;
         log.Info($"source media: {source.RootPath} ({(source.IsEsd ? "ESD" : "WIM")} install image)",
-            data: new JsonObject { ["progress"] = ProgressMedia });
+            data: new() { ["progress"] = ProgressMedia });
         var sourceIndex = await resolver.GetIndexAsync(source.InstallImagePath, options.ImageIndex, ct);
         var stagingWim = Path.Combine(workspace, "install.source.wim");
         return (stagingWim, sourceIndex);
@@ -247,7 +250,7 @@ public sealed class BuildEngine(
                     "/English", "/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}",
                     $"/ApplyDir:{mount}"
                 ],
-                new ProcessRunOptions { Timeout = TimeSpan.FromHours(2) }, token);
+                new() { Timeout = TimeSpan.FromHours(2) }, token);
             if (captureEvidence) {
                 log.Info("capturing base-layer evidence snapshots (file manifest + registry)");
                 await LayerEvidence.CaptureAsync(mount, workspace, 0, runner, log, token);
@@ -256,10 +259,10 @@ public sealed class BuildEngine(
     }
 
     /// <summary>
-    /// Layerless fast path: attach the base ONCE, run every step against that single mount with no
-    /// per-step diff layers / evidence snapshots / attach-detach cycles, capture the artifact from the
-    /// live volume, detach. A failed step logs and (without ContinueOnError) aborts; nothing is rolled
-    /// back — the operation's own plan granularity is all the atomicity there is.
+    ///     Layerless fast path: attach the base ONCE, run every step against that single mount with no
+    ///     per-step diff layers / evidence snapshots / attach-detach cycles, capture the artifact from the
+    ///     live volume, detach. A failed step logs and (without ContinueOnError) aborts; nothing is rolled
+    ///     back — the operation's own plan granularity is all the atomicity there is.
     /// </summary>
     private async Task<(List<(string StepId, int LayerIndex, string Error)>, string? InstallPath)>
         RunStepsAndCaptureLayerlessAsync(
@@ -272,14 +275,14 @@ public sealed class BuildEngine(
                 ct.ThrowIfCancellationRequested();
                 stepNumber++;
                 log.Info($"step {stepNumber}/{plan.Steps.Count}: '{step.Title}' (no-layers)",
-                    data: new JsonObject {
+                    data: new() {
                         ["progress"] = ProgressAfterBase +
-                                       (int)(ProgressPlanWeight * stepNumber / (double)plan.Steps.Count),
+                                       (int)(ProgressPlanWeight * stepNumber / (double)plan.Steps.Count)
                     });
                 var session = new LayerSession {
-                    Record = new LayerRecord { Index = stepNumber, StepId = step.Id, Title = step.Title },
+                    Record = new() { Index = stepNumber, StepId = step.Id, Title = step.Title },
                     VhdxPath = stack.LeafVhdxPath,
-                    MountPath = mountPath,
+                    MountPath = mountPath
                 };
                 try {
                     _ = await RunPlanInLayerAsync(step.Plan, session, options, ct);
@@ -319,7 +322,7 @@ public sealed class BuildEngine(
             log.Info($"step {stepNumber}/{plan.Steps.Count}: '{step.Title}'",
                 data: new() {
                     ["progress"] =
-                        ProgressAfterBase + (int)(ProgressPlanWeight * stepNumber / (double)plan.Steps.Count),
+                        ProgressAfterBase + (int)(ProgressPlanWeight * stepNumber / (double)plan.Steps.Count)
                 });
             var session = await stack.BeginLayerAsync(step.Id, step.Title, ct,
                 await FingerprintAsync(step, options.PlansDirectory, assetFingerprints, ct));
@@ -417,7 +420,7 @@ public sealed class BuildEngine(
             // Uncompressed staging + single compression in the export below avoids re-encoding twice.
             var intermediate = Path.Combine(workspace, "install.intermediate.wim");
             await builder.CaptureAsync(mountPath, intermediate, sourceIndex.Name, sourceIndex.Description,
-                compress: "none", verify: false, ct);
+                "none", false, ct);
             var esdPath = Path.Combine(workspace, "install.esd");
             await builder.ExportEsdAsync(intermediate, esdPath, ct);
             return esdPath;
@@ -434,7 +437,7 @@ public sealed class BuildEngine(
         log.Info($"scanning offline CBS health for {mountPath}");
         await runner.RunAsync("dism.exe",
             ["/English", $"/Image:{mountPath}", "/Cleanup-Image", "/ScanHealth"],
-            new ProcessRunOptions { Timeout = TimeSpan.FromHours(1) }, ct);
+            new() { Timeout = TimeSpan.FromHours(1) }, ct);
     }
 
     /// <summary>Produces the selected image artifact and optionally packages WIM/ESD media as an ISO.</summary>
@@ -442,7 +445,7 @@ public sealed class BuildEngine(
         BuildOptions options, string buildId, SourceMedia source, string? mediaPath, string? installPath,
         VhdLayerStack stack, OutputBuilder builder, CancellationToken ct) {
         log.Phase = BuildPhases.Package;
-        log.Info("packaging output", data: new JsonObject { ["progress"] = ProgressPackage });
+        log.Info("packaging output", data: new() { ["progress"] = ProgressPackage });
 
         if (options.OutputFormat == OutputFormat.Vhdx) {
             var vhdxPath = Path.Combine(Path.GetFullPath(options.OutputRoot), $"TinyWin2-{buildId}.vhdx");
@@ -470,9 +473,9 @@ public sealed class BuildEngine(
     }
 
     /// <summary>
-    /// Longest common prefix of the new plan against the committed chain, by step id AND exec
-    /// fingerprint. Everything above it is diverged work and gets truncated; the prefix is reused
-    /// byte-identically (that is the whole point of differencing layers acting as checkpoints).
+    ///     Longest common prefix of the new plan against the committed chain, by step id AND exec
+    ///     fingerprint. Everything above it is diverged work and gets truncated; the prefix is reused
+    ///     byte-identically (that is the whole point of differencing layers acting as checkpoints).
     /// </summary>
     private async Task<int> ResumePrefixAsync(
         BuildPlan plan, VhdLayerStack stack, string? plansDirectory,
@@ -531,7 +534,7 @@ public sealed class BuildEngine(
     private static async Task<string> FingerprintAsync(
         PlanStep step, string? plansDirectory, IDictionary<string, string> assetFingerprints,
         CancellationToken ct) {
-        var builder = new System.Text.StringBuilder();
+        var builder = new StringBuilder();
         var resolved = step.Plan;
         builder.Append(resolved.Definition.Id).Append('|')
             .Append(resolved.Definition.Version).Append('|')
@@ -622,7 +625,8 @@ public sealed class BuildEngine(
             ct.ThrowIfCancellationRequested();
             var operation = resolved.Operation;
             var executer = executers.Get(operation.Resource);
-            log.Debug($"operation {operation.Resource} ({operation.Action})", resolved.Definition.Id, session.Record.Index);
+            log.Debug($"operation {operation.Resource} ({operation.Action})", resolved.Definition.Id,
+                session.Record.Index);
             var result = await executer.ApplyAsync(context, operation, ct);
             var operationResult = new JsonObject {
                 ["planId"] = resolved.Definition.Id,
@@ -630,7 +634,7 @@ public sealed class BuildEngine(
                 ["action"] = operation.Action.ToString().ToLowerInvariant(),
                 ["status"] = result.Status.ToString().ToLowerInvariant(),
                 ["changes"] = new JsonArray(result.Changes.Select(c => (JsonNode)c.ToJson()).ToArray()),
-                ["skipReason"] = result.SkipReason,
+                ["skipReason"] = result.SkipReason
             };
             if (result.Status == ExecStatus.Applied) {
                 log.Info($"{operation.Resource}: {result.Changes.Count} change(s)", resolved.Definition.Id,
@@ -640,6 +644,7 @@ public sealed class BuildEngine(
                 log.Info($"{operation.Resource}: skipped ({result.SkipReason})", resolved.Definition.Id,
                     session.Record.Index);
             }
+
             return operationResult;
         }
         finally {
@@ -651,7 +656,7 @@ public sealed class BuildEngine(
     private async Task CheckLayerHealthAsync(LayerSession session, CancellationToken ct) {
         var result = await runner.RunAsync("dism.exe",
             [$"/Image:{session.MountPath}", "/Cleanup-Image", "/CheckHealth"],
-            new ProcessRunOptions { IgnoreExitCode = true }, ct);
+            new() { IgnoreExitCode = true }, ct);
         if (result.ExitCode != 0) {
             throw new ExecException(
                 $"image health check failed after layer {session.Record.Index:000} (exit {result.ExitCode}).");
@@ -691,7 +696,7 @@ public sealed class BuildEngine(
                 ["index"] = sourceIndex.Index,
                 ["name"] = sourceIndex.Name,
                 ["editionId"] = sourceIndex.EditionId,
-                ["version"] = sourceIndex.Version,
+                ["version"] = sourceIndex.Version
             },
             ["outputFormat"] = options.OutputFormat.ToString().ToLowerInvariant(),
             ["createIso"] = options.CreateIso,
@@ -704,9 +709,9 @@ public sealed class BuildEngine(
             ["failedSteps"] = new JsonArray(failedSteps.Select(f => (JsonNode)new JsonObject {
                 ["stepId"] = f.StepId,
                 ["layerIndex"] = f.LayerIndex,
-                ["error"] = f.Error,
+                ["error"] = f.Error
             }).ToArray()),
-            ["layers"] = new JsonArray(stack.Records.Select(r => (JsonNode)r.ToJson()).ToArray()),
+            ["layers"] = new JsonArray(stack.Records.Select(r => (JsonNode)r.ToJson()).ToArray())
         };
         var manifestDirectory = mediaPath ?? Path.GetFullPath(options.OutputRoot);
         Directory.CreateDirectory(manifestDirectory);
@@ -723,11 +728,11 @@ public sealed class BuildEngine(
             throw new IOException($"artifact is missing or empty: '{path}'.");
         }
 
-        return new JsonObject {
+        return new() {
             ["path"] = path,
             ["hashAlgorithm"] = Fingerprinting.Algorithm,
             ["hash"] = await OutputBuilder.ComputeHashAsync(path, ct),
-            ["sizeBytes"] = new FileInfo(path).Length,
+            ["sizeBytes"] = new FileInfo(path).Length
         };
     }
 
@@ -738,7 +743,7 @@ public sealed class BuildEngine(
         OutputPath = "",
         ManifestPath = "",
         LayerCount = 0,
-        Succeeded = true,
+        Succeeded = true
     };
 
     private static void ValidateOutputOptions(BuildOptions options) {
@@ -771,12 +776,12 @@ public sealed class BuildEngine(
         for (var attempt = 0; attempt < 3; attempt++) {
             try {
                 if (Directory.Exists(path)) {
-                    Directory.Delete(path, recursive: true);
+                    Directory.Delete(path, true);
                 }
 
                 return;
             }
-            catch (Exception ex) when (attempt < 2 && (ex is IOException or UnauthorizedAccessException)) {
+            catch (Exception ex) when (attempt < 2 && ex is IOException or UnauthorizedAccessException) {
                 await Task.Delay(1000);
             }
             catch (Exception ex) {

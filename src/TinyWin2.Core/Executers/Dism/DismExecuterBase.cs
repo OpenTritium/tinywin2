@@ -7,8 +7,8 @@ public abstract class DismExecuterBase(IProcessRunner runner) {
     private IProcessRunner Runner { get; } = runner;
 
     /// <summary>
-    /// Runs dism.exe with /English (stable output keys regardless of host display language);
-    /// never throws on non-zero — callers classify via <see cref="DismErrors"/>.
+    ///     Runs dism.exe with /English (stable output keys regardless of host display language);
+    ///     never throws on non-zero — callers classify via <see cref="DismErrors" />.
     /// </summary>
     protected async Task<(int ExitCode, string Output)> RunDismAsync(
         ExecContext context,

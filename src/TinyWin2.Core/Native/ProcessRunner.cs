@@ -31,8 +31,8 @@ public interface IProcessRunner {
 }
 
 /// <summary>
-/// Runs external tools (dism.exe, reg.exe, diskpart, oscdimg, ...) with streamed output capture,
-/// timeout and cancellation support. The single boundary between the engine and native tooling.
+///     Runs external tools (dism.exe, reg.exe, diskpart, oscdimg, ...) with streamed output capture,
+///     timeout and cancellation support. The single boundary between the engine and native tooling.
 /// </summary>
 public sealed class ProcessRunner : IProcessRunner {
     private static readonly TimeSpan TerminationWait = TimeSpan.FromSeconds(5);
@@ -54,7 +54,7 @@ public sealed class ProcessRunner : IProcessRunner {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             RedirectStandardInput = true, // stdin closed below: some tools wait on it
-            CreateNoWindow = true,
+            CreateNoWindow = true
         };
         foreach (var argument in arguments) {
             startInfo.ArgumentList.Add(argument);
@@ -147,48 +147,13 @@ public sealed class ProcessRunner : IProcessRunner {
         }
     }
 
-    private sealed class OutputBuffer(int maxCharacters) {
-        private const string TruncatedMarker = "...[output truncated]";
-        private readonly StringBuilder _builder = new();
-        private bool _truncated;
-
-        public void AppendLine(string line) {
-            if (_truncated) {
-                return;
-            }
-
-            var remaining = maxCharacters - _builder.Length;
-            if (remaining <= 0) {
-                _truncated = true;
-                return;
-            }
-
-            var renderedLength = line.Length + Environment.NewLine.Length;
-            if (renderedLength <= remaining) {
-                _builder.AppendLine(line);
-                return;
-            }
-
-            var markerLength = Math.Min(TruncatedMarker.Length, remaining);
-            var contentLength = Math.Max(0, remaining - markerLength);
-            if (contentLength > 0) {
-                _builder.Append(line.AsSpan(0, Math.Min(contentLength, line.Length)));
-            }
-
-            _builder.Append(TruncatedMarker.AsSpan(0, markerLength));
-            _truncated = true;
-        }
-
-        public override string ToString() => _builder.ToString();
-    }
-
     private static async Task<Exception?> StopProcessAsync(
         Process process,
         Task outputTask,
         Task errorTask) {
         Exception? killError = null;
         try {
-            process.Kill(entireProcessTree: true);
+            process.Kill(true);
         }
         catch (Exception ex) {
             // The process may have exited between cancellation and cleanup.
@@ -250,4 +215,39 @@ public sealed class ProcessRunner : IProcessRunner {
         => value.Length != 0 && !value.Contains(' ') && !value.Contains('\t') && !value.Contains('"')
             ? value
             : $"\"{value.Replace("\"", "\\\"")}\"";
+
+    private sealed class OutputBuffer(int maxCharacters) {
+        private const string TruncatedMarker = "...[output truncated]";
+        private readonly StringBuilder _builder = new();
+        private bool _truncated;
+
+        public void AppendLine(string line) {
+            if (_truncated) {
+                return;
+            }
+
+            var remaining = maxCharacters - _builder.Length;
+            if (remaining <= 0) {
+                _truncated = true;
+                return;
+            }
+
+            var renderedLength = line.Length + Environment.NewLine.Length;
+            if (renderedLength <= remaining) {
+                _builder.AppendLine(line);
+                return;
+            }
+
+            var markerLength = Math.Min(TruncatedMarker.Length, remaining);
+            var contentLength = Math.Max(0, remaining - markerLength);
+            if (contentLength > 0) {
+                _builder.Append(line.AsSpan(0, Math.Min(contentLength, line.Length)));
+            }
+
+            _builder.Append(TruncatedMarker.AsSpan(0, markerLength));
+            _truncated = true;
+        }
+
+        public override string ToString() => _builder.ToString();
+    }
 }

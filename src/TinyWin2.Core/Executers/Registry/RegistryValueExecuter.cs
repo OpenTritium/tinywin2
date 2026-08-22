@@ -3,20 +3,18 @@ using TinyWin2.Core.Native;
 namespace TinyWin2.Core.Executers.Registry;
 
 /// <summary>
-/// Converges registry values inside offline hives.
-/// present = create/modify values; absent = delete values or whole keys.
+///     Converges registry values inside offline hives.
+///     present = create/modify values; absent = delete values or whole keys.
 /// </summary>
 public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
     private const string ResourceId = "registry.value";
     public string Resource => ResourceId;
 
-    /// <summary>One structured difference: exactly one of Value/DeleteKey is set.</summary>
-    private sealed record ValueChange(ChangeItem Change, RegistryValueTarget? Value = null, string? DeleteKey = null);
-
     public void Validate(OperationSpec spec) {
         if (spec.Action is not (OperationAction.Set or OperationAction.Remove)) {
             throw new ExecException($"{ResourceId} supports actions 'set' and 'remove'.");
         }
+
         _ = RegistryValueOptions.FromDesired(spec.Spec, spec.Action);
     }
 
@@ -64,7 +62,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
                     target.RegType,
                     "/d",
                     RegValues.RenderData(target.RegType, target.Data),
-                    "/f",
+                    "/f"
                 };
                 await runner.RunAsync("reg.exe", args, cancellationToken: ct);
                 context.Log.Info($"set registry value {change.Change.Target} = {target.RegType}");
@@ -75,7 +73,8 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
     }
 
     /// <summary>Produces structured differences carrying their own execution targets — no reverse lookup by display string.</summary>
-    private async Task<List<ValueChange>> InspectCoreAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+    private async Task<List<ValueChange>> InspectCoreAsync(ExecContext context, OperationSpec spec,
+        CancellationToken ct) {
         var options = RegistryValueOptions.FromDesired(spec.Spec, spec.Action);
         var hive = await context.Hives.GetAsync(options.Hive, context.Log, ct);
         var changes = new List<ValueChange>();
@@ -92,7 +91,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
             if (spec.Action == OperationAction.Remove) {
                 if (existing is not null) {
                     changes.Add(new(
-                        new(ChangeKind.Removed, display, Before: $"{existing.Type} {existing.Data}"),
+                        new(ChangeKind.Removed, display, $"{existing.Type} {existing.Data}"),
                         value));
                 }
 
@@ -109,8 +108,8 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
                      || !RegValues.Equals(value.RegType, existing.Data, desiredData)) {
                 changes.Add(new(
                     new(ChangeKind.Modified, display,
-                        Before: $"{existing.Type} {existing.Data}",
-                        After: $"{value.RegType} {desiredData}"),
+                        $"{existing.Type} {existing.Data}",
+                        $"{value.RegType} {desiredData}"),
                     value));
             }
         }
@@ -136,4 +135,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
             throw new ProcessRunnerException("reg.exe", result);
         }
     }
+
+    /// <summary>One structured difference: exactly one of Value/DeleteKey is set.</summary>
+    private sealed record ValueChange(ChangeItem Change, RegistryValueTarget? Value = null, string? DeleteKey = null);
 }

@@ -2,11 +2,6 @@ using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Executers.Dism;
 
-/// <summary>
-/// Maintenance resource: StartComponentCleanup (optionally /ResetBase).
-/// Idempotent by nature; a known Server-2025 DISM error 4350 downgrades to Skipped.
-/// Desired: <c>{ resetBase:bool }</c>.
-/// </summary>
 public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuterBase(runner), IExecuter {
     private const string ResourceId = "dism.component-store";
     public string Resource => ResourceId;
@@ -42,13 +37,13 @@ public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuter
         return outcome switch {
             DismOutcome.Success or DismOutcome.SuccessRebootRequired => ExecResult.Applied(
             [
-                new(ChangeKind.Modified, "component-store", Before: "uncleaned",
-                    After: resetBase ? "cleaned+resetbase" : "cleaned")
+                new(ChangeKind.Modified, "component-store", "uncleaned",
+                    resetBase ? "cleaned+resetbase" : "cleaned")
             ]),
             DismOutcome.ComponentCleanupUnsupported => ExecResult.Skipped(
                 "this image rejects offline StartComponentCleanup (DISM error 4350)",
                 [new(ChangeKind.Skipped, "component-store", "DISM error 4350")]),
-            _ => throw new ExecException($"dism.exe StartComponentCleanup failed (exit {exitCode})."),
+            _ => throw new ExecException($"dism.exe StartComponentCleanup failed (exit {exitCode}).")
         };
     }
 

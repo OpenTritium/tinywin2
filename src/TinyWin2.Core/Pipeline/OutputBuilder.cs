@@ -18,15 +18,15 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         var compress = format switch {
             OutputFormat.Wim => fast ? "fast" : "max",
             OutputFormat.Esd => "recovery",
-            _ => throw new ArgumentException("VHDX output cannot be captured with DISM.", nameof(format)),
+            _ => throw new ArgumentException("VHDX output cannot be captured with DISM.", nameof(format))
         };
-        return CaptureAsync(mountPath, targetPath, imageName, description, compress, verify: !fast, ct);
+        return CaptureAsync(mountPath, targetPath, imageName, description, compress, !fast, ct);
     }
 
     /// <summary>
-    /// Staging capture with explicit compression: the ESD pipeline captures an UNCOMPRESSED
-    /// intermediate WIM and compresses exactly once in the export step — compressing the
-    /// intermediate and then re-compressing to recovery doubles the work for nothing.
+    ///     Staging capture with explicit compression: the ESD pipeline captures an UNCOMPRESSED
+    ///     intermediate WIM and compresses exactly once in the export step — compressing the
+    ///     intermediate and then re-compressing to recovery doubles the work for nothing.
     /// </summary>
     public async Task CaptureAsync(
         string mountPath,
@@ -41,7 +41,7 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
             "/Capture-Image",
             $"/ImageFile:{targetPath}",
             $"/CaptureDir:{mountPath}",
-            $"/Name:{imageName}",
+            $"/Name:{imageName}"
         };
         if (!string.IsNullOrEmpty(description)) {
             args.Add($"/Description:{description}");
@@ -54,7 +54,7 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
 
         log.Info($"capturing {mountPath} → {Path.GetFileName(targetPath)} (compress={compress})");
         await runner.RunAsync("dism.exe", args,
-            new ProcessRunOptions { Timeout = TimeSpan.FromHours(3) }, ct);
+            new() { Timeout = TimeSpan.FromHours(3) }, ct);
     }
 
     /// <summary>Copies the source media tree into the output folder, replacing install.* with the build result.</summary>
@@ -67,7 +67,7 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         var finalName = format switch {
             OutputFormat.Wim => "install.wim",
             OutputFormat.Esd => "install.esd",
-            _ => throw new ArgumentException("VHDX output cannot be placed in installation media.", nameof(format)),
+            _ => throw new ArgumentException("VHDX output cannot be placed in installation media.", nameof(format))
         };
         Directory.CreateDirectory(mediaOutputPath);
         // robocopy: 0-7 are success codes (1 = files copied).
@@ -76,7 +76,7 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
                 sourceRoot, mediaOutputPath, "/E", "/MT:16", "/R:1", "/W:1", "/NFL", "/NDL", "/NJH", "/NJS",
                 "/XF", "install.wim", "install.esd"
             ],
-            new ProcessRunOptions { IgnoreExitCode = true }, ct);
+            new() { IgnoreExitCode = true }, ct);
         if (result.ExitCode >= 8) {
             throw new IOException($"robocopy failed copying media (exit {result.ExitCode}).");
         }
@@ -115,7 +115,7 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         log.Info($"creating bootable ISO {isoPath}");
         await runner.RunAsync(oscdimgPath,
             ["-m", "-o", "-u2", "-udfver102", $"-bootdata:{bootData}", mediaPath, isoPath],
-            new ProcessRunOptions { Timeout = TimeSpan.FromHours(1) }, ct);
+            new() { Timeout = TimeSpan.FromHours(1) }, ct);
         EnsureNonEmptyFile(isoPath, "oscdimg reported success but did not create a non-empty ISO");
     }
 
@@ -126,7 +126,7 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
                 "/English", "/Export-Image", $"/SourceImageFile:{intermediateWim}", "/SourceIndex:1",
                 $"/DestinationImageFile:{esdPath}", "/Compress:recovery"
             ],
-            new ProcessRunOptions { Timeout = TimeSpan.FromHours(3) }, ct);
+            new() { Timeout = TimeSpan.FromHours(3) }, ct);
 
     public static Task<string> ComputeHashAsync(string filePath, CancellationToken ct) {
         EnsureNonEmptyFile(filePath, "cannot hash a missing or empty artifact");

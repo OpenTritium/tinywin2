@@ -3,9 +3,10 @@ using System.Text.Json.Nodes;
 namespace TinyWin2.Core.Plans;
 
 /// <summary>
-/// Binds plan <c>parameters</c> into operation <c>spec</c> payloads at resolution time:
-/// <c>{"$parameter":"name"}</c> references a parameter value; <c>{"$map":{"parameter":"n","cases":{...},"default":...}}</c>
-/// translates a parameter value into resource-specific data. Output is pure data.
+///     Binds plan <c>parameters</c> into operation <c>spec</c> payloads at resolution time:
+///     <c>{"$parameter":"name"}</c> references a parameter value;
+///     <c>{"$map":{"parameter":"n","cases":{...},"default":...}}</c>
+///     translates a parameter value into resource-specific data. Output is pure data.
 /// </summary>
 public static class ParameterBinder {
     public static JsonObject BindOperation(JsonObject spec, IReadOnlyDictionary<string, JsonNode?> values) {

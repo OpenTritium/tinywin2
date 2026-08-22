@@ -34,7 +34,7 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterB
                 // Already in the desired state: no difference entry at all.
             }
             else {
-                yield return new(feature, Before: state);
+                yield return new(feature, state);
             }
         }
     }

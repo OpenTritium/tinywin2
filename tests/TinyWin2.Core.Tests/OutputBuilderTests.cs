@@ -1,21 +1,29 @@
 using TinyWin2.Core.Hashing;
-using TinyWin2.Core.Logging;
 using TinyWin2.Core.Pipeline;
 
 namespace TinyWin2.Core.Tests;
 
 public sealed class OutputBuilderTests : IDisposable {
+    private readonly OutputBuilder _builder;
     private readonly string _root = TestPlans.CreateTempDirectory();
     private readonly FakeProcessRunner _runner = new();
-    private readonly OutputBuilder _builder;
 
     public OutputBuilderTests() {
-        _builder = new OutputBuilder(_runner, new BuildLog());
+        _builder = new(_runner, new());
+    }
+
+    public void Dispose() {
+        try {
+            Directory.Delete(_root, true);
+        }
+        catch {
+            /* best effort */
+        }
     }
 
     [Test]
     public async Task CaptureBuildsDismArgumentsPerFormatAndSpeed() {
-        await _builder.CaptureAsync("M:\\", "out.wim", "name", "desc", OutputFormat.Wim, fast: true,
+        await _builder.CaptureAsync("M:\\", "out.wim", "name", "desc", OutputFormat.Wim, true,
             CancellationToken.None);
         var args = string.Join(' ', _runner.ArgsOf(0));
         await Assert.That(args).Contains("/Capture-Image");
@@ -25,7 +33,7 @@ public sealed class OutputBuilderTests : IDisposable {
         await Assert.That(args).Contains("/Compress:fast");
         await Assert.That(args.Contains("/Verify")).IsFalse();
 
-        await _builder.CaptureAsync("M:\\", "out.esd", "name", null, OutputFormat.Esd, fast: false,
+        await _builder.CaptureAsync("M:\\", "out.esd", "name", null, OutputFormat.Esd, false,
             CancellationToken.None);
         var esdArgs = string.Join(' ', _runner.ArgsOf(1));
         await Assert.That(esdArgs).Contains("/Compress:recovery");
@@ -35,7 +43,7 @@ public sealed class OutputBuilderTests : IDisposable {
 
     [Test]
     public async Task UncompressedStagingCaptureSkipsCompressionAndVerify() {
-        await _builder.CaptureAsync("M:\\", "staging.wim", "name", null, compress: "none", verify: false,
+        await _builder.CaptureAsync("M:\\", "staging.wim", "name", null, "none", false,
             CancellationToken.None);
         var args = string.Join(' ', _runner.ArgsOf(0));
         await Assert.That(args).Contains("/Compress:none");
@@ -45,13 +53,13 @@ public sealed class OutputBuilderTests : IDisposable {
     [Test]
     public void VhdxCannotBeCapturedAsAnInstallImage() {
         Assert.Throws<ArgumentException>(() => _builder.CaptureAsync(
-            "M:\\", "out.vhdx", "name", null, OutputFormat.Vhdx, fast: true, CancellationToken.None));
+            "M:\\", "out.vhdx", "name", null, OutputFormat.Vhdx, true, CancellationToken.None));
     }
 
     [Test]
     public async Task VhdxCannotRebuildInstallationMedia() {
         var ex = Assert.Throws<ArgumentException>(() => _builder.RebuildMediaAsync(
-            _root, Path.Combine(_root, "out"), "captured.vhdx", OutputFormat.Vhdx, CancellationToken.None)
+                _root, Path.Combine(_root, "out"), "captured.vhdx", OutputFormat.Vhdx, CancellationToken.None)
             .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("VHDX");
         await Assert.That(_runner.Calls.Count).IsEqualTo(0);
@@ -68,7 +76,7 @@ public sealed class OutputBuilderTests : IDisposable {
 
         _runner.Handler = (_, _) => FakeProcessRunner.Fail(8);
         var ex = Assert.Throws<IOException>(() => _builder.RebuildMediaAsync(
-            source, Path.Combine(_root, "out2"), "captured.wim", OutputFormat.Wim, CancellationToken.None)
+                source, Path.Combine(_root, "out2"), "captured.wim", OutputFormat.Wim, CancellationToken.None)
             .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("robocopy failed");
     }
@@ -138,9 +146,5 @@ public sealed class OutputBuilderTests : IDisposable {
         Directory.CreateDirectory(Path.Combine(source, "sources"));
         File.WriteAllText(Path.Combine(source, "sources", "install.wim"), "old");
         return source;
-    }
-
-    public void Dispose() {
-        try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
     }
 }

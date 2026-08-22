@@ -1,7 +1,7 @@
 namespace TinyWin2.Core.Executers;
 
 /// <summary>
-/// An executor owns one resource type and validates/applies its explicit operations.
+///     An executor owns one resource type and validates/applies its explicit operations.
 /// </summary>
 public interface IExecuter {
     /// <summary>Resource id this executer owns, e.g. <c>registry.service</c>.</summary>

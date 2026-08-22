@@ -4,12 +4,22 @@ namespace TinyWin2.Core.Tests;
 
 [NotInParallel] // every instance mutates the process-wide PATH - instances must not interleave
 public sealed class ToolLocatorTests : IDisposable {
-    private readonly string _toolDir = TestPlans.CreateTempDirectory();
     private readonly string _originalPath = Environment.GetEnvironmentVariable("PATH") ?? "";
+    private readonly string _toolDir = TestPlans.CreateTempDirectory();
 
     public ToolLocatorTests() {
         File.WriteAllText(Path.Combine(_toolDir, "tinywin2-fake-tool.exe"), "stub");
         Environment.SetEnvironmentVariable("PATH", _originalPath);
+    }
+
+    public void Dispose() {
+        Environment.SetEnvironmentVariable("PATH", _originalPath);
+        try {
+            Directory.Delete(_toolDir, true);
+        }
+        catch {
+            /* best effort */
+        }
     }
 
     [Test]
@@ -45,10 +55,5 @@ public sealed class ToolLocatorTests : IDisposable {
         Environment.SetEnvironmentVariable("PATH", $";;;{quoted};;");
         var found = ToolLocator.Locate("tinywin2-fake-tool.exe");
         await Assert.That(found).IsEqualTo(Path.Combine(_toolDir, "tinywin2-fake-tool.exe"));
-    }
-
-    public void Dispose() {
-        Environment.SetEnvironmentVariable("PATH", _originalPath);
-        try { Directory.Delete(_toolDir, recursive: true); } catch { /* best effort */ }
     }
 }

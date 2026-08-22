@@ -18,7 +18,7 @@ public enum LayerStatus {
     Pending,
     Committed,
     Discarded,
-    Merged,
+    Merged
 }
 
 /// <summary>Persistent record of one layer in the chain (layer 0 is the base).</summary>
@@ -49,7 +49,7 @@ public sealed record LayerRecord {
         ["endedUtc"] = EndedUtc?.ToString("O"),
         ["operationResult"] = OperationResult?.DeepClone(),
         ["stepFingerprint"] = StepFingerprint,
-        ["error"] = Error,
+        ["error"] = Error
     };
 }
 
@@ -61,11 +61,11 @@ public sealed class LayerSession {
 }
 
 /// <summary>
-/// The VHDX overlay chain: base.vhdx + L001..Ln.vhdx differencing layers with a
-/// persistent manifest (<c>layers.json</c>). Layer atomicity = a failed layer's VHDX is
-/// deleted, leaving the image byte-identical to before the step started. Consolidation
-/// (merging diffs into the base) happens at artifact export; mid-build only when the
-/// backend's chain-depth safety limit demands it.
+///     The VHDX overlay chain: base.vhdx + L001..Ln.vhdx differencing layers with a
+///     persistent manifest (<c>layers.json</c>). Layer atomicity = a failed layer's VHDX is
+///     deleted, leaving the image byte-identical to before the step started. Consolidation
+///     (merging diffs into the base) happens at artifact export; mid-build only when the
+///     backend's chain-depth safety limit demands it.
 /// </summary>
 public sealed class VhdLayerStack(
     string workDirectory,
@@ -75,9 +75,9 @@ public sealed class VhdLayerStack(
     private const string ManifestFileName = "layers.json";
     private readonly object _gate = new();
     private readonly List<LayerRecord> _records = [];
-    private int _nextIndex = 1;
     private bool _baseReady;
     private bool _consolidationPending;
+    private int _nextIndex = 1;
     private string? _sourceFingerprint;
     private int? _sourceIndex;
     private string WorkDirectory { get; } = Path.GetFullPath(workDirectory);
@@ -122,8 +122,10 @@ public sealed class VhdLayerStack(
         }
     }
 
-    /// <summary>Total layers committed into the image (base + diffs, merged-away ones
-    /// included) — a reporting count; the live chain depth resets on consolidation.</summary>
+    /// <summary>
+    ///     Total layers committed into the image (base + diffs, merged-away ones
+    ///     included) — a reporting count; the live chain depth resets on consolidation.
+    /// </summary>
     public int CommittedDepth {
         get {
             lock (_gate) {
@@ -195,8 +197,10 @@ public sealed class VhdLayerStack(
         return stack;
     }
 
-    /// <summary>Persists the manifest atomically (staging file + move): a crash mid-write
-    /// must not corrupt the resume state.</summary>
+    /// <summary>
+    ///     Persists the manifest atomically (staging file + move): a crash mid-write
+    ///     must not corrupt the resume state.
+    /// </summary>
     public void Save() {
         lock (_gate) {
             Directory.CreateDirectory(WorkDirectory);
@@ -211,11 +215,11 @@ public sealed class VhdLayerStack(
                 ["baseReady"] = _baseReady,
                 ["consolidationPending"] = _consolidationPending,
                 ["sourceFingerprint"] = _sourceFingerprint,
-                ["sourceIndex"] = _sourceIndex,
+                ["sourceIndex"] = _sourceIndex
             };
             var staging = ManifestPath + ".tmp";
             File.WriteAllText(staging, root.ToPrettyString());
-            File.Move(staging, ManifestPath, overwrite: true);
+            File.Move(staging, ManifestPath, true);
         }
     }
 
@@ -255,7 +259,7 @@ public sealed class VhdLayerStack(
                     log.Warn($"could not detach incomplete layer '{Path.GetFileName(path)}': {ex.Message}");
                 }
 
-                if (!TryDelete(path, strict: false)) {
+                if (!TryDelete(path, false)) {
                     throw new IOException(
                         $"incomplete layer '{path}' could not be removed; delete the workspace and rebuild.");
                 }
@@ -299,7 +303,7 @@ public sealed class VhdLayerStack(
                         Title = "base image (applied from source index)",
                         VhdxFileName = BaseFileName,
                         Status = LayerStatus.Committed,
-                        VhdxPath = BaseVhdxPath,
+                        VhdxPath = BaseVhdxPath
                     });
                 }
             }
@@ -324,18 +328,18 @@ public sealed class VhdLayerStack(
                 /* best effort */
             }
 
-            TryDelete(BaseVhdxPath, strict: false);
+            TryDelete(BaseVhdxPath, false);
             throw;
         }
 
         lock (_gate) {
-            _records.Add(new LayerRecord {
+            _records.Add(new() {
                 Index = 0,
                 StepId = null,
                 Title = "base image (applied from source index)",
                 VhdxFileName = BaseFileName,
                 Status = LayerStatus.Committed,
-                VhdxPath = BaseVhdxPath,
+                VhdxPath = BaseVhdxPath
             });
             _baseReady = false;
         }
@@ -417,7 +421,7 @@ public sealed class VhdLayerStack(
             VhdxFileName = fileName,
             Status = LayerStatus.Pending,
             VhdxPath = vhdxPath,
-            StepFingerprint = stepFingerprint,
+            StepFingerprint = stepFingerprint
         };
         lock (_gate) {
             _records.Add(record);
@@ -438,8 +442,8 @@ public sealed class VhdLayerStack(
                 /* best effort */
             }
 
-            var cleanupFailed = !TryDelete(vhdxPath, strict: false);
-            MarkFailedRecord(record.Index, ex.Message, discarded: !cleanupFailed);
+            var cleanupFailed = !TryDelete(vhdxPath, false);
+            MarkFailedRecord(record.Index, ex.Message, !cleanupFailed);
             if (cleanupFailed) {
                 log.Warn($"could not clean up failed layer {record.Index:000}; workspace retained for recovery",
                     layerIndex: record.Index);
@@ -458,7 +462,7 @@ public sealed class VhdLayerStack(
             UpdateRecord(session.Record.Index, record => record with {
                 Status = LayerStatus.Committed,
                 EndedUtc = DateTimeOffset.UtcNow,
-                OperationResult = operationResult ?? record.OperationResult,
+                OperationResult = operationResult ?? record.OperationResult
             });
         }
 
@@ -484,11 +488,11 @@ public sealed class VhdLayerStack(
             log.Warn($"detach failed while discarding layer {session.Record.Index:000}: {ex.Message}");
         }
 
-        var deleteFailed = !TryDelete(session.VhdxPath, strict: false);
+        var deleteFailed = !TryDelete(session.VhdxPath, false);
         if (deleteFailed) {
             var cleanupMessage =
                 $"layer cleanup failed (detach: {detachError?.Message ?? "ok"}); original error: {error}";
-            MarkFailedRecord(session.Record.Index, cleanupMessage, discarded: false);
+            MarkFailedRecord(session.Record.Index, cleanupMessage, false);
             throw new IOException(
                 $"could not discard layer {session.Record.Index:000}; the workspace was retained for recovery.",
                 detachError);
@@ -498,7 +502,7 @@ public sealed class VhdLayerStack(
             UpdateRecord(session.Record.Index, record => record with {
                 Status = LayerStatus.Discarded,
                 EndedUtc = DateTimeOffset.UtcNow,
-                Error = error,
+                Error = error
             });
         }
 
@@ -508,8 +512,8 @@ public sealed class VhdLayerStack(
     }
 
     /// <summary>
-    /// Resume support: deletes every diff layer above <paramref name="keepIndex"/> (files + records) so the
-    /// chain ends at a known checkpoint. The common prefix stays byte-identical; new layers branch on top.
+    ///     Resume support: deletes every diff layer above <paramref name="keepIndex" /> (files + records) so the
+    ///     chain ends at a known checkpoint. The common prefix stays byte-identical; new layers branch on top.
     /// </summary>
     public async Task TruncateToAsync(int keepIndex, CancellationToken ct) {
         if (keepIndex < 0) {
@@ -537,9 +541,9 @@ public sealed class VhdLayerStack(
                     /* best effort */
                 }
 
-                var deleteFailed = !TryDelete(path, strict: false);
+                var deleteFailed = !TryDelete(path, false);
                 if (deleteFailed) {
-                    MarkFailedRecord(record.Index, "truncated; layer file could not be deleted", discarded: false);
+                    MarkFailedRecord(record.Index, "truncated; layer file could not be deleted", false);
                 }
                 else {
                     removed.Add(record.Index);
@@ -583,12 +587,12 @@ public sealed class VhdLayerStack(
             var leaf = diffs[^1];
             await backend.MergeAsync(leaf.VhdxPath!, depth, ct);
             foreach (var diff in diffs) {
-                var deleteFailed = !TryDelete(diff.VhdxPath!, strict: false);
+                var deleteFailed = !TryDelete(diff.VhdxPath!, false);
                 lock (_gate) {
                     UpdateRecord(diff.Index, record => record with {
                         Status = LayerStatus.Merged,
                         EndedUtc = DateTimeOffset.UtcNow,
-                        Error = deleteFailed ? "merged; VHDX cleanup is still pending" : record.Error,
+                        Error = deleteFailed ? "merged; VHDX cleanup is still pending" : record.Error
                     });
                 }
             }
@@ -605,15 +609,17 @@ public sealed class VhdLayerStack(
         }
     }
 
-    /// <summary>Consolidates the chain and copies the merged base to <paramref name="targetPath"/>
-    /// (a boot-testable VHDX artifact).</summary>
+    /// <summary>
+    ///     Consolidates the chain and copies the merged base to <paramref name="targetPath" />
+    ///     (a boot-testable VHDX artifact).
+    /// </summary>
     public async Task ExportMergedVhdxAsync(string targetPath, CancellationToken ct) {
         await ConsolidateAsync(ct);
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
-        File.Copy(BaseVhdxPath, targetPath, overwrite: true);
+        File.Copy(BaseVhdxPath, targetPath, true);
     }
 
-    /// <summary>Replaces one record in place (caller must hold <see cref="_gate"/>).</summary>
+    /// <summary>Replaces one record in place (caller must hold <see cref="_gate" />).</summary>
     private void UpdateRecord(int index, Func<LayerRecord, LayerRecord> update) {
         var position = _records.FindIndex(r => r.Index == index);
         _records[position] = update(_records[position]);
@@ -627,7 +633,7 @@ public sealed class VhdLayerStack(
             }
 
             var record = _records.LastOrDefault(r => r.Index == index
-                                                     && (r.Status is LayerStatus.Committed or LayerStatus.Merged))
+                                                     && r.Status is LayerStatus.Committed or LayerStatus.Merged)
                          ?? throw new ArgumentException($"layer {index:000} is not committed");
             return record is { Status: LayerStatus.Committed, VhdxPath: not null } && File.Exists(record.VhdxPath)
                 ? record.VhdxPath
@@ -635,9 +641,11 @@ public sealed class VhdLayerStack(
         }
     }
 
-    /// <summary>Deletes a layer file. Strict (consolidation): failure aborts while the manifest
-    /// still matches disk. Otherwise a locked file is only disk-space debt — layer indexes are
-    /// monotonic, so the name is never reused — and must not mask the caller's real error.</summary>
+    /// <summary>
+    ///     Deletes a layer file. Strict (consolidation): failure aborts while the manifest
+    ///     still matches disk. Otherwise a locked file is only disk-space debt — layer indexes are
+    ///     monotonic, so the name is never reused — and must not mask the caller's real error.
+    /// </summary>
     private bool TryDelete(string path, bool strict) {
         try {
             if (File.Exists(path)) {
@@ -698,7 +706,7 @@ public sealed class VhdLayerStack(
             UpdateRecord(index, record => record with {
                 Status = discarded ? LayerStatus.Discarded : LayerStatus.Pending,
                 EndedUtc = discarded ? DateTimeOffset.UtcNow : null,
-                Error = error,
+                Error = error
             });
         }
 
@@ -742,7 +750,7 @@ public sealed class VhdLayerStack(
                   ?? throw new InvalidDataException($"layer entry {ordinal} has invalid operationResult"),
             Error = OptionalString(node, "error", ordinal),
             StepFingerprint = OptionalString(node, "stepFingerprint", ordinal),
-            VhdxPath = Path.Combine(workDirectory, fileName),
+            VhdxPath = Path.Combine(workDirectory, fileName)
         };
     }
 

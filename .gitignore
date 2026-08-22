@@ -6,6 +6,7 @@ raw/
 *.user
 .vs/
 .vscode/
+.idea/
 TestResults/
 artifacts/
 *.log

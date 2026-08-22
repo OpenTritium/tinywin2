@@ -9,10 +9,10 @@ using TinyWin2.Core.Native;
 namespace TinyWin2.Core.Layers;
 
 /// <summary>
-/// Per-layer post-mortem evidence, captured while the layer is still attached:
-/// a full file manifest and semantic registry exports. This makes layer diffing
-/// independent of re-attaching the differencing chain (which some Windows builds
-/// reject after the build finished) and avoids polluting layers on remount.
+///     Per-layer post-mortem evidence, captured while the layer is still attached:
+///     a full file manifest and semantic registry exports. This makes layer diffing
+///     independent of re-attaching the differencing chain (which some Windows builds
+///     reject after the build finished) and avoids polluting layers on remount.
 /// </summary>
 public static partial class LayerEvidence {
     private const string SnapshotsDirectoryName = "snapshots";
@@ -24,10 +24,6 @@ public static partial class LayerEvidence {
 
     public static string RegistryPathFor(string snapshotsRoot, int index) =>
         Path.Combine(snapshotsRoot, $"L{index:D3}.registry.reg");
-
-    public sealed record FileManifestSnapshot(
-        Dictionary<string, (long Size, long WriteTicks)> Entries,
-        bool Complete);
 
     /// <summary>Captures evidence for one layer (index 0 = base). Must run while the layer is attached.</summary>
     public static async Task CaptureAsync(
@@ -184,7 +180,7 @@ public static partial class LayerEvidence {
                 }
 
                 current = trimmed[";;hive ".Length..].Trim();
-                builder = new StringBuilder();
+                builder = new();
                 continue;
             }
 
@@ -256,4 +252,8 @@ public static partial class LayerEvidence {
         @"\{[0-9a-fA-F-]{36}\}\.TM(Container\d+)?(\.blf|\.regtrans-ms)$|^(SOFTWARE|SYSTEM|SECURITY|SAM|DEFAULT|NTUSER)\.LOG\d?$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex HiveTransactionNoise();
+
+    public sealed record FileManifestSnapshot(
+        Dictionary<string, (long Size, long WriteTicks)> Entries,
+        bool Complete);
 }

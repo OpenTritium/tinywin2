@@ -11,7 +11,7 @@ public sealed class ParameterBinderTests {
     [Test]
     public async Task BindsDirectParameterReference() {
         var spec = new JsonObject {
-            ["path"] = new JsonObject { ["$parameter"] = "targetPath" },
+            ["path"] = new JsonObject { ["$parameter"] = "targetPath" }
         };
         var operation = new PlanOperation("fs.path", OperationAction.Remove, spec);
         var bound = ParameterBinder.BindOperation(operation.Spec, Parameters(("targetPath", "Windows/Foo")));
@@ -25,9 +25,9 @@ public sealed class ParameterBinderTests {
                 ["$map"] = new JsonObject {
                     ["parameter"] = "startMode",
                     ["cases"] = new JsonObject { ["delayed"] = "delayedAuto", ["manual"] = "manual" },
-                    ["default"] = "manual",
-                },
-            },
+                    ["default"] = "manual"
+                }
+            }
         };
         var operation = new PlanOperation("registry.service", OperationAction.Configure, spec);
         var delayed = ParameterBinder.BindOperation(operation.Spec, Parameters(("startMode", "delayed")));
@@ -42,12 +42,13 @@ public sealed class ParameterBinderTests {
             ["start"] = new JsonObject {
                 ["$map"] = new JsonObject {
                     ["parameter"] = "startMode",
-                    ["cases"] = new JsonObject { ["delayed"] = "delayedAuto" },
-                },
-            },
+                    ["cases"] = new JsonObject { ["delayed"] = "delayedAuto" }
+                }
+            }
         };
         var operation = new PlanOperation("registry.service", OperationAction.Configure, spec);
-        var ex = Assert.Throws<ParameterBindingException>(() => ParameterBinder.BindOperation(operation.Spec, Parameters(("startMode", "manual"))));
+        var ex = Assert.Throws<ParameterBindingException>(() =>
+            ParameterBinder.BindOperation(operation.Spec, Parameters(("startMode", "manual"))));
         await Assert.That(ex.Message).Contains("no case for parameter 'startMode' value 'manual'");
     }
 
@@ -55,7 +56,7 @@ public sealed class ParameterBinderTests {
     public async Task BindsNestedArraysAndObjects() {
         var spec = new JsonObject {
             ["services"] = new JsonArray("A", new JsonObject { ["$parameter"] = "extra" }),
-            ["nested"] = new JsonObject { ["deep"] = new JsonArray(new JsonObject { ["$parameter"] = "mode" }) },
+            ["nested"] = new JsonObject { ["deep"] = new JsonArray(new JsonObject { ["$parameter"] = "mode" }) }
         };
         var operation = new PlanOperation("registry.service", OperationAction.Configure, spec);
         var bound = ParameterBinder.BindOperation(operation.Spec, Parameters(("extra", "B"), ("mode", "auto")));
@@ -67,7 +68,8 @@ public sealed class ParameterBinderTests {
     public async Task UnknownParameterReferenceThrows() {
         var spec = new JsonObject { ["x"] = new JsonObject { ["$parameter"] = "nope" } };
         var operation = new PlanOperation("fs.path", OperationAction.Remove, spec);
-        var ex = Assert.Throws<ParameterBindingException>(() => ParameterBinder.BindOperation(operation.Spec, Parameters()));
+        var ex = Assert.Throws<ParameterBindingException>(() =>
+            ParameterBinder.BindOperation(operation.Spec, Parameters()));
         await Assert.That(ex.Message).Contains("unknown parameter 'nope'");
     }
 

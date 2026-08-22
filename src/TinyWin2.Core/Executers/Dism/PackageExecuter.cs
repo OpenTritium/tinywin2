@@ -5,9 +5,9 @@ namespace TinyWin2.Core.Executers.Dism;
 /// <summary>Converges CBS packages by regex pattern. absent = remove matching installed/staged packages.</summary>
 public sealed class PackageExecuter(IProcessRunner runner) : DismRemoveExecuterBase(runner) {
     private const string ResourceId = "dism.package";
-    public override string Resource => ResourceId;
 
     private static readonly string[] RemovableStates = ["Installed", "Staged", "Install Pending"];
+    public override string Resource => ResourceId;
 
     protected override IReadOnlyList<string> ListArguments => ["/Get-Packages", "/Format:List"];
 
@@ -28,7 +28,7 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismRemoveExecuterB
             }
 
             if (RemovableStates.Any(s => state.Equals(s, StringComparison.OrdinalIgnoreCase))) {
-                yield return new(identity, Before: state);
+                yield return new(identity, state);
             }
             else {
                 context.Log.Info($"skipping non-removable CBS package: {identity} [{state}]");

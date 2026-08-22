@@ -81,7 +81,7 @@ public static class RegistryValueTypes {
             ["qword"] = "REG_QWORD",
             ["string"] = "REG_SZ",
             ["expand"] = "REG_EXPAND_SZ",
-            ["multi"] = "REG_MULTI_SZ",
+            ["multi"] = "REG_MULTI_SZ"
         };
 
     public static bool IsSupported(string type) => Map.ContainsKey(type);
@@ -94,34 +94,32 @@ public static class RegistryValueTypes {
 
 /// <summary>Strongly-typed bound payload for <c>registry.service</c>.</summary>
 public sealed partial record RegistryServiceOptions {
-    public required IReadOnlyList<string> Services { get; init; }
-    public IReadOnlyList<string> ServicePatterns { get; private init; } = [];
-    public required string Start { get; init; }
-
-    /// <summary>Parsed trigger descriptors: preset name or 'device:{interface-class-guid}'.</summary>
-    public IReadOnlyList<string> Triggers { get; private init; } = [];
-
     private static readonly IReadOnlyDictionary<string, int> StartValues =
         new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) {
             ["disabled"] = 4,
             ["manual"] = 3,
             ["auto"] = 2,
             ["delayedAuto"] = 2,
-            ["trigger"] = 3, // manual + TriggerInfo: the SCM pulls the service when the event fires
+            ["trigger"] = 3 // manual + TriggerInfo: the SCM pulls the service when the event fires
         };
 
-    internal sealed record ServiceTrigger(int Type, Guid SubType);
-
     /// <summary>
-    /// Named SCM trigger events (offline TriggerInfo writes; Action is always SERVICE_START).
-    /// Presets carry the documented subtype GUID; device classes take a raw interface-class GUID.
+    ///     Named SCM trigger events (offline TriggerInfo writes; Action is always SERVICE_START).
+    ///     Presets carry the documented subtype GUID; device classes take a raw interface-class GUID.
     /// </summary>
     private static readonly IReadOnlyDictionary<string, (int Type, Guid SubType)> TriggerKinds =
         new Dictionary<string, (int, Guid)>(StringComparer.OrdinalIgnoreCase) {
             ["domain-join"] = (3, Guid.Parse("1ce20aba-9851-4421-9430-1ddeb766e809")),
             ["ip-arrival"] = (2, Guid.Parse("4f27f2de-14e2-430b-a549-7cd48cbc8245")),
-            ["gpo-change"] = (5, Guid.Parse("659fcae6-5bdb-4da9-b1ff-ca2a178d46e0")),
+            ["gpo-change"] = (5, Guid.Parse("659fcae6-5bdb-4da9-b1ff-ca2a178d46e0"))
         };
+
+    public required IReadOnlyList<string> Services { get; init; }
+    public IReadOnlyList<string> ServicePatterns { get; private init; } = [];
+    public required string Start { get; init; }
+
+    /// <summary>Parsed trigger descriptors: preset name or 'device:{interface-class-guid}'.</summary>
+    public IReadOnlyList<string> Triggers { get; private init; } = [];
 
     public bool IsDelayed => string.Equals(Start, "delayedAuto", StringComparison.OrdinalIgnoreCase);
     public int StartDword => StartValues[Start];
@@ -172,12 +170,12 @@ public sealed partial record RegistryServiceOptions {
     /// <summary>Resolves a trigger descriptor to its SCM (Type, SubType) pair; null when unknown.</summary>
     internal static ServiceTrigger? ResolveTrigger(string trigger) {
         if (TriggerKinds.TryGetValue(trigger, out var preset)) {
-            return new ServiceTrigger(preset.Type, preset.SubType);
+            return new(preset.Type, preset.SubType);
         }
 
         if (trigger.StartsWith("device:", StringComparison.OrdinalIgnoreCase)
             && Guid.TryParse(trigger["device:".Length..], out var guid)) {
-            return new ServiceTrigger(1, guid);
+            return new(1, guid);
         }
 
         return null;
@@ -185,4 +183,6 @@ public sealed partial record RegistryServiceOptions {
 
     [GeneratedRegex("^[A-Za-z0-9_.?*-]+$")]
     private static partial Regex ServiceNameChars();
+
+    internal sealed record ServiceTrigger(int Type, Guid SubType);
 }

@@ -10,7 +10,7 @@ public enum OperationAction {
     Set,
     Remove,
     Cleanup,
-    Copy,
+    Copy
 }
 
 /// <summary>Semantic change kinds recorded per operation.</summary>
@@ -18,14 +18,16 @@ public enum ChangeKind {
     Created,
     Modified,
     Removed,
-    Skipped,
+    Skipped
 }
 
-/// <summary>Final outcome status of one operation. Failures are exceptions
-/// (<see cref="ExecException"/>), never a status value.</summary>
+/// <summary>
+///     Final outcome status of one operation. Failures are exceptions
+///     (<see cref="ExecException" />), never a status value.
+/// </summary>
 public enum ExecStatus {
     Applied,
-    Skipped,
+    Skipped
 }
 
 /// <summary>One semantic change an operation made (or skipped) against a named target.</summary>
@@ -34,11 +36,11 @@ public sealed record ChangeItem(ChangeKind Kind, string Target, string? Before =
         ["kind"] = Kind.ToString().ToLowerInvariant(),
         ["target"] = Target,
         ["before"] = Before,
-        ["after"] = After,
+        ["after"] = After
     };
 }
 
-/// <summary>Result of one operation. Hard failures throw <see cref="ExecException"/> instead.</summary>
+/// <summary>Result of one operation. Hard failures throw <see cref="ExecException" /> instead.</summary>
 /// <param name="Changes">What changed; may carry Skipped items for absent targets.</param>
 public sealed record ExecResult(ExecStatus Status, IReadOnlyList<ChangeItem> Changes, string? SkipReason = null) {
     public static ExecResult Applied(IReadOnlyList<ChangeItem> changes) => new(ExecStatus.Applied, changes);
@@ -48,14 +50,14 @@ public sealed record ExecResult(ExecStatus Status, IReadOnlyList<ChangeItem> Cha
 }
 
 /// <summary>
-/// Result of inspecting a resource against an <see cref="OperationSpec"/>: whether the image
-/// already satisfies the desired state, and which changes convergence would produce.
+///     Result of inspecting a resource against an <see cref="OperationSpec" />: whether the image
+///     already satisfies the desired state, and which changes convergence would produce.
 /// </summary>
 public sealed record ResourceDiff(bool Satisfied, IReadOnlyList<ChangeItem> Differences);
 
 /// <summary>
-/// One bound operation: pure data produced at plan-resolution time (after parameter binding).
-/// <paramref name="Spec"/> is resource-specific and validated against the resource schema.
+///     One bound operation: pure data produced at plan-resolution time (after parameter binding).
+///     <paramref name="Spec" /> is resource-specific and validated against the resource schema.
 /// </summary>
 public sealed record OperationSpec(string Resource, OperationAction Action, JsonObject Spec);
 
@@ -64,8 +66,8 @@ public sealed class ExecException(string message, Exception? inner = null)
     : Exception(message, inner);
 
 /// <summary>
-/// Per-exec runtime context handed to every executer. Immutable: everything the layer
-/// provides is injected at construction (the engine creates one per plan run).
+///     Per-exec runtime context handed to every executer. Immutable: everything the layer
+///     provides is injected at construction (the engine creates one per plan run).
 /// </summary>
 public sealed class ExecContext(
     string mountPath,
