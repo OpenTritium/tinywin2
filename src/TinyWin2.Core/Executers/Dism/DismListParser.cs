@@ -6,13 +6,21 @@ public static class DismListParser {
         string recordStartKey) {
         var records = new List<IReadOnlyDictionary<string, string>>();
         Dictionary<string, string>? current = null;
-        foreach (var rawLine in output.Split('\n')) {
-            var line = rawLine.TrimEnd('\r').Trim();
+        var remaining = output.AsSpan();
+        while (!remaining.IsEmpty) {
+            var newline = remaining.IndexOf('\n');
+            var rawLine = newline >= 0 ? remaining[..newline] : remaining;
+            remaining = newline >= 0 ? remaining[(newline + 1)..] : [];
+            if (rawLine.EndsWith("\r", StringComparison.Ordinal)) {
+                rawLine = rawLine[..^1];
+            }
+
+            var line = rawLine.Trim();
             if (line.Length == 0) {
                 continue;
             }
 
-            var separator = line.IndexOf(':', StringComparison.Ordinal);
+            var separator = line.IndexOf(':');
             if (separator <= 0) {
                 continue;
             }
@@ -24,7 +32,7 @@ public static class DismListParser {
                 records.Add(current);
             }
 
-            current?[key] = value;
+            current?[key.ToString()] = value.ToString();
         }
 
         return records;

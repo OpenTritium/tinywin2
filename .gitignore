@@ -12,6 +12,7 @@ raw/
 .idea/
 TestResults/
 artifacts/
+BenchmarkDotNet.Artifacts/
 coverage/
 *.coverage
 *.log

@@ -1,33 +1,18 @@
+using System.CommandLine;
 using System.Text;
-using TinyWin2.Cli.Commands;
 
 namespace TinyWin2.Cli;
 
 internal static class Program {
-    private const string Version = "2.0.0-alpha1";
-
     private static async Task<int> Main(string[] args) {
         Console.OutputEncoding = Encoding.UTF8;
-        if (args.Length == 0) {
-            PrintUsage();
-            return 0;
-        }
+        var root = CommandLine.CreateRootCommand();
+        var configuration = new InvocationConfiguration {
+            EnableDefaultExceptionHandler = false
+        };
 
         try {
-            var command = args[0].ToLowerInvariant();
-            var rest = args[1..].ToList();
-            return command switch {
-                "doctor" => DoctorCommand.Run(ToSingleOptions(ParseOptions(rest))),
-                "inspect" => await InspectCommand.RunAsync(rest),
-                "plan" => PlanCommand.Run(rest),
-                "profile" => ProfileCommand.Run(rest),
-                "build" => await BuildCommand.RunAsync(rest),
-                "preview" => await PreviewCommand.RunAsync(rest),
-                "layer" => await LayerCommand.RunAsync(rest),
-                "version" or "--version" => RunVersion(),
-                "help" or "--help" or "-h" => RunHelp(),
-                _ => RunUnknown(command)
-            };
+            return await root.Parse(args).InvokeAsync(configuration);
         }
         catch (Exception ex) {
             Console.ForegroundColor = ConsoleColor.Red;
@@ -35,96 +20,5 @@ internal static class Program {
             Console.ResetColor();
             return 1;
         }
-    }
-
-    /// <summary>Parses <c>--key value</c> / <c>-k value</c> / flags; repeated keys accumulate.</summary>
-    internal static Dictionary<string, List<string>> ParseOptions(List<string> args) {
-        var options = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-        for (var i = 0; i < args.Count; i++) {
-            var arg = args[i];
-            var isLong = arg.StartsWith("--", StringComparison.Ordinal);
-            var isShort = arg is ['-', var shortOption] && char.IsLetter(shortOption);
-            if (!isLong && !isShort) {
-                continue;
-            }
-
-            var key = isLong ? arg[2..] : arg[1..];
-            var value = "true";
-            if (i + 1 < args.Count) {
-                var next = args[i + 1];
-                var nextIsOption = next.StartsWith("--", StringComparison.Ordinal)
-                                   || (next is ['-', var nextShortOption] && char.IsLetter(nextShortOption));
-                if (!nextIsOption) {
-                    value = next;
-                    i++;
-                }
-            }
-
-            if (!options.TryGetValue(key, out var values)) {
-                options[key] = values = [];
-            }
-
-            values.Add(value);
-        }
-
-        return options;
-    }
-
-    /// <summary>Old single-value view for commands that only need flags.</summary>
-    private static Dictionary<string, string> ToSingleOptions(Dictionary<string, List<string>> options) =>
-        options.ToDictionary(kv => kv.Key, kv => kv.Value[^1], StringComparer.OrdinalIgnoreCase);
-
-    private static int RunVersion() {
-        Console.WriteLine($"tinywin2 {Version}");
-        return 0;
-    }
-
-    private static int RunHelp() => RunUnknown("help");
-
-    private static int RunUnknown(string command) {
-        PrintUsage();
-        if (command != "help" && command != "--help" && command != "-h") {
-            Console.Error.WriteLine($"unknown command: {command}");
-            return 2;
-        }
-
-        return 0;
-    }
-
-    private static void PrintUsage() {
-        Console.WriteLine($"""
-                           tinywin2 {Version} — layered Windows image slimming (VHDX differencing chains)
-
-                           usage: tinywin2 <command> [options]
-
-                           commands:
-                             doctor                 check environment (admin, tools, disk space)
-                             inspect <iso|folder>   list image indexes
-                             plan list|show         explore the plan catalog
-                             profile list|show|export|import
-                             build                  run a layered slimming build
-                             preview                apply base layer + report what each plan WOULD change
-                             layer list|diff|extract|rollback-to   post-mortem the layer chain
-
-                           build options:
-                             -s <iso|folder> -i <index>            source and image index
-                             --plan <id> [--plan ...]              select plans
-                             --set planId.parameter=value [--set ...] set plan parameters
-                             --profile <file>                      load a selection profile
-                             --out wim|esd|vhdx                    image output (default esd)
-                             --iso                                 package WIM/ESD media as a bootable ISO
-                             -o <dir>                              output root (default ./out)
-                             --base-vhdx-mb <mb>                    maximum dynamic base VHDX size
-                             [--fast] [--no-evidence] [--continue-on-error] [--keep-layers] [--dry-run]
-                                                       [--no-layers] [--resume [workspace]]
-                             [--oscdimg <path>] [--json-events]
-
-                           Without --out/--iso, the default remains ESD media plus a bootable ISO.
-
-                           examples:
-                             tinywin2 inspect D:\iso\server2025.iso
-                             tinywin2 build -s D:\iso\server2025.iso -i 1 --plan appx.xbox --plan service.workstation --set service.workstation.startMode=manual
-                             tinywin2 layer diff out/work/<buildId> 2 3 --deep
-                           """);
     }
 }

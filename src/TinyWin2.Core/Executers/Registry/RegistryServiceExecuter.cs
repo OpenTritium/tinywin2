@@ -74,8 +74,7 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             .ToList();
         var resolved = new List<string>(options.Services);
         foreach (var pattern in options.ServicePatterns) {
-            var regex = LikePattern.ToRegex(pattern);
-            var matches = allNames.Where(n => regex.IsMatch(n)).ToList();
+            var matches = allNames.Where(n => LikePattern.IsMatch(pattern, n)).ToList();
             if (matches.Count == 0) {
                 context.Log.Warn($"no services matched pattern '{pattern}' in {controlSet}; skipping.");
             }

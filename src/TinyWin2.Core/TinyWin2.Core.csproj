@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="TinyWin2.Core.Tests"/>
+    <InternalsVisibleTo Include="TinyWin2.Benchmarks"/>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="System.IO.Hashing" Version="10.0.11"/>

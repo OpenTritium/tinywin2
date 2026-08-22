@@ -92,7 +92,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         WriteRegistryProbePlan(plansDir);
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var log = new BuildLog();
-        using var logSink = log.UseSerilog(Path.Combine(_root, "it-mini.log"), true);
+        using var logSink = log.UseSerilog(Path.Combine(_root, "it-mini.log"));
         var engine = new BuildEngine(runner, executers, backend, log);
         var result = await engine.BuildAsync(new() {
             SourcePath = sourcePath,

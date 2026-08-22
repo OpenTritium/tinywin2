@@ -1,28 +1,21 @@
-using System.Text.Encodings.Web;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using TinyWin2.Core;
 using TinyWin2.Core.Env;
 
 namespace TinyWin2.Cli.Commands;
 
-internal static class DoctorCommand {
-    internal static readonly JsonSerializerOptions JsonSerializerOptions = new() {
-        WriteIndented = true,
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-    };
-
-    public static int Run(Dictionary<string, string> options) {
+internal static class DoctorHandler {
+    public static int Execute(DoctorRequest request) {
         if (!OperatingSystem.IsWindows()) {
             Console.Error.WriteLine("error: tinywin2 requires Windows (DISM/diskpart/VHDX).");
             return 3;
         }
 
-        var json = options.ContainsKey("json");
-        var checks = EnvironmentDoctor.Check(options.GetValueOrDefault("out"));
+        var checks = EnvironmentDoctor.Check(request.OutputDirectory);
+        var json = request.Json;
         if (json) {
             var root = new JsonObject { ["checks"] = Json.ToNode(checks) };
-            Console.WriteLine(root.ToJsonString(JsonSerializerOptions));
+            Console.WriteLine(root.ToJsonString(Cli.JsonSerializerOptions));
             var failed = checks.Any(c => c is { Required: true, Ok: false });
             return failed ? 1 : 0;
         }

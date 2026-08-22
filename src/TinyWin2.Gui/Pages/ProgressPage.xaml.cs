@@ -48,21 +48,21 @@ public sealed partial class ProgressPage {
     private List<string> BuildArguments() {
         var arguments = new List<string> {
             "build",
-            "-s", State.SourcePath,
-            "-i", State.SelectedIndex!.Index.ToString(),
-            "--out", State.OutputFormat,
+            "--source", State.SourcePath,
+            "--index", State.SelectedIndex!.Index.ToString(),
+            "--output-format", State.OutputFormat,
             "--json-events"
         };
         if (State.OutputRoot.Length > 0) {
-            arguments.AddRange(["-o", State.OutputRoot]);
+            arguments.AddRange(["--output-dir", State.OutputRoot]);
         }
 
         if (State.Fast) {
             arguments.Add("--fast");
         }
 
-        if (!State.CreateIso) {
-            arguments.Add("--no-iso");
+        if (State.CreateIso) {
+            arguments.Add("--iso");
         }
 
         foreach (var (planId, parameters) in State.CollectSelections()) {

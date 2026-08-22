@@ -127,7 +127,7 @@ public sealed class BuildEngine(
         }
 
         if (options is { NoLayers: true, ResumeWorkspace: not null }) {
-            throw new InvalidOperationException("--no-layers cannot resume: no layer chain is kept to reuse.");
+            throw new InvalidOperationException("--single-layer cannot resume: no layer chain is kept to reuse.");
         }
 
         RunDoctor(options);
@@ -749,7 +749,7 @@ public sealed class BuildEngine(
     private static void ValidateOutputOptions(BuildOptions options) {
         if (options is { CreateIso: true, OutputFormat: OutputFormat.Vhdx }) {
             throw new ArgumentException(
-                "ISO packaging requires WIM or ESD output; use --out esd --iso or --out wim --iso.");
+                "ISO packaging requires WIM or ESD output; use --output-format esd --iso or --output-format wim --iso.");
         }
     }
 

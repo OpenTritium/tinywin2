@@ -5,21 +5,15 @@ using TinyWin2.Core.Pipeline;
 
 namespace TinyWin2.Cli.Commands;
 
-internal static class InspectCommand {
-    public static async Task<int> RunAsync(List<string> args) {
-        var options = Program.ParseOptions(args);
-        if (args.Count == 0 || args[0].StartsWith("--")) {
-            await Console.Error.WriteLineAsync("usage: tinywin2 inspect <iso|folder> [--json]");
-            return 2;
-        }
-
-        var source = args[0];
+internal static class InspectHandler {
+    public static async Task<int> ExecuteAsync(InspectRequest request) {
+        var source = request.Source;
         var log = new BuildLog();
         var resolver = new SourceImageResolver(new ProcessRunner(), log);
         var media = await resolver.ResolveAsync(source, CancellationToken.None);
         try {
             var indexes = await resolver.GetIndexesAsync(media.InstallImagePath, CancellationToken.None);
-            if (options.ContainsKey("json")) {
+            if (request.Json) {
                 var root = new JsonObject {
                     ["source"] = source,
                     ["installImage"] = media.InstallImagePath,
@@ -34,7 +28,7 @@ internal static class InspectCommand {
                         ["sizeBytes"] = i.SizeBytes
                     }).ToArray())
                 };
-                Console.WriteLine(root.ToJsonString(DoctorCommand.JsonSerializerOptions));
+                Console.WriteLine(root.ToJsonString(Cli.JsonSerializerOptions));
                 return 0;
             }
 
