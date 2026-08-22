@@ -45,4 +45,11 @@
   <ItemGroup>
     <ProjectReference Include="..\TinyWin2.Core\TinyWin2.Core.csproj"/>
   </ItemGroup>
+  <Target Name="CopyGuiPriToPublish" AfterTargets="Publish">
+    <Copy
+      SourceFiles="$(TargetDir)$(TargetName).pri"
+      DestinationFolder="$(PublishDir)"
+      SkipUnchangedFiles="true"
+      Condition="Exists('$(TargetDir)$(TargetName).pri')"/>
+  </Target>
 </Project>

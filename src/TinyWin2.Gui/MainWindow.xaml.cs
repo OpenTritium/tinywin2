@@ -31,15 +31,13 @@ public sealed partial class MainWindow {
     }
 
     private void UpdateSteps(int current) {
-        SetStep(Step1, current switch { 1 => StepState.Active, > 1 => StepState.Done, _ => StepState.Idle });
-        SetStep(Step2, current switch { 2 => StepState.Active, > 2 => StepState.Done, _ => StepState.Idle });
-        SetStep(Step3, current switch { 3 => StepState.Active, > 3 => StepState.Done, _ => StepState.Idle });
-        SetStep(Step4, current switch { 4 => StepState.Active, _ => StepState.Idle });
+        SetStep(Step1Dot, Step1Text, current switch { 1 => StepState.Active, > 1 => StepState.Done, _ => StepState.Idle });
+        SetStep(Step2Dot, Step2Text, current switch { 2 => StepState.Active, > 2 => StepState.Done, _ => StepState.Idle });
+        SetStep(Step3Dot, Step3Text, current switch { 3 => StepState.Active, > 3 => StepState.Done, _ => StepState.Idle });
+        SetStep(Step4Dot, Step4Text, current switch { 4 => StepState.Active, _ => StepState.Idle });
     }
 
-    private static void SetStep(StackPanel panel, StepState state) {
-        var dot = (Ellipse)panel.Children[0];
-        var text = (TextBlock)panel.Children[1];
+    private static void SetStep(Ellipse dot, TextBlock text, StepState state) {
         (dot.Fill, text.Foreground) = state switch {
             StepState.Active => (new(ActiveColor), new(ActiveColor)),
             StepState.Done => (new(DoneColor), new(DoneColor)),
