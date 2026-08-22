@@ -3,12 +3,9 @@ using System.Text;
 
 namespace TinyWin2.Core.Hashing;
 
-/// <summary>Fast, versioned fingerprints for cache and resume decisions.</summary>
+/// <summary>Fast XXH3 fingerprints for cache and resume decisions.</summary>
 public static class Fingerprinting {
-    public const string Algorithm = "xxh3-v1";
-
-    public static bool IsCurrent(string? fingerprint) =>
-        fingerprint?.StartsWith(Algorithm + ":", StringComparison.Ordinal) == true;
+    public const string Algorithm = "xxh3";
 
     public static string Compute(string value) => Compute(Encoding.UTF8.GetBytes(value));
 
@@ -27,5 +24,5 @@ public static class Fingerprinting {
         return Format(hasher.GetCurrentHashAsUInt64());
     }
 
-    private static string Format(ulong value) => Algorithm + ":" + value.ToString("x16");
+    private static string Format(ulong value) => value.ToString("x16");
 }

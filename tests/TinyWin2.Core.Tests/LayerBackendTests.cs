@@ -262,28 +262,6 @@ public sealed class LayerBackendTests : IDisposable {
     }
 
     [Test]
-    public async Task LoadRejectsLegacyFingerprintManifest() {
-        var directory = TestPlans.CreateTempDirectory();
-        try {
-            var timestamp = DateTimeOffset.UtcNow.ToString("O");
-            var baseLayer =
-                $"{{\"index\":0,\"vhdx\":\"base.vhdx\",\"status\":\"committed\",\"startedUtc\":\"{timestamp}\"}}";
-            File.WriteAllText(
-                Path.Combine(directory, "layers.json"),
-                $"{{\"layers\":[{baseLayer}],\"fingerprintAlgorithm\":\"legacy-v0\"}}");
-
-            var ex = Assert.Throws<IOException>(() =>
-                VhdLayerStack.Load(directory, new FakeLayerBackend(), new Logging.BuildLog()));
-
-            await Assert.That(ex.Message).Contains("unsupported fingerprint algorithm");
-            await Assert.That(ex.Message).Contains("delete it and rebuild");
-        }
-        finally {
-            try { Directory.Delete(directory, recursive: true); } catch { /* best effort */ }
-        }
-    }
-
-    [Test]
     public async Task DuplicateRegistrationIsRejected() {
         var ex = Assert.Throws<InvalidOperationException>(() =>
             new ExecuterRegistry([new FakeExecuter("dup.resource", fail: false), new FakeExecuter("dup.resource", fail: false)]));

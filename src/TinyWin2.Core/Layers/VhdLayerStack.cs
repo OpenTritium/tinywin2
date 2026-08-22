@@ -34,7 +34,7 @@ public sealed record LayerRecord {
     public DateTimeOffset? EndedUtc { get; init; }
     public JsonObject? OperationResult { get; init; }
 
-    /// <summary>Versioned fingerprint of the step's exec specs and assets.</summary>
+    /// <summary>XXH3 fingerprint of the step's exec specs and assets.</summary>
     public string? StepFingerprint { get; init; }
 
     public string? Error { get; init; }
@@ -174,13 +174,6 @@ public sealed class VhdLayerStack(
             }
 
             ValidateRecords(records);
-            var fingerprintAlgorithm = root["fingerprintAlgorithm"]?.GetValue<string>();
-            if (!string.Equals(fingerprintAlgorithm, Fingerprinting.Algorithm, StringComparison.Ordinal)) {
-                throw new IOException(
-                    $"layer workspace '{stack.WorkDirectory}' uses an unsupported fingerprint algorithm; " +
-                    "delete it and rebuild.");
-            }
-
             lock (stack._gate) {
                 stack._records.AddRange(records);
                 stack._nextIndex = ReadNextIndex(root, records, stack.WorkDirectory);
@@ -214,7 +207,6 @@ public sealed class VhdLayerStack(
             }
 
             var root = new JsonObject {
-                ["fingerprintAlgorithm"] = Fingerprinting.Algorithm,
                 ["layers"] = layers,
                 ["nextIndex"] = _nextIndex,
                 ["baseReady"] = _baseReady,
@@ -402,11 +394,6 @@ public sealed class VhdLayerStack(
             }
             else if (!string.Equals(_sourceFingerprint, sourceFingerprint, StringComparison.Ordinal)
                      || _sourceIndex != sourceIndex) {
-                if (Fingerprinting.IsCurrent(sourceFingerprint) && !Fingerprinting.IsCurrent(_sourceFingerprint)) {
-                    throw new IOException(
-                        $"layer workspace '{WorkDirectory}' uses a legacy fingerprint format; delete it and rebuild.");
-                }
-
                 throw new IOException(
                     $"layer workspace '{WorkDirectory}' belongs to a different source image or index; " +
                     "start a clean build instead of resuming it.");

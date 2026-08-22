@@ -130,7 +130,7 @@ public sealed class OutputBuilderTests : IDisposable {
         await File.WriteAllTextAsync(file, "abc");
         var hash = await OutputBuilder.ComputeHashAsync(file, CancellationToken.None);
         await Assert.That(hash).IsEqualTo(await Fingerprinting.ComputeFileAsync(file, CancellationToken.None));
-        await Assert.That(hash).StartsWith("xxh3-v1:");
+        await Assert.That(hash).Length().IsEqualTo(16);
     }
 
     private string CreateMediaSource() {

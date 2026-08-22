@@ -7,14 +7,12 @@ public sealed class FingerprintingTests : IDisposable {
     private readonly string _root = TestPlans.CreateTempDirectory();
 
     [Test]
-    public async Task FingerprintsAreVersionedAndStable() {
+    public async Task FingerprintsAreStable() {
         var first = Fingerprinting.Compute("tinywin2");
         var second = Fingerprinting.Compute(Encoding.UTF8.GetBytes("tinywin2"));
 
         await Assert.That(first).IsEqualTo(second);
-        await Assert.That(first).StartsWith("xxh3-v1:");
-        await Assert.That(Fingerprinting.IsCurrent(first)).IsTrue();
-        await Assert.That(Fingerprinting.IsCurrent("ba7816bf")).IsFalse();
+        await Assert.That(first).Length().IsEqualTo(16);
     }
 
     [Test]

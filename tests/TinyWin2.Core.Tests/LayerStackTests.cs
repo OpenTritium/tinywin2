@@ -408,8 +408,8 @@ public sealed class BuildEngineDryRunTests : IDisposable {
         var manifest = JsonNode.Parse(await File.ReadAllTextAsync(result.ManifestPath))!.AsObject();
         await Assert.That(manifest["outputFormat"]!.GetValue<string>()).IsEqualTo("vhdx");
         await Assert.That(manifest["output"]!["path"]!.GetValue<string>()).IsEqualTo(result.OutputPath);
-        await Assert.That(manifest["output"]!["hashAlgorithm"]!.GetValue<string>()).IsEqualTo("xxh3-v1");
-        await Assert.That(manifest["output"]!["hash"]!.GetValue<string>()).StartsWith("xxh3-v1:");
+        await Assert.That(manifest["output"]!["hashAlgorithm"]!.GetValue<string>()).IsEqualTo("xxh3");
+        await Assert.That(manifest["output"]!["hash"]!.GetValue<string>()).Length().IsEqualTo(16);
         await Assert.That(manifest["installImage"]).IsNull();
     }
 

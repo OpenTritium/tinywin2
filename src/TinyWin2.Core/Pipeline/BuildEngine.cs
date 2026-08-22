@@ -497,11 +497,6 @@ public sealed class BuildEngine(
                         && r.VhdxFileName != "base.vhdx")
             .OrderBy(r => r.Index)
             .ToList();
-        if (checkpoints.Any(r => !Fingerprinting.IsCurrent(r.StepFingerprint))) {
-            throw new InvalidOperationException(
-                "the resume workspace uses legacy step fingerprints; delete it and rebuild.");
-        }
-
         var fingerprints = new string[plan.Steps.Count];
         for (var index = 0; index < plan.Steps.Count; index++) {
             fingerprints[index] = await FingerprintAsync(plan.Steps[index], plansDirectory, assetFingerprints, ct);
@@ -689,7 +684,6 @@ public sealed class BuildEngine(
         var manifest = new JsonObject {
             ["schemaVersion"] = 5,
             ["tool"] = "TinyWin2",
-            ["fingerprintAlgorithm"] = Fingerprinting.Algorithm,
             ["buildId"] = buildId,
             ["createdUtc"] = DateTimeOffset.UtcNow.ToString("O"),
             ["sourcePath"] = Path.GetFullPath(options.SourcePath),
