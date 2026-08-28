@@ -1,0 +1,20 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "appx.print-residuals",
+  "version": "1.0.0",
+  "title": "移除打印队列和打印对话框 AppX 残留",
+  "description": "移除 Windows.PrintDialog 与 Microsoft.Windows.PrintQueueActionCenter Inbox SystemApp 注册和目录；打印设置、打印队列操作中心及相关 AppX 入口不可用，不影响远程桌面。",
+  "category": "Devices",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "appx.system",
+    "action": "remove",
+    "spec": {
+      "patterns": [
+        "Windows.PrintDialog*",
+        "Microsoft.Windows.PrintQueueActionCenter*"
+      ]
+    }
+  }
+}

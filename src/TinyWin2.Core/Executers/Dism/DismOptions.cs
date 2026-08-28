@@ -7,12 +7,17 @@ namespace TinyWin2.Core.Executers.Dism;
 public sealed record FeatureOptions {
     public required IReadOnlyList<string> Features { get; init; }
     public bool RemovePayload { get; private init; } = true;
+    public bool ForceExplicit { get; private init; }
 
     public static FeatureOptions FromDesired(JsonObject desired) {
         var features = Desired.RequiredStringArray(desired, "features", "dism.feature");
         return features.Count == 0
             ? throw new ExecException("dism.feature requires at least one feature name.")
-            : new() { Features = features, RemovePayload = Desired.OptionalBool(desired, "removePayload", true) };
+            : new() {
+                Features = features,
+                RemovePayload = Desired.OptionalBool(desired, "removePayload", true),
+                ForceExplicit = Desired.OptionalBool(desired, "forceExplicit", false)
+            };
     }
 }
 

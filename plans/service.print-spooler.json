@@ -12,7 +12,11 @@
     "action": "configure",
     "spec": {
       "services": [
-        "Spooler"
+        "Spooler",
+        "PrintScanBrokerService"
+      ],
+      "servicePatterns": [
+        "PrintWorkflowUserSvc*"
       ],
       "start": "disabled"
     }

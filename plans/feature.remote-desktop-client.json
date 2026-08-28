@@ -3,8 +3,8 @@
   "schemaVersion": 3,
   "id": "feature.remote-desktop-client",
   "version": "3.0.0",
-  "title": "移除现代远程桌面客户端基础结构",
-  "description": "移除 Microsoft Remote Desktop Client 基础结构；现代远程桌面客户端可能无法运行。",
+  "title": "移除远程桌面客户端功能",
+  "description": "移除 Microsoft-RemoteDesktopConnection 可选功能；远程桌面客户端组件不可用。",
   "category": "Remote Access",
   "riskLevel": "Medium",
   "operation": {
@@ -12,8 +12,9 @@
     "action": "remove",
     "spec": {
       "features": [
-        "MSRDC-Infrastructure"
+        "Microsoft-RemoteDesktopConnection"
       ],
+      "forceExplicit": true,
       "removePayload": true
     }
   }

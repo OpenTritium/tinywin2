@@ -4,7 +4,7 @@
   "id": "feature.printing",
   "version": "3.0.0",
   "title": "移除打印与 Microsoft Print to PDF",
-  "description": "移除本地打印客户端、图形打印组件和 Microsoft Print to PDF。",
+  "description": "移除本地打印客户端、打印基础结构、Internet Printing Client、图形打印组件和 Microsoft Print to PDF；不移除远程桌面功能。",
   "category": "Devices",
   "riskLevel": "High",
   "operation": {
@@ -12,6 +12,8 @@
     "action": "remove",
     "spec": {
       "features": [
+        "Printing-Foundation-Features",
+        "Printing-Foundation-InternetPrinting-Client",
         "Printing-Client",
         "Printing-Client-Gui",
         "Printing-PrintToPDFServices-Features",

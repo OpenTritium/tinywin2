@@ -1,0 +1,28 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "fs.remote-desktop-residuals",
+  "version": "1.0.0",
+  "title": "移除远程桌面客户端和核心文件",
+  "description": "移除 mstsc、RDP ActiveX、RDP 输入/剪贴板程序和 TermService 核心库；远程桌面客户端、远程桌面服务和 RDP 重定向不可用，本地控制台桌面保留。",
+  "category": "Remote Access",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "fs.path",
+    "action": "remove",
+    "spec": {
+      "paths": [
+        "Windows\\System32\\termsrv.dll",
+        "Windows\\System32\\mstsc.exe",
+        "Windows\\System32\\mstscax.dll",
+        "Windows\\System32\\rdpclip.exe",
+        "Windows\\System32\\rdpinput.exe",
+        "Windows\\System32\\*\\mstsc.exe.mui",
+        "Windows\\System32\\*\\mstscax.dll.mui",
+        "Windows\\System32\\*\\termsrv.dll.mui",
+        "Windows\\System32\\*\\rdpclip.exe.mui",
+        "Windows\\System32\\*\\rdpinput.exe.mui"
+      ]
+    }
+  }
+}

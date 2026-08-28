@@ -3,8 +3,8 @@
   "schemaVersion": 3,
   "id": "service.remote-desktop-services",
   "version": "3.0.0",
-  "title": "禁用远程桌面服务",
-  "description": "远程桌面服务及会话环境服务改为手动启动：默认不运行、RDP 入站不监听，但系统可在需要时拉起。注意：不得设为 disabled —— Server 2025 Desktop Experience 的交互登录依赖这些服务，禁用会卡死在『请等候本地会话管理器』。",
+  "title": "移除远程桌面服务启动能力",
+  "description": "禁用 TermService、SessionEnv 和 UmRdpService，关闭 RDP 入站及远程桌面会话环境；本地控制台登录和桌面 Shell 保留，远程桌面功能不可用。",
   "category": "Remote Management",
   "riskLevel": "High",
   "operation": {
@@ -16,7 +16,7 @@
         "SessionEnv",
         "UmRdpService"
       ],
-      "start": "manual"
+      "start": "disabled"
     }
   }
 }

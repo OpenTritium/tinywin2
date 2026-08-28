@@ -26,8 +26,14 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterB
             StringComparer.OrdinalIgnoreCase);
         foreach (var feature in options.Features) {
             if (!states.TryGetValue(feature, out var state)) {
-                context.Log.Info($"feature '{feature}' is not present in this image; skipping.");
-                yield return new(feature, SkipReason: "feature not present in image");
+                if (options.ForceExplicit) {
+                    context.Log.Info($"feature '{feature}' is not listed; attempting explicit removal.");
+                    yield return new(feature, Before: "feature not listed");
+                }
+                else {
+                    context.Log.Info($"feature '{feature}' is not present in this image; skipping.");
+                    yield return new(feature, SkipReason: "feature not present in image");
+                }
             }
             else if (state.Contains("Removed", StringComparison.OrdinalIgnoreCase)
                      || (state.Contains("Disabled", StringComparison.OrdinalIgnoreCase) && !options.RemovePayload)) {

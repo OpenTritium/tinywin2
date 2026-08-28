@@ -83,6 +83,19 @@ public sealed class FeatureExecuterTests : IDisposable {
                 ("features", new JsonArray("AnyFeature"))), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsTrue();
     }
+
+    [Test]
+    public async Task ForceExplicitRemovesFeatureOmittedFromOfflineListing() {
+        SetupFeatures(("OtherFeature", "Enabled"));
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
+                ("features", new JsonArray("Microsoft-RemoteDesktopConnection")),
+                ("forceExplicit", true)), CancellationToken.None);
+        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        var disable = _harness.Runner.Calls.First(c => c.Args.Contains("/Disable-Feature"));
+        await Assert.That(string.Join(" ", disable.Args))
+            .Contains("/FeatureName:Microsoft-RemoteDesktopConnection");
+    }
 }
 
 public sealed class CapabilityAndPackageTests : IDisposable {

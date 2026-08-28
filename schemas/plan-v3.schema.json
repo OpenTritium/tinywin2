@@ -464,6 +464,11 @@
         "removePayload": {
           "type": "boolean",
           "default": true
+        },
+        "forceExplicit": {
+          "type": "boolean",
+          "default": false,
+          "description": "Attempt an explicitly named feature even when the offline feature listing omits it. Use only for a verified target whose online DISM identity is known."
         }
       }
     },
