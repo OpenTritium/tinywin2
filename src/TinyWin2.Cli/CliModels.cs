@@ -12,7 +12,7 @@ internal sealed record DoctorRequest(string Workspace, bool Json);
 
 internal sealed record InspectRequest(string Input, bool Json);
 
-internal sealed record ValidateRequest(string Input, string Kind, bool Json);
+internal sealed record ValidateRequest(string Input, string? Kind, bool Json);
 
 internal sealed record PlanListRequest(string? PlansDirectory, string? Category, bool Json);
 

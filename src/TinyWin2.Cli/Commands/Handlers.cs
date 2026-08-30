@@ -208,7 +208,7 @@ internal static class PreviewHandler {
 internal static class ValidateHandler {
     public static async Task<int> ExecuteAsync(ValidateRequest request) {
         var input = Path.GetFullPath(request.Input);
-        var kind = request.Kind.ToLowerInvariant() switch {
+        SourceInputKind? assertedKind = request.Kind?.ToLowerInvariant() switch {
             "image" => SourceInputKind.Image,
             "media" => SourceInputKind.Media,
             "iso" => SourceInputKind.Iso,
@@ -217,11 +217,13 @@ internal static class ValidateHandler {
         var resolver = new SourceImageResolver(new ProcessRunner(), new());
         var source = await resolver.ResolveAsync(input, CancellationToken.None);
         try {
-            if (source.Kind != kind) {
+            // An explicit --kind is an assertion the input must satisfy; otherwise it is inferred.
+            if (assertedKind is { } expected && source.Kind != expected) {
                 throw new ArgumentException(
                     $"input '{input}' is {source.Kind.ToString().ToLowerInvariant()}, not {request.Kind}");
             }
 
+            var kind = source.Kind;
             if (kind != SourceInputKind.Image) {
                 OutputBuilder.ValidateBootMedia(source.MediaRootPath!);
                 await new SetupImageContractValidator(new ProcessRunner(), new())
@@ -232,7 +234,7 @@ internal static class ValidateHandler {
             if (request.Json) {
                 Console.WriteLine(new JsonObject {
                     ["input"] = input,
-                    ["kind"] = request.Kind,
+                    ["kind"] = kind.ToString().ToLowerInvariant(),
                     ["installImage"] = source.InstallImagePath,
                     ["bootable"] = kind != SourceInputKind.Image,
                     ["indexes"] = new JsonArray(indexes.Select(index => (JsonNode)new JsonObject {
@@ -245,7 +247,7 @@ internal static class ValidateHandler {
             }
             else {
                 Console.WriteLine(
-                    $"valid {request.Kind}: {indexes.Count} index(es), install image {source.InstallImagePath}");
+                    $"valid {kind.ToString().ToLowerInvariant()}: {indexes.Count} index(es), install image {source.InstallImagePath}");
             }
 
             return 0;

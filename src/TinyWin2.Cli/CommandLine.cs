@@ -122,7 +122,7 @@ internal static class CommandLine {
     private static Command Validate() {
         var command = new Command("validate", "validate a built image or bootable media input");
         var input = RequiredText("--input", "image, media folder, or ISO to validate");
-        var kind = RequiredText("--kind", "validation kind: image, media, or iso");
+        var kind = Text("--kind", "assert the input kind: image, media, or iso; inferred from the input when omitted");
         kind.AcceptOnlyFromAmong("image", "media", "iso");
         var json = Flag("--json", "write machine-readable JSON");
         command.Add(input);
@@ -130,7 +130,7 @@ internal static class CommandLine {
         command.Add(json);
         command.SetAction(result => ValidateHandler.ExecuteAsync(new(
             result.GetRequiredValue(input),
-            result.GetRequiredValue(kind),
+            result.GetValue(kind),
             result.GetValue(json))));
         return command;
     }
