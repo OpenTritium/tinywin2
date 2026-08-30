@@ -67,13 +67,7 @@ public sealed class PreviewRunner(
                 await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, WimCompression.Fast, false, ct);
                 log.Info("applying source image into the preview base layer");
                 await stack.ApplyImageToBaseAsync(async (mount, token) => {
-                    await runner.RunAsync("dism.exe",
-                        [
-                            "/English",
-                            "/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}",
-                            $"/ApplyDir:{mount}"
-                        ],
-                        new() { Timeout = TimeSpan.FromHours(2) }, token);
+                    await OutputBuilder.ApplyImageAsync(runner, stagingWim, options.ImageIndex, mount, token);
                 }, ct);
             }
             else {

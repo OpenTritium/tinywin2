@@ -253,12 +253,7 @@ public sealed class BuildEngine(
         await stack.EnsureBaseAsync(options.BaseVhdxMaximumMb, $"TinyWin2-{buildId}", ct);
         log.Info($"applying '{sourceIndex.Name}' (index {sourceIndex.Index}) into the base layer");
         await stack.ApplyImageToBaseAsync(async (mount, token) => {
-            await runner.RunAsync("dism.exe",
-                [
-                    "/English", "/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{options.ImageIndex}",
-                    $"/ApplyDir:{mount}"
-                ],
-                new() { Timeout = TimeSpan.FromHours(2) }, token);
+            await OutputBuilder.ApplyImageAsync(runner, stagingWim, options.ImageIndex, mount, token);
             if (captureEvidence) {
                 log.Info("capturing base-layer evidence snapshots (file manifest + registry)");
                 await LayerEvidence.CaptureAsync(mount, workspace, 0, runner, log, token);
@@ -499,28 +494,23 @@ public sealed class BuildEngine(
 
         log.Phase = BuildPhases.Capture;
         if (options.OutputFormat == OutputFormat.Esd) {
-            // Uncompressed staging + single compression in the export below avoids re-encoding twice.
-            var intermediate = Path.Combine(workspace, "install.intermediate.wim");
             log.Info("capturing an uncompressed intermediate WIM",
                 data: new() { ["progress"] = ProgressCapture });
-            await builder.CaptureWimAsync(mountPath, intermediate, sourceIndex.Name, sourceIndex.Description,
-                WimCompression.None, options.Export.VerifyCapture, options.Export.CheckIntegrity, ct);
-            var esdPath = Path.Combine(workspace, "install.esd");
             log.Phase = BuildPhases.Optimize;
             log.Info("optimizing the captured image with recovery-compressed ESD export",
                 data: new() { ["progress"] = ProgressOptimize });
-            await builder.ExportEsdAsync(intermediate, esdPath, options.Export.CheckIntegrity, ct);
-            return esdPath;
+            return await builder.CaptureInstallImageAsync(mountPath, sourceIndex.Name, sourceIndex.Description,
+                Path.Combine(workspace, "install.intermediate.wim"), Path.Combine(workspace, "install.esd"),
+                OutputFormat.Esd, options.Export, ct);
         }
 
-        var capturedWim = Path.Combine(workspace, "install.captured.wim");
         log.Info("capturing the final WIM", data: new() { ["progress"] = ProgressCapture });
-        await builder.CaptureWimAsync(mountPath, capturedWim, sourceIndex.Name, sourceIndex.Description,
-            options.Export.Compression, options.Export.VerifyCapture, options.Export.CheckIntegrity, ct);
         log.Phase = BuildPhases.Optimize;
         log.Info($"final WIM captured with {options.Export.DismCompression} compression",
             data: new() { ["progress"] = ProgressOptimize });
-        return capturedWim;
+        return await builder.CaptureInstallImageAsync(mountPath, sourceIndex.Name, sourceIndex.Description,
+            Path.Combine(workspace, "install.intermediate.wim"), Path.Combine(workspace, "install.captured.wim"),
+            OutputFormat.Wim, options.Export, ct);
     }
 
     private async Task ScanCbsAsync(string mountPath, CancellationToken ct) {

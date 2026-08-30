@@ -6,6 +6,54 @@ namespace TinyWin2.Core.Pipeline;
 
 /// <summary>Captures the final (or rolled-back) layer into the selected WIM/ESD output.</summary>
 public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
+    /// <summary>Applies a staged WIM index into a mounted target directory (the base-layer step).</summary>
+    public static async Task ApplyImageAsync(
+        IProcessRunner runner, string stagingWim, int imageIndex, string applyDir, CancellationToken ct) {
+        await runner.RunAsync("dism.exe",
+            [
+                "/English", "/Apply-Image", $"/ImageFile:{stagingWim}", $"/Index:{imageIndex}",
+                $"/ApplyDir:{applyDir}"
+            ],
+            new() { Timeout = TimeSpan.FromHours(2) }, ct);
+    }
+
+    /// <summary>
+    ///     Captures a mounted layer as the selected WIM or ESD. ESD output stages an
+    ///     uncompressed intermediate WIM first so recovery compression runs exactly once;
+    ///     the intermediate file is always deleted before returning.
+    /// </summary>
+    public async Task<string> CaptureInstallImageAsync(
+        string mountPath,
+        string imageName,
+        string? description,
+        string intermediateWimPath,
+        string destinationPath,
+        OutputFormat format,
+        ImageExportOptions export,
+        CancellationToken ct) {
+        try {
+            if (format == OutputFormat.Wim) {
+                await CaptureWimAsync(mountPath, destinationPath, imageName, description,
+                    export.Compression, export.VerifyCapture, export.CheckIntegrity, ct);
+                return destinationPath;
+            }
+
+            // Uncompressed staging + single compression in the export below avoids re-encoding twice.
+            await CaptureWimAsync(mountPath, intermediateWimPath, imageName, description,
+                WimCompression.None, verify: false, export.CheckIntegrity, ct);
+            await ExportEsdAsync(intermediateWimPath, destinationPath, export.CheckIntegrity, ct);
+            return destinationPath;
+        }
+        finally {
+            try {
+                File.Delete(intermediateWimPath);
+            }
+            catch {
+                /* best effort */
+            }
+        }
+    }
+
     /// <summary>Captures a mounted layer directory into a WIM.</summary>
     public async Task CaptureWimAsync(
         string mountPath,

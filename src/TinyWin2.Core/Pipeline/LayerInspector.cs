@@ -248,30 +248,11 @@ public sealed partial class LayerInspector(
         var operationSucceeded = false;
         try {
             var name = $"TinyWin2 layer {layerIndex:000}";
-            if (format == OutputFormat.Esd) {
-                var intermediate = Path.Combine(Path.GetTempPath(), $"tinywin2-rollback-{Guid.NewGuid():N}.wim");
-                try {
-                    // uncompressed staging: the recovery export re-encodes anyway
-                    await builder.CaptureWimAsync($"{letter}:\\", intermediate, name, null,
-                        WimCompression.None, false, export.CheckIntegrity, ct);
-                    await builder.ExportEsdAsync(intermediate, destinationPath, export.CheckIntegrity, ct);
-                }
-                finally {
-                    try {
-                        File.Delete(intermediate);
-                    }
-                    catch {
-                        /* best effort */
-                    }
-                }
-            }
-            else {
-                await builder.CaptureWimAsync($"{letter}:\\", destinationPath, name, null,
-                    export.Compression, export.VerifyCapture, export.CheckIntegrity, ct);
-            }
-
+            var intermediate = Path.Combine(Path.GetTempPath(), $"tinywin2-rollback-{Guid.NewGuid():N}.wim");
+            var captured = await builder.CaptureInstallImageAsync($"{letter}:\\", name, null, intermediate,
+                destinationPath, format, export, ct);
             operationSucceeded = true;
-            return destinationPath;
+            return captured;
         }
         finally {
             try {
