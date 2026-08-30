@@ -12,6 +12,13 @@ BenchmarkSwitcher
     .FromAssembly(typeof(LikePatternBenchmarks).Assembly)
     .Run(args, config);
 
+/// <summary>Regex form of the LikePattern dialect, benchmarked against the hand-rolled matcher.</summary>
+internal static class WildcardRegex {
+    public static Regex ToRegex(string pattern) => new(
+        "^" + Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", ".") + "$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+}
+
 [MemoryDiagnoser]
 public class LikePatternBenchmarks {
     private Regex _regex = null!;
@@ -31,11 +38,11 @@ public class LikePatternBenchmarks {
                 _ => $"W{index % 10}32Time"
             })
             .ToArray();
-        _regex = LikePattern.ToRegex(Pattern);
+        _regex = WildcardRegex.ToRegex(Pattern);
     }
 
     [Benchmark]
-    public Regex Compile() => LikePattern.ToRegex(Pattern);
+    public Regex Compile() => WildcardRegex.ToRegex(Pattern);
 
     [Benchmark]
     public int Match() {

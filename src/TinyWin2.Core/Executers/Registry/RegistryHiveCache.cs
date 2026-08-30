@@ -20,7 +20,8 @@ public sealed class RegistryHive(
     internal string KeyUnderHive(string keyPath) =>
         $"{HiveKey}\\{keyPath.Trim('\\')}";
 
-    internal string ValueUnderHive(string keyPath, string valueName) =>
+    /// <summary>Display path for change targets and logs: hive id (e.g. software\K\V), not the transient HKLM key.</summary>
+    internal string DisplayValuePath(string keyPath, string valueName) =>
         $@"{HiveId}\{keyPath.Trim('\\')}\{valueName}";
 }
 

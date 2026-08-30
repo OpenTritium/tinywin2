@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using TinyWin2.Core.Executers;
 
 namespace TinyWin2.Core.Tests;
@@ -18,6 +19,11 @@ public sealed class LikePatternTests {
         await Assert.That(LikePattern.IsMatch(pattern, value)).IsEqualTo(expected);
         await Assert.That(LikePattern.IsMatch(pattern, value.ToLowerInvariant()))
             .IsEqualTo(expected);
-        await Assert.That(LikePattern.ToRegex(pattern).IsMatch(value)).IsEqualTo(expected);
+        await Assert.That(RegexOracle(pattern).IsMatch(value)).IsEqualTo(expected);
     }
+
+    /// <summary>The regex form of the wildcard dialect — the oracle IsMatch was validated against.</summary>
+    private static Regex RegexOracle(string pattern) => new(
+        "^" + Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", ".") + "$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 }

@@ -84,7 +84,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
             var existing = result.Success
                 ? RegValues.ParseQueryValue(result.Output, string.IsNullOrEmpty(value.Name) ? "(Default)" : value.Name)
                 : null;
-            var display = hive.ValueUnderHive(value.Key, value.Name);
+            var display = hive.DisplayValuePath(value.Key, value.Name);
             if (operation.Action == OperationAction.Remove) {
                 if (existing is not null) {
                     changes.Add(new(

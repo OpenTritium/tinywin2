@@ -46,29 +46,8 @@ internal static class Cli {
 
         var selections = PlanSelectionMerger.Merge(
             profileSelections,
-            request.Plans.Select(planId => {
-                if (!catalog.ById.ContainsKey(planId)) {
-                    throw new ArgumentException($"unknown plan '{planId}' (see: tinywin2 plan list)");
-                }
-
-                return new PlanSelection(planId);
-            }));
-
-        void EnsureSelected(string planId) {
-            if (!catalog.ById.ContainsKey(planId)) {
-                throw new ArgumentException($"unknown plan '{planId}' (see: tinywin2 plan list)");
-            }
-
-            var existing = selections.FindIndex(s => s.PlanId == planId);
-            if (existing < 0) {
-                selections.Add(new(planId));
-            }
-            else if (!selections[existing].Enabled) {
-                throw new InvalidOperationException(
-                    $"plan '{planId}' is disabled by the selected profile; " +
-                    "remove the profile exclusion before enabling it explicitly.");
-            }
-        }
+            request.Plans.Select(planId => new PlanSelection(planId)),
+            catalog);
 
         foreach (var assignment in request.Sets) {
             var separator = assignment.IndexOf('=');
@@ -84,7 +63,7 @@ internal static class Cli {
 
             var planId = target[..dot];
             var parameterName = target[(dot + 1)..];
-            EnsureSelected(planId);
+            PlanSelectionMerger.EnsureSelected(selections, catalog, planId);
             var index = selections.FindIndex(s => s.PlanId == planId);
             var parameters = selections[index].Parameters as IDictionary<string, JsonNode?>
                              ?? new Dictionary<string, JsonNode?>();
