@@ -205,7 +205,7 @@ internal static class PreviewHandler {
     }
 }
 
-internal static class ValidateHandler {
+internal static class SourceValidateHandler {
     public static async Task<int> ExecuteAsync(ValidateRequest request) {
         var input = Path.GetFullPath(request.Input);
         SourceInputKind? assertedKind = request.Kind?.ToLowerInvariant() switch {
@@ -261,7 +261,7 @@ internal static class ValidateHandler {
 internal static class PackageHandler {
     public static async Task<int> CreateIsoAsync(PackageIsoRequest request) {
         var input = Path.GetFullPath(request.Input);
-        var image = Path.GetFullPath(request.Image);
+        var image = Path.GetFullPath(request.InstallImage);
         var output = Path.GetFullPath(request.Output);
         var workspace = Path.GetFullPath(request.Workspace);
         var oscdimg = Path.GetFullPath(request.Oscdimg);
@@ -274,7 +274,8 @@ internal static class PackageHandler {
             ? OutputFormat.Wim
             : image.EndsWith(".esd", StringComparison.OrdinalIgnoreCase)
                 ? OutputFormat.Esd
-                : throw new ArgumentException("--image must be a .wim or .esd file", nameof(request.Image));
+                : throw new ArgumentException("--install-image must be a .wim or .esd file",
+                    nameof(request.InstallImage));
         if (!output.EndsWith(".iso", StringComparison.OrdinalIgnoreCase)) {
             throw new ArgumentException("--output must end with .iso", nameof(request.Output));
         }
@@ -382,7 +383,7 @@ internal static class LayerHandler {
         return ExitCodes.Success;
     }
 
-    public static async Task<int> Rollback(LayerRollbackRequest request) {
+    public static async Task<int> Capture(LayerCaptureRequest request) {
         var log = new BuildLog();
         var (runner, _, layers) = Cli.CreateEngineParts();
         var inspector = new LayerInspector(runner, layers, log);

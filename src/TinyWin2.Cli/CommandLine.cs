@@ -12,9 +12,9 @@ internal static class CommandLine {
         root.SetAction(_ => help.Invoke(root.Parse(["--help"])));
         root.Add(Doctor());
         root.Add(Inspect());
+        root.Add(Source());
         root.Add(Plans());
         root.Add(Profiles());
-        root.Add(Validate());
         root.Add(Build());
         root.Add(Preview());
         root.Add(Package());
@@ -119,19 +119,23 @@ internal static class CommandLine {
         return command;
     }
 
-    private static Command Validate() {
-        var command = new Command("validate", "validate a built image or bootable media input");
+    private static Command Source() {
+        var command = new Command("source", "inspect or validate an installation source: image, media folder, or ISO");
+
+        var validate = new Command("validate", "check boot files, setup contract, and image indexes of a source");
         var input = RequiredText("--input", "image, media folder, or ISO to validate");
         var kind = Text("--kind", "assert the input kind: image, media, or iso; inferred from the input when omitted");
         kind.AcceptOnlyFromAmong("image", "media", "iso");
         var json = Flag("--json", "write machine-readable JSON");
-        command.Add(input);
-        command.Add(kind);
-        command.Add(json);
-        command.SetAction(result => ValidateHandler.ExecuteAsync(new(
+        validate.Add(input);
+        validate.Add(kind);
+        validate.Add(json);
+        validate.SetAction(result => SourceValidateHandler.ExecuteAsync(new(
             result.GetRequiredValue(input),
             result.GetValue(kind),
             result.GetValue(json))));
+
+        command.Add(validate);
         return command;
     }
 
@@ -224,14 +228,14 @@ internal static class CommandLine {
         var command = new Command("package", "package an explicit media input into a final artifact");
         var iso = new Command("iso", "create a bootable BIOS+UEFI ISO from media and a built image");
         var input = RequiredText("--input", "source ISO or extracted media folder");
-        var image = RequiredText("--image", "built install.wim or install.esd");
+        var installImage = RequiredText("--install-image", "built install.wim or install.esd");
         var output = RequiredText("--output", "destination .iso file");
         var workspace = RequiredText("--workspace", "temporary media staging directory");
         var oscdimg = RequiredText("--oscdimg", "path to oscdimg.exe");
         var unattended = Text("--unattend", "optional Autounattend.xml to place at the media root");
         var overwrite = Flag("--overwrite", "replace an existing ISO");
         iso.Add(input);
-        iso.Add(image);
+        iso.Add(installImage);
         iso.Add(output);
         iso.Add(workspace);
         iso.Add(oscdimg);
@@ -239,7 +243,7 @@ internal static class CommandLine {
         iso.Add(overwrite);
         iso.SetAction(result => PackageHandler.CreateIsoAsync(new(
             result.GetRequiredValue(input),
-            result.GetRequiredValue(image),
+            result.GetRequiredValue(installImage),
             result.GetRequiredValue(output),
             result.GetRequiredValue(workspace),
             result.GetRequiredValue(oscdimg),
@@ -291,33 +295,33 @@ internal static class CommandLine {
             result.GetRequiredValue(imagePath),
             result.GetRequiredValue(destination))));
 
-        var rollback = new Command("rollback", "capture a layer state as a WIM or ESD");
-        var rollbackWorkspace = RequiredText("--workspace", "build workspace directory");
-        var rollbackLayer = Required<int>("--layer", "layer index");
-        var rollbackOutput = RequiredText("--output", "destination .wim or .esd file");
-        var rollbackFormat = RequiredText("--format", "capture format");
-        rollbackFormat.AcceptOnlyFromAmong("wim", "esd");
-        var rollbackExport = AddExportOptions(rollback);
-        rollback.Add(rollbackWorkspace);
-        rollback.Add(rollbackLayer);
-        rollback.Add(rollbackOutput);
-        rollback.Add(rollbackFormat);
-        rollback.SetAction(result => LayerHandler.Rollback(new(
-            result.GetRequiredValue(rollbackWorkspace),
-            result.GetRequiredValue(rollbackLayer),
-            result.GetRequiredValue(rollbackOutput),
-            Cli.ParseCaptureFormat(result.GetRequiredValue(rollbackFormat)),
+        var capture = new Command("capture", "capture a layer state as a WIM or ESD without modifying the workspace");
+        var captureWorkspace = RequiredText("--workspace", "build workspace directory");
+        var captureLayer = Required<int>("--layer", "layer index");
+        var captureOutput = RequiredText("--output", "destination .wim or .esd file");
+        var captureFormat = RequiredText("--format", "capture format");
+        captureFormat.AcceptOnlyFromAmong("wim", "esd");
+        var captureExport = AddExportOptions(capture);
+        capture.Add(captureWorkspace);
+        capture.Add(captureLayer);
+        capture.Add(captureOutput);
+        capture.Add(captureFormat);
+        capture.SetAction(result => LayerHandler.Capture(new(
+            result.GetRequiredValue(captureWorkspace),
+            result.GetRequiredValue(captureLayer),
+            result.GetRequiredValue(captureOutput),
+            Cli.ParseCaptureFormat(result.GetRequiredValue(captureFormat)),
             Cli.ResolveExportOptions(
-                result.GetValue(rollbackExport.Fast),
-                result.GetValue(rollbackExport.Compression),
-                result.GetValue(rollbackExport.Verify),
-                result.GetValue(rollbackExport.NoVerify),
-                result.GetValue(rollbackExport.CheckIntegrity)))));
+                result.GetValue(captureExport.Fast),
+                result.GetValue(captureExport.Compression),
+                result.GetValue(captureExport.Verify),
+                result.GetValue(captureExport.NoVerify),
+                result.GetValue(captureExport.CheckIntegrity)))));
 
         command.Add(list);
         command.Add(diff);
         command.Add(extract);
-        command.Add(rollback);
+        command.Add(capture);
         return command;
     }
 

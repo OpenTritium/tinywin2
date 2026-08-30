@@ -77,14 +77,14 @@ internal sealed record LayerExtractRequest(
 
 internal sealed record PackageIsoRequest(
     string Input,
-    string Image,
+    string InstallImage,
     string Output,
     string Workspace,
     string Oscdimg,
     bool Overwrite,
     string? Unattended);
 
-internal sealed record LayerRollbackRequest(
+internal sealed record LayerCaptureRequest(
     string Workspace,
     int Layer,
     string Output,
