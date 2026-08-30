@@ -8,7 +8,7 @@ internal static class DoctorHandler {
     public static int Execute(DoctorRequest request) {
         if (!OperatingSystem.IsWindows()) {
             Console.Error.WriteLine("error: tinywin2 requires Windows (DISM/diskpart/VHDX).");
-            return 3;
+            return ExitCodes.UnsupportedPlatform;
         }
 
         var checks = EnvironmentDoctor.Check(request.Workspace);
@@ -24,7 +24,7 @@ internal static class DoctorHandler {
             };
             Console.WriteLine(root.ToJsonString(Cli.JsonSerializerOptions));
             var failed = checks.Any(c => c is { Required: true, Ok: false });
-            return failed ? 1 : 0;
+            return failed ? ExitCodes.Failure : ExitCodes.Success;
         }
 
         var width = Math.Max("administrator".Length, checks.Max(c => c.Name.Length));
@@ -42,6 +42,6 @@ internal static class DoctorHandler {
         Console.WriteLine(failedRequired == 0
             ? "environment is ready."
             : $"{failedRequired} required check(s) failed.");
-        return failedRequired == 0 ? 0 : 1;
+        return failedRequired == 0 ? ExitCodes.Success : ExitCodes.Failure;
     }
 }

@@ -8,13 +8,13 @@ internal static class ProfileHandler {
         var directory = ResolveProfilesDirectory(request.PlansDirectory, request.ProfilesDirectory);
         if (!Directory.Exists(directory)) {
             Console.WriteLine($"no profiles directory at {directory}");
-            return 0;
+            return ExitCodes.Success;
         }
 
         var files = Directory.GetFiles(directory, "*.json");
         if (files.Length == 0) {
             Console.WriteLine($"no profiles found in {directory}");
-            return 0;
+            return ExitCodes.Success;
         }
 
         foreach (var file in files.OrderBy(path => path, StringComparer.OrdinalIgnoreCase)) {
@@ -22,12 +22,12 @@ internal static class ProfileHandler {
             Console.WriteLine($"{Path.GetFileName(file),-34} {profile.Name,-24} {profile.Selections.Count} selections");
         }
 
-        return 0;
+        return ExitCodes.Success;
     }
 
     public static int Show(ProfileShowRequest request) {
         Console.WriteLine(ProfileStore.Load(request.File).ToJson().ToJsonString(Cli.JsonSerializerOptions));
-        return 0;
+        return ExitCodes.Success;
     }
 
     public static int Export(ProfileExportRequest request) {
@@ -39,7 +39,7 @@ internal static class ProfileHandler {
             selections);
         ProfileStore.Save(profile, request.Output);
         Console.WriteLine($"exported {profile.Selections.Count} selections → {request.Output}");
-        return 0;
+        return ExitCodes.Success;
     }
 
     public static int Validate(ProfileValidateRequest request) {
@@ -56,10 +56,10 @@ internal static class ProfileHandler {
         if (unknown.Count > 0) {
             Console.Error.WriteLine(
                 $"unknown plans (not valid with the current catalog): {string.Join(", ", unknown)}");
-            return 1;
+            return ExitCodes.Failure;
         }
 
-        return 0;
+        return ExitCodes.Success;
     }
 
     private static PlanCatalog LoadCatalog(string? plansDirectory) =>

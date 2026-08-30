@@ -26,7 +26,7 @@ internal static class PlanHandler {
                         new JsonArray(plan.Parameters.Select(parameter => (JsonNode)parameter.ToJson()).ToArray())
                 }).ToArray())
             }.ToJsonString(Cli.JsonSerializerOptions));
-            return 0;
+            return ExitCodes.Success;
         }
 
         string? currentCategory = null;
@@ -50,7 +50,7 @@ internal static class PlanHandler {
 
         Console.WriteLine();
         Console.WriteLine($"{plans.Count} plans. Details: tinywin2 plan show <id>");
-        return 0;
+        return ExitCodes.Success;
     }
 
     public static int Show(PlanShowRequest request) {
@@ -71,7 +71,7 @@ internal static class PlanHandler {
                 ["spec"] = operation.Spec.DeepClone()
             }).ToArray())
         }.ToJsonString(Cli.JsonSerializerOptions));
-        return 0;
+        return ExitCodes.Success;
     }
 
     private static PlanCatalog LoadCatalog(string? plansDirectory) =>

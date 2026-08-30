@@ -30,7 +30,7 @@ internal static class InspectHandler {
                     }).ToArray())
                 };
                 Console.WriteLine(root.ToJsonString(Cli.JsonSerializerOptions));
-                return 0;
+                return ExitCodes.Success;
             }
 
             Console.WriteLine($"input: {input} ({source.Kind.ToString().ToLowerInvariant()})");
@@ -42,7 +42,7 @@ internal static class InspectHandler {
                     $"{index.Index,-4} {Cli.Truncate(index.Name, 45),-45} {Cli.Truncate(index.EditionId ?? "-", 18),-18} {Cli.Truncate(index.Version ?? "-", 12),-12} {index.SizeBytes / 1024.0 / 1024:F0} MB");
             }
 
-            return 0;
+            return ExitCodes.Success;
         }
         finally {
             await resolver.DismountIsoAsync(source, CancellationToken.None);

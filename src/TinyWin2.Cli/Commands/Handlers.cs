@@ -104,11 +104,11 @@ internal static class BuildHandler {
                 }
             }
 
-            return 1;
+            return ExitCodes.Failure;
         }
         catch (OperationCanceledException) {
             await Console.Error.WriteLineAsync("cancelled.");
-            return 130;
+            return ExitCodes.Canceled;
         }
         finally {
             Console.CancelKeyPress -= OnCancel; // the handler outlives the disposed cts otherwise
@@ -192,11 +192,11 @@ internal static class PreviewHandler {
                 }
             }
 
-            return 0;
+            return ExitCodes.Success;
         }
         catch (OperationCanceledException) {
             await Console.Error.WriteLineAsync("preview cancelled.");
-            return 130;
+            return ExitCodes.Canceled;
         }
         finally {
             Console.CancelKeyPress -= onCancel;
@@ -250,7 +250,7 @@ internal static class ValidateHandler {
                     $"valid {kind.ToString().ToLowerInvariant()}: {indexes.Count} index(es), install image {source.InstallImagePath}");
             }
 
-            return 0;
+            return ExitCodes.Success;
         }
         finally {
             await resolver.DismountIsoAsync(source, CancellationToken.None);
@@ -319,7 +319,7 @@ internal static class PackageHandler {
             await builder.CreateIsoAsync(media, output, oscdimg, CancellationToken.None);
             Console.WriteLine($"ISO: {output}");
             Console.WriteLine($"media workspace: {workspace}");
-            return 0;
+            return ExitCodes.Success;
         }
         finally {
             await resolver.DismountIsoAsync(source, CancellationToken.None);
@@ -341,7 +341,7 @@ internal static class LayerHandler {
         var report = await inspector.DiffAsync(request.Workspace, request.From, request.To);
         if (request.Json) {
             Console.WriteLine(report.ToJson().ToJsonString(Cli.JsonSerializerOptions));
-            return 0;
+            return ExitCodes.Success;
         }
 
         Console.WriteLine(
@@ -369,7 +369,7 @@ internal static class LayerHandler {
             Console.WriteLine($"  … {report.Registry.Count - 40} more");
         }
 
-        return 0;
+        return ExitCodes.Success;
     }
 
     public static async Task<int> Extract(LayerExtractRequest request) {
@@ -379,7 +379,7 @@ internal static class LayerHandler {
         await inspector.ExtractAsync(request.Workspace, request.Layer, request.ImagePath, request.Destination,
             CancellationToken.None);
         Console.WriteLine("extracted.");
-        return 0;
+        return ExitCodes.Success;
     }
 
     public static async Task<int> Rollback(LayerRollbackRequest request) {
@@ -389,7 +389,7 @@ internal static class LayerHandler {
         var captured = await inspector.RollbackCaptureAsync(request.Workspace, request.Layer, request.Output,
             request.Format, request.Export, CancellationToken.None);
         Console.WriteLine($"captured layer state → {captured}");
-        return 0;
+        return ExitCodes.Success;
     }
 
     private static int PrintList(ILayerBackend layers, BuildLog log, string workDirectory, bool json) {
@@ -398,7 +398,7 @@ internal static class LayerHandler {
             Console.WriteLine(new JsonObject {
                 ["layers"] = new JsonArray(stack.Records.Select(r => (JsonNode)r.ToJson()).ToArray())
             }.ToJsonString(Cli.JsonSerializerOptions));
-            return 0;
+            return ExitCodes.Success;
         }
 
         Console.WriteLine($"layer chain in {workDirectory}");
@@ -412,6 +412,6 @@ internal static class LayerHandler {
             }
         }
 
-        return 0;
+        return ExitCodes.Success;
     }
 }

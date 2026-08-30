@@ -17,8 +17,12 @@ internal static class Program {
         catch (Exception ex) {
             Console.ForegroundColor = ConsoleColor.Red;
             await Console.Error.WriteLineAsync($"error: {ex.Message}");
+            if (Environment.GetEnvironmentVariable("TINYWIN2_DEBUG") is "1" or "true") {
+                await Console.Error.WriteLineAsync(ex.ToString());
+            }
+
             Console.ResetColor();
-            return 1;
+            return ExitCodes.Failure;
         }
     }
 }
