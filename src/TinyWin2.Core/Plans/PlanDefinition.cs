@@ -54,7 +54,7 @@ public sealed record PlanOperation(string Resource, OperationAction Action, Json
 
 /// <summary>A leaf plan definition loaded from <c>plans/*.json</c>.</summary>
 public sealed partial record PlanDefinition {
-    private const int CurrentSchemaVersion = 4;
+    private const int CurrentSchemaVersion = 5;
 
     private static readonly string[] RiskLevels = ["Low", "Medium", "High"];
 
@@ -346,7 +346,7 @@ public sealed partial record PlanDefinition {
         var actionText = ReadString(operationObj, "action", inner);
         if (!Enum.TryParse<OperationAction>(actionText, true, out var action)
             || !Enum.IsDefined(action)) {
-            inner.Add($"action '{actionText}' invalid (configure|set|remove|cleanup|copy).");
+            inner.Add($"action '{actionText}' invalid (apply|remove|cleanup).");
         }
 
         var spec = operationObj["spec"] as JsonObject;

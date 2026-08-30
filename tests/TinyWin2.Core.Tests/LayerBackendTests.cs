@@ -340,7 +340,7 @@ public sealed class LayerBackendTests : IDisposable {
     public async Task BindRejectsUnknownResources() {
         var registry = new ExecuterRegistry([new FakeExecuter("known.resource", false)]);
         var ex = Assert.Throws<ExecException>(() => registry.Bind(
-            new OperationSpec("ghost.resource", OperationAction.Set, [])));
+            new OperationSpec("ghost.resource", OperationAction.Apply, [])));
         await Assert.That(ex.Message).Contains("no executer registered for resource 'ghost.resource'");
     }
 

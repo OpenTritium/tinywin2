@@ -1,5 +1,5 @@
 {
-  "$schema": "../schemas/plan-v4.schema.json",
+  "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 4,
   "id": "service.xbox-gaming",
   "version": "3.0.0",
@@ -10,7 +10,7 @@
   "operations": [
     {
       "resource": "registry.service",
-      "action": "configure",
+      "action": "apply",
       "spec": {
         "services": [
           "XblAuthManager",

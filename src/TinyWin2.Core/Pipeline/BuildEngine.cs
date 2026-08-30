@@ -700,7 +700,7 @@ public sealed class BuildEngine(
         log.Info("writing build manifest");
         var outputMetadata = await FileMetadataAsync(outputPath, ct);
         var manifest = new JsonObject {
-            ["schemaVersion"] = 5,
+            ["schemaVersion"] = 6,
             ["tool"] = "TinyWin2",
             ["buildId"] = buildId,
             ["createdUtc"] = DateTimeOffset.UtcNow.ToString("O"),

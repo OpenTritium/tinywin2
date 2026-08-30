@@ -11,8 +11,8 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
     public string Resource => ResourceId;
 
     public object Bind(OperationSpec spec) {
-        if (spec.Action is not (OperationAction.Set or OperationAction.Remove)) {
-            throw new ExecException($"{ResourceId} supports actions 'set' and 'remove'.");
+        if (spec.Action is not (OperationAction.Apply or OperationAction.Remove)) {
+            throw new ExecException($"{ResourceId} supports actions 'apply' and 'remove'.");
         }
 
         return RegistryValueOptions.FromDesired(spec.Spec, spec.Action);

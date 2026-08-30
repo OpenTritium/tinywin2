@@ -26,7 +26,7 @@ public static class TestPlans {
 
     public static void WritePlan(string directory, string id, Action<JsonObject>? mutate = null) {
         var obj = new JsonObject {
-            ["schemaVersion"] = 4,
+            ["schemaVersion"] = 5,
             ["id"] = id,
             ["version"] = "1.0.0",
             ["title"] = $"Plan {id}",
@@ -51,7 +51,7 @@ public sealed class PlanDefinitionTests {
     [Test]
     public async Task ParsesValidPlanWithParameters() {
         var obj = new JsonObject {
-            ["schemaVersion"] = 4,
+            ["schemaVersion"] = 5,
             ["id"] = "service.workstation",
             ["version"] = "1.2.3",
             ["title"] = "Workstation",
@@ -71,7 +71,7 @@ public sealed class PlanDefinitionTests {
             }),
             ["operations"] = new JsonArray(new JsonObject {
                 ["resource"] = "registry.service",
-                ["action"] = "configure",
+                ["action"] = "apply",
                 ["spec"] = new JsonObject {
                     ["services"] = new JsonArray("LanmanWorkstation"),
                     ["start"] = "manual"
@@ -83,13 +83,13 @@ public sealed class PlanDefinitionTests {
         await Assert.That(plan.Category).IsEqualTo("Networking");
         await Assert.That(plan.Parameters.Count).IsEqualTo(1);
         await Assert.That(plan.Parameters[0].Default!.GetValue<string>()).IsEqualTo("delayed");
-        await Assert.That(plan.Operations[0].Action).IsEqualTo(OperationAction.Configure);
+        await Assert.That(plan.Operations[0].Action).IsEqualTo(OperationAction.Apply);
     }
 
     [Test]
     public async Task ParsesMultipleOperationsAcrossResources() {
         var obj = new JsonObject {
-            ["schemaVersion"] = 4,
+            ["schemaVersion"] = 5,
             ["id"] = "multi.op",
             ["version"] = "1.0.0",
             ["title"] = "t",
@@ -116,7 +116,7 @@ public sealed class PlanDefinitionTests {
 
     [Test]
     public async Task MissingRequiredFieldReportsError() {
-        var obj = new JsonObject { ["schemaVersion"] = 4, ["id"] = "ok.id", ["version"] = "1.0.0" };
+        var obj = new JsonObject { ["schemaVersion"] = 5, ["id"] = "ok.id", ["version"] = "1.0.0" };
         var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
         await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
         await Assert.That(ex.Message).Contains("'title'");
@@ -134,7 +134,7 @@ public sealed class PlanDefinitionTests {
     [Test]
     public async Task RejectsEmptyOperationsArray() {
         var obj = new JsonObject {
-            ["schemaVersion"] = 4,
+            ["schemaVersion"] = 5,
             ["id"] = "a.b",
             ["version"] = "1.0.0",
             ["title"] = "t",
@@ -150,7 +150,7 @@ public sealed class PlanDefinitionTests {
     [Test]
     public async Task RejectsInvalidSecondOperation() {
         var obj = new JsonObject {
-            ["schemaVersion"] = 4,
+            ["schemaVersion"] = 5,
             ["id"] = "a.b",
             ["version"] = "1.0.0",
             ["title"] = "t",
@@ -168,7 +168,7 @@ public sealed class PlanDefinitionTests {
     [Test]
     public async Task EnumParameterWithoutOptionsIsRejected() {
         var obj = new JsonObject {
-            ["schemaVersion"] = 4,
+            ["schemaVersion"] = 5,
             ["id"] = "a.b",
             ["version"] = "1.0.0",
             ["title"] = "t",
@@ -189,7 +189,7 @@ public sealed class PlanDefinitionTests {
     [Test]
     public async Task DefaultMustBeDeclaredOption() {
         var obj = new JsonObject {
-            ["schemaVersion"] = 4,
+            ["schemaVersion"] = 5,
             ["id"] = "a.b",
             ["version"] = "1.0.0",
             ["title"] = "t",
@@ -212,7 +212,7 @@ public sealed class PlanDefinitionTests {
     [Test]
     public async Task UnknownPlanFieldIsRejected() {
         var obj = new JsonObject {
-            ["schemaVersion"] = 4,
+            ["schemaVersion"] = 5,
             ["id"] = "a.b",
             ["version"] = "1.0.0",
             ["title"] = "t",

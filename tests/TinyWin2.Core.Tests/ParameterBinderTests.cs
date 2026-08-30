@@ -29,7 +29,7 @@ public sealed class ParameterBinderTests {
                 }
             }
         };
-        var operation = new PlanOperation("registry.service", OperationAction.Configure, spec);
+        var operation = new PlanOperation("registry.service", OperationAction.Apply, spec);
         var delayed = ParameterBinder.BindOperation(operation.Spec, Parameters(("startMode", "delayed")));
         var unknown = ParameterBinder.BindOperation(operation.Spec, Parameters(("startMode", "unexpected")));
         await Assert.That(delayed["start"]!.GetValue<string>()).IsEqualTo("delayedAuto");
@@ -46,7 +46,7 @@ public sealed class ParameterBinderTests {
                 }
             }
         };
-        var operation = new PlanOperation("registry.service", OperationAction.Configure, spec);
+        var operation = new PlanOperation("registry.service", OperationAction.Apply, spec);
         var ex = Assert.Throws<ParameterBindingException>(() =>
             ParameterBinder.BindOperation(operation.Spec, Parameters(("startMode", "manual"))));
         await Assert.That(ex.Message).Contains("no case for parameter 'startMode' value 'manual'");
@@ -58,7 +58,7 @@ public sealed class ParameterBinderTests {
             ["services"] = new JsonArray("A", new JsonObject { ["$parameter"] = "extra" }),
             ["nested"] = new JsonObject { ["deep"] = new JsonArray(new JsonObject { ["$parameter"] = "mode" }) }
         };
-        var operation = new PlanOperation("registry.service", OperationAction.Configure, spec);
+        var operation = new PlanOperation("registry.service", OperationAction.Apply, spec);
         var bound = ParameterBinder.BindOperation(operation.Spec, Parameters(("extra", "B"), ("mode", "auto")));
         await Assert.That(bound["services"]![1]!.GetValue<string>()).IsEqualTo("B");
         await Assert.That(bound["nested"]!["deep"]![0]!.GetValue<string>()).IsEqualTo("auto");

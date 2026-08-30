@@ -129,7 +129,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         TestPlans.WritePlan(plansDir, "it.registry-boom", o => {
             o["operations"] = new JsonArray(new JsonObject {
                 ["resource"] = "registry.value",
-                ["action"] = "set",
+                ["action"] = "apply",
                 ["spec"] = new JsonObject {
                     ["hive"] = "bogus",
                     ["key"] = "SOFTWARE\\X",
@@ -188,7 +188,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         TestPlans.WritePlan(plansDir, "it.fs-copy", o => {
             o["operations"] = new JsonArray(new JsonObject {
                 ["resource"] = "fs.path",
-                ["action"] = "copy",
+                ["action"] = "apply",
                 ["spec"] = new JsonObject {
                     ["path"] = "TinyWin2/pinned.txt",
                     ["source"] = "payload/pinned.txt"
@@ -228,7 +228,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         TestPlans.WritePlan(plansDir, "it.registry-probe", o => {
             o["operations"] = new JsonArray(new JsonObject {
                 ["resource"] = "registry.value",
-                ["action"] = "set",
+                ["action"] = "apply",
                 ["spec"] = new JsonObject {
                     ["hive"] = "software",
                     ["key"] = "SOFTWARE\\TinyWin2IT",

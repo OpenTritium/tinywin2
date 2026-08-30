@@ -12,8 +12,8 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
     public string Resource => ResourceId;
 
     public object Bind(OperationSpec spec) {
-        if (spec.Action is not (OperationAction.Remove or OperationAction.Copy)) {
-            throw new ExecException($"{ResourceId} supports actions 'remove' and 'copy'.");
+        if (spec.Action is not (OperationAction.Remove or OperationAction.Apply)) {
+            throw new ExecException($"{ResourceId} supports actions 'remove' and 'apply'.");
         }
 
         return FsPathOptions.FromDesired(spec.Spec, spec.Action);

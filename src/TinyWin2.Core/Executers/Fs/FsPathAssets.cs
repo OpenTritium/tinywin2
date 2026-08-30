@@ -10,7 +10,7 @@ namespace TinyWin2.Core.Executers.Fs;
 internal static class FsPathAssets {
     /// <summary>The copy source of an fs.path copy operation; null for anything else.</summary>
     internal static string? GetCopyAssetSource(OperationSpec operation) {
-        if (operation is not { Resource: "fs.path", Action: OperationAction.Copy }) {
+        if (operation is not { Resource: "fs.path", Action: OperationAction.Apply }) {
             return null;
         }
 

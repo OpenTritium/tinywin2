@@ -31,7 +31,7 @@ public sealed record RegistryValueOptions {
         }
 
         var deleteKeys = Desired.OptionalStringArray(desired, "deleteKeys") ?? [];
-        if (action == OperationAction.Set && deleteKeys.Count > 0) {
+        if (action == OperationAction.Apply && deleteKeys.Count > 0) {
             throw new ExecException("'deleteKeys' is only valid with action: remove.");
         }
 

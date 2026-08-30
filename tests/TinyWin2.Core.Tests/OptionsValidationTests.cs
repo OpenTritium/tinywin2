@@ -98,7 +98,7 @@ public sealed class OptionsValidationTests {
             ["name"] = "V",
             ["type"] = "dword",
             ["data"] = 1
-        }, OperationAction.Set);
+        }, OperationAction.Apply);
         await Assert.That(options.Values.Count).IsEqualTo(1);
         await Assert.That(options.Values[0].RegType).IsEqualTo("REG_DWORD");
     }
@@ -109,7 +109,7 @@ public sealed class OptionsValidationTests {
             RegistryValueOptions.FromDesired(new() {
                 ["hive"] = "software",
                 ["deleteKeys"] = new JsonArray("K")
-            }, OperationAction.Set));
+            }, OperationAction.Apply));
         await Assert.That(ex.Message).Contains("only valid with action: remove");
     }
 
@@ -119,7 +119,7 @@ public sealed class OptionsValidationTests {
             RegistryValueOptions.FromDesired(new() {
                 ["hive"] = "hive_of_hades",
                 ["values"] = new JsonArray()
-            }, OperationAction.Set));
+            }, OperationAction.Apply));
         await Assert.That(ex.Message).Contains("unsupported registry hive");
     }
 
@@ -178,7 +178,7 @@ public sealed class OptionsValidationTests {
         }, OperationAction.Remove);
         await Assert.That(absent.Paths.Count).IsEqualTo(1);
         var ex = Assert.Throws<ExecException>(() =>
-            FsPathOptions.FromDesired(new() { ["paths"] = new JsonArray("x") }, OperationAction.Copy));
+            FsPathOptions.FromDesired(new() { ["paths"] = new JsonArray("x") }, OperationAction.Apply));
         await Assert.That(ex.Message).Contains("'path'");
     }
 }

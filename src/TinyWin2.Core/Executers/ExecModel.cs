@@ -6,11 +6,10 @@ namespace TinyWin2.Core.Executers;
 
 /// <summary>Semantic action requested from a resource executor.</summary>
 public enum OperationAction {
-    Configure,
-    Set,
+    /// <summary>Make the target present / in the desired state (write, configure, or copy).</summary>
+    Apply,
     Remove,
-    Cleanup,
-    Copy
+    Cleanup
 }
 
 /// <summary>Semantic change kinds recorded per operation.</summary>

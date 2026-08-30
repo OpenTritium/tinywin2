@@ -1,5 +1,5 @@
 {
-  "$schema": "../schemas/plan-v4.schema.json",
+  "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 4,
   "id": "capability.openssh-server",
   "version": "3.0.0",

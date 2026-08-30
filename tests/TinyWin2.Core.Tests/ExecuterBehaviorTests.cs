@@ -252,7 +252,7 @@ public sealed class ComponentStoreExecuterTests : IDisposable {
     public async Task NonCleanupActionIsRejected() {
         var ex = Assert.Throws<ExecException>(() =>
             _executer.ApplyAsync(_harness.NewContext(),
-                    ExecuterTestHarness.Spec("dism.component-store", OperationAction.Set), CancellationToken.None)
+                    ExecuterTestHarness.Spec("dism.component-store", OperationAction.Apply), CancellationToken.None)
                 .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("action 'cleanup'");
         await Assert.That(_harness.Runner.Calls).IsEmpty();
@@ -422,7 +422,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
             new(_harness.MountPath, _harness.Runner), assets);
         _harness.Runner.Handler = (_, _) => FakeProcessRunner.Ok();
         var result = await _executer.ApplyAsync(context,
-            ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
+            ExecuterTestHarness.Spec("fs.path", OperationAction.Apply,
                 ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None);
         await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(_harness.Runner.Called("robocopy.exe")).IsTrue();
@@ -444,7 +444,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
         var context = new ExecContext(_harness.MountPath, _harness.Log,
             new(_harness.MountPath, _harness.Runner), assets);
         var result = await _executer.ApplyAsync(context,
-            ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
+            ExecuterTestHarness.Spec("fs.path", OperationAction.Apply,
                 ("path", "ProgramData\\settings.ini"), ("source", "settings.ini")), CancellationToken.None);
         await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(await File.ReadAllTextAsync(destination)).IsEqualTo("new");
@@ -459,7 +459,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
         var context = new ExecContext(_harness.MountPath, _harness.Log,
             new(_harness.MountPath, _harness.Runner), assets);
         var diff = await _executer.InspectAsync(context,
-            ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
+            ExecuterTestHarness.Spec("fs.path", OperationAction.Apply,
                 ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None);
         await Assert.That(diff.Satisfied).IsFalse();
         await Assert.That(diff.Differences[0].Kind).IsEqualTo(ChangeKind.Modified);
@@ -476,7 +476,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
             : FakeProcessRunner.Ok();
         var ex = Assert.Throws<IOException>(() =>
             _executer.ApplyAsync(context,
-                    ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
+                    ExecuterTestHarness.Spec("fs.path", OperationAction.Apply,
                         ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None)
                 .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("robocopy");
@@ -621,7 +621,7 @@ public sealed class DriverStoreExecuterTests : IDisposable {
     public async Task NonRemoveActionIsRejectedBeforeInspectingStore() {
         var ex = Assert.Throws<ExecException>(() =>
             _executer.ApplyAsync(_harness.NewContext(),
-                    ExecuterTestHarness.Spec("driver.store", OperationAction.Set), CancellationToken.None)
+                    ExecuterTestHarness.Spec("driver.store", OperationAction.Apply), CancellationToken.None)
                 .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("action 'remove'");
         await Assert.That(_harness.Runner.Calls).IsEmpty();

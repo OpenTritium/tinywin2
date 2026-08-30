@@ -85,7 +85,7 @@ public sealed class FingerprintAssetTests : IDisposable {
     [Test]
     public async Task NonCopyOperationsCarryNoAsset() {
         var spec = new JsonObject { ["hive"] = "software", ["key"] = "K", ["name"] = "V" };
-        var operation = new BoundOperation(new OperationSpec("registry.value", OperationAction.Set, spec),
+        var operation = new BoundOperation(new OperationSpec("registry.value", OperationAction.Apply, spec),
             new object());
         var definition = new PlanDefinition {
             Id = PlanId,
@@ -110,7 +110,7 @@ public sealed class FingerprintAssetTests : IDisposable {
 
     private static PlanStep CopyStep(params string[] sources) {
         var operations = sources.Select(source => {
-            var spec = new OperationSpec("fs.path", OperationAction.Copy,
+            var spec = new OperationSpec("fs.path", OperationAction.Apply,
                 new JsonObject { ["path"] = "destination", ["source"] = source });
             return new BoundOperation(spec, new object());
         }).ToList();

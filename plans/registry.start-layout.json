@@ -1,5 +1,5 @@
 {
-  "$schema": "../schemas/plan-v4.schema.json",
+  "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 4,
   "id": "registry.start-layout",
   "version": "3.0.0",
@@ -10,7 +10,7 @@
   "operations": [
     {
       "resource": "fs.path",
-      "action": "copy",
+      "action": "apply",
       "spec": {
         "path": "Users\\Default\\AppData\\Local\\Microsoft\\Windows\\Shell\\DefaultLayouts.xml",
         "source": "DefaultLayouts.xml"

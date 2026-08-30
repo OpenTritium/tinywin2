@@ -11,8 +11,8 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
     public string Resource => ResourceId;
 
     public object Bind(OperationSpec spec) {
-        if (spec.Action != OperationAction.Configure) {
-            throw new ExecException($"{ResourceId} supports only action 'configure'.");
+        if (spec.Action != OperationAction.Apply) {
+            throw new ExecException($"{ResourceId} supports only action 'apply'.");
         }
 
         return RegistryServiceOptions.FromDesired(spec.Spec);
