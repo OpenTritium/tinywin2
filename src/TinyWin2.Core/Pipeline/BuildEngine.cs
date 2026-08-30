@@ -651,19 +651,15 @@ public sealed class BuildEngine(
             PlanAssets.ResolveRoot(options.PlansDirectory, resolved.Definition.Id));
         log.PlanId = resolved.Definition.Id;
         try {
-            var operationResults = new List<JsonObject>();
+            var outcomes = new List<OperationOutcome>();
             foreach (var operation in resolved.Operations) {
                 ct.ThrowIfCancellationRequested();
-                var executer = executers.Get(operation.Resource);                log.Debug($"operation {operation.Resource} ({operation.Action})", resolved.Definition.Id,
+                var executer = executers.Get(operation.Resource);
+                log.Debug($"operation {operation.Resource} ({operation.Action})", resolved.Definition.Id,
                     session.Record.Index);
                 var result = await executer.ApplyAsync(context, operation, ct);
-                operationResults.Add(new JsonObject {
-                    ["resource"] = operation.Resource,
-                    ["action"] = operation.Action.ToString().ToLowerInvariant(),
-                    ["status"] = result.IsSkipped ? "skipped" : "applied",
-                    ["changes"] = new JsonArray(result.Changes.Select(c => (JsonNode)c.ToJson()).ToArray()),
-                    ["skipReason"] = result.SkipReason
-                });
+                outcomes.Add(new(operation.Resource, operation.Action, result.IsSkipped, result.Changes,
+                    result.SkipReason));
                 if (!result.IsSkipped) {
                     log.Info($"{operation.Resource}: {result.Changes.Count} change(s)", resolved.Definition.Id,
                         session.Record.Index);
@@ -674,10 +670,7 @@ public sealed class BuildEngine(
                 }
             }
 
-            return new JsonObject {
-                ["planId"] = resolved.Definition.Id,
-                ["operations"] = new JsonArray(operationResults.Select(o => (JsonNode)o).ToArray())
-            };
+            return new PlanExecutionResult(resolved.Definition.Id, outcomes).ToJson();
         }
         finally {
             log.PlanId = null;
