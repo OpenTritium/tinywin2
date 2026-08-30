@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tinywin2.dev/schemas/build-events.schema.json",
+  "title": "TinyWin2 JSONL build event stream",
+  "description": "One JSON object per line on stdout while `tinywin2 build --json-events` runs. Sequences are strictly increasing; the final line carries phase 'result'. Tool log output never mixes into stdout in this mode.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["seq", "ts", "level", "phase", "message"],
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Zero-based event order. The final result event uses -1 because it is emitted by the CLI after the engine finished."
+    },
+    "ts": { "type": "string", "format": "date-time" },
+    "level": { "enum": ["debug", "info", "warn", "error"] },
+    "phase": {
+      "enum": [
+        "init", "prepare", "media", "base-layer", "plan", "cbs-scan", "optimize",
+        "capture", "package", "done", "failed", "preview", "result"
+      ]
+    },
+    "message": { "type": "string" },
+    "planId": {
+      "type": ["string", "null"],
+      "description": "Ambient plan id while a plan step executes; null otherwise."
+    },
+    "layerIndex": { "type": ["integer", "null"] },
+    "data": {
+      "type": ["object", "null"],
+      "description": "Free-form payload. Progress events carry data.progress (0-100); the final result event carries succeeded/outputFormat/workspacePath/outputPath/manifestPath/layerCount/failedStepId."
+    }
+  }
+}

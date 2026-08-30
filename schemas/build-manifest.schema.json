@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tinywin2.dev/schemas/build-manifest.schema.json",
+  "title": "TinyWin2 build manifest (schemaVersion 6)",
+  "description": "Written to <workspace>/tinywin2-manifest.json after every build. Operation results embed the plan action vocabulary (apply|remove|cleanup).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "tool", "buildId", "createdUtc", "inputPath", "workspacePath",
+    "sourceIndex", "outputFormat", "export", "atomicPlans", "planIds", "output",
+    "failedSteps", "layers"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 6 },
+    "tool": { "const": "TinyWin2" },
+    "buildId": { "type": "string" },
+    "createdUtc": { "type": "string", "format": "date-time" },
+    "inputPath": { "type": "string" },
+    "workspacePath": { "type": "string" },
+    "sourceIndex": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "name"],
+      "properties": {
+        "index": { "type": "integer", "minimum": 1 },
+        "name": { "type": "string" },
+        "editionId": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] }
+      }
+    },
+    "outputFormat": { "enum": ["wim", "esd", "vhdx"] },
+    "export": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verifyCapture", "checkIntegrity"],
+      "properties": {
+        "wimCompression": { "enum": ["none", "fast", "max"] },
+        "finalCompression": { "type": ["string", "null"] },
+        "verifyCapture": { "type": "boolean" },
+        "checkIntegrity": { "type": "boolean" }
+      }
+    },
+    "atomicPlans": {
+      "type": "boolean",
+      "description": "False when the build ran in single-layer (no-layers) mode."
+    },
+    "planIds": { "type": "array", "items": { "type": "string" } },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "hashAlgorithm", "hash", "sizeBytes"],
+      "properties": {
+        "path": { "type": "string" },
+        "hashAlgorithm": { "const": "xxh3" },
+        "hash": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+        "sizeBytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "failedSteps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stepId", "layerIndex", "error"],
+        "properties": {
+          "stepId": { "type": "string" },
+          "layerIndex": { "type": "integer" },
+          "error": { "type": "string" }
+        }
+      }
+    },
+    "layers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/layerRecord" }
+    }
+  },
+  "$defs": {
+    "layerRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "vhdx", "status", "startedUtc"],
+      "properties": {
+        "index": { "type": "integer", "minimum": 0 },
+        "stepId": { "type": ["string", "null"] },
+        "title": { "type": ["string", "null"] },
+        "vhdx": { "type": "string" },
+        "status": { "enum": ["pending", "committed", "discarded", "merged"] },
+        "startedUtc": { "type": "string", "format": "date-time" },
+        "endedUtc": { "type": ["string", "null"], "format": "date-time" },
+        "operationResult": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["planId", "operations"],
+          "properties": {
+            "planId": { "type": "string" },
+            "operations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["resource", "action", "status", "changes"],
+                "properties": {
+                  "resource": { "type": "string" },
+                  "action": { "enum": ["apply", "remove", "cleanup"] },
+                  "status": { "enum": ["applied", "skipped"] },
+                  "changes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["kind", "target"],
+                      "properties": {
+                        "kind": { "enum": ["created", "modified", "removed", "skipped"] },
+                        "target": { "type": "string" },
+                        "before": { "type": ["string", "null"] },
+                        "after": { "type": ["string", "null"] }
+                      }
+                    }
+                  },
+                  "skipReason": { "type": ["string", "null"] }
+                }
+              }
+            }
+          }
+        },
+        "stepFingerprint": { "type": ["string", "null"] },
+        "error": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
