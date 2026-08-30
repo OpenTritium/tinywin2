@@ -286,13 +286,12 @@ public sealed class FakeExecuter(string resource, bool fail) : IExecuter {
     private int ApplyCount { get; set; }
     public string Resource { get; } = resource;
 
-    public void Validate(OperationSpec spec) {
-    }
+    public object Bind(OperationSpec spec) => spec;
 
-    public Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) =>
+    public Task<ResourceDiff> InspectAsync(ExecContext context, BoundOperation operation, CancellationToken ct) =>
         Task.FromResult(new ResourceDiff(false, [new(ChangeKind.Modified, Resource)]));
 
-    public Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+    public Task<ExecResult> ApplyAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
         ApplyCount++;
         return Task.FromResult(fail
             ? throw new ExecException("boom from " + Resource)
@@ -305,13 +304,12 @@ public sealed class CountingFakeExecuter(string resource) : IExecuter {
     public int ApplyCount { get; private set; }
     public int? FailOnCall { get; set; }
 
-    public void Validate(OperationSpec spec) {
-    }
+    public object Bind(OperationSpec spec) => spec;
 
-    public Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) =>
+    public Task<ResourceDiff> InspectAsync(ExecContext context, BoundOperation operation, CancellationToken ct) =>
         Task.FromResult(new ResourceDiff(false, [new(ChangeKind.Modified, Resource)]));
 
-    public Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+    public Task<ExecResult> ApplyAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
         ApplyCount++;
         return Task.FromResult(FailOnCall == ApplyCount
             ? throw new ExecException("boom from " + Resource)

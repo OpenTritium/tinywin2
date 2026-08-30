@@ -32,14 +32,17 @@ public sealed class ExecuterTestHarness : IDisposable {
         File.WriteAllBytes(path, "QFIB"u8); // arbitrary non-empty content
     }
 
-    public static OperationSpec Spec(string resource, OperationAction action,
+    /// <summary>Shared registry for binding specs exactly like the engine does at plan resolution.</summary>
+    private static readonly ExecuterRegistry Registry = new(new FakeProcessRunner());
+
+    public static BoundOperation Spec(string resource, OperationAction action,
         params (string Key, JsonNode? Value)[] desired) {
         var obj = new JsonObject();
         foreach (var (key, value) in desired) {
             obj[key] = value?.DeepClone();
         }
 
-        return new(resource, action, obj);
+        return Registry.Bind(new OperationSpec(resource, action, obj));
     }
 }
 

@@ -61,6 +61,13 @@ public sealed record ResourceDiff(bool Satisfied, IReadOnlyList<ChangeItem> Diff
 /// </summary>
 public sealed record OperationSpec(string Resource, OperationAction Action, JsonObject Spec);
 
+/// <summary>One bound operation: the pure-data spec plus the resource-typed options the owning
+///     executer produced at plan-resolution time (never re-parsed during execution).</summary>
+public sealed record BoundOperation(OperationSpec Spec, object Options) {
+    public string Resource => Spec.Resource;
+    public OperationAction Action => Spec.Action;
+}
+
 /// <summary>Thrown by executors for hard failures; soft/expected misses become Skipped results.</summary>
 public sealed class ExecException(string message, Exception? inner = null)
     : Exception(message, inner);

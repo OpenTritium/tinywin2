@@ -10,28 +10,26 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
     private const string ResourceId = "registry.value";
     public string Resource => ResourceId;
 
-    public void Validate(OperationSpec spec) {
+    public object Bind(OperationSpec spec) {
         if (spec.Action is not (OperationAction.Set or OperationAction.Remove)) {
             throw new ExecException($"{ResourceId} supports actions 'set' and 'remove'.");
         }
 
-        _ = RegistryValueOptions.FromDesired(spec.Spec, spec.Action);
+        return RegistryValueOptions.FromDesired(spec.Spec, spec.Action);
     }
 
-    public async Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
-        Validate(spec);
-        var changes = await InspectCoreAsync(context, spec, ct);
+    public async Task<ResourceDiff> InspectAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
+        var changes = await InspectCoreAsync(context, operation, ct);
         return new(changes.Count == 0, [.. changes.Select(c => c.Change)]);
     }
 
-    public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
-        Validate(spec);
-        var changes = await InspectCoreAsync(context, spec, ct);
+    public async Task<ExecResult> ApplyAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
+        var changes = await InspectCoreAsync(context, operation, ct);
         if (changes.Count == 0) {
             return ExecResult.Skipped("registry values already in the desired state");
         }
 
-        var options = RegistryValueOptions.FromDesired(spec.Spec, spec.Action);
+        var options = (RegistryValueOptions)operation.Options;
         var hive = await context.Hives.GetAsync(options.Hive, context.Log, ct);
         foreach (var change in changes) {
             if (change.DeleteKey is { } deleteKey) {
@@ -43,7 +41,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
             }
 
             var target = change.Value!;
-            if (spec.Action == OperationAction.Remove) {
+            if (operation.Action == OperationAction.Remove) {
                 var args = string.IsNullOrEmpty(target.Name)
                     ? (string[])["delete", hive.KeyUnderHive(target.Key), "/ve", "/f"]
                     : ["delete", hive.KeyUnderHive(target.Key), "/v", target.Name, "/f"];
@@ -73,9 +71,9 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
     }
 
     /// <summary>Produces structured differences carrying their own execution targets — no reverse lookup by display string.</summary>
-    private async Task<List<ValueChange>> InspectCoreAsync(ExecContext context, OperationSpec spec,
+    private async Task<List<ValueChange>> InspectCoreAsync(ExecContext context, BoundOperation operation,
         CancellationToken ct) {
-        var options = RegistryValueOptions.FromDesired(spec.Spec, spec.Action);
+        var options = (RegistryValueOptions)operation.Options;
         var hive = await context.Hives.GetAsync(options.Hive, context.Log, ct);
         var changes = new List<ValueChange>();
         foreach (var value in options.Values) {
@@ -87,7 +85,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
                 ? RegValues.ParseQueryValue(result.Output, string.IsNullOrEmpty(value.Name) ? "(Default)" : value.Name)
                 : null;
             var display = hive.ValueUnderHive(value.Key, value.Name);
-            if (spec.Action == OperationAction.Remove) {
+            if (operation.Action == OperationAction.Remove) {
                 if (existing is not null) {
                     changes.Add(new(
                         new(ChangeKind.Removed, display, $"{existing.Type} {existing.Data}"),
@@ -113,7 +111,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
             }
         }
 
-        if (spec.Action == OperationAction.Remove) {
+        if (operation.Action == OperationAction.Remove) {
             foreach (var key in options.DeleteKeys) {
                 var result = await OfflineReg.QueryAsync(runner, hive.KeyUnderHive(key), ct);
                 if (result.Success) {

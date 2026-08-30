@@ -19,13 +19,15 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismRemoveE
 
     protected override bool EmptyListingSatisfied => true;
 
+    protected override object BindOptions(OperationSpec spec) => AppxOptions.FromDesired(spec.Spec);
+
     protected override string SatisfiedSkipReason => "no provisioned appx packages matched";
 
     protected override IEnumerable<DismRemovalTarget> SelectTargets(
         IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
-        OperationSpec spec) {
-        var options = AppxOptions.FromDesired(spec.Spec);
+        BoundOperation operation) {
+        var options = (AppxOptions)operation.Options;
         foreach (var record in records) {
             var displayName = DismListParser.Get(record, "DisplayName");
             // RemoveKey is the dism Package Name; DisplayName is what patterns match and logs show.
@@ -39,6 +41,6 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismRemoveE
         }
     }
 
-    protected override IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, OperationSpec spec) =>
+    protected override IReadOnlyList<string> RemoveArguments(BoundOperation operation, DismRemovalTarget target) =>
         ["/Remove-ProvisionedAppxPackage", $"/PackageName:{target.RemoveKey}"];
 }

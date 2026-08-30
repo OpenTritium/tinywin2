@@ -120,8 +120,7 @@ public sealed class BuildEngine(
             $"compression={options.Export.DismCompression}, " +
             $"verify={options.Export.VerifyCapture}, integrity={options.Export.CheckIntegrity}, " +
             $"evidence={options.CaptureEvidence})");
-        var plan = BuildPlanResolver.Resolve(options.Catalog, options.Selections);
-        executers.ValidateBuildPlan(plan);
+        var plan = BuildPlanResolver.Resolve(options.Catalog, options.Selections, executers);
         log.Info($"resolved {plan.PlanIds.Count} plans into {plan.Steps.Count} atomic steps");
         foreach (var step in plan.Steps) {
             var resources = string.Join(", ", step.Plan.Operations.Select(o => o.Resource).Distinct());
@@ -613,8 +612,8 @@ public sealed class BuildEngine(
         var copyAssetSources = new List<string>();
         foreach (var operation in resolved.Operations) {
             builder.Append(operation.Resource).Append('|').Append(operation.Action).Append('|')
-                .Append(operation.Spec.ToJsonString()).Append((char)10);
-            if (FsPathAssets.GetCopyAssetSource(operation) is { } assetSource) {
+                .Append(operation.Spec.Spec.ToJsonString()).Append((char)10);
+            if (FsPathAssets.GetCopyAssetSource(operation.Spec) is { } assetSource) {
                 copyAssetSources.Add(assetSource);
             }
         }
@@ -655,8 +654,7 @@ public sealed class BuildEngine(
             var operationResults = new List<JsonObject>();
             foreach (var operation in resolved.Operations) {
                 ct.ThrowIfCancellationRequested();
-                var executer = executers.Get(operation.Resource);
-                log.Debug($"operation {operation.Resource} ({operation.Action})", resolved.Definition.Id,
+                var executer = executers.Get(operation.Resource);                log.Debug($"operation {operation.Resource} ({operation.Action})", resolved.Definition.Id,
                     session.Record.Index);
                 var result = await executer.ApplyAsync(context, operation, ct);
                 operationResults.Add(new JsonObject {

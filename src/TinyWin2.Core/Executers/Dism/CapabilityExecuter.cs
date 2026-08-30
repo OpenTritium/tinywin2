@@ -12,13 +12,15 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismRemoveExecut
 
     protected override DismOutcome? DowngradeOutcome => DismOutcome.CannotUninstall;
 
+    protected override object BindOptions(OperationSpec spec) => CapabilityOptions.FromDesired(spec.Spec);
+
     protected override string SatisfiedSkipReason => "capabilities already absent or unavailable";
 
     protected override IEnumerable<DismRemovalTarget> SelectTargets(
         IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
-        OperationSpec spec) {
-        var options = CapabilityOptions.FromDesired(spec.Spec);
+        BoundOperation operation) {
+        var options = (CapabilityOptions)operation.Options;
         var states = records.ToDictionary(
             r => DismListParser.Get(r, "Capability Identity") ?? "",
             r => DismListParser.Get(r, "State") ?? "",
@@ -41,6 +43,6 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismRemoveExecut
         }
     }
 
-    protected override IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, OperationSpec spec) =>
+    protected override IReadOnlyList<string> RemoveArguments(BoundOperation operation, DismRemovalTarget target) =>
         ["/Remove-Capability", $"/CapabilityName:{target.RemoveKey}"];
 }

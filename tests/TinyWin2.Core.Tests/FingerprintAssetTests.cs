@@ -85,16 +85,17 @@ public sealed class FingerprintAssetTests : IDisposable {
     [Test]
     public async Task NonCopyOperationsCarryNoAsset() {
         var spec = new JsonObject { ["hive"] = "software", ["key"] = "K", ["name"] = "V" };
+        var operation = new BoundOperation(new OperationSpec("registry.value", OperationAction.Set, spec),
+            new object());
         var definition = new PlanDefinition {
             Id = PlanId,
             Version = "1.0.0",
             Title = "test",
             Description = "test",
             Category = "test",
-            Operations = [new PlanOperation("registry.value", OperationAction.Set, spec)]
+            Operations = [new PlanOperation(operation.Resource, operation.Action, operation.Spec.Spec)]
         };
-        var step = new PlanStep(new ResolvedPlan(definition,
-            [new OperationSpec("registry.value", OperationAction.Set, spec)]));
+        var step = new PlanStep(new ResolvedPlan(definition, [operation]));
         var before = await FingerprintAsync(step);
 
         await File.WriteAllTextAsync(AssetPath("asset.bin"), "irrelevant payload");
@@ -108,15 +109,18 @@ public sealed class FingerprintAssetTests : IDisposable {
     private string AssetPath(string name) => Path.Combine(PlansDirectory(), "assets", PlanId, name);
 
     private static PlanStep CopyStep(params string[] sources) {
-        var operations = sources.Select(source => new OperationSpec("fs.path", OperationAction.Copy,
-            new JsonObject { ["path"] = "destination", ["source"] = source })).ToList();
+        var operations = sources.Select(source => {
+            var spec = new OperationSpec("fs.path", OperationAction.Copy,
+                new JsonObject { ["path"] = "destination", ["source"] = source });
+            return new BoundOperation(spec, new object());
+        }).ToList();
         var definition = new PlanDefinition {
             Id = PlanId,
             Version = "1.0.0",
             Title = "test",
             Description = "test",
             Category = "test",
-            Operations = [.. operations.Select(o => new PlanOperation(o.Resource, o.Action, o.Spec))]
+            Operations = [.. operations.Select(o => new PlanOperation(o.Resource, o.Action, o.Spec.Spec))]
         };
         return new PlanStep(new ResolvedPlan(definition, operations));
     }

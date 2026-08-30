@@ -46,12 +46,6 @@ public sealed class ExecuterRegistry {
             ? executer
             : throw new ExecException($"no executer registered for resource '{resource}'.");
 
-    /// <summary>Validates that every operation maps to a registered resource and valid action/spec.</summary>
-    public void ValidateBuildPlan(BuildPlan plan) {
-        foreach (var step in plan.Steps) {
-            foreach (var operation in step.Plan.Operations) {
-                Get(operation.Resource).Validate(operation);
-            }
-        }
-    }
+    /// <summary>Binds one operation into resource-typed options; unknown resources fail here.</summary>
+    public BoundOperation Bind(OperationSpec spec) => new(spec, Get(spec.Resource).Bind(spec));
 }

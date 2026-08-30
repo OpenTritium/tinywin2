@@ -5,11 +5,24 @@ using TinyWin2.Core.Plans;
 namespace TinyWin2.Core.Tests;
 
 public static class TestPlans {
-    public static JsonObject Operation(string resource = "fs.path", string action = "remove") => new() {
-        ["resource"] = resource,
-        ["action"] = action,
-        ["spec"] = new JsonObject { ["paths"] = new JsonArray("Windows/Web/Wallpaper") }
-    };
+    /// <summary>One operation with the minimal spec its resource's binder accepts.</summary>
+    public static JsonObject Operation(string resource = "fs.path", string action = "remove") {
+        var spec = resource switch {
+            "dism.capability" => new JsonObject { ["capabilities"] = new JsonArray("test.capability") },
+            "dism.feature" => new JsonObject { ["features"] = new JsonArray("test.feature") },
+            "dism.package" => new JsonObject { ["patterns"] = new JsonArray("test.package.*") },
+            "appx.provisioned" => new JsonObject { ["patterns"] = new JsonArray("test.appx*") },
+            "appx.system" => new JsonObject { ["patterns"] = new JsonArray("test.appx*") },
+            "driver.store" => new JsonObject { ["infNames"] = new JsonArray("test.inf") },
+            "dism.component-store" => new JsonObject(),
+            _ => new JsonObject { ["paths"] = new JsonArray("Windows/Web/Wallpaper") }
+        };
+        return new() {
+            ["resource"] = resource,
+            ["action"] = action,
+            ["spec"] = spec
+        };
+    }
 
     public static void WritePlan(string directory, string id, Action<JsonObject>? mutate = null) {
         var obj = new JsonObject {

@@ -36,15 +36,18 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
     protected abstract string SatisfiedSkipReason { get; }
     public abstract string Resource { get; }
 
-    public virtual void Validate(OperationSpec spec) {
+    public object Bind(OperationSpec spec) {
         if (spec.Action != OperationAction.Remove) {
             throw new ExecException($"{Resource} supports only action 'remove'.");
         }
+
+        return BindOptions(spec);
     }
 
-    public async Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
-        Validate(spec);
+    /// <summary>Parses the validated remove spec into this resource's typed options.</summary>
+    protected abstract object BindOptions(OperationSpec spec);
 
+    public async Task<ResourceDiff> InspectAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
         var (exitCode, output) = await RunDismAsync(context, [.. ListArguments], ct);
         var outcome = DismErrors.Classify(exitCode, output);
         if (outcome == DismOutcome.ProviderUnavailable || InapplicableExitCodes.Contains(exitCode)) {
@@ -65,7 +68,7 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
                 $"dism.exe returned no {Resource} records despite a successful listing (exit {exitCode}).");
         }
 
-        var differences = SelectTargets(records, context, spec)
+        var differences = SelectTargets(records, context, operation)
             .Select(t => t.SkipReason is not null
                 ? new(ChangeKind.Skipped, t.RemoveKey, t.SkipReason)
                 : new ChangeItem(ChangeKind.Removed, t.RemoveKey, t.Before))
@@ -73,8 +76,8 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
         return new(differences.All(d => d.Kind == ChangeKind.Skipped), differences);
     }
 
-    public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
-        var diff = await InspectAsync(context, spec, ct);
+    public async Task<ExecResult> ApplyAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
+        var diff = await InspectAsync(context, operation, ct);
         if (diff.Satisfied) {
             return ExecResult.Skipped(SatisfiedSkipReason,
                 [.. diff.Differences.Where(d => d.Kind == ChangeKind.Skipped)]);
@@ -85,7 +88,7 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
             .ToList();
         foreach (var change in diff.Differences.Where(d => d.Kind != ChangeKind.Skipped)) {
             var (exitCode, output) = await RunDismAsync(context,
-                RemoveArguments(new(change.Target, change.Before), spec), ct);
+                RemoveArguments(operation, new(change.Target, change.Before)), ct);
             var outcome = DismErrors.Classify(exitCode, output);
             if (outcome == DowngradeOutcome) {
                 context.Log.Warn($"skipping unremovable {Resource} target: {change.Target} ({outcome})");
@@ -108,7 +111,7 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
     protected abstract IEnumerable<DismRemovalTarget> SelectTargets(
         IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
-        OperationSpec spec);
+        BoundOperation operation);
 
-    protected abstract IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, OperationSpec spec);
+    protected abstract IReadOnlyList<string> RemoveArguments(BoundOperation operation, DismRemovalTarget target);
 }

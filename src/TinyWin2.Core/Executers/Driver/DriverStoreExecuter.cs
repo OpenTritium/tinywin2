@@ -15,24 +15,22 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
 
     public string Resource => ResourceId;
 
-    public void Validate(OperationSpec spec) {
+    public object Bind(OperationSpec spec) {
         if (spec.Action != OperationAction.Remove) {
             throw new ExecException($"{ResourceId} supports only action 'remove'.");
         }
 
-        _ = DriverStoreOptions.FromDesired(spec.Spec);
+        return DriverStoreOptions.FromDesired(spec.Spec);
     }
 
-    public async Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
-        Validate(spec);
-        var changes = await InspectCoreAsync(context, spec, ct);
+    public async Task<ResourceDiff> InspectAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
+        var changes = await InspectCoreAsync(context, operation, ct);
         return new(changes.All(c => c.Change.Kind == ChangeKind.Skipped),
             [.. changes.Select(c => c.Change)]);
     }
 
-    public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
-        Validate(spec);
-        var changes = await InspectCoreAsync(context, spec, ct);
+    public async Task<ExecResult> ApplyAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
+        var changes = await InspectCoreAsync(context, operation, ct);
         if (changes.All(c => c.Change.Kind == ChangeKind.Skipped)) {
             return ExecResult.Skipped("no removable third-party Driver Store packages",
                 [.. changes.Select(c => c.Change)]);
@@ -68,8 +66,8 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
     }
 
     private async Task<List<DriverChange>> InspectCoreAsync(
-        ExecContext context, OperationSpec spec, CancellationToken ct) {
-        var options = DriverStoreOptions.FromDesired(spec.Spec);
+        ExecContext context, BoundOperation operation, CancellationToken ct) {
+        var options = (DriverStoreOptions)operation.Options;
         var (exitCode, output) = await RunDismAsync(context,
             ["/Get-Drivers", "/All", "/Format:List"], ct);
         var outcome = DismErrors.Classify(exitCode, output);

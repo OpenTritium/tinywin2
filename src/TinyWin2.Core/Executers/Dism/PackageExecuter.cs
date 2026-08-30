@@ -15,13 +15,15 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismRemoveExecuterB
 
     protected override DismOutcome? DowngradeOutcome => DismOutcome.CannotUninstall;
 
+    protected override object BindOptions(OperationSpec spec) => PackageOptions.FromDesired(spec.Spec);
+
     protected override string SatisfiedSkipReason => "no removable CBS packages matched";
 
     protected override IEnumerable<DismRemovalTarget> SelectTargets(
         IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
-        OperationSpec spec) {
-        var options = PackageOptions.FromDesired(spec.Spec);
+        BoundOperation operation) {
+        var options = (PackageOptions)operation.Options;
         var matched = records
             .Select(record => new {
                 Record = record,
@@ -67,6 +69,6 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismRemoveExecuterB
         return separator > 0 ? identity[..separator] : identity;
     }
 
-    protected override IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, OperationSpec spec) =>
+    protected override IReadOnlyList<string> RemoveArguments(BoundOperation operation, DismRemovalTarget target) =>
         ["/Remove-Package", $"/PackageName:{target.RemoveKey}", "/NoRestart"];
 }

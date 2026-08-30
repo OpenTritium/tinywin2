@@ -337,38 +337,16 @@ public sealed class LayerBackendTests : IDisposable {
     }
 
     [Test]
-    public async Task ValidateBuildPlanRejectsUnknownResources() {
+    public async Task BindRejectsUnknownResources() {
         var registry = new ExecuterRegistry([new FakeExecuter("known.resource", false)]);
-        var plan = BuildPlan(
-            new OperationSpec("known.resource", OperationAction.Remove, []),
-            new OperationSpec("ghost.resource", OperationAction.Set, [])
-        );
-        var ex = Assert.Throws<ExecException>(() => registry.ValidateBuildPlan(plan));
+        var ex = Assert.Throws<ExecException>(() => registry.Bind(
+            new OperationSpec("ghost.resource", OperationAction.Set, [])));
         await Assert.That(ex.Message).Contains("no executer registered for resource 'ghost.resource'");
     }
 
     [Test]
-    public void ValidateBuildPlanAcceptsFullyRegisteredPlans() {
+    public void BindAcceptsFullyRegisteredResources() {
         var registry = new ExecuterRegistry([new FakeExecuter("known.resource", false)]);
-        var plan = BuildPlan(new OperationSpec("known.resource", OperationAction.Remove, []));
-        registry.ValidateBuildPlan(plan);
+        registry.Bind(new OperationSpec("known.resource", OperationAction.Remove, []));
     }
-
-    private static BuildPlan BuildPlan(params OperationSpec[] execs) =>
-        new(
-            execs
-                .Select((operation, index) => {
-                    var definition = new PlanDefinition {
-                        Id = $"p.{index}",
-                        Version = "1.0.0",
-                        Title = $"P {index}",
-                        Description = "d",
-                        Category = "G",
-                        Operations = [new PlanOperation(operation.Resource, operation.Action, operation.Spec)]
-                    };
-                    return new PlanStep(new(definition, [operation]));
-                }
-                )
-                .ToArray()
-        );
 }

@@ -11,28 +11,26 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
     private const string ResourceId = "fs.path";
     public string Resource => ResourceId;
 
-    public void Validate(OperationSpec spec) {
+    public object Bind(OperationSpec spec) {
         if (spec.Action is not (OperationAction.Remove or OperationAction.Copy)) {
             throw new ExecException($"{ResourceId} supports actions 'remove' and 'copy'.");
         }
 
-        _ = FsPathOptions.FromDesired(spec.Spec, spec.Action);
+        return FsPathOptions.FromDesired(spec.Spec, spec.Action);
     }
 
-    public Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
-        Validate(spec);
-        var changes = InspectCore(context, spec);
+    public Task<ResourceDiff> InspectAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
+        var changes = InspectCore(context, operation);
         return Task.FromResult(new ResourceDiff(changes.Count == 0, [.. changes.Select(c => c.Change)]));
     }
 
-    public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
-        Validate(spec);
-        var changes = InspectCore(context, spec);
+    public async Task<ExecResult> ApplyAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
+        var changes = InspectCore(context, operation);
         if (changes.Count == 0) {
             return ExecResult.Skipped("paths already in the desired state");
         }
 
-        if (spec.Action == OperationAction.Remove) {
+        if (operation.Action == OperationAction.Remove) {
             foreach (var change in changes) {
                 context.Log.Info($"removing image path: {change.Change.Target}");
                 await ImageFs.DeleteWithRescueAsync(runner, change.AbsoluteTarget, ct);
@@ -71,9 +69,9 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
         return ExecResult.Applied([.. changes.Select(c => c.Change)]);
     }
 
-    private static List<PathChange> InspectCore(ExecContext context, OperationSpec spec) {
-        var options = FsPathOptions.FromDesired(spec.Spec, spec.Action);
-        if (spec.Action == OperationAction.Remove) {
+    private static List<PathChange> InspectCore(ExecContext context, BoundOperation operation) {
+        var options = (FsPathOptions)operation.Options;
+        if (operation.Action == OperationAction.Remove) {
             var changes = new List<PathChange>();
             var seenTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var relative in options.Paths) {

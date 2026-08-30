@@ -49,8 +49,7 @@ public sealed class PreviewRunner(
                 "image index must be greater than zero.");
         }
 
-        var plan = BuildPlanResolver.Resolve(options.Catalog, options.Selections);
-        executers.ValidateBuildPlan(plan);
+        var plan = BuildPlanResolver.Resolve(options.Catalog, options.Selections, executers);
         log.Phase = BuildPhases.Preview;
         log.Info($"preview: {plan.PlanIds.Count} plans resolved into {plan.Steps.Count} steps");
         var resolver = new SourceImageResolver(runner, log);

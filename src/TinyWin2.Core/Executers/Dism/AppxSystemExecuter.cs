@@ -16,23 +16,21 @@ public sealed class AppxSystemExecuter(IProcessRunner runner) : IExecuter {
 
     public string Resource => ResourceId;
 
-    public void Validate(OperationSpec spec) {
+    public object Bind(OperationSpec spec) {
         if (spec.Action != OperationAction.Remove) {
             throw new ExecException($"{ResourceId} supports only action 'remove'.");
         }
 
-        _ = SystemAppOptions.FromDesired(spec.Spec);
+        return SystemAppOptions.FromDesired(spec.Spec);
     }
 
-    public async Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
-        Validate(spec);
-        var changes = await InspectCoreAsync(context, spec, ct);
+    public async Task<ResourceDiff> InspectAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
+        var changes = await InspectCoreAsync(context, operation, ct);
         return new(changes.Count == 0, [.. changes.Select(c => c.Change)]);
     }
 
-    public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
-        Validate(spec);
-        var changes = await InspectCoreAsync(context, spec, ct);
+    public async Task<ExecResult> ApplyAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
+        var changes = await InspectCoreAsync(context, operation, ct);
         if (changes.Count == 0) {
             return ExecResult.Skipped("no matching inbox SystemApps or AppX registrations");
         }
@@ -53,8 +51,8 @@ public sealed class AppxSystemExecuter(IProcessRunner runner) : IExecuter {
     }
 
     private async Task<List<SystemAppChange>> InspectCoreAsync(
-        ExecContext context, OperationSpec spec, CancellationToken ct) {
-        var options = SystemAppOptions.FromDesired(spec.Spec);
+        ExecContext context, BoundOperation operation, CancellationToken ct) {
+        var options = (SystemAppOptions)operation.Options;
         var changes = new List<SystemAppChange>();
         var systemAppsRoot = Path.GetFullPath(Path.Combine(context.MountPath, SystemAppsRelativePath));
         if (Directory.Exists(systemAppsRoot)) {

@@ -13,13 +13,15 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterB
 
     protected override DismOutcome? DowngradeOutcome => DismOutcome.InvalidInstallState;
 
+    protected override object BindOptions(OperationSpec spec) => FeatureOptions.FromDesired(spec.Spec);
+
     protected override string SatisfiedSkipReason => "features already absent or unavailable";
 
     protected override IEnumerable<DismRemovalTarget> SelectTargets(
         IReadOnlyList<IReadOnlyDictionary<string, string>> records,
         ExecContext context,
-        OperationSpec spec) {
-        var options = FeatureOptions.FromDesired(spec.Spec);
+        BoundOperation operation) {
+        var options = (FeatureOptions)operation.Options;
         var states = records.ToDictionary(
             r => DismListParser.Get(r, "Feature Name") ?? "",
             r => DismListParser.Get(r, "State") ?? "",
@@ -45,9 +47,9 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterB
         }
     }
 
-    protected override IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, OperationSpec spec) {
+    protected override IReadOnlyList<string> RemoveArguments(BoundOperation operation, DismRemovalTarget target) {
         var args = new List<string> { "/Disable-Feature", $"/FeatureName:{target.RemoveKey}", "/NoRestart" };
-        if (FeatureOptions.FromDesired(spec.Spec).RemovePayload) {
+        if (((FeatureOptions)operation.Options).RemovePayload) {
             args.Add("/Remove");
         }
 

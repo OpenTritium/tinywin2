@@ -1,10 +1,18 @@
 using System.Text.Json.Nodes;
+using TinyWin2.Core.Executers;
+using TinyWin2.Core.Native;
 using TinyWin2.Core.Plans;
 
 namespace TinyWin2.Core.Tests;
 
 public sealed class BuildPlanResolverTests : IDisposable {
     private readonly string _directory = TestPlans.CreateTempDirectory();
+
+    /// <summary>fs.path carries the bound-parameter operations these tests resolve; binding is real.</summary>
+    private static readonly ExecuterRegistry Registry = new(new FakeProcessRunner());
+
+    private static BuildPlan Resolve(PlanCatalog catalog, PlanSelection[] selections) =>
+        BuildPlanResolver.Resolve(catalog, selections, Registry);
 
     public void Dispose() {
         try {
@@ -26,7 +34,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
     [Test]
     public async Task EveryResolvedPlanIsOneAtomicStep() {
         var catalog = Catalog("a.one", "a.two", "b.three");
-        var plan = BuildPlanResolver.Resolve(catalog,
+        var plan = Resolve(catalog,
             [new("a.one"), new("a.two"), new("b.three")]);
         await Assert.That(plan.Steps.Count).IsEqualTo(3);
         await Assert.That(plan.Steps.All(s => s.Plan.Operations.Count == 1)).IsTrue();
@@ -40,7 +48,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
                 TestPlans.Operation("dism.capability"),
                 TestPlans.Operation("dism.feature"));
         });
-        var plan = BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory), [new("multi.plan")]);
+        var plan = Resolve(PlanCatalog.LoadDirectory(_directory), [new("multi.plan")]);
         await Assert.That(plan.Steps.Count).IsEqualTo(1);
         await Assert.That(plan.Steps[0].Plan.Operations.Select(o => o.Resource))
             .IsEquivalentTo(["dism.capability", "dism.feature"]);
@@ -50,7 +58,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
     public async Task RequiresArePulledInAndRunBeforeDependents() {
         TestPlans.WritePlan(_directory, "dep.dependent", o => o["requires"] = new JsonArray("dep.base"));
         TestPlans.WritePlan(_directory, "dep.base");
-        var plan = BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory),
+        var plan = Resolve(PlanCatalog.LoadDirectory(_directory),
             [new("dep.dependent")]);
         await Assert.That(plan.PlanIds).IsEquivalentTo(["dep.base", "dep.dependent"]);
         await Assert.That(plan.Steps.Count).IsEqualTo(2);
@@ -61,7 +69,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
         TestPlans.WritePlan(_directory, "cyc.a", o => o["requires"] = new JsonArray("cyc.b"));
         TestPlans.WritePlan(_directory, "cyc.b", o => o["requires"] = new JsonArray("cyc.a"));
         var ex = Assert.Throws<PlanResolutionException>(() =>
-            BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory), [new("cyc.a")]));
+            Resolve(PlanCatalog.LoadDirectory(_directory), [new("cyc.a")]));
         await Assert.That(ex.Message).Contains("cycle");
     }
 
@@ -70,7 +78,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
         TestPlans.WritePlan(_directory, "con.a", o => o["conflicts"] = new JsonArray("con.b"));
         TestPlans.WritePlan(_directory, "con.b");
         var ex = Assert.Throws<PlanResolutionException>(() =>
-            BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory),
+            Resolve(PlanCatalog.LoadDirectory(_directory),
                 [new("con.a"), new("con.b")]));
         await Assert.That(ex.Message).Contains("conflicts with");
     }
@@ -80,7 +88,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
         TestPlans.WritePlan(_directory, "dis.dependent", o => o["requires"] = new JsonArray("dis.dep"));
         TestPlans.WritePlan(_directory, "dis.dep");
         var ex = Assert.Throws<PlanResolutionException>(() =>
-            BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory),
+            Resolve(PlanCatalog.LoadDirectory(_directory),
                 [new("dis.dependent"), new("dis.dep", false)]));
         await Assert.That(ex.Message).Contains("explicitly disabled");
     }
@@ -92,7 +100,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
             o["category"] = "Early";
             o["requires"] = new JsonArray("cat.provider");
         });
-        var plan = BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory),
+        var plan = Resolve(PlanCatalog.LoadDirectory(_directory),
             [new("cat.consumer")]);
         await Assert.That(plan.Steps.Select(s => s.Id)).IsEquivalentTo(["cat.provider", "cat.consumer"]);
     }
@@ -123,13 +131,13 @@ public sealed class BuildPlanResolverTests : IDisposable {
             });
         });
         var catalog = PlanCatalog.LoadDirectory(_directory);
-        var bad = Assert.Throws<PlanResolutionException>(() => BuildPlanResolver.Resolve(catalog,
+        var bad = Assert.Throws<PlanResolutionException>(() => Resolve(catalog,
             [new("arg.plan", Parameters: new Dictionary<string, JsonNode?> { ["mode"] = "bogus" })]));
         await Assert.That(bad.Message).Contains("parameter 'mode'");
 
-        var plan = BuildPlanResolver.Resolve(catalog,
+        var plan = Resolve(catalog,
             [new("arg.plan", Parameters: new Dictionary<string, JsonNode?> { ["mode"] = "hard" })]);
-        await Assert.That(plan.Steps[0].Plan.Operations[0].Spec["level"]!.GetValue<int>()).IsEqualTo(2);
+        await Assert.That(plan.Steps[0].Plan.Operations[0].Spec.Spec["level"]!.GetValue<int>()).IsEqualTo(2);
     }
 
     [Test]
@@ -148,14 +156,14 @@ public sealed class BuildPlanResolverTests : IDisposable {
                 ["spec"] = new JsonObject { ["paths"] = new JsonArray("X"), ["p"] = new JsonObject { ["$parameter"] = "mode" } }
             });
         });
-        var plan = BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory), [new("def.plan")]);
-        await Assert.That(plan.Steps[0].Plan.Operations[0].Spec["p"]!.GetValue<string>()).IsEqualTo("safe");
+        var plan = Resolve(PlanCatalog.LoadDirectory(_directory), [new("def.plan")]);
+        await Assert.That(plan.Steps[0].Plan.Operations[0].Spec.Spec["p"]!.GetValue<string>()).IsEqualTo("safe");
     }
 
     [Test]
     public async Task UnknownParameterNameIsRejected() {
         TestPlans.WritePlan(_directory, "unk.plan");
-        var ex = Assert.Throws<PlanResolutionException>(() => BuildPlanResolver.Resolve(
+        var ex = Assert.Throws<PlanResolutionException>(() => Resolve(
             PlanCatalog.LoadDirectory(_directory),
             [new("unk.plan", Parameters: new Dictionary<string, JsonNode?> { ["nope"] = "x" })]));
         await Assert.That(ex.Message).Contains("not declared");
@@ -164,7 +172,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
     [Test]
     public async Task DuplicateSelectionsAreRejected() {
         var catalog = Catalog("dup.plan");
-        var ex = Assert.Throws<PlanResolutionException>(() => BuildPlanResolver.Resolve(catalog, [
+        var ex = Assert.Throws<PlanResolutionException>(() => Resolve(catalog, [
             new("dup.plan"),
             new("dup.plan", Parameters: new Dictionary<string, JsonNode?>())
         ]));

@@ -6,22 +6,21 @@ public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuter
     private const string ResourceId = "dism.component-store";
     public string Resource => ResourceId;
 
-    public void Validate(OperationSpec spec) {
+    public object Bind(OperationSpec spec) {
         if (spec.Action != OperationAction.Cleanup) {
             throw new ExecException($"{ResourceId} supports only action 'cleanup'.");
         }
+
+        return ComponentStoreOptions.FromDesired(spec.Spec);
     }
 
-    public Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+    public Task<ResourceDiff> InspectAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
         // Component-store size reduction is a run-once optimization: the diff is the action itself.
-        Validate(spec);
-        _ = ComponentStoreOptions.FromDesired(spec.Spec);
         return Task.FromResult(new ResourceDiff(false, [new(ChangeKind.Modified, "component-store")]));
     }
 
-    public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
-        Validate(spec);
-        var resetBase = ComponentStoreOptions.FromDesired(spec.Spec).ResetBase;
+    public async Task<ExecResult> ApplyAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
+        var resetBase = ((ComponentStoreOptions)operation.Options).ResetBase;
         if (resetBase) {
             context.Log.Warn("ResetBase is enabled; installed updates cannot be uninstalled from the resulting image.");
         }

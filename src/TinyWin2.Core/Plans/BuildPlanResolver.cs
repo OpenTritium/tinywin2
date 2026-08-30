@@ -9,10 +9,10 @@ public sealed record PlanSelection(
     bool Enabled = true,
     IReadOnlyDictionary<string, JsonNode?>? Parameters = null);
 
-/// <summary>A plan with parameters resolved and every operation bound to pure data.</summary>
+/// <summary>A plan with parameters resolved and every operation bound to typed options.</summary>
 public sealed record ResolvedPlan(
     PlanDefinition Definition,
-    IReadOnlyList<OperationSpec> Operations);
+    IReadOnlyList<BoundOperation> Operations);
 
 /// <summary>
 ///     One top-level unit of the build: exactly one VHDX differencing layer and one plan.
@@ -35,11 +35,13 @@ public sealed class PlanResolutionException(IReadOnlyList<string> errors)
 public static class BuildPlanResolver {
     /// <summary>
     ///     Resolves selections against the catalog: expands requires (cycle-safe), rejects conflicts,
-    ///     validates/binds parameters, and produces the ordered sequence of atomic steps.
+    ///     validates/binds parameters, binds every operation into resource-typed options, and produces
+    ///     the ordered sequence of atomic steps. Binding fails before any image I/O starts.
     /// </summary>
     public static BuildPlan Resolve(
         PlanCatalog catalog,
-        IReadOnlyList<PlanSelection> selections) {
+        IReadOnlyList<PlanSelection> selections,
+        ExecuterRegistry executers) {
         var errors = new List<string>();
         var requested = new List<string>();
         var explicitlyDisabled = new HashSet<string>(StringComparer.Ordinal);
@@ -90,7 +92,7 @@ public static class BuildPlanResolver {
         foreach (var planId in ordered) {
             var definition = catalog.Get(planId);
             var userParameters = selections.FirstOrDefault(s => s.PlanId == planId)?.Parameters;
-            resolvedById[planId] = ResolvePlan(definition, userParameters);
+            resolvedById[planId] = ResolvePlan(definition, userParameters, executers);
         }
 
         var steps = ordered
@@ -134,7 +136,7 @@ public static class BuildPlanResolver {
     }
 
     private static ResolvedPlan ResolvePlan(PlanDefinition definition,
-        IReadOnlyDictionary<string, JsonNode?>? userParameters) {
+        IReadOnlyDictionary<string, JsonNode?>? userParameters, ExecuterRegistry executers) {
         var errors = new List<string>();
         var values = new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
         userParameters ??= new Dictionary<string, JsonNode?>();
@@ -161,8 +163,8 @@ public static class BuildPlanResolver {
         }
 
         var operations = definition.Operations
-            .Select(operation => new OperationSpec(operation.Resource, operation.Action,
-                ParameterBinder.BindOperation(operation.Spec, values)))
+            .Select(operation => executers.Bind(new OperationSpec(operation.Resource, operation.Action,
+                ParameterBinder.BindOperation(operation.Spec, values))))
             .ToList();
         return new(definition, operations);
     }

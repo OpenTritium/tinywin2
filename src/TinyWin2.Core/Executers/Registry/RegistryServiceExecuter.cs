@@ -10,23 +10,21 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
     private const string ResourceId = "registry.service";
     public string Resource => ResourceId;
 
-    public void Validate(OperationSpec spec) {
+    public object Bind(OperationSpec spec) {
         if (spec.Action != OperationAction.Configure) {
             throw new ExecException($"{ResourceId} supports only action 'configure'.");
         }
 
-        _ = RegistryServiceOptions.FromDesired(spec.Spec);
+        return RegistryServiceOptions.FromDesired(spec.Spec);
     }
 
-    public async Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
-        Validate(spec);
-        var changes = await InspectCoreAsync(context, spec, ct);
+    public async Task<ResourceDiff> InspectAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
+        var changes = await InspectCoreAsync(context, operation, ct);
         return new(changes.All(c => c.Change.Kind == ChangeKind.Skipped), [.. changes.Select(c => c.Change)]);
     }
 
-    public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
-        Validate(spec);
-        var changes = await InspectCoreAsync(context, spec, ct);
+    public async Task<ExecResult> ApplyAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
+        var changes = await InspectCoreAsync(context, operation, ct);
         if (changes.All(c => c.Change.Kind == ChangeKind.Skipped)) {
             return ExecResult.Skipped("services already in the desired start mode",
                 [.. changes.Where(c => c.Change.Kind == ChangeKind.Skipped).Select(c => c.Change)]);
@@ -64,9 +62,9 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         return ExecResult.Applied(applied);
     }
 
-    private async Task<List<ServiceChange>> InspectCoreAsync(ExecContext context, OperationSpec spec,
+    private async Task<List<ServiceChange>> InspectCoreAsync(ExecContext context, BoundOperation operation,
         CancellationToken ct) {
-        var options = RegistryServiceOptions.FromDesired(spec.Spec);
+        var options = (RegistryServiceOptions)operation.Options;
         var hive = await context.Hives.GetAsync("system", context.Log, ct);
         var controlSet = await ResolveControlSetAsync(hive, ct);
         var servicesRoot = $@"{hive.HiveKey}\{controlSet}\Services";
