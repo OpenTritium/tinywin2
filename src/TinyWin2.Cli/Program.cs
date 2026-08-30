@@ -11,18 +11,14 @@ internal static class Program {
             EnableDefaultExceptionHandler = false
         };
 
+        var parseResult = root.Parse(args);
         try {
-            return await root.Parse(args).InvokeAsync(configuration);
+            return await parseResult.InvokeAsync(configuration);
         }
         catch (Exception ex) {
-            Console.ForegroundColor = ConsoleColor.Red;
-            await Console.Error.WriteLineAsync($"error: {ex.Message}");
-            if (Environment.GetEnvironmentVariable("TINYWIN2_DEBUG") is "1" or "true") {
-                await Console.Error.WriteLineAsync(ex.ToString());
-            }
-
-            Console.ResetColor();
-            return ExitCodes.Failure;
+            var jsonErrors = Environment.GetEnvironmentVariable("TINYWIN2_ERRORS") is "json"
+                             || parseResult.Tokens.Any(t => t.Value is "--json" or "--json-events");
+            return CliErrors.Write(ex, jsonErrors);
         }
     }
 }

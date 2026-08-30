@@ -6,6 +6,9 @@ namespace TinyWin2.Core.Env;
 
 public sealed record CheckResult(string Name, bool Ok, bool Required, string Detail);
 
+/// <summary>One or more required environment checks failed; the build refused to start.</summary>
+public sealed class EnvironmentCheckFailedException(string message) : InvalidOperationException(message);
+
 [SupportedOSPlatform("windows")]
 public static class EnvironmentDoctor {
     private const long MinimumFreeBytes = 50L * 1024 * 1024 * 1024;

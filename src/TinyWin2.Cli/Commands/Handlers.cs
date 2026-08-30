@@ -90,7 +90,10 @@ internal static class BuildHandler {
             return result.Succeeded ? 0 : 1;
         }
         catch (BuildStepFailedException ex) {
-            if (!jsonEvents) {
+            if (jsonEvents) {
+                CliErrors.Emit(ex, json: true);
+            }
+            else {
                 await Console.Error.WriteLineAsync(
                     request.Switches.SingleLayer
                         ? $"✘ step '{ex.StepId}' failed at step {ex.LayerIndex:000}; the single-layer workspace was kept for checkpointed recovery."
@@ -106,8 +109,14 @@ internal static class BuildHandler {
 
             return ExitCodes.Failure;
         }
-        catch (OperationCanceledException) {
-            await Console.Error.WriteLineAsync("cancelled.");
+        catch (OperationCanceledException ex) {
+            if (jsonEvents) {
+                CliErrors.Emit(ex, json: true);
+            }
+            else {
+                await Console.Error.WriteLineAsync("cancelled.");
+            }
+
             return ExitCodes.Canceled;
         }
         finally {
@@ -209,6 +218,7 @@ internal static class SourceValidateHandler {
     public static async Task<int> ExecuteAsync(ValidateRequest request) {
         var input = Path.GetFullPath(request.Input);
         SourceInputKind? assertedKind = request.Kind?.ToLowerInvariant() switch {
+            null => null,
             "image" => SourceInputKind.Image,
             "media" => SourceInputKind.Media,
             "iso" => SourceInputKind.Iso,
@@ -281,7 +291,7 @@ internal static class PackageHandler {
         }
 
         if (File.Exists(output) && !request.Overwrite) {
-            throw new IOException($"ISO already exists: '{output}' (pass --overwrite to replace it).");
+            throw new OutputExistsException($"ISO already exists: '{output}' (pass --overwrite to replace it).");
         }
 
         if (!File.Exists(oscdimg)) {
@@ -293,7 +303,7 @@ internal static class PackageHandler {
         }
 
         if (Directory.Exists(workspace) && Directory.EnumerateFileSystemEntries(workspace).Any()) {
-            throw new IOException($"package workspace '{workspace}' is not empty; choose a new directory.");
+            throw new WorkspaceConflictException($"package workspace '{workspace}' is not empty; choose a new directory.");
         }
 
         var resolver = new SourceImageResolver(new ProcessRunner(), new());

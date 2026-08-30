@@ -777,7 +777,7 @@ public sealed class BuildEngine(
         }
 
         if (File.Exists(outputPath) && !options.OverwriteOutput) {
-            throw new IOException($"output already exists: '{outputPath}' (pass --overwrite to replace it).");
+            throw new OutputExistsException($"output already exists: '{outputPath}' (pass --overwrite to replace it).");
         }
     }
 
@@ -810,7 +810,7 @@ public sealed class BuildEngine(
             .Where(c => c is { Required: true, Ok: false })
             .ToList();
         if (failures.Count > 0) {
-            throw new InvalidOperationException(
+            throw new EnvironmentCheckFailedException(
                 "environment checks failed: " + string.Join("; ", failures.Select(f => $"{f.Name}: {f.Detail}")));
         }
     }
@@ -818,7 +818,7 @@ public sealed class BuildEngine(
     private static void EnsureWorkspaceState(string workspace, bool resume) {
         if (resume) {
             if (!File.Exists(Path.Combine(workspace, "layers.json"))) {
-                throw new DirectoryNotFoundException(
+                throw new WorkspaceConflictException(
                     $"workspace '{workspace}' is not resumable; layers.json is missing.");
             }
 
@@ -828,7 +828,7 @@ public sealed class BuildEngine(
         if (Directory.Exists(workspace)
             && Directory.EnumerateFileSystemEntries(workspace)
                 .Any(path => !string.Equals(Path.GetFileName(path), "logs", StringComparison.OrdinalIgnoreCase))) {
-            throw new IOException(
+            throw new WorkspaceConflictException(
                 $"workspace '{workspace}' is not empty; choose a new workspace or pass --resume.");
         }
     }
