@@ -259,7 +259,7 @@ public sealed class VhdLayerStack(
                     log.Warn($"could not detach incomplete layer '{Path.GetFileName(path)}': {ex.Message}");
                 }
 
-                if (!TryDelete(path, false)) {
+                if (!TryDelete(path)) {
                     throw new IOException(
                         $"incomplete layer '{path}' could not be removed; delete the workspace and rebuild.");
                 }
@@ -328,7 +328,7 @@ public sealed class VhdLayerStack(
                 /* best effort */
             }
 
-            TryDelete(BaseVhdxPath, false);
+            TryDelete(BaseVhdxPath);
             throw;
         }
 
@@ -399,7 +399,7 @@ public sealed class VhdLayerStack(
             // The base is normally detached already; deletion below is the authoritative check.
         }
 
-        if (!TryDelete(BaseVhdxPath, false)) {
+        if (!TryDelete(BaseVhdxPath)) {
             throw new IOException($"could not reset base layer '{BaseVhdxPath}'.");
         }
 
@@ -476,7 +476,7 @@ public sealed class VhdLayerStack(
                 /* best effort */
             }
 
-            var cleanupFailed = !TryDelete(vhdxPath, false);
+            var cleanupFailed = !TryDelete(vhdxPath);
             MarkFailedRecord(record.Index, ex.Message, !cleanupFailed);
             if (cleanupFailed) {
                 log.Warn($"could not clean up failed layer {record.Index:000}; workspace retained for recovery",
@@ -522,7 +522,7 @@ public sealed class VhdLayerStack(
             log.Warn($"detach failed while discarding layer {session.Record.Index:000}: {ex.Message}");
         }
 
-        var deleteFailed = !TryDelete(session.VhdxPath, false);
+        var deleteFailed = !TryDelete(session.VhdxPath);
         if (deleteFailed) {
             var cleanupMessage =
                 $"layer cleanup failed (detach: {detachError?.Message ?? "ok"}); original error: {error}";
@@ -575,7 +575,7 @@ public sealed class VhdLayerStack(
                     /* best effort */
                 }
 
-                var deleteFailed = !TryDelete(path, false);
+                var deleteFailed = !TryDelete(path);
                 if (deleteFailed) {
                     MarkFailedRecord(record.Index, "truncated; layer file could not be deleted", false);
                 }
@@ -621,7 +621,7 @@ public sealed class VhdLayerStack(
             var leaf = diffs[^1];
             await backend.MergeAsync(leaf.VhdxPath!, depth, ct);
             foreach (var diff in diffs) {
-                var deleteFailed = !TryDelete(diff.VhdxPath!, false);
+                var deleteFailed = !TryDelete(diff.VhdxPath!);
                 lock (_gate) {
                     UpdateRecord(diff.Index, record => record with {
                         Status = LayerStatus.Merged,
@@ -676,11 +676,10 @@ public sealed class VhdLayerStack(
     }
 
     /// <summary>
-    ///     Deletes a layer file. Strict (consolidation): failure aborts while the manifest
-    ///     still matches disk. Otherwise a locked file is only disk-space debt — layer indexes are
+    ///     Deletes a layer file. A locked file is only disk-space debt — layer indexes are
     ///     monotonic, so the name is never reused — and must not mask the caller's real error.
     /// </summary>
-    private bool TryDelete(string path, bool strict) {
+    private bool TryDelete(string path) {
         try {
             if (File.Exists(path)) {
                 File.Delete(path);
@@ -689,10 +688,6 @@ public sealed class VhdLayerStack(
             return true;
         }
         catch (Exception ex) {
-            if (strict) {
-                throw new IOException($"failed to delete layer file '{path}': {ex.Message}", ex);
-            }
-
             log.Warn($"could not delete layer file '{path}' ({ex.Message}); leaving it behind");
             return false;
         }

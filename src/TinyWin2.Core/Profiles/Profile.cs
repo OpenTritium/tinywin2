@@ -132,8 +132,6 @@ public static class ProfileStore {
         File.WriteAllText(path, profile.ToJson().ToPrettyString());
     }
 
-    public static IReadOnlyList<PlanSelection> ToPlanSelections(Profile profile) => profile.Selections;
-
     /// <summary>Validates a profile against a catalog: returns unknown plan ids.</summary>
     public static IReadOnlyList<string> UnknownPlans(Profile profile, PlanCatalog catalog) => [
         .. profile.Selections

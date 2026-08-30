@@ -115,19 +115,6 @@ public sealed class ProfileTests : IDisposable {
     }
 
     [Test]
-    public async Task ToPlanSelectionsMapsEnabledAndParameters() {
-        var profile = new Profile("p", null, [
-            new("x", true, new Dictionary<string, JsonNode?> { ["k"] = "v" }),
-            new("y", false)
-        ]);
-        var selections = ProfileStore.ToPlanSelections(profile);
-        await Assert.That(selections[0].PlanId).IsEqualTo("x");
-        await Assert.That(selections[0].Enabled).IsTrue();
-        await Assert.That(selections[0].Parameters?["k"]?.GetValue<string>()).IsEqualTo("v");
-        await Assert.That(selections[1].Enabled).IsFalse();
-    }
-
-    [Test]
     public async Task UnknownPlansReturnsDistinctUnknownIds() {
         var plansDir = Path.Combine(_root, "plans");
         Directory.CreateDirectory(plansDir);

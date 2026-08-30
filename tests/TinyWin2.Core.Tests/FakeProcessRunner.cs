@@ -12,18 +12,13 @@ public sealed class FakeProcessRunner : IProcessRunner {
         IReadOnlyList<string> arguments,
         ProcessRunOptions? options = null,
         CancellationToken cancellationToken = default) {
+        _ = options;
         Calls.Add((fileName, arguments));
-        options?.OnOutputLine?.Invoke("");
         if (Handler is null) {
             return Task.FromResult(Ok());
         }
 
-        var result = Handler(fileName, arguments);
-        foreach (var line in result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries)) {
-            options?.OnOutputLine?.Invoke(line.TrimEnd('\r'));
-        }
-
-        return Task.FromResult(result);
+        return Task.FromResult(Handler(fileName, arguments));
     }
 
     public static ProcessRunResult Ok(string output = "") => new(0, output, "", $"{output}");

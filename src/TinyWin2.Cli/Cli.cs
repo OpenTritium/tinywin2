@@ -41,7 +41,7 @@ internal static class Cli {
                     $"profile '{profilePath}' references unknown plans: {string.Join(", ", unknown)}");
             }
 
-            profileSelections.AddRange(ProfileStore.ToPlanSelections(profile));
+            profileSelections.AddRange(profile.Selections);
         }
 
         var selections = PlanSelectionMerger.Merge(

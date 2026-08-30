@@ -40,16 +40,6 @@ public sealed class ProcessRunnerTests {
     }
 
     [Test]
-    public async Task StreamsOutputLinesToCallback() {
-        var runner = new ProcessRunner();
-        var lines = new List<string>();
-        var (exe, args) = SplitCommand(EchoCommand("streamed"));
-        await runner.RunAsync(exe, args, new() { OnOutputLine = lines.Add });
-        await Assert.That(lines.Count).IsEqualTo(1);
-        await Assert.That(lines[0].Trim()).IsEqualTo("streamed");
-    }
-
-    [Test]
     public async Task BoundsCapturedOutput() {
         var runner = new ProcessRunner();
         var exe = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh";
@@ -62,22 +52,6 @@ public sealed class ProcessRunnerTests {
 
         await Assert.That(result.Output.Length).IsLessThanOrEqualTo(150);
         await Assert.That(result.Output).Contains("...[");
-    }
-
-    [Test]
-    public async Task OutputCallbackFailureTerminatesTheProcess() {
-        var runner = new ProcessRunner();
-        var exe = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh";
-        IReadOnlyList<string> args = OperatingSystem.IsWindows()
-            ? ["/c", "echo callback & ping -n 30 127.0.0.1 > nul"]
-            : ["-c", "printf 'callback\\n'; sleep 30"];
-        var stopwatch = Stopwatch.StartNew();
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => runner.RunAsync(exe, args,
-            new() { OnOutputLine = _ => throw new InvalidOperationException("callback failed") }));
-
-        stopwatch.Stop();
-        await Assert.That(stopwatch.Elapsed.TotalSeconds).IsLessThan(5);
     }
 
     [Test]

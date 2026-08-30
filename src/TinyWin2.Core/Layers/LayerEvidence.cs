@@ -53,9 +53,6 @@ public static partial class LayerEvidence {
     }
 
     /// <summary>Loads a manifest snapshot: relativePath → (size, writeTicks).</summary>
-    public static Dictionary<string, (long Size, long WriteTicks)> LoadManifest(string path) =>
-        LoadManifestSnapshot(path).Entries;
-
     public static FileManifestSnapshot LoadManifestSnapshot(string path) {
         var result = new Dictionary<string, (long, long)>(StringComparer.OrdinalIgnoreCase);
         if (!File.Exists(path)) {

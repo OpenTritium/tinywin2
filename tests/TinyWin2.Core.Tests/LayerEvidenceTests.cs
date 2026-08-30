@@ -38,7 +38,7 @@ public sealed class LayerEvidenceTests : IDisposable {
         var manifest = LayerEvidence.ManifestPathFor(LayerEvidence.SnapshotsRoot(_root), 0);
         await LayerEvidence.CaptureAsync(imageDir, _root, 0, new FakeProcessRunner(),
             new(), CancellationToken.None);
-        var loaded = LayerEvidence.LoadManifest(manifest);
+        var loaded = LayerEvidence.LoadManifestSnapshot(manifest).Entries;
         await Assert.That(loaded.ContainsKey("Windows\\notepad.exe")).IsTrue();
         await Assert.That(loaded.ContainsKey("inetpub\\wwwroot")).IsFalse(); // directories are not listed
         await Assert.That(loaded.ContainsKey("Users\\All Users")).IsTrue(); // junction recorded as entry
@@ -90,7 +90,7 @@ public sealed class LayerEvidenceTests : IDisposable {
             inaccessibleDirectory.SetAccessControl(security);
         }
 
-        var loaded = LayerEvidence.LoadManifest(manifest);
+        var loaded = LayerEvidence.LoadManifestSnapshot(manifest).Entries;
 
         await Assert.That(loaded.ContainsKey("readable.txt")).IsTrue();
         await Assert.That(loaded.ContainsKey("inaccessible")).IsFalse();
@@ -101,12 +101,14 @@ public sealed class LayerEvidenceTests : IDisposable {
     public async Task LoadManifestRejectsMalformedRowsAndDuplicatePaths() {
         var manifest = Path.Combine(_root, "bad.tsv");
         await File.WriteAllTextAsync(manifest, "# tinywin2-files-v1 complete\nnot-a-row\n");
-        var malformed = Assert.Throws<InvalidDataException>(() => LayerEvidence.LoadManifest(manifest));
+        var malformed = Assert.Throws<InvalidDataException>(() =>
+            LayerEvidence.LoadManifestSnapshot(manifest));
         await Assert.That(malformed.Message).Contains("malformed");
 
         await File.WriteAllTextAsync(manifest,
             "# tinywin2-files-v1 complete\n1\t2\ta.txt\n2\t3\ta.txt\n");
-        var duplicate = Assert.Throws<InvalidDataException>(() => LayerEvidence.LoadManifest(manifest));
+        var duplicate = Assert.Throws<InvalidDataException>(() =>
+            LayerEvidence.LoadManifestSnapshot(manifest));
         await Assert.That(duplicate.Message).Contains("duplicate");
     }
 }

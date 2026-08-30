@@ -84,7 +84,7 @@ internal static class BuildHandler {
                 Console.WriteLine($"  output:    {result.OutputPath}");
                 Console.WriteLine($"  manifest:  {result.ManifestPath}");
                 Console.WriteLine($"  workspace: {workspacePath}");
-                Console.WriteLine($"  日志:      {logFilePath}");
+                Console.WriteLine($"  log:       {logFilePath}");
                 Console.WriteLine($"  layers:    {result.LayerCount}");
             }
 

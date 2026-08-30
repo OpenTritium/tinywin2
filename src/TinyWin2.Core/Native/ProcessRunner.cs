@@ -10,7 +10,6 @@ public sealed record ProcessRunResult(int ExitCode, string Output, string Error,
 public sealed class ProcessRunOptions {
     public TimeSpan? Timeout { get; init; }
     public bool IgnoreExitCode { get; init; }
-    public Action<string>? OnOutputLine { get; init; }
     public int MaxOutputCharacters { get; init; } = 4 * 1024 * 1024;
 }
 
@@ -76,7 +75,7 @@ public sealed class ProcessRunner : IProcessRunner {
         var timeout = options.Timeout ?? Timeout.InfiniteTimeSpan;
         using var timeoutCts = new CancellationTokenSource(timeout);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-        var outputTask = ReadStreamAsync(process.StandardOutput, outputBuilder, linked.Token, options.OnOutputLine);
+        var outputTask = ReadStreamAsync(process.StandardOutput, outputBuilder, linked.Token);
         var errorTask = ReadStreamAsync(process.StandardError, errorBuilder, linked.Token);
         var processExitTask = process.WaitForExitAsync(linked.Token);
         try {
@@ -125,12 +124,9 @@ public sealed class ProcessRunner : IProcessRunner {
     }
 
     /// <summary>Drains a redirected stream line by line until EOF; single writer, no locking needed.</summary>
-    private static async Task
-        ReadStreamAsync(StreamReader reader, OutputBuffer buffer, CancellationToken ct,
-            Action<string>? onLine = null) {
+    private static async Task ReadStreamAsync(StreamReader reader, OutputBuffer buffer, CancellationToken ct) {
         while (await reader.ReadLineAsync(ct).ConfigureAwait(false) is { } line) {
             buffer.AppendLine(line);
-            onLine?.Invoke(line);
         }
     }
 

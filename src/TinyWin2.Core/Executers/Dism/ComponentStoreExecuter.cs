@@ -15,14 +15,13 @@ public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuter
     public Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
         // Component-store size reduction is a run-once optimization: the diff is the action itself.
         Validate(spec);
-        _ = ParseOptions(spec);
+        _ = ComponentStoreOptions.FromDesired(spec.Spec);
         return Task.FromResult(new ResourceDiff(false, [new(ChangeKind.Modified, "component-store")]));
     }
 
     public async Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
         Validate(spec);
-        var options = ParseOptions(spec);
-        var resetBase = options.ResetBase;
+        var resetBase = ComponentStoreOptions.FromDesired(spec.Spec).ResetBase;
         if (resetBase) {
             context.Log.Warn("ResetBase is enabled; installed updates cannot be uninstalled from the resulting image.");
         }
@@ -46,7 +45,4 @@ public sealed class ComponentStoreExecuter(IProcessRunner runner) : DismExecuter
             _ => throw new ExecException($"dism.exe StartComponentCleanup failed (exit {exitCode}).")
         };
     }
-
-    private static ComponentStoreOptions ParseOptions(OperationSpec spec) =>
-        ComponentStoreOptions.FromDesired(spec.Spec);
 }
