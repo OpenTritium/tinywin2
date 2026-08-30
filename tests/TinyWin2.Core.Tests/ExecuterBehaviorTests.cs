@@ -56,7 +56,7 @@ public sealed class FeatureExecuterTests : IDisposable {
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
                 ("features", new JsonArray("Hyper-V")), ("removePayload", true)), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         var disable = _harness.Runner.Calls.First(c => c.Args.Contains("/Disable-Feature"));
         await Assert.That(string.Join(" ", disable.Args)).Contains("/FeatureName:Hyper-V");
         await Assert.That(string.Join(" ", disable.Args)).Contains("/Remove");
@@ -71,7 +71,7 @@ public sealed class FeatureExecuterTests : IDisposable {
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
                 ("features", new JsonArray("Permanent"))), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(result.Changes[0].Kind).IsEqualTo(ChangeKind.Skipped);
     }
 
@@ -91,7 +91,7 @@ public sealed class FeatureExecuterTests : IDisposable {
             ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
                 ("features", new JsonArray("Microsoft-RemoteDesktopConnection")),
                 ("forceExplicit", true)), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         var disable = _harness.Runner.Calls.First(c => c.Args.Contains("/Disable-Feature"));
         await Assert.That(string.Join(" ", disable.Args))
             .Contains("/FeatureName:Microsoft-RemoteDesktopConnection");
@@ -116,7 +116,7 @@ public sealed class CapabilityAndPackageTests : IDisposable {
         var result = await capabilities.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("dism.capability", OperationAction.Remove,
                 ("capabilities", new JsonArray("Language.OCR~~~zh-CN~0.0.1.0"))), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(string.Join(" ", _harness.Runner.Calls.Last().Args)).Contains("/Remove-Capability");
     }
 
@@ -137,7 +137,7 @@ public sealed class CapabilityAndPackageTests : IDisposable {
             .IsEqualTo("Browser.InternetExplorer~~~~0.0.11.0");
 
         var result = await capabilities.ApplyAsync(_harness.NewContext(), spec, CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         var remove = _harness.Runner.Calls.Last(c => c.Args.Contains("/Remove-Capability"));
         await Assert.That(string.Join(" ", remove.Args))
             .Contains("/CapabilityName:Browser.InternetExplorer~~~~0.0.11.0");
@@ -152,7 +152,7 @@ public sealed class CapabilityAndPackageTests : IDisposable {
         var result = await capabilities.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("dism.capability", OperationAction.Remove,
                 ("capabilities", new JsonArray("Cap1"))), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(result.Changes[0].Kind).IsEqualTo(ChangeKind.Skipped);
     }
 
@@ -190,7 +190,7 @@ public sealed class CapabilityAndPackageTests : IDisposable {
         var result = await packages.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("dism.package", OperationAction.Remove,
                 ("patterns", new JsonArray("^Microsoft-Windows-(Foo|Bar)-Package~"))), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(result.Changes.Count).IsEqualTo(2);
         await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Skipped)).IsEqualTo(1);
         await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Removed)).IsEqualTo(1);
@@ -211,7 +211,7 @@ public sealed class CapabilityAndPackageTests : IDisposable {
             ExecuterTestHarness.Spec("dism.package", OperationAction.Remove,
                 ("patterns", new JsonArray("^Microsoft-Windows-SenseClient-FoD-Package~"))), CancellationToken.None);
 
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(result.Changes.Count).IsEqualTo(2);
         await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Skipped)).IsEqualTo(1);
         await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Removed)).IsEqualTo(1);
@@ -235,7 +235,7 @@ public sealed class ComponentStoreExecuterTests : IDisposable {
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("dism.component-store", OperationAction.Cleanup, ("resetBase", true)),
             CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(string.Join(" ", _harness.Runner.Calls[0].Args)).Contains("/ResetBase");
     }
 
@@ -244,7 +244,7 @@ public sealed class ComponentStoreExecuterTests : IDisposable {
         _harness.Runner.Handler = (_, _) => FakeProcessRunner.Fail(4350);
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("dism.component-store", OperationAction.Cleanup), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
+        await Assert.That(result.IsSkipped).IsTrue();
         await Assert.That(result.SkipReason).Contains("4350");
     }
 
@@ -283,7 +283,7 @@ public sealed class AppxProvisionedExecuterTests : IDisposable {
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("appx.provisioned", OperationAction.Remove,
                 ("patterns", new JsonArray("Microsoft.Xbox*"))), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(result.Changes.Count).IsEqualTo(1);
         var remove = _harness.Runner.Calls.First(c => c.Args.Contains("/Remove-ProvisionedAppxPackage"));
         await Assert.That(string.Join(" ", remove.Args)).Contains("Microsoft.XboxApp_48.48.48.0_x64__8wekyb3d8bbwe");
@@ -296,7 +296,7 @@ public sealed class AppxProvisionedExecuterTests : IDisposable {
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("appx.provisioned", OperationAction.Remove,
                 ("patterns", new JsonArray("Microsoft.Xbox*"))), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
+        await Assert.That(result.IsSkipped).IsTrue();
     }
 
     [Test]
@@ -341,7 +341,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("fs.path", OperationAction.Remove,
                 ("paths", new JsonArray("Windows/Web/Wallpaper"))), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(Directory.Exists(target)).IsFalse();
     }
 
@@ -350,7 +350,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("fs.path", OperationAction.Remove,
                 ("paths", new JsonArray("Does/Not/Exist"))), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
+        await Assert.That(result.IsSkipped).IsTrue();
     }
 
     [Test]
@@ -369,7 +369,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
             ExecuterTestHarness.Spec("fs.path", OperationAction.Remove,
                 ("paths", new JsonArray("Users\\*\\Desktop\\Microsoft Edge.lnk"))), CancellationToken.None);
 
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(File.Exists(Path.Combine(aliceDesktop, "Microsoft Edge.lnk"))).IsFalse();
         await Assert.That(File.Exists(Path.Combine(bobDesktop, "Microsoft Edge.lnk"))).IsFalse();
         await Assert.That(File.Exists(Path.Combine(nestedDesktop, "Microsoft Edge.lnk"))).IsTrue();
@@ -424,7 +424,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
         var result = await _executer.ApplyAsync(context,
             ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
                 ("path", "ProgramData\\Tools"), ("source", "tools")), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(_harness.Runner.Called("robocopy.exe")).IsTrue();
         var copy = _harness.Runner.Calls.Last(c => c.File == "robocopy.exe");
         await Assert.That(copy.Args).Contains(Path.Combine(assets, "tools"));
@@ -446,7 +446,7 @@ public sealed class FilesystemExecuterTests : IDisposable {
         var result = await _executer.ApplyAsync(context,
             ExecuterTestHarness.Spec("fs.path", OperationAction.Copy,
                 ("path", "ProgramData\\settings.ini"), ("source", "settings.ini")), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(await File.ReadAllTextAsync(destination)).IsEqualTo("new");
     }
 
@@ -503,7 +503,7 @@ public sealed class DriverStoreExecuterTests : IDisposable {
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("driver.store", OperationAction.Remove,
                 ("infNames", new JsonArray("mdm.inf"))), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         var remove = _harness.Runner.Calls.Last(c => c.Args.Contains("/Remove-Driver"));
         await Assert.That(remove.Args).Contains("/Driver:oem42.inf");
     }
@@ -518,7 +518,7 @@ public sealed class DriverStoreExecuterTests : IDisposable {
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("driver.store", OperationAction.Remove,
                 ("infNames", new JsonArray("ghost.inf"))), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
+        await Assert.That(result.IsSkipped).IsTrue();
     }
 
     [Test]
@@ -531,7 +531,7 @@ public sealed class DriverStoreExecuterTests : IDisposable {
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("driver.store", OperationAction.Remove,
                 ("infNames", new JsonArray("mdm.inf", "ghost.inf"))), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(result.Changes.Count).IsEqualTo(2);
         await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Removed)).IsEqualTo(1);
         await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Skipped)).IsEqualTo(1);
@@ -548,7 +548,7 @@ public sealed class DriverStoreExecuterTests : IDisposable {
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("driver.store", OperationAction.Remove,
                 ("infNames", new JsonArray("mdm.inf"))), CancellationToken.None);
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
+        await Assert.That(result.IsSkipped).IsTrue();
         await Assert.That(result.Changes[0].Before)
             .Contains("inbox driver packages cannot be removed by DISM");
         await Assert.That(_harness.Runner.Calls.Any(c => c.Args.Contains("/Remove-Driver"))).IsFalse();
@@ -608,7 +608,7 @@ public sealed class DriverStoreExecuterTests : IDisposable {
                 ("infNames", new JsonArray("nvraid.inf")), ("forceUnusedInbox", true)),
             CancellationToken.None);
 
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(File.Exists(Path.Combine(systemDrivers, "nvstor.sys"))).IsFalse();
         await Assert.That(_harness.Runner.Calls.Any(call =>
             call.Args.Count >= 2

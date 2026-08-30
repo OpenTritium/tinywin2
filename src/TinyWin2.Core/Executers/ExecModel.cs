@@ -21,15 +21,6 @@ public enum ChangeKind {
     Skipped
 }
 
-/// <summary>
-///     Final outcome status of one operation. Failures are exceptions
-///     (<see cref="ExecException" />), never a status value.
-/// </summary>
-public enum ExecStatus {
-    Applied,
-    Skipped
-}
-
 /// <summary>One semantic change an operation made (or skipped) against a named target.</summary>
 public sealed record ChangeItem(ChangeKind Kind, string Target, string? Before = null, string? After = null) {
     public JsonObject ToJson() => new() {
@@ -40,13 +31,19 @@ public sealed record ChangeItem(ChangeKind Kind, string Target, string? Before =
     };
 }
 
-/// <summary>Result of one operation. Hard failures throw <see cref="ExecException" /> instead.</summary>
+/// <summary>
+///     Result of one operation. Hard failures throw <see cref="ExecException" /> instead;
+///     a set <see cref="SkipReason" /> means the operation changed nothing.
+/// </summary>
 /// <param name="Changes">What changed; may carry Skipped items for absent targets.</param>
-public sealed record ExecResult(ExecStatus Status, IReadOnlyList<ChangeItem> Changes, string? SkipReason = null) {
-    public static ExecResult Applied(IReadOnlyList<ChangeItem> changes) => new(ExecStatus.Applied, changes);
+public sealed record ExecResult(IReadOnlyList<ChangeItem> Changes, string? SkipReason = null) {
+    /// <summary>True when the operation was a no-op (already satisfied or nothing to do).</summary>
+    public bool IsSkipped => SkipReason is not null;
+
+    public static ExecResult Applied(IReadOnlyList<ChangeItem> changes) => new(changes);
 
     public static ExecResult Skipped(string reason, IReadOnlyList<ChangeItem>? changes = null)
-        => new(ExecStatus.Skipped, changes ?? [], reason);
+        => new(changes ?? [], reason);
 }
 
 /// <summary>

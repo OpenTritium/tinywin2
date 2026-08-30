@@ -37,7 +37,7 @@ public sealed class AppxSystemExecuterTests : IDisposable {
             ExecuterTestHarness.Spec("appx.system", OperationAction.Remove,
                 ("patterns", new JsonArray("Microsoft.Windows.AppRep.ChxApp*"))), CancellationToken.None);
 
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.IsSkipped).IsFalse();
         await Assert.That(result.Changes).Count().IsEqualTo(2);
         await Assert.That(Directory.Exists(directory)).IsFalse();
         await Assert.That(_harness.Runner.Calls.Count(call => call.Args.Contains("delete"))).IsEqualTo(1);
@@ -76,7 +76,7 @@ public sealed class AppxSystemExecuterTests : IDisposable {
             ExecuterTestHarness.Spec("appx.system", OperationAction.Remove,
                 ("patterns", new JsonArray("Microsoft.Windows.AppRep.ChxApp*"))), CancellationToken.None);
 
-        await Assert.That(result.Status).IsEqualTo(ExecStatus.Skipped);
+        await Assert.That(result.IsSkipped).IsTrue();
         await Assert.That(_harness.Runner.Calls.Any(call => call.Args.Contains("delete"))).IsFalse();
     }
 }

@@ -660,15 +660,15 @@ public sealed class BuildEngine(
                 operationResults.Add(new JsonObject {
                     ["resource"] = operation.Resource,
                     ["action"] = operation.Action.ToString().ToLowerInvariant(),
-                    ["status"] = result.Status.ToString().ToLowerInvariant(),
+                    ["status"] = result.IsSkipped ? "skipped" : "applied",
                     ["changes"] = new JsonArray(result.Changes.Select(c => (JsonNode)c.ToJson()).ToArray()),
                     ["skipReason"] = result.SkipReason
                 });
-                if (result.Status == ExecStatus.Applied) {
+                if (!result.IsSkipped) {
                     log.Info($"{operation.Resource}: {result.Changes.Count} change(s)", resolved.Definition.Id,
                         session.Record.Index);
                 }
-                else if (result.Status == ExecStatus.Skipped) {
+                else {
                     log.Info($"{operation.Resource}: skipped ({result.SkipReason})", resolved.Definition.Id,
                         session.Record.Index);
                 }
