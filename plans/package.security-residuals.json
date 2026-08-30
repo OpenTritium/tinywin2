@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "package.security-residuals",
+  "version": "1.0.0",
+  "title": "移除 Defender 和 Sense CBS 残留包",
+  "description": "移除 Defender 默认定义、Application Guard/组策略以及 Sense 客户端的已安装和暂存 CBS 包。与功能/能力移除配套，用于清理组件存储中的安全防护残留；会失去 Defender、MDE Sense 和 Application Guard 的离线修复能力。",
+  "category": "Security",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.package",
+    "action": "remove",
+    "spec": {
+      "patterns": [
+        "(?i)^Microsoft-Windows-SenseClient(?:-[A-Za-z0-9-]+)?-Package~.*$",
+        "(?i)^Windows-Defender(?:-[A-Za-z0-9-]+)?-Package~.*$",
+        "(?i)^Microsoft-Windows-SmartScreen(?:-[A-Za-z0-9-]+)?-Package~.*$",
+        "(?i)^Microsoft-OneCore-WebThreatDefense(?:-[A-Za-z0-9-]+)?-Package~.*$",
+        "(?i)^Windows-SecurityHealth-SSO(?:-[A-Za-z0-9-]+)?-Package~.*$"
+      ]
+    }
+  }
+}

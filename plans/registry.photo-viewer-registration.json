@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "registry.photo-viewer-registration",
+  "version": "1.0.0",
+  "title": "移除经典照片查看器注册应用入口",
+  "description": "删除 RegisteredApplications 中指向已移除 Windows Photo Viewer 的注册值。",
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "registry.value",
+    "action": "remove",
+    "spec": {
+      "hive": "software",
+      "values": [
+        {
+          "key": "RegisteredApplications",
+          "name": "Windows Photo Viewer"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "registry.windows-backup",
+  "version": "3.0.0",
+  "title": "禁用 Windows 备份入口",
+  "description": "使用 Windows 自带策略关闭 Windows 备份同步与还原功能；MicrosoftWindows.Client.CBS 共享包保留，因此 Windows 备份入口仍可能出现在“所有应用”列表，但不能正常执行备份。",
+  "category": "Background Experience",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "registry.value",
+    "action": "set",
+    "spec": {
+      "hive": "software",
+      "values": [
+        {
+          "key": "Policies\\Microsoft\\Windows\\SettingSync",
+          "name": "EnableWindowsBackup",
+          "type": "dword",
+          "data": 0
+        },
+        {
+          "key": "Microsoft\\Windows\\CurrentVersion\\WindowsBackupAndRestore\\NodeValues",
+          "name": "EnableWindowsRestore",
+          "type": "dword",
+          "data": 0
+        }
+      ]
+    }
+  }
+}

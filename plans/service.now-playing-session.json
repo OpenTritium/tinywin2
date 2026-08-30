@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "service.now-playing-session",
+  "version": "3.0.0",
+  "title": "禁用正在播放会话管理器服务",
+  "description": "禁用每用户 NPSMSvc_* 正在播放会话管理器服务。音频和视频播放引擎通常仍可用，但媒体会话元数据、媒体键/耳机控制、音量浮层和锁屏媒体控件等系统集成可能不可用；服务实例后缀随用户配置变化，因此使用通配符匹配。",
+  "category": "Media",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "NPSMSvc"
+      ],
+      "servicePatterns": [
+        "NPSMSvc_*"
+      ],
+      "start": "disabled"
+    }
+  }
+}

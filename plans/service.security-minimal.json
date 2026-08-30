@@ -1,0 +1,39 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "service.security-minimal",
+  "version": "3.1.0",
+  "title": "Disable security services and filtering drivers",
+  "description": "Aggressive desktop profile: disable Defender, security health reporting, web threat protection, BitLocker service, application identity, smart-card propagation, and related diagnostic hosts. The Windows Firewall policy is disabled separately by registry.windows-firewall, while mpsdrv, BFE, and MpsSvc remain available so Windows Shell AppX packages can register their windows.firewall extension and keep the Windows 11 Explorer/input experience intact. Keep CryptSvc, RPC, DHCP, DNS, Workstation, audio, input, user profiles, and licensing services for office, entertainment, networking, and desktop startup.",
+  "category": "Security",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "AppIDSvc",
+        "BDESVC",
+        "CertPropSvc",
+        "DPS",
+        "SecurityHealthService",
+        "Sense",
+        "WdBoot",
+        "WdFilter",
+        "WdNisDrv",
+        "WdNisSvc",
+        "WinDefend",
+        "wscsvc",
+        "webthreatdefsvc",
+        "webthreatdefusersvc",
+        "wtd",
+        "WdiServiceHost",
+        "WdiSystemHost"
+      ],
+      "servicePatterns": [
+        "webthreatdefusersvc_*"
+      ],
+      "start": "disabled"
+    }
+  }
+}

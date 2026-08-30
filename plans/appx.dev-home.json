@@ -1,0 +1,15 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "appx.dev-home",
+  "version": "3.0.0",
+  "title": "移除 Dev Home",
+  "description": "移除 Microsoft.Windows.DevHome 预置 Appx；Dev Home 开发者仪表板将不可用。",
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": { "patterns": ["Microsoft.Windows.DevHome"] }
+  }
+}

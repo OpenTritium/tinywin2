@@ -47,7 +47,7 @@ public sealed class SourceInput {
 }
 
 /// <summary>Resolves ISO/folder sources and inspects install-image indexes (read-only).</summary>
-public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
+public sealed partial class SourceImageResolver(IProcessRunner runner, BuildLog log) {
     public async Task<SourceInput> ResolveAsync(string inputPath, CancellationToken ct) {
         var fullPath = Path.GetFullPath(inputPath);
         if (Directory.Exists(fullPath)) {
@@ -118,7 +118,7 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
         }
     }
 
-    /// <summary>Reads one selected index. Build only needs this query; listing all indexes is for inspect/GUI.</summary>
+    /// <summary>Reads one selected index. Build only needs this query; listing all indexes is for inspect commands.</summary>
     public async Task<ImageIndexInfo> GetIndexAsync(string installImagePath, int index, CancellationToken ct) {
         var result = await runner.RunAsync("dism.exe",
             ["/Get-WimInfo", $"/WimFile:{installImagePath}", $"/Index:{index}", "/English"],
@@ -243,10 +243,13 @@ public sealed class SourceImageResolver(IProcessRunner runner, BuildLog log) {
     /// <summary>"11,831,247,965 bytes" → 11831247965; falls back when unparsable.</summary>
     internal static long ParseByteSize(string? sizeText, long fallback) =>
         sizeText is not null
-        && Regex.Match(sizeText.Replace(",", ""), @"\d+").Value is { Length: > 0 } digits
+        && Digits().Match(sizeText.Replace(",", "")).Value is { Length: > 0 } digits
         && long.TryParse(digits, out var size)
             ? size
             : fallback;
+
+    [GeneratedRegex(@"\d+")]
+    private static partial Regex Digits();
 
     /// <summary>Exports one index from an ESD into a WIM (dism cannot apply every ESD directly).</summary>
     public async Task<string> ExportIndexToWimAsync(

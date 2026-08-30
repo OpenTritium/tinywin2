@@ -54,6 +54,8 @@ public sealed class DismClassifierTests {
             .IsEqualTo(DismOutcome.InvalidInstallState);
         await Assert.That(DismErrors.Classify(DismErrors.CbsECannotUninstall, ""))
             .IsEqualTo(DismOutcome.CannotUninstall);
+        await Assert.That(DismErrors.Classify(DismErrors.CbsEInvalidPackage, ""))
+            .IsEqualTo(DismOutcome.CannotUninstall);
         await Assert.That(DismErrors.Classify(2, "")).IsEqualTo(DismOutcome.Fatal);
     }
 
@@ -192,6 +194,20 @@ public sealed class RegistryValueExecuterTests : IDisposable {
     [Test]
     public async Task MultiStringComparisonIgnoresRegQueryTerminator() =>
         await Assert.That(RegValues.Equals("REG_MULTI_SZ", "a\\0b\\0", "a\\0b")).IsTrue();
+
+    [Test]
+    public async Task BinaryDataRendersAndComparesIgnoringFormatting() {
+        var rendered = RegValues.RenderData("REG_BINARY", JsonValue.Create("22 22:00-ff"));
+        await Assert.That(rendered).IsEqualTo("222200FF");
+        await Assert.That(RegValues.Equals("REG_BINARY", "22 22 00 ff", rendered)).IsTrue();
+    }
+
+    [Test]
+    public async Task BinaryDataRejectsInvalidHex() {
+        var ex = Assert.Throws<ExecException>(() =>
+            RegValues.RenderData("REG_BINARY", JsonValue.Create("abc")));
+        await Assert.That(ex.Message).Contains("even number of hexadecimal digits");
+    }
 
     [Test]
     public async Task RegistryQueryAccessFailureIsNotTreatedAsMissing() {

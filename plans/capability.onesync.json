@@ -12,7 +12,7 @@
     "action": "remove",
     "spec": {
       "capabilities": [
-        "OneCoreUAP.OneSync~~~~0.0.1.0"
+        "OneCoreUAP.OneSync~~~~*"
       ]
     }
   }

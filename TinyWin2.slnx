@@ -1,6 +1,5 @@
 <Solution>
     <Project Path="src/TinyWin2.Core/TinyWin2.Core.csproj"/>
     <Project Path="src/TinyWin2.Cli/TinyWin2.Cli.csproj"/>
-    <Project Path="src/TinyWin2.Gui/TinyWin2.Gui.csproj"/>
     <Project Path="tests/TinyWin2.Core.Tests/TinyWin2.Core.Tests.csproj"/>
 </Solution>

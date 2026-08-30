@@ -4,6 +4,7 @@ namespace TinyWin2.Core.Executers.Driver;
 
 public sealed record DriverStoreOptions {
     public required IReadOnlyList<string> InfNames { get; init; }
+    public bool ForceUnusedInbox { get; init; }
 
     public static DriverStoreOptions FromDesired(JsonObject desired) {
         var infNames = Desired.RequiredStringArray(desired, "infNames", "driver.store");
@@ -22,6 +23,9 @@ public sealed record DriverStoreOptions {
             throw new ExecException($"invalid driver INF name '{infName}'.");
         }
 
-        return new() { InfNames = infNames };
+        return new() {
+            InfNames = infNames,
+            ForceUnusedInbox = Desired.OptionalBool(desired, "forceUnusedInbox", false)
+        };
     }
 }

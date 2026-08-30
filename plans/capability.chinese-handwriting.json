@@ -12,7 +12,7 @@
     "action": "remove",
     "spec": {
       "capabilities": [
-        "Language.Handwriting~~~zh-CN~0.0.1.0"
+        "Language.Handwriting~~~zh-CN~*"
       ]
     }
   }

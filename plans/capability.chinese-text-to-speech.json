@@ -12,7 +12,7 @@
     "action": "remove",
     "spec": {
       "capabilities": [
-        "Language.TextToSpeech~~~zh-CN~0.0.1.0"
+        "Language.TextToSpeech~~~zh-CN~*"
       ]
     }
   }

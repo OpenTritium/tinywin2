@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "registry.startup-default-user",
+  "version": "1.0.0",
+  "title": "清理默认用户注册表自启动项",
+  "description": "删除默认用户模板中的 Run、RunOnce 和 StartupApproved 注册表项，避免新建用户继承无用自启动；不会删除用户配置、中文输入或桌面 Shell。",
+  "category": "Background Experience",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "registry.value",
+    "action": "remove",
+    "spec": {
+      "hive": "default-user",
+      "deleteKeys": [
+        "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+        "Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce",
+        "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run",
+        "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\StartupFolder"
+      ]
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "fs.legacy-ime",
+  "version": "3.0.0",
+  "title": "移除非中文输入法文件",
+  "description": "移除日文、韩文和繁体中文 IME 文件；高风险，可能影响 TSF、语言切换和登录界面输入，仅用于确认不需要这些输入法的固定镜像。",
+  "category": "Language",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "fs.path",
+    "action": "remove",
+    "spec": {
+      "paths": [
+        "Windows\\System32\\IME\\IMEJP",
+        "Windows\\System32\\IME\\IMEKR",
+        "Windows\\System32\\IME\\IMETC",
+        "Windows\\SysWOW64\\IME\\IMEJP",
+        "Windows\\SysWOW64\\IME\\IMEKR",
+        "Windows\\SysWOW64\\IME\\IMETC"
+      ]
+    }
+  }
+}

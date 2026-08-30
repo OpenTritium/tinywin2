@@ -17,6 +17,8 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismRemoveE
     /// </summary>
     protected override FrozenSet<int> InapplicableExitCodes => [87];
 
+    protected override bool EmptyListingSatisfied => true;
+
     protected override string SatisfiedSkipReason => "no provisioned appx packages matched";
 
     protected override IEnumerable<DismRemovalTarget> SelectTargets(

@@ -77,8 +77,8 @@ public static class BuildPlanResolver {
         var enabled = ordered.ToHashSet(StringComparer.Ordinal);
         foreach (var planId in ordered) {
             errors.AddRange(from conflict in catalog.Get(planId).Conflicts
-                where enabled.Contains(conflict)
-                select $"plan '{planId}' conflicts with '{conflict}'.");
+                            where enabled.Contains(conflict)
+                            select $"plan '{planId}' conflicts with '{conflict}'.");
         }
 
         if (errors.Count > 0) {
@@ -153,8 +153,8 @@ public static class BuildPlanResolver {
         }
 
         errors.AddRange(from name in userParameters.Keys
-            where definition.Parameters.All(p => p.Name != name)
-            select $"parameter '{name}' is not declared by plan '{definition.Id}'.");
+                        where definition.Parameters.All(p => p.Name != name)
+                        select $"parameter '{name}' is not declared by plan '{definition.Id}'.");
 
         if (errors.Count > 0) {
             throw new PlanResolutionException([.. errors.Select(e => $"plan '{definition.Id}': {e}")]);

@@ -1,0 +1,25 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "registry.llmnr-disabled",
+  "version": "1.0.0",
+  "title": "禁用 LLMNR",
+  "description": "通过 DNS Client 策略禁用 Link-Local Multicast Name Resolution，减少局域网多播名称解析流量；依赖 LLMNR 的旧式局域网发现将不可用。",
+  "category": "Networking",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "registry.value",
+    "action": "set",
+    "spec": {
+      "hive": "software",
+      "values": [
+        {
+          "key": "Policies\\Microsoft\\Windows NT\\DNSClient",
+          "name": "EnableMulticast",
+          "type": "dword",
+          "data": 0
+        }
+      ]
+    }
+  }
+}

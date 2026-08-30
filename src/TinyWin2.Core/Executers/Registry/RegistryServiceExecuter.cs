@@ -34,19 +34,29 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
 
         var applied = new List<ChangeItem>();
         foreach (var entry in changes.Where(entry => entry.Change.Kind != ChangeKind.Skipped)) {
-            await AddDwordWithAclRescueAsync(entry.ServiceKey, "Start", entry.Start, ct);
-            await AddDwordWithAclRescueAsync(entry.ServiceKey, "DelayedAutoStart", entry.Delayed, ct);
-            if (entry.TriggerInfoChanged) {
-                await WriteTriggerInfoAsync(entry.ServiceKey, entry.Triggers, ct);
+            try {
+                await AddDwordWithAclRescueAsync(entry.ServiceKey, "Start", entry.Start, ct);
+                await AddDwordWithAclRescueAsync(entry.ServiceKey, "DelayedAutoStart", entry.Delayed, ct);
+                if (entry.TriggerInfoChanged) {
+                    await WriteTriggerInfoAsync(entry.ServiceKey, entry.Triggers, ct);
 
-                if (entry.Triggers.Count > 0) {
-                    context.Log.Info(
-                        $"service {entry.Change.Target}: start=manual + {entry.Triggers.Count} trigger(s)");
+                    if (entry.Triggers.Count > 0) {
+                        context.Log.Info(
+                            $"service {entry.Change.Target}: start=manual + {entry.Triggers.Count} trigger(s)");
+                    }
                 }
-            }
 
-            context.Log.Info($"service {entry.Change.Target} → {entry.Change.After}");
-            applied.Add(entry.Change);
+                context.Log.Info($"service {entry.Change.Target} → {entry.Change.After}");
+                applied.Add(entry.Change);
+            }
+            catch (ProcessRunnerException ex) {
+                context.Log.Warn($"service {entry.Change.Target} could not be modified; skipping ({ex.Result.ExitCode})");
+                applied.Add(entry.Change with {
+                    Kind = ChangeKind.Skipped,
+                    Before = "service key is not writable in this image",
+                    After = null
+                });
+            }
         }
 
         return ExecResult.Applied(applied);

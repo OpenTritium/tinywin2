@@ -12,7 +12,7 @@
     "action": "remove",
     "spec": {
       "capabilities": [
-        "Microsoft.Windows.PowerShell.ISE~~~~0.0.1.0"
+        "Microsoft.Windows.PowerShell.ISE~~~~*"
       ]
     }
   }

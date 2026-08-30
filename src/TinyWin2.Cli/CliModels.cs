@@ -80,7 +80,8 @@ internal sealed record PackageIsoRequest(
     string Output,
     string Workspace,
     string Oscdimg,
-    bool Overwrite);
+    bool Overwrite,
+    string? Unattended);
 
 internal sealed record LayerRollbackRequest(
     string Workspace,

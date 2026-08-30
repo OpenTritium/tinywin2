@@ -1,0 +1,31 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "registry.ntfs-8dot3-disabled",
+  "version": "1.0.0",
+  "title": "禁用 NTFS 8.3 短文件名",
+  "description": "禁用 NTFS 新建 8.3 短文件名，减少文件系统元数据和目录操作开销；依赖旧式短路径的安装程序可能受影响。",
+  "category": "Storage",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.value",
+    "action": "set",
+    "spec": {
+      "hive": "system",
+      "values": [
+        {
+          "key": "ControlSet001\\Control\\FileSystem",
+          "name": "NtfsDisable8dot3NameCreation",
+          "type": "dword",
+          "data": 1
+        },
+        {
+          "key": "ControlSet002\\Control\\FileSystem",
+          "name": "NtfsDisable8dot3NameCreation",
+          "type": "dword",
+          "data": 1
+        }
+      ]
+    }
+  }
+}

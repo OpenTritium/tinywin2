@@ -121,6 +121,29 @@ public sealed class CapabilityAndPackageTests : IDisposable {
     }
 
     [Test]
+    public async Task CapabilityWildcardMatchesVersionsAndRemovesConcreteIdentity() {
+        var capabilities = new CapabilityExecuter(_harness.Runner);
+        _harness.Runner.Handler = (_, args) => args.Contains("/Get-Capabilities")
+            ? FakeProcessRunner.Ok("Capability Identity : Browser.InternetExplorer~~~~0.0.11.0\r\nState : Installed\r\n\r\n"
+                                   + "Capability Identity : Browser.InternetExplorer~~~~0.0.12.0\r\nState : Not Present")
+            : FakeProcessRunner.Ok();
+        var spec = ExecuterTestHarness.Spec("dism.capability", OperationAction.Remove,
+            ("capabilities", new JsonArray("Browser.InternetExplorer~~~~*")));
+
+        var diff = await capabilities.InspectAsync(_harness.NewContext(), spec, CancellationToken.None);
+        await Assert.That(diff.Satisfied).IsFalse();
+        await Assert.That(diff.Differences.Count).IsEqualTo(1);
+        await Assert.That(diff.Differences[0].Target)
+            .IsEqualTo("Browser.InternetExplorer~~~~0.0.11.0");
+
+        var result = await capabilities.ApplyAsync(_harness.NewContext(), spec, CancellationToken.None);
+        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        var remove = _harness.Runner.Calls.Last(c => c.Args.Contains("/Remove-Capability"));
+        await Assert.That(string.Join(" ", remove.Args))
+            .Contains("/CapabilityName:Browser.InternetExplorer~~~~0.0.11.0");
+    }
+
+    [Test]
     public async Task PermanentCapabilityIsSkipped() {
         var capabilities = new CapabilityExecuter(_harness.Runner);
         _harness.Runner.Handler = (_, args) => args.Contains("/Get-Capabilities")
@@ -171,6 +194,28 @@ public sealed class CapabilityAndPackageTests : IDisposable {
         await Assert.That(result.Changes.Count).IsEqualTo(2);
         await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Skipped)).IsEqualTo(1);
         await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Removed)).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task SkipsSupersededStagedPackageWhenActiveFamilyIsInstalled() {
+        var packages = new PackageExecuter(_harness.Runner);
+        var output = "Package Identity : Microsoft-Windows-SenseClient-FoD-Package~31bf3856ad364e35~amd64~~10.0.1\r\n"
+                     + "State : Staged\r\n\r\n"
+                     + "Package Identity : Microsoft-Windows-SenseClient-FoD-Package~31bf3856ad364e35~amd64~~10.0.2\r\n"
+                     + "State : Installed\r\n";
+        _harness.Runner.Handler = (_, args) => args.Contains("/Get-Packages")
+            ? FakeProcessRunner.Ok(output)
+            : FakeProcessRunner.Ok();
+
+        var result = await packages.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("dism.package", OperationAction.Remove,
+                ("patterns", new JsonArray("^Microsoft-Windows-SenseClient-FoD-Package~"))), CancellationToken.None);
+
+        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(result.Changes.Count).IsEqualTo(2);
+        await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Skipped)).IsEqualTo(1);
+        await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Removed)).IsEqualTo(1);
+        await Assert.That(_harness.Runner.Calls.Count(c => c.Args.Contains("/Remove-Package"))).IsEqualTo(1);
     }
 }
 
@@ -309,12 +354,62 @@ public sealed class FilesystemExecuterTests : IDisposable {
     }
 
     [Test]
+    public async Task AbsentExpandsWildcardsPerPathSegment() {
+        var aliceDesktop = Path.Combine(_harness.MountPath, "Users", "Alice", "Desktop");
+        var bobDesktop = Path.Combine(_harness.MountPath, "Users", "Bob", "Desktop");
+        var nestedDesktop = Path.Combine(_harness.MountPath, "Users", "Alice", "Nested", "Desktop");
+        Directory.CreateDirectory(aliceDesktop);
+        Directory.CreateDirectory(bobDesktop);
+        Directory.CreateDirectory(nestedDesktop);
+        await File.WriteAllTextAsync(Path.Combine(aliceDesktop, "Microsoft Edge.lnk"), "edge");
+        await File.WriteAllTextAsync(Path.Combine(bobDesktop, "Microsoft Edge.lnk"), "edge");
+        await File.WriteAllTextAsync(Path.Combine(nestedDesktop, "Microsoft Edge.lnk"), "keep");
+
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("fs.path", OperationAction.Remove,
+                ("paths", new JsonArray("Users\\*\\Desktop\\Microsoft Edge.lnk"))), CancellationToken.None);
+
+        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(File.Exists(Path.Combine(aliceDesktop, "Microsoft Edge.lnk"))).IsFalse();
+        await Assert.That(File.Exists(Path.Combine(bobDesktop, "Microsoft Edge.lnk"))).IsFalse();
+        await Assert.That(File.Exists(Path.Combine(nestedDesktop, "Microsoft Edge.lnk"))).IsTrue();
+        await Assert.That(result.Changes).Count().IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task WildcardSkipsReparseDirectory() {
+        var users = Path.Combine(_harness.MountPath, "Users");
+        Directory.CreateDirectory(users);
+        var link = Path.Combine(users, "Escaped");
+        var outside = Path.Combine(Path.GetTempPath(), $"tinywin-fs-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(outside);
+        try {
+            Directory.CreateSymbolicLink(link, outside);
+            var diff = await _executer.InspectAsync(_harness.NewContext(),
+                ExecuterTestHarness.Spec("fs.path", OperationAction.Remove,
+                    ("paths", new JsonArray("Users\\*\\Desktop\\x.lnk"))), CancellationToken.None);
+            await Assert.That(diff.Satisfied).IsTrue();
+        }
+        finally {
+            Directory.Delete(link);
+            Directory.Delete(outside);
+        }
+    }
+
+    [Test]
     public async Task RejectsTraversalAndRootedPaths() {
-        foreach (var unsafePath in new[] { "..\\escape", "C:\\Windows", "a/../../b" }) {
+        foreach (var unsafePath in new[] { "..\\escape", "C:\\Windows", "a/../../b", "Users\\..\\Desktop" }) {
             var ex = Assert.Throws<ExecException>(() =>
                 FsPathExecuter.ResolveInsideMount(_harness.MountPath, unsafePath));
             await Assert.That(ex.Message).Contains("unsafe");
         }
+    }
+
+    [Test]
+    public async Task RejectsWildcardsForCopyDestinations() {
+        var ex = Assert.Throws<ExecException>(() =>
+            FsPathExecuter.ResolveInsideMount(_harness.MountPath, "Users\\*\\Desktop"));
+        await Assert.That(ex.Message).Contains("unsafe");
     }
 
     [Test]
@@ -457,6 +552,69 @@ public sealed class DriverStoreExecuterTests : IDisposable {
         await Assert.That(result.Changes[0].Before)
             .Contains("inbox driver packages cannot be removed by DISM");
         await Assert.That(_harness.Runner.Calls.Any(c => c.Args.Contains("/Remove-Driver"))).IsFalse();
+    }
+
+    [Test]
+    public async Task InboxDriverRemovesServicesFoundThroughOwners() {
+        _harness.CreateHiveFile("system");
+        var packageDirectory = Path.Combine(_harness.MountPath, "Windows", "System32", "DriverStore",
+            "FileRepository", "nvraid.inf_amd64_test");
+        Directory.CreateDirectory(packageDirectory);
+        await File.WriteAllTextAsync(Path.Combine(packageDirectory, "nvraid.inf"), "inf");
+        await File.WriteAllTextAsync(Path.Combine(packageDirectory, "nvstor.sys"), "driver");
+        var systemDrivers = Path.Combine(_harness.MountPath, "Windows", "System32", "drivers");
+        Directory.CreateDirectory(systemDrivers);
+        await File.WriteAllTextAsync(Path.Combine(systemDrivers, "nvstor.sys"), "driver");
+
+        _harness.Runner.Handler = (_, args) => {
+            if (args.Contains("/Get-Drivers")) {
+                return FakeProcessRunner.Ok("Published Name : nvraid.inf\r\n"
+                                           + "Original File Name : nvraid.inf\r\n"
+                                           + "Inbox : Yes\r\n");
+            }
+
+            if (args[0] is "load" or "delete" or "unload") {
+                return FakeProcessRunner.Ok();
+            }
+
+            if (args[0] != "query") {
+                return FakeProcessRunner.Ok();
+            }
+
+            var key = args[1].ToString();
+            if (key == "HKLM\\TinyWin2_system") {
+                return FakeProcessRunner.Ok("HKEY_LOCAL_MACHINE\\TinyWin2_system\\ControlSet001\r\n");
+            }
+
+            if (key.EndsWith("\\ControlSet001\\Enum", StringComparison.OrdinalIgnoreCase)) {
+                return FakeProcessRunner.Fail(1);
+            }
+
+            if (key.EndsWith("\\ControlSet001\\Services", StringComparison.OrdinalIgnoreCase)) {
+                return FakeProcessRunner.Ok(
+                    "HKEY_LOCAL_MACHINE\\TinyWin2_system\\ControlSet001\\Services\\nvstor\r\n");
+            }
+
+            if (key.EndsWith("\\ControlSet001\\Services\\nvstor", StringComparison.OrdinalIgnoreCase)) {
+                return FakeProcessRunner.Ok("    ImagePath    REG_EXPAND_SZ    System32\\drivers\\nvstor.sys\r\n"
+                                           + "    Owners    REG_MULTI_SZ    nvraid.inf\r\n");
+            }
+
+            return FakeProcessRunner.Fail(1);
+        };
+
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("driver.store", OperationAction.Remove,
+                ("infNames", new JsonArray("nvraid.inf")), ("forceUnusedInbox", true)),
+            CancellationToken.None);
+
+        await Assert.That(result.Status).IsEqualTo(ExecStatus.Applied);
+        await Assert.That(File.Exists(Path.Combine(systemDrivers, "nvstor.sys"))).IsFalse();
+        await Assert.That(_harness.Runner.Calls.Any(call =>
+            call.Args.Count >= 2
+            && call.Args[0] == "delete"
+            && call.Args[1].ToString().EndsWith("\\Services\\nvstor", StringComparison.OrdinalIgnoreCase)))
+            .IsTrue();
     }
 
     [Test]

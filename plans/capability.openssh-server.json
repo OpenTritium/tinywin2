@@ -12,7 +12,7 @@
     "action": "remove",
     "spec": {
       "capabilities": [
-        "OpenSSH.Server~~~~0.0.1.0"
+        "OpenSSH.Server~~~~*"
       ]
     }
   }

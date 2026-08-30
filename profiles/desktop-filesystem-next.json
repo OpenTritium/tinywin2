@@ -1,0 +1,14 @@
+{
+  "$schema": "../schemas/profile-v3.schema.json",
+  "schemaVersion": 3,
+  "name": "desktop-filesystem-next",
+  "description": "叠加到 v21 的文件系统精简：移除非简体中文字体、非中文 IME、IE F12 开发工具、无障碍语音/盲文资源以及 OneDrive 安装残留。保留 WinRE、现代 Explorer、现代右键菜单、中文微软拼音和系统 WebView。",
+  "selections": [
+    { "planId": "fs.legacy-cjk-fonts", "enabled": true },
+    { "planId": "fs.legacy-ime", "enabled": true },
+    { "planId": "fs.ie-developer-tools", "enabled": true },
+    { "planId": "fs.accessibility-residuals", "enabled": true },
+    { "planId": "fs.onedrive", "enabled": true },
+    { "planId": "registry.onedrive-startup", "enabled": true }
+  ]
+}

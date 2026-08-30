@@ -1,0 +1,28 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "registry.edge-webview-residuals",
+  "version": "1.0.0",
+  "title": "清理 Edge WebView2 卸载注册项",
+  "description": "在移除独立 Edge WebView2 文件后，删除其应用与功能卸载项及产品注册残留。依赖 fs.edge-webview-runtime；Office WebView 登录、Office 加载项、Teams 和其他 Evergreen WebView2 应用可能无法使用。",
+  "category": "Browser",
+  "riskLevel": "High",
+  "requires": [
+    "fs.edge-webview-runtime"
+  ],
+  "operation": {
+    "resource": "registry.value",
+    "action": "remove",
+    "spec": {
+      "hive": "software",
+      "deleteKeys": [
+        "WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Microsoft EdgeWebView",
+        "Microsoft\\Windows\\CurrentVersion\\Uninstall\\Microsoft EdgeWebView",
+        "WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+        "WOW6432Node\\Microsoft\\EdgeUpdate\\ClientState\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+        "Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+        "Microsoft\\EdgeUpdate\\ClientState\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+      ]
+    }
+  }
+}

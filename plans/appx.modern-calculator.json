@@ -1,0 +1,15 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "appx.modern-calculator",
+  "version": "3.0.0",
+  "title": "移除现代计算器",
+  "description": "移除 Microsoft.WindowsCalculator 预置 Appx；计算器应用将不可用。",
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": { "patterns": ["Microsoft.WindowsCalculator"] }
+  }
+}

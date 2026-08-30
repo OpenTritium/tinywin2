@@ -1,0 +1,15 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "appx.sticky-notes",
+  "version": "3.0.0",
+  "title": "移除便笺",
+  "description": "移除 Microsoft.MicrosoftStickyNotes 预置 Appx；便笺应用将不可用。",
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": { "patterns": ["Microsoft.MicrosoftStickyNotes"] }
+  }
+}

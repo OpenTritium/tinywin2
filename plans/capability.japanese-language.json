@@ -12,12 +12,12 @@
     "action": "remove",
     "spec": {
       "capabilities": [
-        "Language.Basic~~~ja-JP~0.0.1.0",
-        "Language.Fonts.Jpan~~~und-JPAN~0.0.1.0",
-        "Language.Handwriting~~~ja-JP~0.0.1.0",
-        "Language.OCR~~~ja-JP~0.0.1.0",
-        "Language.Speech~~~ja-JP~0.0.1.0",
-        "Language.TextToSpeech~~~ja-JP~0.0.1.0"
+        "Language.Basic~~~ja-JP~*",
+        "Language.Fonts.Jpan~~~und-JPAN~*",
+        "Language.Handwriting~~~ja-JP~*",
+        "Language.OCR~~~ja-JP~*",
+        "Language.Speech~~~ja-JP~*",
+        "Language.TextToSpeech~~~ja-JP~*"
       ]
     }
   }

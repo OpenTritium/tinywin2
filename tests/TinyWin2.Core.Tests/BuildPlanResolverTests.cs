@@ -131,8 +131,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
             o["operation"] = new JsonObject {
                 ["resource"] = "fs.path",
                 ["action"] = "remove",
-                ["spec"] = new JsonObject
-                    { ["paths"] = new JsonArray("X"), ["p"] = new JsonObject { ["$parameter"] = "mode" } }
+                ["spec"] = new JsonObject { ["paths"] = new JsonArray("X"), ["p"] = new JsonObject { ["$parameter"] = "mode" } }
             };
         });
         var plan = BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory), [new("def.plan")]);

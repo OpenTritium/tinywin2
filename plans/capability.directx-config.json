@@ -12,7 +12,7 @@
     "action": "remove",
     "spec": {
       "capabilities": [
-        "DirectX.Configuration.Database~~~~0.0.1.0"
+        "DirectX.Configuration.Database~~~~*"
       ]
     }
   }

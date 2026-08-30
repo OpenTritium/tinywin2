@@ -1,0 +1,15 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "appx.cross-device",
+  "version": "3.0.0",
+  "title": "移除跨设备组件",
+  "description": "移除 MicrosoftWindows.CrossDevice 预置 Appx；跨设备活动和部分手机连接体验将不可用。",
+  "category": "Background Experience",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": { "patterns": ["MicrosoftWindows.CrossDevice"] }
+  }
+}

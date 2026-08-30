@@ -1,0 +1,19 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "appx.outlook",
+  "version": "4.0.0",
+  "title": "移除 Outlook PWA",
+  "description": "移除 Windows 镜像中预装的 Outlook for Windows；不影响用户自行安装的 Office 桌面版 Outlook。",
+  "category": "Applications",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": {
+      "patterns": [
+        "Microsoft.OutlookForWindows"
+      ]
+    }
+  }
+}

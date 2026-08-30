@@ -1,0 +1,52 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "fs.cbs-orphaned-security-edge",
+  "version": "1.1.0",
+  "title": "清理 ResetBase 后孤立的安全和旧 Edge payload",
+  "description": "清理已通过 Defender/SmartScreen/旧 Edge 功能和服务规则移除、但因此前 ResetBase 不能再由 DISM 卸载的 WinSxS payload、manifest 和 FileMap。保留 Edge WebView runtime、WinRE 及 servicing\\Packages 元数据；启用后这些安全组件和旧 Edge 平台无法离线恢复。",
+  "category": "Servicing",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "fs.path",
+    "action": "remove",
+    "spec": {
+      "paths": [
+        "Windows\\WinSxS\\*windows-defender*",
+        "Windows\\WinSxS\\*security-malware-windows-defender*",
+        "Windows\\WinSxS\\*microsoft-windows-smartscreen*",
+        "Windows\\WinSxS\\*microsoft-onecore-webthreatdefense*",
+        "Windows\\WinSxS\\*windows-securityhealth-sso*",
+        "Windows\\WinSxS\\*windows-senseclient*",
+        "Windows\\WinSxS\\*webthreatdefense*",
+        "Windows\\WinSxS\\*shield-provider*",
+        "Windows\\WinSxS\\*securityhealth*",
+        "Windows\\WinSxS\\*microsoft-windows-*edge*",
+        "Windows\\WinSxS\\Manifests\\*windows-defender*",
+        "Windows\\WinSxS\\Manifests\\*security-malware-windows-defender*",
+        "Windows\\WinSxS\\Manifests\\*microsoft-windows-smartscreen*",
+        "Windows\\WinSxS\\Manifests\\*microsoft-onecore-webthreatdefense*",
+        "Windows\\WinSxS\\Manifests\\*windows-securityhealth-sso*",
+        "Windows\\WinSxS\\Manifests\\*windows-senseclient*",
+        "Windows\\WinSxS\\Manifests\\*webthreatdefense*",
+        "Windows\\WinSxS\\Manifests\\*shield-provider*",
+        "Windows\\WinSxS\\Manifests\\*securityhealth*",
+        "Windows\\WinSxS\\Manifests\\*smartscreen*",
+        "Windows\\WinSxS\\Manifests\\*defender*",
+        "Windows\\WinSxS\\Manifests\\*microsoft-windows-*edge*",
+        "Windows\\WinSxS\\FileMaps\\*windows-defender*",
+        "Windows\\WinSxS\\FileMaps\\*security-malware-windows-defender*",
+        "Windows\\WinSxS\\FileMaps\\*microsoft-windows-smartscreen*",
+        "Windows\\WinSxS\\FileMaps\\*microsoft-onecore-webthreatdefense*",
+        "Windows\\WinSxS\\FileMaps\\*windows-securityhealth-sso*",
+        "Windows\\WinSxS\\FileMaps\\*windows-senseclient*",
+        "Windows\\WinSxS\\FileMaps\\*webthreatdef*",
+        "Windows\\WinSxS\\FileMaps\\*shield-provider*",
+        "Windows\\WinSxS\\FileMaps\\*securityhealth*",
+        "Windows\\WinSxS\\FileMaps\\*smartscreen*",
+        "Windows\\WinSxS\\FileMaps\\*defender*",
+        "Windows\\WinSxS\\FileMaps\\*microsoft-windows-*edge*"
+      ]
+    }
+  }
+}

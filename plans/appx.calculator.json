@@ -4,15 +4,19 @@
   "id": "appx.calculator",
   "version": "3.0.0",
   "title": "移除计算器",
-  "description": "移除 Windows Calculator 预置 Appx；Server 镜像通常没有此包。",
+  "description": "移除 Server Desktop Experience 中的经典计算器文件和公共快捷方式；部分 Server 版本不提供 Windows Calculator Appx。",
   "category": "Applications",
   "riskLevel": "Low",
   "operation": {
-    "resource": "appx.provisioned",
+    "resource": "fs.path",
     "action": "remove",
     "spec": {
-      "patterns": [
-        "Microsoft.WindowsCalculator"
+      "paths": [
+        "Windows\\System32\\calc.exe",
+        "Windows\\SysWOW64\\calc.exe",
+        "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Calculator.lnk",
+        "Users\\*\\Desktop\\Calculator.lnk",
+        "Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Calculator.lnk"
       ]
     }
   }

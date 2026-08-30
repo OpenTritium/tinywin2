@@ -1,0 +1,21 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "fs.optional-system-app-residuals",
+  "version": "1.0.0",
+  "title": "移除非核心 SystemApps 残留",
+  "description": "移除已卸载 Xbox/People 后留下的 Xbox 游戏调用界面、旧 People 宿主以及 Windows 考试模式浏览器。不会触碰现代 Explorer、WinUI 菜单、中文微软拼音、文件选择器、屏幕捕获、Office 登录或 Windows RE；Xbox 集成、People 旧体验和考试模式将不可用。",
+  "category": "Applications",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "fs.path",
+    "action": "remove",
+    "spec": {
+      "paths": [
+        "Windows\\SystemApps\\Microsoft.XboxGameCallableUI_cw5n1h2txyewy",
+        "Windows\\SystemApps\\Microsoft.Windows.PeopleExperienceHost_cw5n1h2txyewy",
+        "Windows\\SystemApps\\Microsoft.Windows.SecureAssessmentBrowser_cw5n1h2txyewy"
+      ]
+    }
+  }
+}

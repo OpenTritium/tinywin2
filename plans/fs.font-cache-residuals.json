@@ -1,0 +1,20 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "fs.font-cache-residuals",
+  "version": "1.0.0",
+  "title": "清理字体缓存文件",
+  "description": "删除镜像中已有的静态字体缓存；配合禁用 FontCache 时可释放约 19 MiB，系统会在需要时重新生成可用缓存。",
+  "category": "Servicing",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "fs.path",
+    "action": "remove",
+    "spec": {
+      "paths": [
+        "Windows\\Fonts\\StaticCache.dat",
+        "Windows\\System32\\FNTCACHE.DAT"
+      ]
+    }
+  }
+}

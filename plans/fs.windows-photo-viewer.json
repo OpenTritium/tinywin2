@@ -1,0 +1,20 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "fs.windows-photo-viewer",
+  "version": "1.0.0",
+  "title": "移除经典 Windows Photo Viewer 文件",
+  "description": "移除 32 位和 64 位经典 Windows Photo Viewer 文件目录；不会删除 Explorer 的图片缩略图和预览组件。",
+  "category": "Applications",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "fs.path",
+    "action": "remove",
+    "spec": {
+      "paths": [
+        "Program Files\\Windows Photo Viewer",
+        "Program Files (x86)\\Windows Photo Viewer"
+      ]
+    }
+  }
+}

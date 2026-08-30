@@ -1,0 +1,19 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "fs.edge-webview-runtime",
+  "version": "1.1.0",
+  "title": "移除独立 Edge WebView2 运行时",
+  "description": "删除 Program Files 中独立安装的 Edge WebView2 运行时，约释放 796 MB；保留 Windows OneCore WebView 和 Win32WebViewHost 以维持系统桌面。Office WebView 登录、Office 加载项、Teams 和其它依赖 Evergreen WebView2 的程序可能无法使用。",
+  "category": "Browser",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "fs.path",
+    "action": "remove",
+    "spec": {
+      "paths": [
+        "Program Files (x86)\\Microsoft\\EdgeWebView"
+      ]
+    }
+  }
+}

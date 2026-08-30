@@ -12,7 +12,7 @@
     "action": "remove",
     "spec": {
       "capabilities": [
-        "Downlevel.NLS.Sorting.Versions.Server~~~~0.0.1.0"
+        "Downlevel.NLS.Sorting.Versions.Server~~~~*"
       ]
     }
   }

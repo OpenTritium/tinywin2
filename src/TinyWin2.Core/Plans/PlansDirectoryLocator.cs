@@ -4,8 +4,7 @@ namespace TinyWin2.Core.Plans;
 public static class PlansDirectoryLocator {
     /// <summary>
     ///     Probes <paramref name="startAt" /> and its ancestors (then the current directory) for a
-    ///     plans/ child. Shared by the CLI's --plans discovery and the GUI's repository locator
-    ///     so both find the same directory.
+    ///     plans/ child used by CLI plan discovery.
     /// </summary>
     public static string? TryLocate(string? startAt = null, int maxHops = 8) {
         var probes = new List<string>();

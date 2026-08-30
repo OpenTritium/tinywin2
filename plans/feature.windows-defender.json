@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v3.schema.json",
   "schemaVersion": 3,
   "id": "feature.windows-defender",
-  "version": "3.0.0",
-  "title": "移除 Microsoft Defender 与 Sense",
-  "description": "移除 Defender 功能和 Defender for Endpoint Sense 客户端；明确保留 UAC 与 Windows 防火墙。",
+  "version": "4.0.0",
+  "title": "移除 Microsoft Defender 防护组件",
+  "description": "移除 Defender 功能、默认定义和 Defender for Endpoint Sense 客户端；明确保留 UAC 与 Windows 防火墙策略由独立规则控制。",
   "category": "Security",
   "riskLevel": "High",
   "requires": [
@@ -15,7 +15,8 @@
     "action": "remove",
     "spec": {
       "features": [
-        "Windows-Defender"
+        "Windows-Defender",
+        "Windows-Defender-Default-Definitions"
       ],
       "removePayload": true
     }

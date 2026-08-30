@@ -1,0 +1,43 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "driver.legacy-printing",
+  "version": "3.0.0",
+  "title": "移除打印驱动包",
+  "description": "移除当前镜像中的打印机、WSD、远程桌面打印和 USB 打印驱动；会进一步固化不可打印状态，仅适合无打印固定用途镜像。",
+  "category": "Drivers",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "driver.store",
+    "action": "remove",
+    "spec": {
+      "infNames": [
+        "bthprint.inf",
+        "c_dot4print.inf",
+        "c_pnpprinters.inf",
+        "c_printer.inf",
+        "c_receiptprinter.inf",
+        "ntprint.inf",
+        "ntprint4.inf",
+        "printqueue.inf",
+        "prnge001.inf",
+        "prnms002.inf",
+        "prnms003.inf",
+        "prnms004.inf",
+        "prnms005.inf",
+        "prnms007.inf",
+        "prnms008.inf",
+        "prnms010.inf",
+        "prnms011.inf",
+        "prnms012.inf",
+        "prnms013.inf",
+        "prnms014.inf",
+        "prnms015.inf",
+        "tsprint.inf",
+        "usbprint.inf",
+        "wsdprint.inf"
+      ],
+      "forceUnusedInbox": true
+    }
+  }
+}

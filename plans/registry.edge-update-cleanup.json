@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "registry.edge-update-cleanup",
+  "version": "1.1.0",
+  "title": "删除 Edge 更新服务注册项",
+  "description": "删除 Edge 浏览器已移除后遗留的 edgeupdate 和 edgeupdatem 服务注册项；SOFTWARE hive 中的 Edge Update 卸载项由 registry.edge-update-residuals 单独清理。",
+  "category": "Browser",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "registry.value",
+    "action": "remove",
+    "spec": {
+      "hive": "system",
+      "deleteKeys": [
+        "ControlSet001\\Services\\edgeupdate",
+        "ControlSet001\\Services\\edgeupdatem",
+        "ControlSet002\\Services\\edgeupdate",
+        "ControlSet002\\Services\\edgeupdatem"
+      ]
+    }
+  }
+}

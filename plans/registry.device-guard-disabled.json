@@ -1,0 +1,61 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "registry.device-guard-disabled",
+  "version": "1.0.0",
+  "title": "关闭系统级 Device Guard、HVCI 和驱动阻止策略",
+  "description": "关闭 SYSTEM hive 中的 VBS/HVCI、Credential Guard 场景、易受攻击驱动阻止列表和 VBS Microsoft 签名启动链要求。与策略层关闭规则配套；需要重启生效，并会明显降低内核和凭据安全。",
+  "category": "Security",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.value",
+    "action": "set",
+    "spec": {
+      "hive": "system",
+      "values": [
+        {
+          "key": "ControlSet001\\Control\\DeviceGuard",
+          "name": "EnableVirtualizationBasedSecurity",
+          "type": "dword",
+          "data": 0
+        },
+        {
+          "key": "ControlSet001\\Control\\DeviceGuard",
+          "name": "RequirePlatformSecurityFeatures",
+          "type": "dword",
+          "data": 0
+        },
+        {
+          "key": "ControlSet001\\Control\\DeviceGuard",
+          "name": "RequireMicrosoftSignedBootChain",
+          "type": "dword",
+          "data": 0
+        },
+        {
+          "key": "ControlSet001\\Control\\DeviceGuard\\Scenarios\\HypervisorEnforcedCodeIntegrity",
+          "name": "Enabled",
+          "type": "dword",
+          "data": 0
+        },
+        {
+          "key": "ControlSet001\\Control\\DeviceGuard\\Scenarios\\CredentialGuard",
+          "name": "Enabled",
+          "type": "dword",
+          "data": 0
+        },
+        {
+          "key": "ControlSet001\\Control\\CI\\Config",
+          "name": "VulnerableDriverBlocklistEnable",
+          "type": "dword",
+          "data": 0
+        },
+        {
+          "key": "ControlSet001\\Control\\CI\\Policy",
+          "name": "VerifiedAndReputablePolicyState",
+          "type": "dword",
+          "data": 0
+        }
+      ]
+    }
+  }
+}

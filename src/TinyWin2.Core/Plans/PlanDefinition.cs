@@ -275,17 +275,17 @@ public sealed partial record PlanDefinition {
             var defaultNode = parameterObj["default"]?.DeepClone();
             switch (type) {
                 case PlanParameterType.Enum: {
-                    var defaultText = defaultNode is JsonValue dv && dv.TryGetValue<string>(out var s) ? s : null;
-                    if (defaultText is not null &&
-                        options.All(o => !string.Equals(o.Value, defaultText, StringComparison.Ordinal))) {
-                        errors.Add($"parameters[{index}]: default '{defaultText}' is not one of the declared options.");
+                        var defaultText = defaultNode is JsonValue dv && dv.TryGetValue<string>(out var s) ? s : null;
+                        if (defaultText is not null &&
+                            options.All(o => !string.Equals(o.Value, defaultText, StringComparison.Ordinal))) {
+                            errors.Add($"parameters[{index}]: default '{defaultText}' is not one of the declared options.");
 
-                        continue;
+                            continue;
+                        }
+
+                        defaultNode ??= options[0].Value;
+                        break;
                     }
-
-                    defaultNode ??= options[0].Value;
-                    break;
-                }
                 case PlanParameterType.Bool:
                     defaultNode ??= false;
                     break;

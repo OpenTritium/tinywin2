@@ -1,0 +1,19 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "capability.extra-wallpapers",
+  "version": "1.0.0",
+  "title": "移除扩展壁纸能力",
+  "description": "移除 Microsoft Wallpapers Extended 按需功能，配合文件计划清理主题壁纸和 Spotlight 图片；默认桌面壁纸仍由独立文件计划控制。",
+  "category": "Desktop Experience",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "dism.capability",
+    "action": "remove",
+    "spec": {
+      "capabilities": [
+        "Microsoft.Wallpapers.Extended~~~~*"
+      ]
+    }
+  }
+}

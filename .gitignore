@@ -12,6 +12,7 @@ raw/
 .idea/
 TestResults/
 artifacts/
+.artifacts/
 BenchmarkDotNet.Artifacts/
 coverage/
 *.coverage
@@ -23,3 +24,8 @@ Thumbs.db
 *.nupkg
 *.snupkg
 .zcode/
+
+# Local VM screenshots and offline inspection dumps.
+/*.png
+/*-audit-*.txt
+/offline-*

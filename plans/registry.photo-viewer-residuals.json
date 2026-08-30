@@ -1,0 +1,25 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "registry.photo-viewer-residuals",
+  "version": "1.0.0",
+  "title": "清理经典照片查看器注册项",
+  "description": "删除 Windows Photo Viewer 文件已移除后遗留的能力、文件关联、COM 和已注册应用项；不删除 Explorer 缩略图/预览相关 shimgvw.dll。",
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "registry.value",
+    "action": "remove",
+    "spec": {
+      "hive": "software",
+      "deleteKeys": [
+        "Microsoft\\Windows Photo Viewer\\Capabilities",
+        "Classes\\Microsoft.Photos.ViewerDropTarget",
+        "Classes\\Microsoft.Photos.ViewerGalleryInterface",
+        "Classes\\CLSID\\{D63A1416-FCEC-4431-862F-E8056223DD03}",
+        "Classes\\CLSID\\{32624F4B-F1D5-4877-989E-555640109D2B}",
+        "Classes\\Applications\\photoviewer.dll"
+      ]
+    }
+  }
+}

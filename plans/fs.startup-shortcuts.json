@@ -1,0 +1,20 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "fs.startup-shortcuts",
+  "version": "1.0.0",
+  "title": "清理默认 Startup 自启动文件",
+  "description": "清理公共和默认用户 Startup 文件夹中的快捷方式及脚本，避免第三方程序在新用户登录时自动启动；服务、驱动和系统输入组件不受影响。",
+  "category": "Background Experience",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "fs.path",
+    "action": "remove",
+    "spec": {
+      "paths": [
+        "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
+        "Users\\Default\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup"
+      ]
+    }
+  }
+}

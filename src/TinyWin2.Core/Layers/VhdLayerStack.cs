@@ -379,6 +379,40 @@ public sealed class VhdLayerStack(
         Save();
     }
 
+    /// <summary>
+    ///     Removes the current base state while preserving source provenance. This is used by
+    ///     layerless resume, where the completed prefix is replayed from a clean source image.
+    /// </summary>
+    public async Task ResetBaseAsync(CancellationToken ct) {
+        lock (_gate) {
+            if (_records.Any(record => record.Index > 0)) {
+                throw new InvalidOperationException(
+                    "cannot reset the base while differencing layers are present.");
+            }
+        }
+
+        ct.ThrowIfCancellationRequested();
+        try {
+            await backend.DetachAsync(BaseVhdxPath, CancellationToken.None);
+        }
+        catch {
+            // The base is normally detached already; deletion below is the authoritative check.
+        }
+
+        if (!TryDelete(BaseVhdxPath, false)) {
+            throw new IOException($"could not reset base layer '{BaseVhdxPath}'.");
+        }
+
+        lock (_gate) {
+            _records.Clear();
+            _nextIndex = 1;
+            _baseReady = false;
+            _consolidationPending = false;
+        }
+
+        Save();
+    }
+
     /// <summary>Sets or validates the source identity bound to this workspace.</summary>
     public void InitializeOrValidateSource(string sourceFingerprint, int sourceIndex) {
         if (string.IsNullOrWhiteSpace(sourceFingerprint)) {

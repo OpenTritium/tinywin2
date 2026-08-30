@@ -1,0 +1,35 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "fs.security-residuals",
+  "version": "1.2.0",
+  "title": "清理安全组件入口和任务文件",
+  "description": "删除 Defender/Sense/Windows Update 计划任务文件、安全中心托盘入口、SmartScreen 主程序残留和已禁用防火墙管理快捷方式。保留 AppRep 应用组件，避免破坏 AppX 部署和桌面 Shell；SmartScreen 的执行策略由 registry.windows-smartscreen 关闭。Windows Setup 可能在首次启动时重新生成任务，测试用无人值守配置会在首次登录后再次清理。",
+  "category": "Security",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "fs.path",
+    "action": "remove",
+    "spec": {
+      "paths": [
+        "Program Files\\Windows Defender",
+        "Program Files\\Windows Defender Advanced Threat Protection",
+        "ProgramData\\Microsoft\\Windows Defender Advanced Threat Protection",
+        "ProgramData\\Microsoft\\Windows Defender",
+        "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools\\Windows Defender Firewall with Advanced Security.lnk",
+        "Windows\\System32\\smartscreen.exe",
+        "Windows\\System32\\zh-CN\\smartscreen.exe.mui",
+        "Windows\\System32\\SecurityHealth*.dll",
+        "Windows\\System32\\SecurityHealth*.exe",
+        "Windows\\System32\\SecurityHealth*.mui",
+        "Windows\\System32\\Tasks\\Microsoft\\Windows\\Windows Defender\\*",
+        "Windows\\System32\\Tasks\\Microsoft\\Windows\\Sense\\*",
+        "Windows\\System32\\Tasks\\Microsoft\\Windows\\ExploitGuard\\*",
+        "Windows\\System32\\Tasks\\Microsoft\\Windows\\TPM\\Tpm-PreAttestationHealthCheck",
+        "Windows\\System32\\Tasks\\Windows Defender\\*",
+        "Windows\\System32\\Tasks\\Microsoft\\Windows\\WindowsUpdate\\Refresh Group Policy Cache",
+        "Windows\\System32\\Tasks\\Microsoft\\Windows\\WindowsUpdate\\Scheduled Start"
+      ]
+    }
+  }
+}

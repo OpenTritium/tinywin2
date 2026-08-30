@@ -1,0 +1,20 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "service.netbt",
+  "version": "1.0.0",
+  "title": "禁用 NetBT",
+  "description": "禁用 NetBT 内核网络驱动。依赖旧式 NetBIOS over TCP/IP 的局域网发现、名称解析或 SMB 场景可能失效；现代 DNS/SMB 和互联网应用通常不受影响。",
+  "category": "Networking",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "NetBT"
+      ],
+      "start": "disabled"
+    }
+  }
+}

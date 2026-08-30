@@ -1,0 +1,31 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "registry.bing-search-provider",
+  "version": "1.0.0",
+  "title": "清理 Bing Search 提供程序注册项",
+  "description": "删除 Bing Search 文件和 AppX 已移除后遗留的 Explorer WebSearchProvider 配置，不影响 Windows 本地文件搜索。",
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "registry.value",
+    "action": "remove",
+    "spec": {
+      "hive": "software",
+      "values": [
+        {
+          "key": "Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+          "name": "WebSearchProviderPackageFamilyName"
+        },
+        {
+          "key": "Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+          "name": "WebSearchProviderPackagePath"
+        },
+        {
+          "key": "Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+          "name": "WebSearchProviderPackageVersion"
+        }
+      ]
+    }
+  }
+}

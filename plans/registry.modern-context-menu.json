@@ -1,0 +1,20 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "registry.modern-context-menu",
+  "version": "1.0.0",
+  "title": "恢复 Windows 11 现代右键菜单",
+  "description": "清理默认用户中用于强制经典右键菜单的 CLSID 覆盖项，让新建用户使用 Windows 11 现代上下文菜单；不修改文件关联或第三方右键扩展。",
+  "category": "Desktop Experience",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "registry.value",
+    "action": "remove",
+    "spec": {
+      "hive": "default-user",
+      "deleteKeys": [
+        "Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}"
+      ]
+    }
+  }
+}

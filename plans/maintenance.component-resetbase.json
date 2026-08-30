@@ -1,0 +1,20 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "maintenance.component-resetbase",
+  "version": "3.0.0",
+  "title": "固化组件存储基线",
+  "description": "执行 StartComponentCleanup 和 ResetBase；适合最终发布镜像，可进一步回收组件存储，但之后不能卸载已集成更新。",
+  "category": "Servicing",
+  "riskLevel": "High",
+  "requires": [
+    "maintenance.component-cleanup"
+  ],
+  "operation": {
+    "resource": "dism.component-store",
+    "action": "cleanup",
+    "spec": {
+      "resetBase": true
+    }
+  }
+}

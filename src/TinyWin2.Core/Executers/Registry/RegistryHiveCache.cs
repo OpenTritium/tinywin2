@@ -109,7 +109,7 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
         string what,
         BuildLog log,
         CancellationToken ct) {
-        for (var attempt = 1;; attempt++) {
+        for (var attempt = 1; ; attempt++) {
             try {
                 await runner.RunAsync("reg.exe", ["unload", hiveKey], cancellationToken: ct);
                 return;
@@ -130,14 +130,14 @@ public static partial class RegValues {
     /// <summary>Extracts a named value from <c>reg query KEY /v NAME</c> output; null if absent.</summary>
     public static RegValue? ParseQueryValue(string output, string valueName) {
         return (from rawLine in output.Split('\n')
-            select rawLine.TrimEnd('\r')
+                select rawLine.TrimEnd('\r')
             into line
-            select ValueLine().Match(line)
+                select ValueLine().Match(line)
             into match
-            where match.Success
-            let name = match.Groups[1].Value.Trim()
-            where string.Equals(name, valueName, StringComparison.OrdinalIgnoreCase)
-            select new RegValue(match.Groups[2].Value, match.Groups[3].Value)).FirstOrDefault();
+                where match.Success
+                let name = match.Groups[1].Value.Trim()
+                where string.Equals(name, valueName, StringComparison.OrdinalIgnoreCase)
+                select new RegValue(match.Groups[2].Value, match.Groups[3].Value)).FirstOrDefault();
     }
 
     /// <summary>Renders desired data for reg.exe /d for each supported type.</summary>
@@ -159,6 +159,16 @@ public static partial class RegValues {
             case "REG_SZ":
             case "REG_EXPAND_SZ":
                 return data!.GetValue<string>();
+            case "REG_BINARY":
+                var hex = data?.GetValue<string>()
+                          ?? throw new ExecException("REG_BINARY data must be a hexadecimal string.");
+                hex = HexNoise().Replace(hex, "");
+                if (hex.Length == 0 || hex.Length % 2 != 0
+                    || !hex.All(Uri.IsHexDigit)) {
+                    throw new ExecException("REG_BINARY data must contain an even number of hexadecimal digits.");
+                }
+
+                return hex.ToUpperInvariant();
             default:
                 throw new ExecException($"unsupported registry value type '{type}'.");
         }
@@ -203,6 +213,14 @@ public static partial class RegValues {
                 StringComparison.Ordinal);
         }
 
+        if (type == "REG_BINARY") {
+            static string NormalizeBinary(string value) =>
+                HexNoise().Replace(value, "").ToUpperInvariant();
+
+            return string.Equals(NormalizeBinary(queriedData), NormalizeBinary(desiredData),
+                StringComparison.Ordinal);
+        }
+
         return string.Equals(queriedData.TrimEnd('\0'), desiredData, StringComparison.Ordinal);
     }
 
@@ -238,6 +256,10 @@ public static partial class RegValues {
     /// <summary>reg query value line: four-space separated name, type, data.</summary>
     [GeneratedRegex(@"^\s+(.+?)(?:\s{4})(REG_[A-Z_]+)(?:\s{4})(.*)$")]
     private static partial Regex ValueLine();
+
+    /// <summary>Strips whitespace, colons, and hyphens from hexadecimal strings.</summary>
+    [GeneratedRegex(@"[\s:-]", RegexOptions.CultureInvariant)]
+    private static partial Regex HexNoise();
 
     public sealed record RegValue(string Type, string Data);
 }

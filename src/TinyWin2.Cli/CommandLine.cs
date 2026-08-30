@@ -148,9 +148,10 @@ internal static class CommandLine {
         var continueOnError = Flag("--continue-on-error",
             "continue after a failed plan and mark the artifact incomplete");
         var dryRun = Flag("--dry-run", "resolve and validate without applying plans");
-        var singleLayer = Flag("--single-layer", "debug mode: apply all plans in one non-atomic mount");
+        var singleLayer = Flag("--single-layer",
+            "fast mode: apply all plans in one mount; progress is checkpointed for --resume");
         var skipEvidence = Flag("--skip-evidence", "skip per-layer evidence capture");
-        var resume = Flag("--resume", "reuse the existing layer workspace");
+        var resume = Flag("--resume", "resume from the last completed plan checkpoint in the workspace");
         var overwrite = Flag("--overwrite", "replace an existing output file");
         var baseSize = Number("--base-vhdx-mb", "maximum dynamic base VHDX size in MB");
         baseSize.DefaultValueFactory = _ => BuildOptions.DefaultBaseVhdxMaximumMb;
@@ -224,12 +225,14 @@ internal static class CommandLine {
         var output = RequiredText("--output", "destination .iso file");
         var workspace = RequiredText("--workspace", "temporary media staging directory");
         var oscdimg = RequiredText("--oscdimg", "path to oscdimg.exe");
+        var unattended = Text("--unattend", "optional Autounattend.xml to place at the media root");
         var overwrite = Flag("--overwrite", "replace an existing ISO");
         iso.Add(input);
         iso.Add(image);
         iso.Add(output);
         iso.Add(workspace);
         iso.Add(oscdimg);
+        iso.Add(unattended);
         iso.Add(overwrite);
         iso.SetAction(result => PackageHandler.CreateIsoAsync(new(
             result.GetRequiredValue(input),
@@ -237,7 +240,8 @@ internal static class CommandLine {
             result.GetRequiredValue(output),
             result.GetRequiredValue(workspace),
             result.GetRequiredValue(oscdimg),
-            result.GetValue(overwrite))));
+            result.GetValue(overwrite),
+            result.GetValue(unattended))));
         command.Add(iso);
         return command;
     }

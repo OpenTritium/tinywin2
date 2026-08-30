@@ -35,13 +35,7 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
         if (spec.Action == OperationAction.Remove) {
             foreach (var change in changes) {
                 context.Log.Info($"removing image path: {change.Change.Target}");
-                try {
-                    ImageFs.DeleteIfExists(change.AbsoluteTarget);
-                }
-                catch (UnauthorizedAccessException) {
-                    await ImageFs.GrantDeleteAccessAsync(runner, change.AbsoluteTarget, ct);
-                    ImageFs.DeleteIfExists(change.AbsoluteTarget);
-                }
+                await ImageFs.DeleteWithRescueAsync(runner, change.AbsoluteTarget, ct);
             }
 
             return ExecResult.Applied([.. changes.Select(c => c.Change)]);
@@ -54,13 +48,7 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
                 EnsureTreeHasNoReparsePoints(destination);
             }
 
-            try {
-                ImageFs.DeleteIfExists(destination);
-            }
-            catch (UnauthorizedAccessException) {
-                await ImageFs.GrantDeleteAccessAsync(runner, destination, ct);
-                ImageFs.DeleteIfExists(destination);
-            }
+            await ImageFs.DeleteWithRescueAsync(runner, destination, ct);
         }
 
         if (assetKind == EntryKind.File) {
@@ -87,14 +75,22 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
         var options = FsPathOptions.FromDesired(spec.Spec, spec.Action);
         if (spec.Action == OperationAction.Remove) {
             var changes = new List<PathChange>();
+            var seenTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var relative in options.Paths) {
-                var target = ResolveInsideMount(context.MountPath, relative);
-                if (GetEntryKind(target) == EntryKind.Missing) {
-                    continue;
-                }
+                foreach (var target in ResolveRemoveTargets(context.MountPath, relative)) {
+                    if (!seenTargets.Add(target)) {
+                        continue;
+                    }
 
-                EnsureTreeHasNoReparsePoints(target);
-                changes.Add(new(new(ChangeKind.Removed, relative), target));
+                    // A whole-directory removal must work for protected trees such as
+                    // Defender ATP, whose child ACLs may deny enumeration. The path
+                    // chain and target itself are still checked; the delete fallback
+                    // takes ownership if the recursive delete needs it.
+                    EnsureRemovalTargetSafe(target);
+                    var actualRelative = Path.GetRelativePath(context.MountPath, target)
+                        .Replace(Path.DirectorySeparatorChar, '\\');
+                    changes.Add(new(new(ChangeKind.Removed, actualRelative), target));
+                }
             }
 
             return changes;
@@ -123,14 +119,10 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
 
     /// <summary>Rejects rooted paths, .. traversal, and anything escaping the mount root.</summary>
     internal static string ResolveInsideMount(string mountPath, string relativePath) {
-        var normalized = relativePath.Replace('/', '\\').TrimStart('\\');
-        if (string.IsNullOrWhiteSpace(normalized)
-            || Path.IsPathRooted(relativePath)
-            || DotSegment().IsMatch(normalized)) {
-            throw new ExecException($"unsafe relative path '{relativePath}'.");
-        }
+        var segments = ValidateRelativeSegments(relativePath, allowWildcards: false);
+        var normalized = string.Join('\\', segments);
 
-        var mountRoot = Path.GetFullPath(mountPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var mountRoot = GetMountRoot(mountPath);
         var target = Path.GetFullPath(Path.Combine(mountRoot, normalized));
         if (!target.StartsWith(mountRoot, StringComparison.OrdinalIgnoreCase)) {
             throw new ExecException($"path '{relativePath}' resolved outside the mounted image.");
@@ -139,6 +131,94 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
         EnsurePathChainHasNoReparsePoints(mountRoot, target);
         return target;
     }
+
+    /// <summary>
+    ///     Expands a remove path one segment at a time. A wildcard can only match
+    ///     direct children of the current directory, and reparse directories are
+    ///     never used as intermediate traversal points.
+    /// </summary>
+    private static IEnumerable<string> ResolveRemoveTargets(string mountPath, string relativePath) {
+        var segments = ValidateRelativeSegments(relativePath, allowWildcards: true);
+        var mountRoot = GetMountRoot(mountPath);
+        var candidates = new List<string> { mountRoot };
+
+        foreach (var (segment, isLast) in segments.Select((value, index) =>
+                     (value, index == segments.Length - 1))) {
+            var next = new List<string>();
+            foreach (var current in candidates) {
+                if (GetEntryKind(current) != EntryKind.Directory) {
+                    continue;
+                }
+
+                var currentAttributes = File.GetAttributes(current);
+                if (currentAttributes.HasFlag(FileAttributes.ReparsePoint)) {
+                    throw new ExecException($"reparse point is not allowed in fs.path path: '{current}'.");
+                }
+
+                foreach (var child in Directory.EnumerateFileSystemEntries(current)) {
+                    var name = Path.GetFileName(child);
+                    if (!LikePattern.IsMatch(segment, name)) {
+                        continue;
+                    }
+
+                    var attributes = File.GetAttributes(child);
+                    var isDirectory = attributes.HasFlag(FileAttributes.Directory);
+                    if (!isLast) {
+                        if (!isDirectory) {
+                            continue;
+                        }
+
+                        if (attributes.HasFlag(FileAttributes.ReparsePoint)) {
+                            // Junctions such as Users\All Users are intentionally not
+                            // followed. They are outside the wildcard traversal scope.
+                            continue;
+                        }
+                    }
+
+                    next.Add(child);
+                }
+            }
+
+            candidates = next;
+            if (candidates.Count == 0) {
+                yield break;
+            }
+        }
+
+        foreach (var candidate in candidates) {
+            yield return candidate;
+        }
+    }
+
+    private static string GetMountRoot(string mountPath) =>
+        Path.GetFullPath(mountPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+    private static string[] ValidateRelativeSegments(string relativePath, bool allowWildcards) {
+        var normalized = relativePath.Replace('/', '\\');
+        if (string.IsNullOrWhiteSpace(normalized)
+            || Path.IsPathRooted(relativePath)
+            || normalized.StartsWith('\\')
+            || DotSegment().IsMatch(normalized)) {
+            throw new ExecException($"unsafe relative path '{relativePath}'.");
+        }
+
+        var segments = normalized.Split('\\');
+        if (segments.Any(string.IsNullOrEmpty)
+            || segments.Any(segment => segment.Contains(':'))
+            || (!allowWildcards && segments.Any(ContainsWildcard))) {
+            throw new ExecException($"unsafe relative path '{relativePath}'.");
+        }
+
+        foreach (var character in normalized) {
+            if (char.IsControl(character) || character is '"' or '<' or '>' or '|') {
+                throw new ExecException($"unsafe relative path '{relativePath}'.");
+            }
+        }
+
+        return segments;
+    }
+
+    private static bool ContainsWildcard(string value) => value.IndexOfAny(['*', '?']) >= 0;
 
     private static string ResolveAssetSource(ExecContext context, string source) {
         if (context.PlanAssetsRoot is null) {
@@ -224,11 +304,14 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
         while (pending.TryPop(out var current)) {
             foreach (var path in Directory.EnumerateFileSystemEntries(current)) {
                 var attributes = File.GetAttributes(path);
-                if (attributes.HasFlag(FileAttributes.ReparsePoint)) {
+                var isDirectory = attributes.HasFlag(FileAttributes.Directory);
+                // WIM-mounted Windows files commonly use WOF reparse metadata. A
+                // reparse file is still a safe leaf to delete; reparse directories
+                // remain forbidden because traversing them could escape the image.
+                if (attributes.HasFlag(FileAttributes.ReparsePoint) && isDirectory) {
                     throw new ExecException($"reparse point is not allowed in fs.path tree: '{path}'.");
                 }
 
-                var isDirectory = attributes.HasFlag(FileAttributes.Directory);
                 yield return (path, isDirectory);
                 if (isDirectory) {
                     pending.Push(path);
@@ -239,12 +322,21 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
 
     private static void EnsureTreeHasNoReparsePoints(string root) {
         var attributes = File.GetAttributes(root);
-        if (attributes.HasFlag(FileAttributes.ReparsePoint)) {
+        if (attributes.HasFlag(FileAttributes.ReparsePoint)
+            && attributes.HasFlag(FileAttributes.Directory)) {
             throw new ExecException($"reparse point is not allowed in fs.path tree: '{root}'.");
         }
 
         if (attributes.HasFlag(FileAttributes.Directory)) {
             _ = EnumerateTree(root).ToList();
+        }
+    }
+
+    private static void EnsureRemovalTargetSafe(string target) {
+        var attributes = File.GetAttributes(target);
+        if (attributes.HasFlag(FileAttributes.ReparsePoint)
+            && attributes.HasFlag(FileAttributes.Directory)) {
+            throw new ExecException($"reparse point is not allowed in fs.path removal target: '{target}'.");
         }
     }
 
@@ -270,7 +362,9 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
                 break;
             }
 
-            if (attributes.HasFlag(FileAttributes.ReparsePoint)) {
+            var isTarget = string.Equals(current, target, StringComparison.OrdinalIgnoreCase);
+            if (attributes.HasFlag(FileAttributes.ReparsePoint)
+                && (!isTarget || attributes.HasFlag(FileAttributes.Directory))) {
                 throw new ExecException($"reparse point is not allowed in fs.path path: '{current}'.");
             }
         }

@@ -267,6 +267,22 @@
           "required": ["resource", "action", "spec"],
           "properties": {
             "resource": {
+              "const": "appx.system"
+            },
+            "action": {
+              "const": "remove"
+            },
+            "spec": {
+              "$ref": "#/$defs/appxSystemSpec"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resource", "action", "spec"],
+          "properties": {
+            "resource": {
               "const": "dism.capability"
             },
             "action": {
@@ -433,13 +449,25 @@
         }
       }
     },
+    "appxSystemSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["patterns"],
+      "properties": {
+        "patterns": {
+          "$ref": "#/$defs/stringArray",
+          "description": "Wildcard patterns matched against inbox SystemApps directory and registration names."
+        }
+      }
+    },
     "capabilitySpec": {
       "type": "object",
       "additionalProperties": false,
       "required": ["capabilities"],
       "properties": {
         "capabilities": {
-          "$ref": "#/$defs/stringArray"
+          "$ref": "#/$defs/stringArray",
+          "description": "Capability identities matched case-insensitively; * and ? may be used as wildcards. Matching concrete identities are passed to DISM for removal."
         }
       }
     },
@@ -495,6 +523,11 @@
             "type": "string",
             "pattern": "^[^\\\\/:*?\"<>|]+\\.inf$"
           }
+        },
+        "forceUnusedInbox": {
+          "type": "boolean",
+          "default": false,
+          "description": "For inbox packages only, remove the package when no offline device instance references its services. This bypasses DISM's default-package refusal and is high risk."
         }
       }
     },
@@ -505,7 +538,7 @@
       "properties": {
         "paths": {
           "$ref": "#/$defs/stringArray",
-          "description": "Relative paths inside the mounted image."
+          "description": "Relative paths inside the mounted image. Remove paths support * and ? wildcards within individual path segments; wildcards never cross directory boundaries."
         }
       }
     },
@@ -598,7 +631,7 @@
         },
         "type": {
           "type": "string",
-          "enum": ["dword", "qword", "string", "expand", "multi"]
+          "enum": ["dword", "qword", "string", "expand", "multi", "binary"]
         },
         "data": {}
       }
@@ -654,7 +687,7 @@
       "properties": {
         "hive": {
           "type": "string",
-          "enum": ["software", "system", "default", "components", "sam", "security"]
+          "enum": ["software", "system", "default", "default-user", "components", "sam", "security"]
         },
         "key": {
           "$ref": "#/$defs/nonEmptyString"
@@ -664,7 +697,7 @@
         },
         "type": {
           "type": "string",
-          "enum": ["dword", "qword", "string", "expand", "multi"]
+          "enum": ["dword", "qword", "string", "expand", "multi", "binary"]
         },
         "data": {},
         "values": {
@@ -694,7 +727,7 @@
       "properties": {
         "hive": {
           "type": "string",
-          "enum": ["software", "system", "default", "components", "sam", "security"]
+          "enum": ["software", "system", "default", "default-user", "components", "sam", "security"]
         },
         "key": {
           "$ref": "#/$defs/nonEmptyString"

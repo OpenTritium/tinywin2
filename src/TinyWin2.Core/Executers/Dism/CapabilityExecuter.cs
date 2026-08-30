@@ -23,16 +23,20 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismRemoveExecut
             r => DismListParser.Get(r, "Capability Identity") ?? "",
             r => DismListParser.Get(r, "State") ?? "",
             StringComparer.OrdinalIgnoreCase);
-        foreach (var capability in options.Capabilities) {
-            if (!states.TryGetValue(capability, out var state)) {
-                context.Log.Info($"capability '{capability}' is not present in this image; skipping.");
-                yield return new(capability, SkipReason: "capability not present in image");
+        var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pattern in options.Capabilities) {
+            var matches = states.Keys.Where(identity => LikePattern.IsMatch(pattern, identity)).ToList();
+            if (matches.Count == 0) {
+                context.Log.Info($"capability '{pattern}' is not present in this image; skipping.");
+                yield return new(pattern, SkipReason: "capability not present in image");
+                continue;
             }
-            else if (!state.Contains("Installed", StringComparison.OrdinalIgnoreCase)) {
-                // Already absent: no difference entry at all.
-            }
-            else {
-                yield return new(capability, state);
+
+            foreach (var identity in matches.Where(identity => selected.Add(identity)
+                                                               && states[identity].Contains("Installed",
+                                                                   StringComparison.OrdinalIgnoreCase))) {
+                // DISM receives the concrete identity, never the wildcard pattern.
+                yield return new(identity, states[identity]);
             }
         }
     }

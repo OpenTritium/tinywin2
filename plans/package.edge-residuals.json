@@ -1,0 +1,20 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "package.edge-residuals",
+  "version": "1.0.0",
+  "title": "清理旧 Edge 和 DevTools CBS 残留包",
+  "description": "移除浏览器本体已删除后仍留在组件存储中的旧 EdgeHTML/EdgeCore 和 Edge DevTools 包；保留 Microsoft-OneCore-Edge-WebRuntime，以维持系统 WebView 和 Office WebView2 兼容性。",
+  "category": "Browser",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "dism.package",
+    "action": "remove",
+    "spec": {
+      "patterns": [
+        "(?i)^Microsoft-Windows-Edge-[A-Za-z0-9-]+-Package~.*$",
+        "(?i)^Microsoft-Windows-MicrosoftEdgeDevToolsClient(?:-[A-Za-z0-9-]+)?-Package~.*$"
+      ]
+    }
+  }
+}

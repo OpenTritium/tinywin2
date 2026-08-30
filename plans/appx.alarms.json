@@ -1,0 +1,15 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "appx.alarms",
+  "version": "3.0.0",
+  "title": "移除闹钟和时钟",
+  "description": "移除 Microsoft.WindowsAlarms 预置 Appx；闹钟、计时器和秒表将不可用。",
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": { "patterns": ["Microsoft.WindowsAlarms"] }
+  }
+}

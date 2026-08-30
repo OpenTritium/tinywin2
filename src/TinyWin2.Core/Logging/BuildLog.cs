@@ -10,8 +10,8 @@ public enum BuildEventLevel {
 }
 
 /// <summary>
-///     One structured, serializable build event. The CLI streams these as JSONL
-///     (<c>--json-events</c>); the GUI renders them as the live progress/log feed.
+///     One structured, serializable build event. The CLI can stream these as JSONL
+///     with <c>--json-events</c>.
 /// </summary>
 public sealed record BuildEvent {
     public int Sequence { get; init; }
@@ -39,9 +39,9 @@ public sealed record BuildEvent {
 }
 
 /// <summary>
-///     Central structured log. The engine writes through it; sinks (Serilog file/console
-///     bridge, JSONL stream for the GUI) subscribe via <see cref="Attach" />. Events are
-///     pushed to sinks only — nothing is buffered, so a long build costs no memory.
+///     Central structured log. The engine writes through it; file, console, and JSONL
+///     sinks subscribe via <see cref="Attach" />. Events are pushed to sinks only —
+///     nothing is buffered, so a long build costs no memory.
 /// </summary>
 public sealed class BuildLog {
     private readonly Lock _gate = new();

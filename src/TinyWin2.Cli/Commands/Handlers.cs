@@ -93,12 +93,16 @@ internal static class BuildHandler {
         catch (BuildStepFailedException ex) {
             if (!jsonEvents) {
                 await Console.Error.WriteLineAsync(
-                    $"✘ step '{ex.StepId}' failed at layer {ex.LayerIndex:000}; the layer was discarded and the workspace kept.");
+                    request.SingleLayer
+                        ? $"✘ step '{ex.StepId}' failed at step {ex.LayerIndex:000}; the single-layer workspace was kept for checkpointed recovery."
+                        : $"✘ step '{ex.StepId}' failed at layer {ex.LayerIndex:000}; the failed layer was discarded and the previous layer was kept.");
                 await Console.Error.WriteLineAsync(
-                    $"  post-mortem: tinywin2 layer diff --workspace \"{request.Workspace}\" " +
-                    $"--from {Math.Max(0, ex.LayerIndex - 1)} --to {ex.LayerIndex}");
-                await Console.Error.WriteLineAsync(
-                    $"  retry without the offender, e.g. add: --plan ... minus {ex.StepId}");
+                    $"  recovery: rerun the same build command with --resume to replay from the previous completed step and retry '{ex.StepId}'.");
+                if (!request.SingleLayer) {
+                    await Console.Error.WriteLineAsync(
+                        $"  post-mortem: tinywin2 layer diff --workspace \"{request.Workspace}\" " +
+                        $"--from {Math.Max(0, ex.LayerIndex - 1)} --to {ex.LayerIndex}");
+                }
             }
 
             return 1;
@@ -221,6 +225,8 @@ internal static class ValidateHandler {
 
             if (kind != SourceInputKind.Image) {
                 OutputBuilder.ValidateBootMedia(source.MediaRootPath!);
+                await new SetupImageContractValidator(new ProcessRunner(), new())
+                    .ValidateAsync(source.InstallImagePath, 1, CancellationToken.None);
             }
 
             var indexes = await resolver.GetIndexesAsync(source.InstallImagePath, CancellationToken.None);
@@ -258,6 +264,7 @@ internal static class PackageHandler {
         var output = Path.GetFullPath(request.Output);
         var workspace = Path.GetFullPath(request.Workspace);
         var oscdimg = Path.GetFullPath(request.Oscdimg);
+        var unattended = request.Unattended is null ? null : Path.GetFullPath(request.Unattended);
         if (!File.Exists(image) || new FileInfo(image).Length == 0) {
             throw new FileNotFoundException($"built image is missing or empty: '{image}'.");
         }
@@ -279,6 +286,10 @@ internal static class PackageHandler {
             throw new FileNotFoundException($"oscdimg.exe not found: '{oscdimg}'.");
         }
 
+        if (unattended is not null && !File.Exists(unattended)) {
+            throw new FileNotFoundException($"unattended file not found: '{unattended}'.");
+        }
+
         if (Directory.Exists(workspace) && Directory.EnumerateFileSystemEntries(workspace).Any()) {
             throw new IOException($"package workspace '{workspace}' is not empty; choose a new directory.");
         }
@@ -291,11 +302,18 @@ internal static class PackageHandler {
                     nameof(request.Input));
             }
 
+            await new SetupImageContractValidator(new ProcessRunner(), new())
+                .ValidateAsync(image, 1, CancellationToken.None);
+
             Directory.CreateDirectory(workspace);
             var media = Path.Combine(workspace, "media");
             var builder = new OutputBuilder(new ProcessRunner(), new());
             await builder.StageMediaAsync(source.MediaRootPath!, media, image, format, request.Overwrite,
                 CancellationToken.None);
+            if (unattended is not null) {
+                File.Copy(unattended, Path.Combine(media, "Autounattend.xml"), true);
+                Console.WriteLine($"unattended: {unattended}");
+            }
             Directory.CreateDirectory(Path.GetDirectoryName(output)!);
             await builder.CreateIsoAsync(media, output, oscdimg, CancellationToken.None);
             Console.WriteLine($"ISO: {output}");

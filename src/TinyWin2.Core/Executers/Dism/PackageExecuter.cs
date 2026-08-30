@@ -13,6 +13,8 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismRemoveExecuterB
 
     protected override string RecordStartKey => "Package Identity";
 
+    protected override DismOutcome? DowngradeOutcome => DismOutcome.CannotUninstall;
+
     protected override string SatisfiedSkipReason => "no removable CBS packages matched";
 
     protected override IEnumerable<DismRemovalTarget> SelectTargets(
@@ -20,14 +22,37 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismRemoveExecuterB
         ExecContext context,
         OperationSpec spec) {
         var options = PackageOptions.FromDesired(spec.Spec);
-        foreach (var record in records) {
-            var identity = DismListParser.Get(record, "Package Identity");
-            var state = DismListParser.Get(record, "State") ?? "";
-            if (identity is null || !options.Patterns.Any(p => p.IsMatch(identity))) {
-                continue;
-            }
+        var matched = records
+            .Select(record => new {
+                Record = record,
+                Identity = DismListParser.Get(record, "Package Identity"),
+                State = DismListParser.Get(record, "State") ?? ""
+            })
+            .Where(item => item.Identity is not null && options.Patterns.Any(p => p.IsMatch(item.Identity)))
+            .ToList();
+
+        // DISM commonly lists both a superseded staged package and its newer
+        // installed replacement. Removing the staged predecessor directly can
+        // return CBS_E_INVALID_PACKAGE (0x800F0805); the component cleanup pass
+        // removes it after the active package family has been serviced.
+        var activeFamilies = matched
+            .Where(item => item.State.Equals("Installed", StringComparison.OrdinalIgnoreCase)
+                           || item.State.Equals("Install Pending", StringComparison.OrdinalIgnoreCase))
+            .Select(item => PackageFamily(item.Identity!))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in matched) {
+            var identity = item.Identity!;
+            var state = item.State;
 
             if (RemovableStates.Any(s => state.Equals(s, StringComparison.OrdinalIgnoreCase))) {
+                if (state.Equals("Staged", StringComparison.OrdinalIgnoreCase)
+                    && activeFamilies.Contains(PackageFamily(identity))) {
+                    context.Log.Info($"skipping superseded staged CBS package: {identity}");
+                    yield return new(identity, state, SkipReason: "superseded staged package");
+                    continue;
+                }
+
                 yield return new(identity, state);
             }
             else {
@@ -35,6 +60,11 @@ public sealed class PackageExecuter(IProcessRunner runner) : DismRemoveExecuterB
                 yield return new(identity, SkipReason: $"state={state}");
             }
         }
+    }
+
+    private static string PackageFamily(string identity) {
+        var separator = identity.LastIndexOf('~');
+        return separator > 0 ? identity[..separator] : identity;
     }
 
     protected override IReadOnlyList<string> RemoveArguments(DismRemovalTarget target, OperationSpec spec) =>

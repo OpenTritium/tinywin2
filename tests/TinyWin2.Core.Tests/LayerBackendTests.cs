@@ -358,16 +358,16 @@ public sealed class LayerBackendTests : IDisposable {
         new(
             execs
                 .Select((operation, index) => {
-                        var definition = new PlanDefinition {
-                            Id = $"p.{index}",
-                            Version = "1.0.0",
-                            Title = $"P {index}",
-                            Description = "d",
-                            Category = "G",
-                            Operation = new(operation.Resource, operation.Action, operation.Spec)
-                        };
-                        return new PlanStep(new(definition, operation));
-                    }
+                    var definition = new PlanDefinition {
+                        Id = $"p.{index}",
+                        Version = "1.0.0",
+                        Title = $"P {index}",
+                        Description = "d",
+                        Category = "G",
+                        Operation = new(operation.Resource, operation.Action, operation.Spec)
+                    };
+                    return new PlanStep(new(definition, operation));
+                }
                 )
                 .ToArray()
         );

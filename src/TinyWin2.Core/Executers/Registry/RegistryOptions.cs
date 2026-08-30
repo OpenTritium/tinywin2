@@ -47,7 +47,7 @@ public sealed record RegistryValueTarget {
     public required string Key { get; init; }
     public string Name { get; private init; } = "";
 
-    /// <summary>Friendly type (dword/qword/string/expand/multi); null for absent targets.</summary>
+    /// <summary>Friendly type (dword/qword/string/expand/multi/binary); null for absent targets.</summary>
     private string? Type { get; init; }
 
     public JsonNode? Data { get; private init; }
@@ -65,7 +65,7 @@ public sealed record RegistryValueTarget {
         var type = Desired.OptionalString(raw, "type");
         if (type is null || !RegistryValueTypes.IsSupported(type)) {
             throw new ExecException(
-                $"registry value '{key}\\{name}' requires a valid 'type' (dword|qword|string|expand|multi).");
+                $"registry value '{key}\\{name}' requires a valid 'type' (dword|qword|string|expand|multi|binary).");
         }
 
         return !raw.TryGetPropertyValue("data", out var data) || data is null
@@ -81,7 +81,8 @@ public static class RegistryValueTypes {
             ["qword"] = "REG_QWORD",
             ["string"] = "REG_SZ",
             ["expand"] = "REG_EXPAND_SZ",
-            ["multi"] = "REG_MULTI_SZ"
+            ["multi"] = "REG_MULTI_SZ",
+            ["binary"] = "REG_BINARY"
         };
 
     public static bool IsSupported(string type) => Map.ContainsKey(type);

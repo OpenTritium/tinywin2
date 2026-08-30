@@ -1,0 +1,19 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "appx.web-media-extensions",
+  "version": "1.0.0",
+  "title": "移除 Web 媒体扩展",
+  "description": "移除 Microsoft.WebMediaExtensions 预置 AppX。依赖该扩展的 WebM、Ogg 等网页媒体编解码能力可能不可用；常见桌面播放器自带的编解码器不受影响。",
+  "category": "Media",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": {
+      "patterns": [
+        "Microsoft.WebMediaExtensions*"
+      ]
+    }
+  }
+}

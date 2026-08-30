@@ -1,0 +1,15 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "appx.camera",
+  "version": "3.0.0",
+  "title": "移除相机",
+  "description": "移除 Microsoft.WindowsCamera 预置 Appx；摄像头应用和相机快捷入口将不可用。",
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": { "patterns": ["Microsoft.WindowsCamera"] }
+  }
+}

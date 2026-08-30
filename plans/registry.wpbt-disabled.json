@@ -1,0 +1,31 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "registry.wpbt-disabled",
+  "version": "1.0.0",
+  "title": "禁用 WPBT 执行",
+  "description": "禁止 Windows 执行固件 ACPI WPBT 中注入的启动程序，避免 OEM 在每次启动时部署额外软件。",
+  "category": "System",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.value",
+    "action": "set",
+    "spec": {
+      "hive": "system",
+      "values": [
+        {
+          "key": "ControlSet001\\Control\\Session Manager",
+          "name": "DisableWpbtExecution",
+          "type": "dword",
+          "data": 1
+        },
+        {
+          "key": "ControlSet002\\Control\\Session Manager",
+          "name": "DisableWpbtExecution",
+          "type": "dword",
+          "data": 1
+        }
+      ]
+    }
+  }
+}

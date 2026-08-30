@@ -1,0 +1,19 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "capability.math-recognizer",
+  "version": "3.0.0",
+  "title": "移除数学识别能力",
+  "description": "移除 Windows Ink 数学识别按需功能；不影响普通键盘输入、中文输入法或常规办公程序。",
+  "category": "Utilities",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "dism.capability",
+    "action": "remove",
+    "spec": {
+      "capabilities": [
+        "MathRecognizer~~~~*"
+      ]
+    }
+  }
+}

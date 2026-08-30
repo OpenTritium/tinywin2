@@ -12,7 +12,7 @@
     "action": "remove",
     "spec": {
       "capabilities": [
-        "Media.WindowsMediaPlayer~~~~0.0.12.0"
+        "Media.WindowsMediaPlayer~~~~*"
       ]
     }
   }

@@ -4,7 +4,7 @@ using TinyWin2.Core.Hashing;
 
 namespace TinyWin2.Core.Plans;
 
-/// <summary>Loads and validates every plan JSON under a directory. Single loader shared by CLI and GUI.</summary>
+/// <summary>Loads and validates every plan JSON under a directory for CLI operations.</summary>
 public sealed class PlanCatalog(IReadOnlyList<PlanDefinition> plans) {
     public IReadOnlyList<PlanDefinition> Plans { get; } = plans;
 
@@ -57,7 +57,7 @@ public sealed class PlanCatalog(IReadOnlyList<PlanDefinition> plans) {
             }
 
             seenIds[plan.Id] = file;
-            plans.Add(plan with { Hash = ComputePlanHash(obj!) });
+            plans.Add(plan with { Hash = ComputePlanHash(obj) });
         }
 
         foreach (var plan in plans) {

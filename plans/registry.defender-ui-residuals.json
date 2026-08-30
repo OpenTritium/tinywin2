@@ -1,0 +1,24 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "registry.defender-ui-residuals",
+  "version": "1.0.0",
+  "title": "清理 Defender UI 注册表残留",
+  "description": "删除 Defender 和 Windows 安全 UI 已移除后遗留的 AppUserModelId、Shell 类、通知和磁盘清理注册项；不删除策略 schema 或 CBS servicing 元数据。",
+  "category": "Security",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "registry.value",
+    "action": "remove",
+    "spec": {
+      "hive": "software",
+      "deleteKeys": [
+        "Classes\\AppUserModelId\\Microsoft.Windows.Defender",
+        "Classes\\AppUserModelId\\Windows.Defender",
+        "Classes\\WindowsDefender",
+        "Microsoft\\Windows\\CurrentVersion\\Explorer\\VolumeCaches\\Windows Defender",
+        "Microsoft\\Windows\\CurrentVersion\\PushNotifications\\Applications\\Windows.Defender"
+      ]
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "appx.web-experience",
+  "version": "3.0.0",
+  "title": "移除 Windows Web Experience",
+  "description": "移除 MicrosoftWindows.Client.WebExperience 预置 Appx；Widgets 和部分联网资讯体验将不可用。",
+  "category": "Background Experience",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": { "patterns": ["MicrosoftWindows.Client.WebExperience"] }
+  }
+}

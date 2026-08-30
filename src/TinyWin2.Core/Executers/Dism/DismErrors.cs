@@ -19,6 +19,9 @@ public static partial class DismErrors {
     /// <summary>0x800F0825 — capability-on-demand is permanent for this edition (CBS_E_CANNOT_UNINSTALL).</summary>
     public const int CbsECannotUninstall = unchecked((int)0x800F0825);
 
+    /// <summary>0x800F0805 — an older/inbox package cannot be removed independently.</summary>
+    public const int CbsEInvalidPackage = unchecked((int)0x800F0805);
+
     /// <summary>Win32 ERROR_NOT_SUPPORTED — the edition exposes no servicing provider for this operation.</summary>
     private const int ErrorNotSupported = 50;
 
@@ -36,6 +39,7 @@ public static partial class DismErrors {
             ErrorNotSupported => DismOutcome.ProviderUnavailable,
             CbsEInvalidInstallState => DismOutcome.InvalidInstallState,
             CbsECannotUninstall => DismOutcome.CannotUninstall,
+            CbsEInvalidPackage => DismOutcome.CannotUninstall,
             _ => ProviderUnavailableText().IsMatch(output) ? DismOutcome.ProviderUnavailable : DismOutcome.Fatal
         };
     }

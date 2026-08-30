@@ -12,12 +12,12 @@
     "action": "remove",
     "spec": {
       "capabilities": [
-        "Language.Basic~~~ko-KR~0.0.1.0",
-        "Language.Fonts.Kore~~~und-KORE~0.0.1.0",
-        "Language.Handwriting~~~ko-KR~0.0.1.0",
-        "Language.OCR~~~ko-KR~0.0.1.0",
-        "Language.Speech~~~ko-KR~0.0.1.0",
-        "Language.TextToSpeech~~~ko-KR~0.0.1.0"
+        "Language.Basic~~~ko-KR~*",
+        "Language.Fonts.Kore~~~und-KORE~*",
+        "Language.Handwriting~~~ko-KR~*",
+        "Language.OCR~~~ko-KR~*",
+        "Language.Speech~~~ko-KR~*",
+        "Language.TextToSpeech~~~ko-KR~*"
       ]
     }
   }

@@ -1,0 +1,19 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "appx.bing-search",
+  "version": "1.0.0",
+  "title": "移除 Bing Search",
+  "description": "移除当前镜像中的 Microsoft Bing Search 预置 AppX；Windows 本地文件索引和资源管理器搜索仍保留，但 Bing/联网搜索体验不可用。",
+  "category": "Applications",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": {
+      "patterns": [
+        "Microsoft.BingSearch*"
+      ]
+    }
+  }
+}

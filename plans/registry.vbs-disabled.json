@@ -1,0 +1,43 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "registry.vbs-disabled",
+  "version": "1.0.0",
+  "title": "关闭 VBS、内存完整性和凭据隔离",
+  "description": "关闭 Device Guard 的虚拟化安全、HVCI/内存完整性、平台安全要求、Credential Guard 和 LSA 隔离策略。需要重启才能生效；vTPM/Secure Boot 不会被删除，但不再用于这些防护功能。",
+  "category": "Security",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.value",
+    "action": "set",
+    "spec": {
+      "hive": "software",
+      "values": [
+        {
+          "key": "Policies\\Microsoft\\Windows\\DeviceGuard",
+          "name": "EnableVirtualizationBasedSecurity",
+          "type": "dword",
+          "data": 0
+        },
+        {
+          "key": "Policies\\Microsoft\\Windows\\DeviceGuard",
+          "name": "RequirePlatformSecurityFeatures",
+          "type": "dword",
+          "data": 0
+        },
+        {
+          "key": "Policies\\Microsoft\\Windows\\DeviceGuard",
+          "name": "HypervisorEnforcedCodeIntegrity",
+          "type": "dword",
+          "data": 0
+        },
+        {
+          "key": "Policies\\Microsoft\\Windows\\DeviceGuard",
+          "name": "LsaCfgFlags",
+          "type": "dword",
+          "data": 0
+        }
+      ]
+    }
+  }
+}

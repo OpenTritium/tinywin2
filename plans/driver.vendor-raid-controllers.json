@@ -2,7 +2,7 @@
   "$schema": "../schemas/plan-v3.schema.json",
   "schemaVersion": 3,
   "id": "driver.vendor-raid-controllers",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "title": "移除厂商 RAID 和存储控制器驱动",
   "description": "从 Driver Store 移除预装的 Adaptec、LSI、Avago、Dell PERC、HP、Intel、Marvell、NVIDIA、PMC-Sierra、Promise、SiS 和 VIA RAID 驱动。若启动磁盘或未来硬件依赖其中任一驱动，系统可能无法启动。",
   "category": "Drivers",
@@ -38,7 +38,8 @@
         "sisraid4.inf",
         "vsmraid.inf",
         "vstxraid.inf"
-      ]
+      ],
+      "forceUnusedInbox": true
     }
   }
 }

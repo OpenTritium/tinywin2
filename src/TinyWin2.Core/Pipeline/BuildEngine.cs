@@ -18,8 +18,8 @@ public enum OutputFormat {
 }
 
 /// <summary>
-///     Build phases exactly as they appear in the JSONL event stream and the GUI's routing.
-///     Renaming a value here changes the wire contract — the GUI mirrors these strings.
+///     Build phases exactly as they appear in the JSONL event stream and CLI diagnostics.
+///     Renaming a value here changes the event wire contract.
 /// </summary>
 public static class BuildPhases {
     public const string Prepare = "prepare";
@@ -27,6 +27,7 @@ public static class BuildPhases {
     public const string BaseLayer = "base-layer";
     public const string Plan = "plan";
     public const string CbsScan = "cbs-scan";
+    public const string Optimize = "optimize";
     public const string Capture = "capture";
     public const string Package = "package";
     public const string Done = "done";
@@ -55,8 +56,9 @@ public sealed record BuildOptions {
     public bool CaptureEvidence { get; init; } = true;
 
     /// <summary>
-    ///     Layerless fast mode: one working mount, steps applied in place. No atomic rollback,
-    ///     no layer diff trail, no resume checkpoints — a failed step just leaves the exec's own work undone.
+    ///     Layerless fast mode: one working mount, steps applied in place. It has no per-step
+    ///     VHDX rollback, but it persists a completed prefix so a later resume can rebuild the
+    ///     base and replay that prefix before retrying the failed step.
     /// </summary>
     public bool NoLayers { get; init; }
 
@@ -101,14 +103,17 @@ public sealed class BuildEngine(
     private const int ProgressAfterBase = 40;
     private const int ProgressPlanWeight = 40;
     private const int ProgressMedia = 10;
-    private const int ProgressPackage = 90;
+    private const int ProgressCbsScan = 82;
+    private const int ProgressCapture = 85;
+    private const int ProgressOptimize = 90;
+    private const int ProgressPackage = 95;
     private const int ProgressComplete = 100;
 
     public async Task<BuildResult> BuildAsync(BuildOptions options, CancellationToken ct) {
         var buildId = $"{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfff}-{Guid.NewGuid():N}";
         log.Phase = BuildPhases.Prepare;
         log.Info(
-            $"build {buildId} starting (atomic-plans=true, out={options.OutputFormat}, " +
+            $"build {buildId} starting (atomic-plans={!options.NoLayers}, out={options.OutputFormat}, " +
             $"input={options.InputPath}, output={options.OutputPath}, workspace={options.WorkspacePath}, " +
             $"resume={options.Resume}, skip-layer-health-check={options.SkipLayerHealthCheck}, " +
             $"compression={options.Export.DismCompression}, " +
@@ -130,10 +135,6 @@ public sealed class BuildEngine(
             return DryRunResult(buildId, options);
         }
 
-        if (options is { NoLayers: true, Resume: true }) {
-            throw new InvalidOperationException("--single-layer cannot resume: no layer chain is kept to reuse.");
-        }
-
         RunDoctor(options);
         var outputPath = Path.GetFullPath(options.OutputPath);
         var workspace = Path.GetFullPath(options.WorkspacePath);
@@ -148,10 +149,18 @@ public sealed class BuildEngine(
             var resolvedSource = await resolver.ResolveAsync(options.InputPath, ct);
             source = resolvedSource;
             var (stagingWim, sourceIndex) = await PrepareSourceAsync(options, workspace, resolvedSource, resolver, ct);
-            stack.InitializeOrValidateSource(
-                SourceImageResolver.ComputeSourceFingerprint(resolvedSource, options.ImageIndex),
-                options.ImageIndex);
-            var baseReady = options.Resume && stack.BaseReady;
+            var sourceFingerprint = SourceImageResolver.ComputeSourceFingerprint(resolvedSource, options.ImageIndex);
+            stack.InitializeOrValidateSource(sourceFingerprint, options.ImageIndex);
+            var layerlessCheckpoint = options.NoLayers
+                ? await PrepareLayerlessCheckpointAsync(options, plan, workspace, sourceFingerprint,
+                    sourceIndex.Index, assetFingerprints, ct)
+                : null;
+            var baseReady = options.Resume && stack.BaseReady && !options.NoLayers;
+            if (options is { NoLayers: true, Resume: true }) {
+                await stack.ResetBaseAsync(ct);
+                log.Info("resume: rebuilding the single-layer base before replaying the completed prefix");
+            }
+
             if (baseReady) {
                 log.Info("resume: reusing the existing base layer (image apply skipped)");
             }
@@ -169,9 +178,13 @@ public sealed class BuildEngine(
             List<(string StepId, int LayerIndex, string Error)> failedSteps;
             string? installPath;
             if (options.NoLayers) {
+                if (options.Resume && layerlessCheckpoint is not null && layerlessCheckpoint.CompletedCount > 0) {
+                    await ReplayLayerlessPrefixAsync(options, plan, stack, layerlessCheckpoint, ct);
+                }
+
                 log.Info("no-layers mode: applying every step against the single working mount");
                 (failedSteps, installPath) = await RunStepsAndCaptureLayerlessAsync(options, plan, stack, workspace,
-                    builder, sourceIndex, ct);
+                    builder, sourceIndex, layerlessCheckpoint!, ct);
             }
             else {
                 failedSteps = await RunStepsAsync(options, plan, stack, workspace, assetFingerprints, ct);
@@ -255,17 +268,17 @@ public sealed class BuildEngine(
     /// <summary>
     ///     Layerless fast path: attach the base ONCE, run every step against that single mount with no
     ///     per-step diff layers / evidence snapshots / attach-detach cycles, capture the artifact from the
-    ///     live volume, detach. A failed step logs and (without ContinueOnError) aborts; nothing is rolled
-    ///     back — the operation's own plan granularity is all the atomicity there is.
+    ///     live volume, detach. A failed step logs and (without ContinueOnError) aborts; the last completed
+    ///     prefix is persisted for a future clean replay.
     /// </summary>
     private async Task<(List<(string StepId, int LayerIndex, string Error)>, string? InstallPath)>
         RunStepsAndCaptureLayerlessAsync(
             BuildOptions options, BuildPlan plan, VhdLayerStack stack, string workspace, OutputBuilder builder,
-            ImageIndexInfo sourceIndex, CancellationToken ct) {
+            ImageIndexInfo sourceIndex, LayerlessCheckpoint checkpoint, CancellationToken ct) {
         var failedSteps = new List<(string, int, string)>();
         return await WithMountedAsync(stack.LeafVhdxPath, async mountPath => {
-            var stepNumber = 0;
-            foreach (var step in plan.Steps) {
+            var stepNumber = checkpoint.CompletedCount;
+            foreach (var step in plan.Steps.Skip(checkpoint.CompletedCount)) {
                 ct.ThrowIfCancellationRequested();
                 stepNumber++;
                 log.Info($"step {stepNumber}/{plan.Steps.Count}: '{step.Title}' (no-layers)",
@@ -280,6 +293,10 @@ public sealed class BuildEngine(
                 };
                 try {
                     _ = await RunPlanInLayerAsync(step.Plan, session, options, ct);
+                    if (failedSteps.Count == 0 && checkpoint.CompletedCount == stepNumber - 1) {
+                        checkpoint.CompletedCount = stepNumber;
+                        checkpoint.Save(Path.Combine(workspace, "layerless-progress.json"));
+                    }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
                     failedSteps.Add((step.Id, stepNumber, ex.Message));
@@ -296,6 +313,68 @@ public sealed class BuildEngine(
                 await CaptureInstallImageFromMountAsync(
                     options, workspace, builder, sourceIndex, mountPath, ct));
         }, ct, "layerless operation");
+    }
+
+    private async Task ReplayLayerlessPrefixAsync(
+        BuildOptions options, BuildPlan plan, VhdLayerStack stack, LayerlessCheckpoint checkpoint,
+        CancellationToken ct) {
+        log.Phase = BuildPhases.Plan;
+        log.Info($"resume: replaying {checkpoint.CompletedCount} completed layerless step(s)");
+        await WithMountedAsync(stack.BaseVhdxPath, async mountPath => {
+            for (var index = 0; index < checkpoint.CompletedCount; index++) {
+                ct.ThrowIfCancellationRequested();
+                var step = plan.Steps[index];
+                var session = new LayerSession {
+                    Record = new() { Index = index + 1, StepId = step.Id, Title = step.Title },
+                    VhdxPath = stack.BaseVhdxPath,
+                    MountPath = mountPath
+                };
+                await RunPlanInLayerAsync(step.Plan, session, options, ct);
+            }
+        }, ct, "layerless checkpoint replay");
+    }
+
+    private async Task<LayerlessCheckpoint> PrepareLayerlessCheckpointAsync(
+        BuildOptions options, BuildPlan plan, string workspace, string sourceFingerprint, int sourceIndex,
+        IDictionary<string, string> assetFingerprints, CancellationToken ct) {
+        var path = Path.Combine(workspace, "layerless-progress.json");
+        var fingerprints = new List<(string StepId, string Fingerprint)>(plan.Steps.Count);
+        foreach (var step in plan.Steps) {
+            fingerprints.Add((step.Id,
+                await FingerprintAsync(step, options.PlansDirectory, assetFingerprints, ct)));
+        }
+
+        if (!options.Resume) {
+            var checkpoint = LayerlessCheckpoint.Create(sourceFingerprint, sourceIndex, fingerprints);
+            checkpoint.Save(path);
+            return checkpoint;
+        }
+
+        if (!File.Exists(path)) {
+            throw new IOException(
+                $"workspace '{workspace}' has no layerless checkpoint; the previous single-layer run cannot be resumed safely.");
+        }
+
+        var existing = LayerlessCheckpoint.Load(path);
+        if (!string.Equals(existing.SourceFingerprint, sourceFingerprint, StringComparison.Ordinal)
+            || existing.SourceIndex != sourceIndex
+            || existing.Steps.Count != fingerprints.Count) {
+            throw new IOException(
+                "the layerless resume checkpoint belongs to a different source, index, or plan selection; " +
+                "start a clean build.");
+        }
+
+        for (var index = 0; index < fingerprints.Count; index++) {
+            var expected = fingerprints[index];
+            var actual = existing.Steps[index];
+            if (!string.Equals(actual.StepId, expected.StepId, StringComparison.Ordinal)
+                || !string.Equals(actual.Fingerprint, expected.Fingerprint, StringComparison.Ordinal)) {
+                throw new IOException(
+                    "the layerless resume checkpoint does not match the current plan selection; start a clean build.");
+            }
+        }
+
+        return existing;
     }
 
     /// <summary>Runs every plan step as one atomic layer; returns the failed ones (ContinueOnError).</summary>
@@ -402,6 +481,14 @@ public sealed class BuildEngine(
         }
     }
 
+    private async Task WithMountedAsync(
+        string vhdxPath, Func<string, Task> operation, CancellationToken ct, string operationName) {
+        await WithMountedAsync<object?>(vhdxPath, async mountPath => {
+            await operation(mountPath);
+            return null;
+        }, ct, operationName);
+    }
+
     private async Task<string?> CaptureInstallImageFromMountAsync(
         BuildOptions options, string workspace, OutputBuilder builder, ImageIndexInfo sourceIndex,
         string mountPath, CancellationToken ct) {
@@ -413,22 +500,32 @@ public sealed class BuildEngine(
         if (options.OutputFormat == OutputFormat.Esd) {
             // Uncompressed staging + single compression in the export below avoids re-encoding twice.
             var intermediate = Path.Combine(workspace, "install.intermediate.wim");
+            log.Info("capturing an uncompressed intermediate WIM",
+                data: new() { ["progress"] = ProgressCapture });
             await builder.CaptureWimAsync(mountPath, intermediate, sourceIndex.Name, sourceIndex.Description,
                 WimCompression.None, options.Export.VerifyCapture, options.Export.CheckIntegrity, ct);
             var esdPath = Path.Combine(workspace, "install.esd");
+            log.Phase = BuildPhases.Optimize;
+            log.Info("optimizing the captured image with recovery-compressed ESD export",
+                data: new() { ["progress"] = ProgressOptimize });
             await builder.ExportEsdAsync(intermediate, esdPath, options.Export.CheckIntegrity, ct);
             return esdPath;
         }
 
         var capturedWim = Path.Combine(workspace, "install.captured.wim");
+        log.Info("capturing the final WIM", data: new() { ["progress"] = ProgressCapture });
         await builder.CaptureWimAsync(mountPath, capturedWim, sourceIndex.Name, sourceIndex.Description,
             options.Export.Compression, options.Export.VerifyCapture, options.Export.CheckIntegrity, ct);
+        log.Phase = BuildPhases.Optimize;
+        log.Info($"final WIM captured with {options.Export.DismCompression} compression",
+            data: new() { ["progress"] = ProgressOptimize });
         return capturedWim;
     }
 
     private async Task ScanCbsAsync(string mountPath, CancellationToken ct) {
         log.Phase = BuildPhases.CbsScan;
-        log.Info($"scanning offline CBS health for {mountPath}");
+        log.Info($"scanning offline CBS health for {mountPath}",
+            data: new() { ["progress"] = ProgressCbsScan });
         await runner.RunAsync("dism.exe",
             ["/English", $"/Image:{mountPath}", "/Cleanup-Image", "/ScanHealth"],
             new() { Timeout = TimeSpan.FromHours(1) }, ct);
@@ -524,18 +621,20 @@ public sealed class BuildEngine(
         var operation = resolved.Operation;
         builder.Append(operation.Resource).Append('|').Append(operation.Action).Append('|')
             .Append(operation.Spec.ToJsonString()).Append((char)10);
-        if (operation is { Resource: "fs.path", Action: OperationAction.Copy }) {
-            var source = operation.Spec["source"]?.GetValue<string>();
-            var assetsRoot = ResolveAssetsRoot(plansDirectory, resolved.Definition.Id);
-            var assetPath = ResolveAssetPathForFingerprint(assetsRoot, source);
-            var cacheKey = assetPath ?? $"<missing:{source}>";
-            if (!assetFingerprints.TryGetValue(cacheKey, out var assetFingerprint)) {
-                assetFingerprint = await AssetFingerprintAsync(assetPath, ct);
-                assetFingerprints[cacheKey] = assetFingerprint;
-            }
-
-            builder.Append("asset|").Append(assetFingerprint).Append((char)10);
+        if (operation is not { Resource: "fs.path", Action: OperationAction.Copy }) {
+            return Fingerprinting.Compute(builder.ToString());
         }
+
+        var source = operation.Spec["source"]?.GetValue<string>();
+        var assetsRoot = ResolveAssetsRoot(plansDirectory, resolved.Definition.Id);
+        var assetPath = ResolveAssetPathForFingerprint(assetsRoot, source);
+        var cacheKey = assetPath ?? $"<missing:{source}>";
+        if (!assetFingerprints.TryGetValue(cacheKey, out var assetFingerprint)) {
+            assetFingerprint = await AssetFingerprintAsync(assetPath, ct);
+            assetFingerprints[cacheKey] = assetFingerprint;
+        }
+
+        builder.Append("asset|").Append(assetFingerprint).Append((char)10);
 
         return Fingerprinting.Compute(builder.ToString());
     }
@@ -689,7 +788,7 @@ public sealed class BuildEngine(
                 ["verifyCapture"] = options.Export.VerifyCapture,
                 ["checkIntegrity"] = options.Export.CheckIntegrity
             },
-            ["atomicPlans"] = true,
+            ["atomicPlans"] = !options.NoLayers,
             ["planIds"] = new JsonArray(plan.PlanIds.Select(p => (JsonNode)JsonValue.Create(p)).ToArray()),
             ["output"] = outputMetadata,
             ["failedSteps"] = new JsonArray(failedSteps.Select(f => (JsonNode)new JsonObject {
@@ -763,7 +862,16 @@ public sealed class BuildEngine(
             throw new PlatformNotSupportedException("TinyWin2 builds are Windows-only (DISM/diskpart/VHDX).");
         }
 
-        var failures = EnvironmentDoctor.Check(options.WorkspacePath)
+        var resumableBase = options.Resume
+                            && File.Exists(Path.Combine(options.WorkspacePath, "layers.json"))
+                            && File.Exists(Path.Combine(options.WorkspacePath, "base.vhdx"));
+        var failures = EnvironmentDoctor.Check(
+                options.WorkspacePath,
+                resumableBase
+                    ? 10L * 1024 * 1024 * 1024
+                    : options.NoLayers
+                        ? 30L * 1024 * 1024 * 1024
+                        : null)
             .Where(c => c is { Required: true, Ok: false })
             .ToList();
         if (failures.Count > 0) {

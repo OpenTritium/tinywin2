@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v3.schema.json",
   "schemaVersion": 3,
   "id": "fs.windows-mail",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "title": "移除 Windows Mail 文件",
-  "description": "移除镜像中的旧 Windows Mail 文件目录；现代 Mail Appx 由 appx.remove-mail-calendar 单独处理。",
+  "description": "移除镜像中的 32 位和 64 位旧 Windows Mail 文件目录；现代 Mail Appx 由 appx.mail-calendar 单独处理。",
   "category": "Applications",
   "riskLevel": "Medium",
   "operation": {
@@ -12,7 +12,8 @@
     "action": "remove",
     "spec": {
       "paths": [
-        "Program Files/Windows Mail"
+        "Program Files\\Windows Mail",
+        "Program Files (x86)\\Windows Mail"
       ]
     }
   }

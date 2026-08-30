@@ -12,7 +12,7 @@
     "action": "remove",
     "spec": {
       "capabilities": [
-        "App.StepsRecorder~~~~0.0.1.0"
+        "App.StepsRecorder~~~~*"
       ]
     }
   }

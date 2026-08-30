@@ -1,0 +1,44 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "fs.internet-explorer",
+  "version": "1.0.0",
+  "title": "清理 Internet Explorer 遗留文件",
+  "description": "移除 Internet Explorer 已禁用后的遗留程序文件和空目录；默认保留系统 WebView、EdgeHTML 兼容库和应用所需的网页组件。需要极限清理旧网页平台时可另选 fs.edge-legacy-platform。",
+  "category": "Applications",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "fs.path",
+    "action": "remove",
+    "spec": {
+      "paths": [
+        "Program Files\\Internet Explorer\\*.exe",
+        "Program Files\\Internet Explorer\\*.dll",
+        "Program Files\\Internet Explorer\\*.ico",
+        "Program Files\\Internet Explorer\\*.ins",
+        "Program Files\\Internet Explorer\\en-US\\*",
+        "Program Files\\Internet Explorer\\images\\*",
+        "Program Files\\Internet Explorer\\SIGNUP\\*",
+        "Program Files\\Internet Explorer\\zh-CN\\*",
+        "Program Files\\Internet Explorer\\en-US",
+        "Program Files\\Internet Explorer\\images",
+        "Program Files\\Internet Explorer\\SIGNUP",
+        "Program Files\\Internet Explorer\\zh-CN",
+        "Program Files\\Internet Explorer",
+        "Program Files (x86)\\Internet Explorer\\*.exe",
+        "Program Files (x86)\\Internet Explorer\\*.dll",
+        "Program Files (x86)\\Internet Explorer\\*.ico",
+        "Program Files (x86)\\Internet Explorer\\*.ins",
+        "Program Files (x86)\\Internet Explorer\\en-US\\*",
+        "Program Files (x86)\\Internet Explorer\\images\\*",
+        "Program Files (x86)\\Internet Explorer\\SIGNUP\\*",
+        "Program Files (x86)\\Internet Explorer\\zh-CN\\*",
+        "Program Files (x86)\\Internet Explorer\\en-US",
+        "Program Files (x86)\\Internet Explorer\\images",
+        "Program Files (x86)\\Internet Explorer\\SIGNUP",
+        "Program Files (x86)\\Internet Explorer\\zh-CN",
+        "Program Files (x86)\\Internet Explorer"
+      ]
+    }
+  }
+}

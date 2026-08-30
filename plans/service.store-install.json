@@ -1,0 +1,18 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "service.store-install",
+  "version": "3.0.0",
+  "title": "禁用商店应用安装服务",
+  "description": "禁用 Microsoft Store 安装、应用许可和 PushToInstall 服务；镜像不再支持商店应用安装和推送安装。AppX Deployment Service 保留以保证系统组件注册。",
+  "category": "Background Services",
+  "riskLevel": "High",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": ["InstallService", "ClipSVC", "PushToInstall"],
+      "start": "disabled"
+    }
+  }
+}

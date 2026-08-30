@@ -1,0 +1,30 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "fs.extra-cursor-themes",
+  "version": "1.0.0",
+  "title": "移除额外光标主题变体",
+  "description": "移除大尺寸、反色、旧式和替代光标主题文件；保留默认 aero 光标及现代 SVG 光标。大号/旧式光标方案和部分传统光标主题将不可用。",
+  "category": "Desktop Experience",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "fs.path",
+    "action": "remove",
+    "spec": {
+      "paths": [
+        "Windows\\Cursors\\*_l.cur",
+        "Windows\\Cursors\\*_xl.cur",
+        "Windows\\Cursors\\*_i.cur",
+        "Windows\\Cursors\\*_il.cur",
+        "Windows\\Cursors\\*_im.cur",
+        "Windows\\Cursors\\*_m.cur",
+        "Windows\\Cursors\\*_r.cur",
+        "Windows\\Cursors\\*_rl.cur",
+        "Windows\\Cursors\\*_rm.cur",
+        "Windows\\Cursors\\*_l.ani",
+        "Windows\\Cursors\\*_xl.ani",
+        "Windows\\Cursors\\l*.cur"
+      ]
+    }
+  }
+}

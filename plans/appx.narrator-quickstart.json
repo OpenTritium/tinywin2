@@ -1,0 +1,19 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "appx.narrator-quickstart",
+  "version": "1.0.0",
+  "title": "移除旁白快速入门组件",
+  "description": "移除仅用于讲述人首次使用引导的 Inbox SystemApp；不移除 Narrator 本体或 Windows 核心辅助功能。",
+  "category": "Accessibility",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "appx.system",
+    "action": "remove",
+    "spec": {
+      "patterns": [
+        "Microsoft.Windows.NarratorQuickStart*"
+      ]
+    }
+  }
+}

@@ -32,7 +32,7 @@ internal static class Cli {
     public static List<PlanSelection> BuildSelections(
         SelectionRequest request,
         PlanCatalog catalog) {
-        var selections = new List<PlanSelection>();
+        var profileSelections = new List<PlanSelection>();
         foreach (var profilePath in request.Profiles) {
             var profile = ProfileStore.Load(profilePath);
             var unknown = ProfileStore.UnknownPlans(profile, catalog);
@@ -41,8 +41,18 @@ internal static class Cli {
                     $"profile '{profilePath}' references unknown plans: {string.Join(", ", unknown)}");
             }
 
-            selections.AddRange(ProfileStore.ToPlanSelections(profile));
+            profileSelections.AddRange(ProfileStore.ToPlanSelections(profile));
         }
+
+        var selections = PlanSelectionMerger.Merge(
+            profileSelections,
+            request.Plans.Select(planId => {
+                if (!catalog.ById.ContainsKey(planId)) {
+                    throw new ArgumentException($"unknown plan '{planId}' (see: tinywin2 plan list)");
+                }
+
+                return new PlanSelection(planId);
+            }));
 
         void EnsureSelected(string planId) {
             if (!catalog.ById.ContainsKey(planId)) {
@@ -54,12 +64,10 @@ internal static class Cli {
                 selections.Add(new(planId));
             }
             else if (!selections[existing].Enabled) {
-                selections[existing] = selections[existing] with { Enabled = true };
+                throw new InvalidOperationException(
+                    $"plan '{planId}' is disabled by the selected profile; " +
+                    "remove the profile exclusion before enabling it explicitly.");
             }
-        }
-
-        foreach (var planId in request.Plans) {
-            EnsureSelected(planId);
         }
 
         foreach (var assignment in request.Sets) {

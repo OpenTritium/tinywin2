@@ -1,0 +1,22 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "service.memory-compression",
+  "version": "1.0.0",
+  "title": "启用高性价比内存压缩和页面合并",
+  "description": "启用 SysMain，使 Windows 11 的 MemoryCompression 和 PageCombining 在启动后保持开启；同时依赖关闭 Prefetch 策略，避免恢复应用预取带来的额外磁盘活动。保留系统管理的 pagefile，不固定大小。",
+  "category": "Background Services",
+  "riskLevel": "Medium",
+  "requires": ["registry.prefetch-disabled"],
+  "conflicts": ["service.sysmain"],
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "SysMain"
+      ],
+      "start": "auto"
+    }
+  }
+}

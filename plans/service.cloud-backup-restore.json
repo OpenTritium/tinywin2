@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "service.cloud-backup-restore",
+  "version": "3.0.0",
+  "title": "禁用云备份和还原服务",
+  "description": "禁用每用户 CloudBackupRestoreSvc_* 云备份和还原服务。Windows 云备份应用及其设置/应用状态云备份和还原功能不可用；不影响 VSS、Windows Server Backup 或第三方备份引擎。服务实例后缀随用户配置变化，因此使用通配符匹配。",
+  "category": "Background Services",
+  "riskLevel": "Medium",
+  "operation": {
+    "resource": "registry.service",
+    "action": "configure",
+    "spec": {
+      "services": [
+        "CloudBackupRestoreSvc"
+      ],
+      "servicePatterns": [
+        "CloudBackupRestoreSvc_*"
+      ],
+      "start": "disabled"
+    }
+  }
+}

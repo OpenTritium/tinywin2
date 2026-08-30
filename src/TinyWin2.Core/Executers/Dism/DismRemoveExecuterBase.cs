@@ -30,6 +30,9 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
     /// </summary>
     protected virtual FrozenSet<int> InapplicableExitCodes => FrozenSet<int>.Empty;
 
+    /// <summary>Whether a successful empty listing means this resource is already absent.</summary>
+    protected virtual bool EmptyListingSatisfied => false;
+
     protected abstract string SatisfiedSkipReason { get; }
     public abstract string Resource { get; }
 
@@ -54,6 +57,10 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
 
         var records = DismListParser.Parse(output, RecordStartKey);
         if (records.Count == 0) {
+            if (EmptyListingSatisfied) {
+                return new(true, []);
+            }
+
             throw new ExecException(
                 $"dism.exe returned no {Resource} records despite a successful listing (exit {exitCode}).");
         }

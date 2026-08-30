@@ -1,0 +1,19 @@
+{
+  "$schema": "../schemas/plan-v3.schema.json",
+  "schemaVersion": 3,
+  "id": "appx.copilot",
+  "version": "1.0.0",
+  "title": "移除 Microsoft Copilot",
+  "description": "移除 Microsoft Copilot 预置 AppX 及其语言/缩放资源；不影响传统桌面 Office、浏览器或本地媒体播放。",
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operation": {
+    "resource": "appx.provisioned",
+    "action": "remove",
+    "spec": {
+      "patterns": [
+        "Microsoft.Copilot*"
+      ]
+    }
+  }
+}

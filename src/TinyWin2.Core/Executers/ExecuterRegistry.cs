@@ -36,6 +36,7 @@ public sealed class ExecuterRegistry {
         yield return new PackageExecuter(runner);
         yield return new ComponentStoreExecuter(runner);
         yield return new AppxProvisionedExecuter(runner);
+        yield return new AppxSystemExecuter(runner);
         yield return new DriverStoreExecuter(runner);
         yield return new FsPathExecuter(runner);
     }

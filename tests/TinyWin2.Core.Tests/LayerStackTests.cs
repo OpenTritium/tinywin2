@@ -300,6 +300,25 @@ public sealed class FakeExecuter(string resource, bool fail) : IExecuter {
     }
 }
 
+public sealed class CountingFakeExecuter(string resource) : IExecuter {
+    public string Resource { get; } = resource;
+    public int ApplyCount { get; private set; }
+    public int? FailOnCall { get; set; }
+
+    public void Validate(OperationSpec spec) {
+    }
+
+    public Task<ResourceDiff> InspectAsync(ExecContext context, OperationSpec spec, CancellationToken ct) =>
+        Task.FromResult(new ResourceDiff(false, [new(ChangeKind.Modified, Resource)]));
+
+    public Task<ExecResult> ApplyAsync(ExecContext context, OperationSpec spec, CancellationToken ct) {
+        ApplyCount++;
+        return Task.FromResult(FailOnCall == ApplyCount
+            ? throw new ExecException("boom from " + Resource)
+            : ExecResult.Applied([new(ChangeKind.Modified, Resource)]));
+    }
+}
+
 public sealed class BuildEngineDryRunTests : IDisposable {
     private readonly string _plansDir = TestPlans.CreateTempDirectory();
 
@@ -396,6 +415,95 @@ public sealed class BuildEngineDryRunTests : IDisposable {
         await Assert.That(manifest["export"]!["finalCompression"]!.GetValue<string>()).IsEqualTo("fast");
         await Assert.That(manifest["export"]!["verifyCapture"]!.GetValue<bool>()).IsFalse();
         await Assert.That(manifest["export"]!["checkIntegrity"]!.GetValue<bool>()).IsTrue();
+
+        var resumed = await engine.BuildAsync(new() {
+            InputPath = media,
+            ImageIndex = 1,
+            Selections = [new("no.a"), new("no.b")],
+            OutputPath = Path.Combine(outputRoot, "resumed.wim"),
+            WorkspacePath = Path.Combine(outputRoot, "workspace"),
+            Catalog = PlanCatalog.LoadDirectory(_plansDir),
+            NoLayers = true,
+            Resume = true,
+            OutputFormat = OutputFormat.Wim,
+            Export = new() {
+                Compression = WimCompression.Fast,
+                VerifyCapture = false,
+                CheckIntegrity = true
+            },
+            SkipEnvironmentChecks = true
+        }, CancellationToken.None);
+        await Assert.That(resumed.Succeeded).IsTrue();
+        var checkpoint = JsonNode.Parse(
+            await File.ReadAllTextAsync(Path.Combine(outputRoot, "workspace", "layerless-progress.json")))!.AsObject();
+        await Assert.That(checkpoint["completedCount"]!.GetValue<int>()).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task NoLayersResumeRebuildsBaseAndRetriesAfterTheFailedStep() {
+        TestPlans.WritePlan(_plansDir, "recover.a", o => o["operation"] = new JsonObject {
+            ["resource"] = "test.recover",
+            ["action"] = "remove",
+            ["spec"] = new JsonObject()
+        });
+        TestPlans.WritePlan(_plansDir, "recover.b", o => o["operation"] = new JsonObject {
+            ["resource"] = "test.recover",
+            ["action"] = "remove",
+            ["spec"] = new JsonObject()
+        });
+
+        var runner = new FakeProcessRunner {
+            Handler = (_, args) => {
+                if (args.Contains("/Get-WimInfo")) {
+                    return FakeProcessRunner.Ok("Index : 1\r\nName : Fake Edition\r\n");
+                }
+
+                var target = args.FirstOrDefault(a =>
+                    a.StartsWith("/ImageFile:") || a.StartsWith("/DestinationImageFile:"));
+                if (target is not null) {
+                    var path = target.Split(':', 2)[1];
+                    Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+                    File.WriteAllText(path, "captured");
+                }
+
+                return FakeProcessRunner.Ok();
+            }
+        };
+        var media = TestPlans.CreateTempDirectory();
+        Directory.CreateDirectory(Path.Combine(media, "sources"));
+        await File.WriteAllTextAsync(Path.Combine(media, "sources", "install.wim"), "wim");
+        var outputRoot = TestPlans.CreateTempDirectory();
+        var backend = new FakeLayerBackend();
+        var executer = new CountingFakeExecuter("test.recover") { FailOnCall = 2 };
+        var engine = new BuildEngine(runner, new ExecuterRegistry([executer]), backend, new());
+        var catalog = PlanCatalog.LoadDirectory(_plansDir);
+        var firstOptions = new BuildOptions {
+            InputPath = media,
+            ImageIndex = 1,
+            Selections = [new("recover.a"), new("recover.b")],
+            OutputPath = Path.Combine(outputRoot, "first.wim"),
+            WorkspacePath = Path.Combine(outputRoot, "workspace"),
+            Catalog = catalog,
+            NoLayers = true,
+            OutputFormat = OutputFormat.Wim,
+            Export = new() { Compression = WimCompression.Fast, VerifyCapture = false },
+            SkipEnvironmentChecks = true
+        };
+
+        var failure = await Assert.ThrowsAsync<BuildStepFailedException>(() =>
+            engine.BuildAsync(firstOptions, CancellationToken.None));
+        await Assert.That(failure!.StepId).IsEqualTo("recover.b");
+
+        executer.FailOnCall = null;
+        var resumed = await engine.BuildAsync(firstOptions with {
+            OutputPath = Path.Combine(outputRoot, "resumed.wim"),
+            Resume = true
+        }, CancellationToken.None);
+
+        await Assert.That(resumed.Succeeded).IsTrue();
+        await Assert.That(executer.ApplyCount).IsEqualTo(4); // a, failed b, replayed a, retried b
+        await Assert.That(backend.Calls.Count(call => call.StartsWith("create-base:"))).IsEqualTo(2);
+        await Assert.That(backend.Calls.Any(call => call.StartsWith("create-diff:"))).IsFalse();
     }
 
     [Test]

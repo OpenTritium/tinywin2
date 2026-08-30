@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FullDefaultLayoutTemplate
+    xmlns="http://schemas.microsoft.com/Start/2014/FullDefaultLayout"
+    xmlns:start="http://schemas.microsoft.com/Start/2014/StartLayout"
+    Version="1">
+    <StartLayoutCollection>
+        <StartLayout GroupCellWidth="6">
+            <start:Group>
+                <start:DesktopApplicationTile
+                    Size="2x2"
+                    Column="0"
+                    Row="0"
+                    DesktopApplicationID="Microsoft.Windows.Explorer" />
+            </start:Group>
+        </StartLayout>
+    </StartLayoutCollection>
+</FullDefaultLayoutTemplate>

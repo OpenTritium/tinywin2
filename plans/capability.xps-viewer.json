@@ -12,7 +12,7 @@
     "action": "remove",
     "spec": {
       "capabilities": [
-        "XPS.Viewer~~~~0.0.1.0"
+        "XPS.Viewer~~~~*"
       ]
     }
   }
