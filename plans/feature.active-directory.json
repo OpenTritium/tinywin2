@@ -1,27 +1,29 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.active-directory",
   "version": "3.0.0",
   "title": "移除 Active Directory 域服务与管理工具",
   "description": "移除 AD DS 域控制器角色、AD LDS/AD 管理工具及 PowerShell cmdlet；无法部署域控制器或管理 Active Directory。",
   "category": "Server Roles",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "DirectoryServices-DomainController",
-        "DirectoryServices-DomainController-Tools",
-        "DirectoryServices-AdministrativeCenter",
-        "DirectoryServices-ADAM",
-        "DirectoryServices-ADAM-Tools",
-        "ActiveDirectory-PowerShell",
-        "RSAT-AD-Tools-Feature",
-        "RSAT-ADDS-Tools-Feature"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "DirectoryServices-DomainController",
+          "DirectoryServices-DomainController-Tools",
+          "DirectoryServices-AdministrativeCenter",
+          "DirectoryServices-ADAM",
+          "DirectoryServices-ADAM-Tools",
+          "ActiveDirectory-PowerShell",
+          "RSAT-AD-Tools-Feature",
+          "RSAT-ADDS-Tools-Feature"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

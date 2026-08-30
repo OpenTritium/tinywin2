@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.distributed-transaction-coordinator",
   "version": "3.0.0",
   "title": "禁用 Distributed Transaction Coordinator",
   "description": "禁用 MSDTC；跨进程/跨数据库分布式事务、部分企业应用和安装程序事务将不可用。",
   "category": "Enterprise",
   "riskLevel": "High",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "MSDTC"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "MSDTC"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

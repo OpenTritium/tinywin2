@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.sysmain",
   "version": "3.0.0",
   "title": "禁用 SysMain 预取服务",
   "description": "禁用 SysMain (Superfetch)；可减少后台内存和磁盘活动，但可能降低应用预加载速度。",
   "category": "Background Services",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "SysMain"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "SysMain"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

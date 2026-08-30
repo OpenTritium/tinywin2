@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.help-content",
   "version": "1.0.0",
   "title": "移除旧版 Windows 帮助内容",
   "description": "移除 Windows\\Help 下的旧版离线帮助内容；Get Help Appx 由独立计划处理，桌面、帮助命令 help.exe 和应用运行不受影响。",
   "category": "Applications",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Windows\\Help"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\Help"
+        ]
+      }
     }
-  }
+  ]
 }

@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "capability.wmic",
   "version": "3.0.0",
   "title": "移除 WMIC",
   "description": "移除已弃用的 WMIC 命令行工具；自动化应改用 PowerShell CIM。",
   "category": "Legacy",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "dism.capability",
-    "action": "remove",
-    "spec": {
-      "capabilities": [
-        "WMIC~~~~"
-      ]
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "WMIC~~~~"
+        ]
+      }
     }
-  }
+  ]
 }

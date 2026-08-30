@@ -1,23 +1,25 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.user-data-services",
   "version": "3.1.0",
   "title": "禁用用户数据与联系人索引服务",
   "description": "禁用每用户 UserData、Unistore、联系人索引和 OneSync 同步主机服务；邮件、联系人、日历和依赖 Windows 用户数据 API 的应用可能无法工作。",
   "category": "Background Services",
   "riskLevel": "High",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "servicePatterns": [
-        "UserDataSvc_*",
-        "UnistoreSvc_*",
-        "PimIndexMaintenanceSvc_*",
-        "OneSyncSvc_*"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "servicePatterns": [
+          "UserDataSvc_*",
+          "UnistoreSvc_*",
+          "PimIndexMaintenanceSvc_*",
+          "OneSyncSvc_*"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

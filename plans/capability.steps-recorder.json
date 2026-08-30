@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "capability.steps-recorder",
   "version": "3.0.0",
   "title": "移除问题步骤记录器",
   "description": "移除 Steps Recorder 故障记录工具。",
   "category": "Utilities",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "dism.capability",
-    "action": "remove",
-    "spec": {
-      "capabilities": [
-        "App.StepsRecorder~~~~*"
-      ]
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "App.StepsRecorder~~~~*"
+        ]
+      }
     }
-  }
+  ]
 }

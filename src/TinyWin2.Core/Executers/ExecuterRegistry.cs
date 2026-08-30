@@ -49,8 +49,9 @@ public sealed class ExecuterRegistry {
     /// <summary>Validates that every operation maps to a registered resource and valid action/spec.</summary>
     public void ValidateBuildPlan(BuildPlan plan) {
         foreach (var step in plan.Steps) {
-            var operation = step.Plan.Operation;
-            Get(operation.Resource).Validate(operation);
+            foreach (var operation in step.Plan.Operations) {
+                Get(operation.Resource).Validate(operation);
+            }
         }
     }
 }

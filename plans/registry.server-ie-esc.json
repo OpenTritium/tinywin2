@@ -1,31 +1,33 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "registry.server-ie-esc",
   "version": "3.0.0",
   "title": "关闭 Server Internet Explorer 增强安全配置",
   "description": "关闭 Windows Server 的 Internet Explorer Enhanced Security Configuration，避免管理员桌面浏览器对网站脚本、下载和安全区域施加额外限制。不会关闭 Windows 防火墙或 Defender；仅适合受控的桌面应用测试环境。",
   "category": "Browser",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.value",
-    "action": "set",
-    "spec": {
-      "hive": "software",
-      "values": [
-        {
-          "key": "Microsoft\\Active Setup\\Installed Components\\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}",
-          "name": "IsInstalled",
-          "type": "dword",
-          "data": 0
-        },
-        {
-          "key": "Microsoft\\Active Setup\\Installed Components\\{A509B1A6-37EF-4b3f-8CFC-4F3A74704073}",
-          "name": "IsInstalled",
-          "type": "dword",
-          "data": 0
-        }
-      ]
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "set",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Microsoft\\Active Setup\\Installed Components\\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}",
+            "name": "IsInstalled",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Microsoft\\Active Setup\\Installed Components\\{A509B1A6-37EF-4b3f-8CFC-4F3A74704073}",
+            "name": "IsInstalled",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
     }
-  }
+  ]
 }

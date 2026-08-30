@@ -9,10 +9,10 @@ public sealed record PlanSelection(
     bool Enabled = true,
     IReadOnlyDictionary<string, JsonNode?>? Parameters = null);
 
-/// <summary>A plan with parameters resolved and its operation bound to pure data.</summary>
+/// <summary>A plan with parameters resolved and every operation bound to pure data.</summary>
 public sealed record ResolvedPlan(
     PlanDefinition Definition,
-    OperationSpec Operation);
+    IReadOnlyList<OperationSpec> Operations);
 
 /// <summary>
 ///     One top-level unit of the build: exactly one VHDX differencing layer and one plan.
@@ -160,10 +160,11 @@ public static class BuildPlanResolver {
             throw new PlanResolutionException([.. errors.Select(e => $"plan '{definition.Id}': {e}")]);
         }
 
-        var operation = definition.Operation;
-        return new(definition,
-            new(operation.Resource, operation.Action,
-                ParameterBinder.BindOperation(operation.Spec, values)));
+        var operations = definition.Operations
+            .Select(operation => new OperationSpec(operation.Resource, operation.Action,
+                ParameterBinder.BindOperation(operation.Spec, values)))
+            .ToList();
+        return new(definition, operations);
     }
 
     private static bool ValidateValue(PlanParameter parameter, JsonNode? value, out string reason) {

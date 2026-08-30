@@ -1,0 +1,24 @@
+{
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
+  "id": "capability.chinese-language",
+  "version": "3.1.0",
+  "title": "移除简体中文语言识别能力",
+  "description": "移除简体中文手写、OCR、语音识别与文本转语音按需功能;保留基础中文显示与输入。",
+  "category": "Language",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "Language.Handwriting~~~zh-CN~*",
+          "Language.OCR~~~zh-CN~*",
+          "Language.Speech~~~zh-CN~*",
+          "Language.TextToSpeech~~~zh-CN~*"
+        ]
+      }
+    }
+  ]
+}

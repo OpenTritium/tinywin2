@@ -1,24 +1,26 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.outlook",
   "version": "4.0.0",
   "title": "清理 Outlook PWA 残留文件",
   "description": "清理 Outlook PWA 的 InboxApps 包和公共/用户快捷方式；不存在的路径安全跳过。",
   "category": "Applications",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Windows\\InboxApps\\OutlookPWA.msix",
-        "Program Files\\WindowsApps\\Microsoft.OutlookForWindows_*",
-        "ProgramData\\Microsoft\\Windows\\ClipSVC\\Install\\Apps\\microsoft.outlookforwindows_8wekyb3d8bbwe.xml",
-        "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Outlook.lnk",
-        "Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Outlook.lnk",
-        "Users\\*\\Desktop\\Outlook.lnk"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\InboxApps\\OutlookPWA.msix",
+          "Program Files\\WindowsApps\\Microsoft.OutlookForWindows_*",
+          "ProgramData\\Microsoft\\Windows\\ClipSVC\\Install\\Apps\\microsoft.outlookforwindows_8wekyb3d8bbwe.xml",
+          "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Outlook.lnk",
+          "Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Outlook.lnk",
+          "Users\\*\\Desktop\\Outlook.lnk"
+        ]
+      }
     }
-  }
+  ]
 }

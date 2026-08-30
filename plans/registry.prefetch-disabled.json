@@ -1,31 +1,33 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "registry.prefetch-disabled",
   "version": "1.0.0",
   "title": "关闭应用 Prefetch 策略",
   "description": "将 Windows 应用 Prefetch 策略显式设为关闭。SysMain 由 service.memory-compression 负责保持自动运行，以提供内存压缩和页面合并；不强制关闭 Superfetch，因为 Windows 11 会用它承载这些内存管理功能。",
   "category": "Background Services",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.value",
-    "action": "set",
-    "spec": {
-      "hive": "system",
-      "values": [
-        {
-          "key": "ControlSet001\\Control\\Session Manager\\Memory Management\\PrefetchParameters",
-          "name": "EnablePrefetcher",
-          "type": "dword",
-          "data": 0
-        },
-        {
-          "key": "ControlSet002\\Control\\Session Manager\\Memory Management\\PrefetchParameters",
-          "name": "EnablePrefetcher",
-          "type": "dword",
-          "data": 0
-        }
-      ]
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "set",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\Session Manager\\Memory Management\\PrefetchParameters",
+            "name": "EnablePrefetcher",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet002\\Control\\Session Manager\\Memory Management\\PrefetchParameters",
+            "name": "EnablePrefetcher",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
     }
-  }
+  ]
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "TinyWin2 plan v3",
-  "description": "Schema for one atomic TinyWin2 image modification plan.",
+  "title": "TinyWin2 plan v4",
+  "description": "Schema for one TinyWin2 image modification plan carrying one or more atomic operations.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -11,7 +11,7 @@
     "title",
     "description",
     "category",
-    "operation"
+    "operations"
   ],
   "properties": {
     "$schema": {
@@ -19,7 +19,7 @@
       "description": "Editor metadata pointing to the schema used by this file."
     },
     "schemaVersion": {
-      "const": 3,
+      "const": 4,
       "description": "Plan JSON structure version."
     },
     "id": {
@@ -101,8 +101,12 @@
         "$ref": "#/$defs/parameter"
       }
     },
-    "operation": {
-      "$ref": "#/$defs/operation"
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/operation"
+      }
     }
   },
   "$defs": {

@@ -1,23 +1,25 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.network-discovery",
   "version": "3.0.0",
   "title": "禁用网络发现服务",
   "description": "禁用网络发现与 UPnP 相关服务。局域网设备发现、网络浏览和部分媒体设备功能将不可用。",
   "category": "Network Services",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "fdPHost",
-        "FDResPub",
-        "SSDPSRV",
-        "upnphost"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "fdPHost",
+          "FDResPub",
+          "SSDPSRV",
+          "upnphost"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

@@ -1,21 +1,23 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.iis",
   "version": "3.0.0",
   "title": "移除 Internet Information Services",
   "description": "移除 IIS Web Server Role 和 Hostable Web Core payload；无法再部署 IIS 网站或依赖该 Web Core 的应用。",
   "category": "Server Roles",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "IIS-WebServerRole",
-        "IIS-HostableWebCore"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "IIS-WebServerRole",
+          "IIS-HostableWebCore"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

@@ -1,12 +1,32 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.network-setup",
   "version": "3.0.0",
   "title": "网络设置服务改为手动",
   "description": "将 NetSetupSvc 改为手动启动。添加网卡/加入域时按需拉起，平时不占开机竞争。",
   "category": "Networking",
   "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "NetSetupSvc"
+        ],
+        "start": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "disabled": "disabled",
+              "manual": "manual"
+            }
+          }
+        }
+      }
+    }
+  ],
   "parameters": [
     {
       "name": "startMode",
@@ -26,23 +46,5 @@
         }
       ]
     }
-  ],
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "NetSetupSvc"
-      ],
-      "start": {
-        "$map": {
-          "parameter": "startMode",
-          "cases": {
-            "disabled": "disabled",
-            "manual": "manual"
-          }
-        }
-      }
-    }
-  }
+  ]
 }

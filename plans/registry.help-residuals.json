@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "registry.help-residuals",
   "version": "1.0.0",
   "title": "清理旧版帮助程序注册项",
   "description": "删除 helpctr.exe 已移除后遗留的文件关联抑制注册项；保留 help.exe、HelpPaneProxy.dll 和 Windows Help Runtime。",
   "category": "Applications",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "registry.value",
-    "action": "remove",
-    "spec": {
-      "hive": "software",
-      "deleteKeys": [
-        "Classes\\Applications\\helpctr.exe"
-      ]
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "deleteKeys": [
+          "Classes\\Applications\\helpctr.exe"
+        ]
+      }
     }
-  }
+  ]
 }

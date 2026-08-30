@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.windows-old",
   "version": "3.0.0",
   "title": "移除 Windows.old",
   "description": "移除升级残留的 Windows.old 目录；全新安装媒体通常没有此目录，目录不存在时安全跳过。",
   "category": "Servicing",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Windows.old"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows.old"
+        ]
+      }
     }
-  }
+  ]
 }

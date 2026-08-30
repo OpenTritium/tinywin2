@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "capability.notepad",
   "version": "3.0.0",
   "title": "移除记事本",
   "description": "移除 Microsoft Notepad 按需功能包。",
   "category": "Utilities",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "dism.capability",
-    "action": "remove",
-    "spec": {
-      "capabilities": [
-        "Microsoft.Windows.Notepad~~~~*"
-      ]
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "Microsoft.Windows.Notepad~~~~*"
+        ]
+      }
     }
-  }
+  ]
 }

@@ -1,21 +1,23 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.storage-replica",
   "version": "3.0.0",
   "title": "移除存储副本",
   "description": "移除 Storage Replica 和管理包；无法使用服务器间块级存储复制。",
   "category": "Storage",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "Storage-Replica",
-        "Storage-Replica-AdminPack"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "Storage-Replica",
+          "Storage-Replica-AdminPack"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

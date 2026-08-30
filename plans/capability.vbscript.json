@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "capability.vbscript",
   "version": "3.0.0",
   "title": "移除 VBScript",
   "description": "移除 VBScript 引擎；遗留登录脚本和 .vbs 自动化将无法运行。",
   "category": "Legacy",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.capability",
-    "action": "remove",
-    "spec": {
-      "capabilities": [
-        "VBSCRIPT~~~~"
-      ]
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "VBSCRIPT~~~~"
+        ]
+      }
     }
-  }
+  ]
 }

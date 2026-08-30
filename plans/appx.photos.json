@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.photos",
   "version": "3.0.0",
   "title": "移除照片",
   "description": "移除 Microsoft Photos 预置 Appx；照片查看和照片编辑功能将不可用。",
   "category": "Applications",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "appx.provisioned",
-    "action": "remove",
-    "spec": {
-      "patterns": [
-        "Microsoft.Windows.Photos"
-      ]
+  "operations": [
+    {
+      "resource": "appx.provisioned",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.Windows.Photos"
+        ]
+      }
     }
-  }
+  ]
 }

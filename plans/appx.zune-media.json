@@ -1,0 +1,22 @@
+{
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
+  "id": "appx.zune-media",
+  "version": "3.1.0",
+  "title": "移除媒体播放器与电影电视",
+  "description": "移除 Zune Music 与 Zune Video 预装 Appx。",
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "appx.provisioned",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.ZuneMusic",
+          "Microsoft.ZuneVideo"
+        ]
+      }
+    }
+  ]
+}

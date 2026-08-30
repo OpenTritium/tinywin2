@@ -1,12 +1,32 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.diagnostic-policy",
   "version": "3.0.0",
   "title": "将 Diagnostic Policy Service 改为按需启动",
   "description": "将 Diagnostic Policy Service（DPS）改为手动启动；保留需要时的故障诊断触发能力，减少开机常驻。WdiServiceHost 和 WdiSystemHost 已拆分为独立 plan。",
   "category": "Diagnostics",
   "riskLevel": "Medium",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "DPS"
+        ],
+        "start": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "manual": "Manual",
+              "disabled": "disabled"
+            }
+          }
+        }
+      }
+    }
+  ],
   "parameters": [
     {
       "name": "startMode",
@@ -26,23 +46,5 @@
         }
       ]
     }
-  ],
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "DPS"
-      ],
-      "start": {
-        "$map": {
-          "parameter": "startMode",
-          "cases": {
-            "manual": "Manual",
-            "disabled": "disabled"
-          }
-        }
-      }
-    }
-  }
+  ]
 }

@@ -1,22 +1,24 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.snmp",
   "version": "3.0.0",
   "title": "移除 SNMP 组件",
   "description": "移除 SNMP、RSAT SNMP 工具和 WMI SNMP Provider；基于 SNMP 的监控和设备管理将不可用。",
   "category": "Networking",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "SNMP",
-        "Server-RSAT-SNMP",
-        "WMISnmpProvider"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "SNMP",
+          "Server-RSAT-SNMP",
+          "WMISnmpProvider"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

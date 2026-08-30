@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.parental-controls",
   "version": "1.0.1",
   "title": "移除家庭控制系统组件",
   "description": "移除不出现在开始菜单中的 ParentalControls Inbox SystemApp；配合 appx.family 清除家庭安全相关残留。家长控制和家庭安全功能不可用。",
   "category": "Applications",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "appx.system",
-    "action": "remove",
-    "spec": {
-      "patterns": [
-        "ParentalControls*",
-        "Microsoft.Windows.ParentalControls*"
-      ]
+  "operations": [
+    {
+      "resource": "appx.system",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "ParentalControls*",
+          "Microsoft.Windows.ParentalControls*"
+        ]
+      }
     }
-  }
+  ]
 }

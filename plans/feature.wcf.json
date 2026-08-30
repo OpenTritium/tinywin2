@@ -1,28 +1,30 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.wcf",
   "version": "3.0.0",
   "title": "移除 Windows Communication Foundation",
   "description": "移除 WCF 服务、激活、TCP 端口共享和 IIS/WAS 集成；依赖 WCF 的服务将无法运行。",
   "category": "Frameworks",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "WCF-Services45",
-        "WCF-HTTP-Activation",
-        "WCF-HTTP-Activation45",
-        "WCF-NonHTTP-Activation",
-        "WCF-MSMQ-Activation45",
-        "WCF-Pipe-Activation45",
-        "WCF-TCP-Activation45",
-        "WCF-TCP-PortSharing45",
-        "WAS-NetFxEnvironment"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "WCF-Services45",
+          "WCF-HTTP-Activation",
+          "WCF-HTTP-Activation45",
+          "WCF-NonHTTP-Activation",
+          "WCF-MSMQ-Activation45",
+          "WCF-Pipe-Activation45",
+          "WCF-TCP-Activation45",
+          "WCF-TCP-PortSharing45",
+          "WAS-NetFxEnvironment"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

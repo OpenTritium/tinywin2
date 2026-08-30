@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.get-help",
   "version": "3.0.0",
   "title": "移除获取帮助",
   "description": "移除 Microsoft Get Help 预装 Appx。",
   "category": "Applications",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "appx.provisioned",
-    "action": "remove",
-    "spec": {
-      "patterns": [
-        "Microsoft.GetHelp"
-      ]
+  "operations": [
+    {
+      "resource": "appx.provisioned",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.GetHelp"
+        ]
+      }
     }
-  }
+  ]
 }

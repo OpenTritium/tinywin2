@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.license-manager",
   "version": "3.0.0",
   "title": "禁用 Windows 许可证管理器服务",
   "description": "禁用 LicenseManager。离线镜像不使用 Microsoft Store 或基于 Microsoft 账户的应用授权时可禁用；不等于禁用 Windows 激活，sppsvc 和 WLMS 保持不变。",
   "category": "Policies",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "LicenseManager"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "LicenseManager"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

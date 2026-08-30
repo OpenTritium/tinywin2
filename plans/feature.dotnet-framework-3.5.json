@@ -1,21 +1,23 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.dotnet-framework-3.5",
   "version": "3.0.0",
   "title": "移除 .NET Framework 3.5",
   "description": "移除 .NET Framework 3.5 和 Server 扩展；依赖 .NET 2.0/3.0/3.5 的旧版应用将无法运行。",
   "category": "Frameworks",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "NetFx3",
-        "NetFx3ServerFeatures"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "NetFx3",
+          "NetFx3ServerFeatures"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

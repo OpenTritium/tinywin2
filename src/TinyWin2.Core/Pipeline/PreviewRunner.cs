@@ -91,9 +91,11 @@ public sealed class PreviewRunner(
                         ResolveAssetsRoot(options.PlansDirectory, resolved.Definition.Id));
                     var differences = new List<ChangeItem>();
                     try {
-                        var operation = resolved.Operation;
-                        var diff = await executers.Get(operation.Resource).InspectAsync(context, operation, ct);
-                        differences.AddRange(diff.Differences.Where(d => d.Kind != ChangeKind.Skipped));
+                        foreach (var operation in resolved.Operations) {
+                            var diff = await executers.Get(operation.Resource)
+                                .InspectAsync(context, operation, ct);
+                            differences.AddRange(diff.Differences.Where(d => d.Kind != ChangeKind.Skipped));
+                        }
                     }
                     finally {
                         await hiveCache.UnloadAllAsync(log, CancellationToken.None);

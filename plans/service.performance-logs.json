@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.performance-logs",
   "version": "3.0.0",
   "title": "禁用性能日志服务",
   "description": "禁用 Performance Logs & Alerts；Data Collector Set 和依赖 PLA 的性能采集将不可用。",
   "category": "Diagnostics",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "pla"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "pla"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

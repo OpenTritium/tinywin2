@@ -1,22 +1,24 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.client-cbs",
   "version": "2.1.0",
   "title": "移除 MicrosoftWindows.Client.CBS",
   "description": "离线移除 MicrosoftWindows.Client.CBS SystemApp 目录及 AppX 注册项。该共享系统包承载 Search、TextInput、Widgets、WindowsBackup 等系统体验组件；删除它会移除 TextInputHost 和中文候选框注册，并会破坏部分现代 Shell 体验。不要与需要 Win11 Explorer 或中文输入的桌面 profile 一起启用；仅用于已接受高风险实验的极限镜像。",
   "category": "Applications",
   "riskLevel": "High",
+  "operations": [
+    {
+      "resource": "appx.system",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "MicrosoftWindows.Client.CBS*"
+        ]
+      }
+    }
+  ],
   "conflicts": [
     "service.security-minimal"
-  ],
-  "operation": {
-    "resource": "appx.system",
-    "action": "remove",
-    "spec": {
-      "patterns": [
-        "MicrosoftWindows.Client.CBS*"
-      ]
-    }
-  }
+  ]
 }

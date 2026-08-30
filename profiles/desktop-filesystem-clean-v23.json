@@ -4,17 +4,45 @@
   "name": "desktop-filesystem-clean-v23",
   "description": "叠加到已验证可进入桌面的 v22：清理 Windows.old、安装和事件日志、临时缓存、Prefetch、旧帮助、Windows Mail/Outlook 残留、额外桌面资源和默认 Startup 快捷方式。保留 WinRE、现代 Explorer/WinUI、中文微软拼音、Edge WebView、图形音频网络和硬件驱动。",
   "selections": [
-    { "planId": "fs.windows-old", "enabled": true },
-    { "planId": "fs.image-temporary-data", "enabled": true },
-    { "planId": "fs.image-setup-logs", "enabled": true },
-    { "planId": "fs.image-event-logs", "enabled": true },
-    { "planId": "fs.prefetch", "enabled": true },
-    { "planId": "fs.help-content", "enabled": true },
-    { "planId": "fs.windows-mail", "enabled": true },
-    { "planId": "fs.outlook", "enabled": true },
-    { "planId": "fs.extra-wallpapers", "enabled": true },
-    { "planId": "fs.extra-system-sounds", "enabled": true },
-    { "planId": "fs.extra-cursor-themes", "enabled": true },
-    { "planId": "fs.startup-shortcuts", "enabled": true }
+    {
+      "planId": "fs.windows-old",
+      "enabled": true
+    },
+    {
+      "planId": "fs.image-temporary-data",
+      "enabled": true
+    },
+    {
+      "planId": "fs.image-setup-logs",
+      "enabled": true
+    },
+    {
+      "planId": "fs.image-event-logs",
+      "enabled": true
+    },
+    {
+      "planId": "fs.prefetch",
+      "enabled": true
+    },
+    {
+      "planId": "fs.help-content",
+      "enabled": true
+    },
+    {
+      "planId": "fs.windows-mail",
+      "enabled": true
+    },
+    {
+      "planId": "fs.outlook",
+      "enabled": true
+    },
+    {
+      "planId": "fs.extra-theme-assets",
+      "enabled": true
+    },
+    {
+      "planId": "fs.startup-shortcuts",
+      "enabled": true
+    }
   ]
 }

@@ -1,23 +1,31 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.xps",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "title": "移除 XPS 查看器",
-  "description": "移除 XPS Viewer 功能和按需功能包。",
+  "description": "移除 XPS Viewer 功能、按需功能包和能力载荷。",
   "category": "Documents",
   "riskLevel": "Low",
-  "requires": [
-    "capability.xps-viewer"
-  ],
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "Xps-Foundation-Xps-Viewer"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "XPS.Viewer~~~~*"
+        ]
+      }
+    },
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "Xps-Foundation-Xps-Viewer"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

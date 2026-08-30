@@ -1,26 +1,28 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.legacy-cjk-fonts",
   "version": "3.0.0",
   "title": "移除非简体中文字体",
   "description": "移除日文、韩文和繁体中文字体文件；高风险，可能影响多语言文档和部分游戏文本，仅用于单一简体中文固定镜像。",
   "category": "Language",
   "riskLevel": "High",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Windows\\Fonts\\YuGoth*.ttc",
-        "Windows\\Fonts\\msgothic.ttc",
-        "Windows\\Fonts\\meiryo*.ttc",
-        "Windows\\Fonts\\gulim.ttc",
-        "Windows\\Fonts\\malgun*.ttf",
-        "Windows\\Fonts\\batang*.ttc",
-        "Windows\\Fonts\\mingliu*.ttc",
-        "Windows\\Fonts\\msjh*.ttc"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\Fonts\\YuGoth*.ttc",
+          "Windows\\Fonts\\msgothic.ttc",
+          "Windows\\Fonts\\meiryo*.ttc",
+          "Windows\\Fonts\\gulim.ttc",
+          "Windows\\Fonts\\malgun*.ttf",
+          "Windows\\Fonts\\batang*.ttc",
+          "Windows\\Fonts\\mingliu*.ttc",
+          "Windows\\Fonts\\msjh*.ttc"
+        ]
+      }
     }
-  }
+  ]
 }

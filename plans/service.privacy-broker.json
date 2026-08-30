@@ -1,12 +1,34 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.privacy-broker",
   "version": "3.0.0",
   "title": "禁用网络连接代理",
   "description": "禁用 NcbService（网络连接代理）。注意：camsvc（功能访问管理器）已从本 plan 移除——桌面版（Desktop Experience）禁用 camsvc 会导致 ms-settings URI 激活失败（右键『显示设置』报找不到打开方式）并触发 explorer 崩溃循环（ucrtbase 0xc0000409，表现为桌面闪烁），已用干净 VM 二分实证。",
   "category": "Policies",
   "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "NcbService"
+        ],
+        "start": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "disabled": "disabled",
+              "manual": "manual",
+              "delayedAuto": "DelayedAuto",
+              "auto": "auto"
+            }
+          }
+        }
+      }
+    }
+  ],
   "parameters": [
     {
       "name": "startMode",
@@ -26,25 +48,5 @@
         }
       ]
     }
-  ],
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "NcbService"
-      ],
-      "start": {
-        "$map": {
-          "parameter": "startMode",
-          "cases": {
-            "disabled": "disabled",
-            "manual": "manual",
-            "delayedAuto": "DelayedAuto",
-            "auto": "auto"
-          }
-        }
-      }
-    }
-  }
+  ]
 }

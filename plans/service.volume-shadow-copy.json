@@ -1,12 +1,34 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.volume-shadow-copy",
   "version": "3.0.0",
   "title": "禁用卷影副本服务",
   "description": "禁用 VSS。不做系统快照/备份的 VM 可禁（注意：部分备份软件依赖它）。",
   "category": "Storage",
   "riskLevel": "Medium",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "VSS"
+        ],
+        "start": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "disabled": "disabled",
+              "manual": "manual",
+              "delayedAuto": "DelayedAuto",
+              "auto": "auto"
+            }
+          }
+        }
+      }
+    }
+  ],
   "parameters": [
     {
       "name": "startMode",
@@ -26,25 +48,5 @@
         }
       ]
     }
-  ],
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "VSS"
-      ],
-      "start": {
-        "$map": {
-          "parameter": "startMode",
-          "cases": {
-            "disabled": "disabled",
-            "manual": "manual",
-            "delayedAuto": "DelayedAuto",
-            "auto": "auto"
-          }
-        }
-      }
-    }
-  }
+  ]
 }

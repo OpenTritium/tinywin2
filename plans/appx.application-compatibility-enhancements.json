@@ -1,19 +1,30 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.application-compatibility-enhancements",
-  "version": "1.0.0",
+  "version": "3.1.0",
   "title": "移除应用程序兼容性增强",
-  "description": "移除 Microsoft.ApplicationCompatibilityEnhancements 预置 AppX；应用程序兼容性增强和部分旧程序兼容性修复将不可用。该组件与 PcaSvc 程序兼容性助手服务不同，删除后可能影响旧版软件、Office 安装器和部分游戏启动器。",
+  "description": "移除 Microsoft.ApplicationCompatibilityEnhancements 预置 AppX 及其 SystemApps 目录与离线 AppX 注册残留;应用程序兼容性增强和部分旧程序兼容性修复将不可用。该组件与 PcaSvc 程序兼容性助手服务不同。",
   "category": "Applications",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "appx.provisioned",
-    "action": "remove",
-    "spec": {
-      "patterns": [
-        "Microsoft.ApplicationCompatibilityEnhancements*"
-      ]
+  "operations": [
+    {
+      "resource": "appx.provisioned",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.ApplicationCompatibilityEnhancements*"
+        ]
+      }
+    },
+    {
+      "resource": "appx.system",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.ApplicationCompatibilityEnhancements*"
+        ]
+      }
     }
-  }
+  ]
 }

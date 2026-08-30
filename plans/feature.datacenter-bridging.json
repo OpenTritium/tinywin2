@@ -1,21 +1,23 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.datacenter-bridging",
   "version": "3.0.0",
   "title": "移除数据中心桥接",
   "description": "移除 Data Center Bridging 和 LLDP 工具；支持 DCB 的存储和网络适配器将不可用。",
   "category": "Networking",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "DataCenterBridging",
-        "DataCenterBridging-LLDP-Tools"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "DataCenterBridging",
+          "DataCenterBridging-LLDP-Tools"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

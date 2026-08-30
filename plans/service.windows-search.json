@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.windows-search",
   "version": "3.0.0",
   "title": "禁用 Windows Search 索引服务",
   "description": "禁用 WSearch 后停止后台索引服务；Windows 桌面、资源管理器和中文输入法在当前 Desktop Experience Hyper-V VM 重启验证正常，但全文索引和依赖索引的搜索能力不可用。",
   "category": "Background Services",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "WSearch"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "WSearch"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

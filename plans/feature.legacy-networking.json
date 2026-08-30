@@ -1,23 +1,29 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.legacy-networking",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "title": "移除遗留网络功能",
-  "description": "移除 Remote Assistance、PeerDist、WINS 和 Network Load Balancing 服务器载荷；普通家庭网络、现代 SMB 和常见游戏联网不受影响。",
+  "description": "移除 Remote Assistance、PeerDist、WINS、Network Load Balancing 服务器载荷以及 Telnet、TFTP、Simple TCP/IP 客户端和 CMAK 连接管理器;普通家庭网络、现代 SMB 和常见游戏联网不受影响。",
   "category": "Networking",
-  "riskLevel": "Low",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "RemoteAssistance",
-        "PeerDist",
-        "WINSRuntime",
-        "NetworkLoadBalancingFullServer"
-      ],
-      "removePayload": true
+  "riskLevel": "Medium",
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "RemoteAssistance",
+          "PeerDist",
+          "WINSRuntime",
+          "NetworkLoadBalancingFullServer",
+          "TelnetClient",
+          "TFTP",
+          "SimpleTCP",
+          "RasCMAK"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

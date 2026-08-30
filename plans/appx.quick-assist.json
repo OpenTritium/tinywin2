@@ -1,15 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.quick-assist",
   "version": "3.0.0",
   "title": "移除快速助手",
   "description": "移除 MicrosoftCorporationII.QuickAssist 预置 Appx；远程协助应用将不可用。",
   "category": "Applications",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "appx.provisioned",
-    "action": "remove",
-    "spec": { "patterns": ["MicrosoftCorporationII.QuickAssist"] }
-  }
+  "operations": [
+    {
+      "resource": "appx.provisioned",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "MicrosoftCorporationII.QuickAssist"
+        ]
+      }
+    }
+  ]
 }

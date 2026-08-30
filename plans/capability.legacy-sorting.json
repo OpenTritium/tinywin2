@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "capability.legacy-sorting",
   "version": "3.0.0",
   "title": "移除旧版排序兼容",
   "description": "移除 Downlevel.NLS.Sorting.Versions.Server。仅依赖 Win2000 排序语义的旧软件需要。",
   "category": "Language",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "dism.capability",
-    "action": "remove",
-    "spec": {
-      "capabilities": [
-        "Downlevel.NLS.Sorting.Versions.Server~~~~*"
-      ]
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "Downlevel.NLS.Sorting.Versions.Server~~~~*"
+        ]
+      }
     }
-  }
+  ]
 }

@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.token-broker",
   "version": "3.0.0",
   "title": "禁用 Web 帐户管理器",
   "description": "禁用 TokenBroker。离线镜像不使用 Microsoft 账户、商店或 Web 账户令牌时可禁用；普通本地账户桌面应用不受影响。",
   "category": "Policies",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "TokenBroker"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "TokenBroker"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

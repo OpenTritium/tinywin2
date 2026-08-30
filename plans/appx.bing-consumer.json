@@ -1,0 +1,22 @@
+{
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
+  "id": "appx.bing-consumer",
+  "version": "3.1.0",
+  "title": "移除 Bing 消费类应用",
+  "description": "移除 Microsoft Bing News 与 Bing Weather 预装 Appx。",
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "appx.provisioned",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.BingNews",
+          "Microsoft.BingWeather"
+        ]
+      }
+    }
+  ]
+}

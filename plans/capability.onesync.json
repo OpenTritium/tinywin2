@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "capability.onesync",
   "version": "3.0.0",
   "title": "移除 OneSync",
   "description": "移除邮件、日历和联系人使用的 OneSync 框架。",
   "category": "Applications",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "dism.capability",
-    "action": "remove",
-    "spec": {
-      "capabilities": [
-        "OneCoreUAP.OneSync~~~~*"
-      ]
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "OneCoreUAP.OneSync~~~~*"
+        ]
+      }
     }
-  }
+  ]
 }

@@ -1,22 +1,24 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.dfs-replication",
   "version": "3.0.0",
   "title": "移除 DFS Replication",
   "description": "移除 DFS Replication 服务和管理组件；无法参与 DFS 文件夹复制。",
   "category": "Server Roles",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "DFSR-Infrastructure-ServerEdition",
-        "DfsMgmt",
-        "FRS-Infrastructure"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "DFSR-Infrastructure-ServerEdition",
+          "DfsMgmt",
+          "FRS-Infrastructure"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

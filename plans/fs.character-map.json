@@ -1,26 +1,28 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.character-map",
   "version": "1.0.0",
   "title": "移除字符映射表",
   "description": "移除传统字符映射表程序、各语言界面资源以及公共和用户开始菜单快捷方式；不影响中文微软拼音、文本输入或桌面 Shell。需要查看 Unicode 字符的用户应保持关闭。",
   "category": "Applications",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Windows\\System32\\charmap.exe",
-        "Windows\\SysWOW64\\charmap.exe",
-        "Windows\\System32\\*\\charmap.exe.mui",
-        "Windows\\SysWOW64\\*\\charmap.exe.mui",
-        "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\System Tools\\*Character Map.lnk",
-        "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\System Tools\\*字符映射表.lnk",
-        "Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\System Tools\\*Character Map.lnk",
-        "Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\System Tools\\*字符映射表.lnk"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\System32\\charmap.exe",
+          "Windows\\SysWOW64\\charmap.exe",
+          "Windows\\System32\\*\\charmap.exe.mui",
+          "Windows\\SysWOW64\\*\\charmap.exe.mui",
+          "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\System Tools\\*Character Map.lnk",
+          "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\System Tools\\*字符映射表.lnk",
+          "Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\System Tools\\*Character Map.lnk",
+          "Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Accessories\\System Tools\\*字符映射表.lnk"
+        ]
+      }
     }
-  }
+  ]
 }

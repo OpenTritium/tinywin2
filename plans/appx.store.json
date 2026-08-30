@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.store",
   "version": "3.0.0",
   "title": "移除 Microsoft Store 预装包",
   "description": "移除 Microsoft Store 和 Store Purchase App 预置包（若当前版本提供）；不影响 Win32 软件安装。",
   "category": "Applications",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "appx.provisioned",
-    "action": "remove",
-    "spec": {
-      "patterns": [
-        "Microsoft.WindowsStore*",
-        "Microsoft.StorePurchaseApp*"
-      ]
+  "operations": [
+    {
+      "resource": "appx.provisioned",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.WindowsStore*",
+          "Microsoft.StorePurchaseApp*"
+        ]
+      }
     }
-  }
+  ]
 }

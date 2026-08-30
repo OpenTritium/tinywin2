@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.wdi-service-host",
   "version": "3.0.0",
   "title": "将服务诊断主机改为按需启动",
   "description": "将 WdiServiceHost 改为手动启动。该服务尚未单独完成 Desktop Experience 禁用验证，因此本 plan 不提供 disabled 模式。",
   "category": "Diagnostics",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "WdiServiceHost"
-      ],
-      "start": "Manual"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "WdiServiceHost"
+        ],
+        "start": "Manual"
+      }
     }
-  }
+  ]
 }

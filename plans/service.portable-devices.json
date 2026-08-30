@@ -1,12 +1,35 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.portable-devices",
   "version": "3.0.0",
   "title": "禁用便携设备枚举服务",
   "description": "禁用 WPDBusEnum 与 RmSvc（便携设备/可移动存储枚举）。静态硬件的 VM 没有热插拔场景。",
   "category": "Server",
   "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "WPDBusEnum",
+          "RmSvc"
+        ],
+        "start": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "disabled": "disabled",
+              "manual": "manual",
+              "delayedAuto": "DelayedAuto",
+              "auto": "auto"
+            }
+          }
+        }
+      }
+    }
+  ],
   "parameters": [
     {
       "name": "startMode",
@@ -26,26 +49,5 @@
         }
       ]
     }
-  ],
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "WPDBusEnum",
-        "RmSvc"
-      ],
-      "start": {
-        "$map": {
-          "parameter": "startMode",
-          "cases": {
-            "disabled": "disabled",
-            "manual": "manual",
-            "delayedAuto": "DelayedAuto",
-            "auto": "auto"
-          }
-        }
-      }
-    }
-  }
+  ]
 }

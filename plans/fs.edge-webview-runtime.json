@@ -1,19 +1,36 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.edge-webview-runtime",
-  "version": "1.1.0",
+  "version": "3.1.0",
   "title": "移除独立 Edge WebView2 运行时",
-  "description": "删除 Program Files 中独立安装的 Edge WebView2 运行时，约释放 796 MB；保留 Windows OneCore WebView 和 Win32WebViewHost 以维持系统桌面。Office WebView 登录、Office 加载项、Teams 和其它依赖 Evergreen WebView2 的程序可能无法使用。",
+  "description": "删除 Program Files 中独立安装的 Edge WebView2 运行时(约释放 796 MB)及其应用与功能卸载项和产品注册残留;保留 Windows OneCore WebView 和 Win32WebViewHost 以维持系统桌面。Office WebView 登录、Office 加载项、Teams 和其他 EdgeWebView2 依赖程序将不可用。",
   "category": "Browser",
   "riskLevel": "High",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Program Files (x86)\\Microsoft\\EdgeWebView"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Program Files (x86)\\Microsoft\\EdgeWebView"
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "deleteKeys": [
+          "WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Microsoft EdgeWebView",
+          "Microsoft\\Windows\\CurrentVersion\\Uninstall\\Microsoft EdgeWebView",
+          "WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+          "WOW6432Node\\Microsoft\\EdgeUpdate\\ClientState\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+          "Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+          "Microsoft\\EdgeUpdate\\ClientState\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+        ]
+      }
     }
-  }
+  ]
 }

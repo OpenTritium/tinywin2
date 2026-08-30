@@ -1,0 +1,52 @@
+{
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
+  "id": "fs.extra-theme-assets",
+  "version": "3.1.0",
+  "title": "移除额外主题资源",
+  "description": "移除额外壁纸/锁屏图片、光标主题变体和系统提示音资源;保留默认壁纸 (img0.jpg)、aero 光标和常规 Windows 事件音效。",
+  "category": "Desktop Experience",
+  "riskLevel": "Medium",
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\Web\\Wallpaper\\Extended",
+          "Windows\\Web\\Wallpaper\\Spotlight",
+          "Windows\\Web\\Wallpaper\\ThemeA",
+          "Windows\\Web\\Wallpaper\\ThemeB",
+          "Windows\\Web\\Wallpaper\\ThemeC",
+          "Windows\\Web\\Wallpaper\\ThemeD",
+          "Windows\\Web\\Wallpaper\\Windows\\img19.jpg",
+          "Windows\\Web\\Screen",
+          "Windows\\Cursors\\*_l.cur",
+          "Windows\\Cursors\\*_xl.cur",
+          "Windows\\Cursors\\*_i.cur",
+          "Windows\\Cursors\\*_il.cur",
+          "Windows\\Cursors\\*_im.cur",
+          "Windows\\Cursors\\*_m.cur",
+          "Windows\\Cursors\\*_r.cur",
+          "Windows\\Cursors\\*_rl.cur",
+          "Windows\\Cursors\\*_rm.cur",
+          "Windows\\Cursors\\*_l.ani",
+          "Windows\\Cursors\\*_xl.ani",
+          "Windows\\Cursors\\l*.cur",
+          "Windows\\Media\\Alarm*.wav",
+          "Windows\\Media\\Ring*.wav",
+          "Windows\\Media\\Speech *.wav",
+          "Windows\\Media\\dm",
+          "Windows\\Media\\Focus*.raw",
+          "Windows\\Media\\GoBack*.raw",
+          "Windows\\Media\\Hide*.raw",
+          "Windows\\Media\\Invoke*.raw",
+          "Windows\\Media\\MoveNext*.raw",
+          "Windows\\Media\\MovePrevious*.raw",
+          "Windows\\Media\\Show*.raw",
+          "Windows\\Media\\*.mid"
+        ]
+      }
+    }
+  ]
+}

@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.location",
   "version": "3.0.0",
   "title": "禁用位置服务",
   "description": "禁用 Geolocation Service (lfsvc)。依赖设备位置的应用和自动时区功能将不可用。",
   "category": "Background Services",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "lfsvc"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "lfsvc"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

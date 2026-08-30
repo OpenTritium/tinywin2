@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.inetpub",
   "version": "3.0.0",
   "title": "移除 inetpub 目录",
   "description": "移除镜像中残留的 IIS inetpub 目录；目录不存在时安全跳过。不会安装或卸载 IIS。",
   "category": "Server Roles",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "inetpub"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "inetpub"
+        ]
+      }
     }
-  }
+  ]
 }

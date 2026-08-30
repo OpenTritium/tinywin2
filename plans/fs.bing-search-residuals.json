@@ -1,23 +1,25 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.bing-search-residuals",
   "version": "1.0.0",
   "title": "清理 Bing Search InboxApp 和 CBS 残留",
   "description": "删除 Bing Search 的 InboxApp 安装包及其 ResetBase 后遗留的 WinSxS payload、manifest 和 FileMap；保留 Windows 本地文件索引/搜索引擎，以及地图控件和输入法中独立的 Bing 命名 DLL。",
   "category": "Applications",
   "riskLevel": "High",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Windows\\InboxApps\\Microsoft.BingSearch_8wekyb3d8bbwe.msixbundle",
-        "Windows\\InboxApps\\Microsoft.BingSearch_8wekyb3d8bbwe.xml",
-        "Windows\\WinSxS\\*microsoft-windows-bingsearch*",
-        "Windows\\WinSxS\\Manifests\\*microsoft-windows-bingsearch*",
-        "Windows\\WinSxS\\FileMaps\\*bingsearch*"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\InboxApps\\Microsoft.BingSearch_8wekyb3d8bbwe.msixbundle",
+          "Windows\\InboxApps\\Microsoft.BingSearch_8wekyb3d8bbwe.xml",
+          "Windows\\WinSxS\\*microsoft-windows-bingsearch*",
+          "Windows\\WinSxS\\Manifests\\*microsoft-windows-bingsearch*",
+          "Windows\\WinSxS\\FileMaps\\*bingsearch*"
+        ]
+      }
     }
-  }
+  ]
 }

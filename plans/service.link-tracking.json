@@ -1,12 +1,34 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.link-tracking",
   "version": "3.0.0",
   "title": "禁用分布式链接跟踪",
   "description": "禁用 TrkWks。仅 NTFS 卷间快捷方式跟踪用，单机/服务器场景无用。",
   "category": "Server",
   "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "TrkWks"
+        ],
+        "start": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "disabled": "disabled",
+              "manual": "manual",
+              "delayedAuto": "DelayedAuto",
+              "auto": "auto"
+            }
+          }
+        }
+      }
+    }
+  ],
   "parameters": [
     {
       "name": "startMode",
@@ -26,25 +48,5 @@
         }
       ]
     }
-  ],
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "TrkWks"
-      ],
-      "start": {
-        "$map": {
-          "parameter": "startMode",
-          "cases": {
-            "disabled": "disabled",
-            "manual": "manual",
-            "delayedAuto": "DelayedAuto",
-            "auto": "auto"
-          }
-        }
-      }
-    }
-  }
+  ]
 }

@@ -1,12 +1,34 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.font-cache",
   "version": "3.0.0",
   "title": "禁用 Windows 字体缓存服务",
   "description": "禁用 FontCache。配合 feature.extra-fonts（仅剩控制台字体）后缓存服务无事可做；代价是桌面版首次字体渲染略慢。内存节省 10-20MB。",
   "category": "Language",
   "riskLevel": "Medium",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "FontCache"
+        ],
+        "start": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "disabled": "disabled",
+              "manual": "manual",
+              "delayedAuto": "DelayedAuto",
+              "auto": "auto"
+            }
+          }
+        }
+      }
+    }
+  ],
   "parameters": [
     {
       "name": "startMode",
@@ -26,25 +48,5 @@
         }
       ]
     }
-  ],
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "FontCache"
-      ],
-      "start": {
-        "$map": {
-          "parameter": "startMode",
-          "cases": {
-            "disabled": "disabled",
-            "manual": "manual",
-            "delayedAuto": "DelayedAuto",
-            "auto": "auto"
-          }
-        }
-      }
-    }
-  }
+  ]
 }

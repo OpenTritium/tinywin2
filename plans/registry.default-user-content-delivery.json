@@ -1,61 +1,63 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "registry.default-user-content-delivery",
   "version": "1.0.0",
   "title": "关闭默认用户消费者内容投放",
   "description": "关闭新建用户的推荐应用、锁屏轮换、软着陆和 Shell 建议，并清理 ContentDeliveryManager 的 Renderers/Subscriptions 缓存；不删除 Shell 组件。",
   "category": "Desktop Experience",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "registry.value",
-    "action": "set",
-    "spec": {
-      "hive": "default-user",
-      "values": [
-        {
-          "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-          "name": "OemPreInstalledAppsEnabled",
-          "type": "dword",
-          "data": 0
-        },
-        {
-          "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-          "name": "PreInstalledAppsEnabled",
-          "type": "dword",
-          "data": 0
-        },
-        {
-          "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-          "name": "RotatingLockScreenEnabled",
-          "type": "dword",
-          "data": 0
-        },
-        {
-          "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-          "name": "RotatingLockScreenOverlayEnabled",
-          "type": "dword",
-          "data": 0
-        },
-        {
-          "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-          "name": "SilentInstalledAppsEnabled",
-          "type": "dword",
-          "data": 0
-        },
-        {
-          "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-          "name": "SoftLandingEnabled",
-          "type": "dword",
-          "data": 0
-        },
-        {
-          "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-          "name": "SystemPaneSuggestionsEnabled",
-          "type": "dword",
-          "data": 0
-        }
-      ]
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "set",
+      "spec": {
+        "hive": "default-user",
+        "values": [
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+            "name": "OemPreInstalledAppsEnabled",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+            "name": "PreInstalledAppsEnabled",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+            "name": "RotatingLockScreenEnabled",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+            "name": "RotatingLockScreenOverlayEnabled",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+            "name": "SilentInstalledAppsEnabled",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+            "name": "SoftLandingEnabled",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+            "name": "SystemPaneSuggestionsEnabled",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
     }
-  }
+  ]
 }

@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "capability.powershell-ise",
   "version": "3.0.0",
   "title": "移除 PowerShell ISE",
   "description": "移除遗留 PowerShell ISE；PowerShell 7 和 Windows PowerShell 控制台不受影响。",
   "category": "Developer",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "dism.capability",
-    "action": "remove",
-    "spec": {
-      "capabilities": [
-        "Microsoft.Windows.PowerShell.ISE~~~~*"
-      ]
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "Microsoft.Windows.PowerShell.ISE~~~~*"
+        ]
+      }
     }
-  }
+  ]
 }

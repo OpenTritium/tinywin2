@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.windows-update",
   "version": "1.0.0",
   "title": "禁用 Windows Update",
   "description": "禁用 Windows Update (wuauserv)。镜像不会主动执行 Windows 更新；恢复更新前需重新启用该服务及相关更新服务。",
   "category": "Update Services",
   "riskLevel": "High",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "wuauserv"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "wuauserv"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

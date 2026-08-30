@@ -1,21 +1,23 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.fax",
   "version": "3.0.0",
   "title": "移除传真服务",
   "description": "移除传真服务器角色和配置工具；本机不能发送或接收传真。",
   "category": "Legacy",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "FaxServiceRole",
-        "FaxServiceConfigRole"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "FaxServiceRole",
+          "FaxServiceConfigRole"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

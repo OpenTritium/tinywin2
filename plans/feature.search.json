@@ -1,21 +1,23 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.search",
   "version": "3.0.0",
   "title": "移除 Windows Search",
   "description": "移除 Windows Search 索引和搜索组件；资源管理器搜索能力会受影响。",
   "category": "System",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "SearchEngine-Client-Package",
-        "File-Services-Search-Service"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "SearchEngine-Client-Package",
+          "File-Services-Search-Service"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

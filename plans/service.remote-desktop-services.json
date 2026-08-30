@@ -1,22 +1,24 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.remote-desktop-services",
   "version": "3.0.0",
   "title": "移除远程桌面服务启动能力",
   "description": "禁用 TermService、SessionEnv 和 UmRdpService，关闭 RDP 入站及远程桌面会话环境；本地控制台登录和桌面 Shell 保留，远程桌面功能不可用。",
   "category": "Remote Management",
   "riskLevel": "High",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "TermService",
-        "SessionEnv",
-        "UmRdpService"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "TermService",
+          "SessionEnv",
+          "UmRdpService"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

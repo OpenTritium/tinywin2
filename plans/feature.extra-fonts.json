@@ -1,22 +1,24 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.extra-fonts",
   "version": "3.0.0",
   "title": "移除非核心字体",
   "description": "移除 ServerCore 字体包中的位图/TrueType/UAP 字体（保留 MinConsoleFonts 与 Support 以保证控制台渲染）。Headless 无 GUI 应用时可移除。",
   "category": "Language",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "ServerCoreFonts-NonCritical-Fonts-BitmapFonts",
-        "ServerCoreFonts-NonCritical-Fonts-TrueType",
-        "ServerCoreFonts-NonCritical-Fonts-UAPFonts"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "ServerCoreFonts-NonCritical-Fonts-BitmapFonts",
+          "ServerCoreFonts-NonCritical-Fonts-TrueType",
+          "ServerCoreFonts-NonCritical-Fonts-UAPFonts"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

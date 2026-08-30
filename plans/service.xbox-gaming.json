@@ -1,19 +1,29 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.xbox-gaming",
   "version": "3.0.0",
   "title": "禁用 Xbox 游戏服务",
   "description": "禁用 Xbox Live、Xbox 配件、GameInput 和 GameDVR 用户服务；Xbox 游戏、手柄增强功能和游戏录制将不可用。",
   "category": "Background Services",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": ["XblAuthManager", "XblGameSave", "XboxGipSvc", "XboxNetApiSvc", "GameInputSvc"],
-      "servicePatterns": ["BcastDVRUserService_*"],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "XblAuthManager",
+          "XblGameSave",
+          "XboxGipSvc",
+          "XboxNetApiSvc",
+          "GameInputSvc"
+        ],
+        "servicePatterns": [
+          "BcastDVRUserService_*"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

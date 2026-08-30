@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.workfolders",
   "version": "3.0.0",
   "title": "移除 Work Folders 客户端",
   "description": "移除企业 Work Folders 同步客户端。",
   "category": "Enterprise",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "WorkFolders-Client"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "WorkFolders-Client"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

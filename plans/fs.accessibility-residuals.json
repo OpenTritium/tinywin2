@@ -1,24 +1,26 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.accessibility-residuals",
   "version": "1.0.0",
   "title": "移除无障碍语音和盲文资源",
   "description": "移除 Narrator、语音和盲文功能留下的资源文件；不删除基础桌面、中文微软拼音或 WinRE。讲述人、语音识别、文本转语音和盲文设备支持将不可用。",
   "category": "Accessibility",
   "riskLevel": "High",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Windows\\System32\\braille-tables",
-        "Windows\\System32\\NarratorMCAT",
-        "Windows\\System32\\Speech",
-        "Windows\\System32\\Speech_OneCore",
-        "Windows\\Speech",
-        "Windows\\Speech_OneCore"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\System32\\braille-tables",
+          "Windows\\System32\\NarratorMCAT",
+          "Windows\\System32\\Speech",
+          "Windows\\System32\\Speech_OneCore",
+          "Windows\\Speech",
+          "Windows\\Speech_OneCore"
+        ]
+      }
     }
-  }
+  ]
 }

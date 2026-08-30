@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "capability.braille-support",
   "version": "3.0.0",
   "title": "移除 Braille 辅助功能支持",
   "description": "移除按需安装的 Braille 辅助功能组件；盲文显示器支持将不可用。系统放大镜、讲述人等核心程序不在此条目中强行删除。",
   "category": "Accessibility",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "dism.capability",
-    "action": "remove",
-    "spec": {
-      "capabilities": [
-        "Accessibility.Braille~~~~*"
-      ]
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "Accessibility.Braille~~~~*"
+        ]
+      }
     }
-  }
+  ]
 }

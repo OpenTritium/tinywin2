@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "registry.onedrive-profile",
   "version": "1.0.0",
   "title": "清理默认用户 OneDrive 配置",
   "description": "删除默认用户 NTUSER.DAT 中 OneDrive 的残余配置；机器级客户端、安装组件和启动项由其它计划处理。",
   "category": "Applications",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "registry.value",
-    "action": "remove",
-    "spec": {
-      "hive": "default-user",
-      "deleteKeys": [
-        "Software\\Microsoft\\OneDrive"
-      ]
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "default-user",
+        "deleteKeys": [
+          "Software\\Microsoft\\OneDrive"
+        ]
+      }
     }
-  }
+  ]
 }

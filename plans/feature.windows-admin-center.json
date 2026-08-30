@@ -1,23 +1,31 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.windows-admin-center",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "title": "移除 Windows Admin Center 与 Azure Arc 安装器",
-  "description": "移除预置的 Windows Admin Center 安装组件和 Azure Arc Setup。",
+  "description": "移除预置的 Windows Admin Center 安装组件和 Azure Arc Setup(含按需能力)。",
   "category": "Server",
   "riskLevel": "Medium",
-  "requires": [
-    "capability.azure-arc-setup"
-  ],
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "WindowsAdminCenterSetup"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "AzureArcSetup~~~~"
+        ]
+      }
+    },
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "WindowsAdminCenterSetup"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

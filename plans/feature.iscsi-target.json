@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.iscsi-target",
   "version": "3.0.0",
   "title": "移除 iSCSI Target 存储提供程序",
   "description": "移除 iSCSI Target Storage Providers；无法作为 iSCSI 目标提供存储。",
   "category": "Storage",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "iSCSITargetStorageProviders"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "iSCSITargetStorageProviders"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.content-delivery",
   "version": "2.0.0",
   "title": "移除 Content Delivery Manager",
   "description": "离线移除 Microsoft.Windows.ContentDeliveryManager SystemApp 目录及 AppX 注册项。Windows 聚合内容、Spotlight、建议和部分系统推荐体验不可用。",
   "category": "Background Experience",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "appx.system",
-    "action": "remove",
-    "spec": {
-      "patterns": [
-        "Microsoft.Windows.ContentDeliveryManager*"
-      ]
+  "operations": [
+    {
+      "resource": "appx.system",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.Windows.ContentDeliveryManager*"
+        ]
+      }
     }
-  }
+  ]
 }

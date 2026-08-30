@@ -1,23 +1,25 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "component.edge",
   "version": "3.1.0",
   "title": "移除 Microsoft Edge 浏览器",
   "description": "移除镜像中的 Microsoft Edge 浏览器本体、25H2 EdgeCore、Edge 更新器和公共快捷方式；保留独立 Edge WebView2 运行时以及 Windows OneCore WebView，避免破坏 Office 和依赖 WebView 的系统组件。",
   "category": "Browser",
   "riskLevel": "High",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Program Files (x86)\\Microsoft\\Edge",
-        "Program Files (x86)\\Microsoft\\EdgeCore",
-        "Program Files (x86)\\Microsoft\\EdgeUpdate",
-        "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Edge.lnk",
-        "Users\\*\\Desktop\\Microsoft Edge.lnk"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Program Files (x86)\\Microsoft\\Edge",
+          "Program Files (x86)\\Microsoft\\EdgeCore",
+          "Program Files (x86)\\Microsoft\\EdgeUpdate",
+          "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Edge.lnk",
+          "Users\\*\\Desktop\\Microsoft Edge.lnk"
+        ]
+      }
     }
-  }
+  ]
 }

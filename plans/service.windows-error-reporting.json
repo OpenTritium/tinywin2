@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.windows-error-reporting",
   "version": "3.0.0",
   "title": "禁用 Windows 错误报告服务",
   "description": "禁用 Windows Error Reporting Service (WerSvc)。应用崩溃后不再收集或提交错误报告。",
   "category": "Background Services",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "WerSvc"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "WerSvc"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

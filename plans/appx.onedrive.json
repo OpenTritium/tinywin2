@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.onedrive",
   "version": "3.1.0",
   "title": "移除 OneDrive 安装组件",
   "description": "移除 Windows 版本中的 OneDrive CBS 安装组件；文件、默认用户启动项和计划任务残留由配套规则清理。",
   "category": "Applications",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "dism.package",
-    "action": "remove",
-    "spec": {
-      "patterns": [
-        "(?i).*OneDrive.*Package~.*"
-      ]
+  "operations": [
+    {
+      "resource": "dism.package",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "(?i).*OneDrive.*Package~.*"
+        ]
+      }
     }
-  }
+  ]
 }

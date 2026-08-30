@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.solitaire",
   "version": "3.0.0",
   "title": "移除纸牌合集",
   "description": "移除 Microsoft Solitaire Collection 预装 Appx。",
   "category": "Applications",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "appx.provisioned",
-    "action": "remove",
-    "spec": {
-      "patterns": [
-        "Microsoft.MicrosoftSolitaireCollection"
-      ]
+  "operations": [
+    {
+      "resource": "appx.provisioned",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.MicrosoftSolitaireCollection"
+        ]
+      }
     }
-  }
+  ]
 }

@@ -1,21 +1,23 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "registry.default-user-content-delivery-cache",
   "version": "1.0.0",
   "title": "清理默认用户消费者内容缓存",
   "description": "删除默认用户 ContentDeliveryManager 下已无意义的 Renderer 和订阅缓存键；不删除 ContentDeliveryManager 主键。",
   "category": "Desktop Experience",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "registry.value",
-    "action": "remove",
-    "spec": {
-      "hive": "default-user",
-      "deleteKeys": [
-        "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager\\Renderers",
-        "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager\\Subscriptions"
-      ]
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "default-user",
+        "deleteKeys": [
+          "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager\\Renderers",
+          "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager\\Subscriptions"
+        ]
+      }
     }
-  }
+  ]
 }

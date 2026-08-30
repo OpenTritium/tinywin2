@@ -1,21 +1,23 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.dns-server",
   "version": "3.0.0",
   "title": "移除 DNS Server",
   "description": "移除 DNS 服务器角色及管理工具；本机不能作为权威或递归 DNS 服务器。",
   "category": "Server Roles",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "DNS-Server-Full-Role",
-        "DNS-Server-Tools"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "DNS-Server-Full-Role",
+          "DNS-Server-Tools"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

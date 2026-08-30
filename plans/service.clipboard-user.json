@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.clipboard-user",
   "version": "3.0.0",
   "title": "禁用剪贴板用户服务",
   "description": "禁用每用户 Clipboard User Service；剪贴板历史、跨设备剪贴板和部分剪贴板同步功能将不可用。",
   "category": "Background Services",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "servicePatterns": [
-        "cbdhsvc_*"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "servicePatterns": [
+          "cbdhsvc_*"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

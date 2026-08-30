@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.wireless-networking",
   "version": "3.0.0",
   "title": "移除无线网络支持",
   "description": "移除 WLAN 客户端功能；适合只使用有线网络的服务器。",
   "category": "Networking",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "WirelessNetworking"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "WirelessNetworking"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

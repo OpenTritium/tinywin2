@@ -1,18 +1,20 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "registry.start-layout",
   "version": "3.0.0",
   "title": "替换默认开始菜单布局",
   "description": "替换默认用户布局模板，移除旧版 Office、OneDrive、商店和 Teams 等硬编码固定项；保留资源管理器入口。",
   "category": "Desktop Experience",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "fs.path",
-    "action": "copy",
-    "spec": {
-      "path": "Users\\Default\\AppData\\Local\\Microsoft\\Windows\\Shell\\DefaultLayouts.xml",
-      "source": "DefaultLayouts.xml"
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "copy",
+      "spec": {
+        "path": "Users\\Default\\AppData\\Local\\Microsoft\\Windows\\Shell\\DefaultLayouts.xml",
+        "source": "DefaultLayouts.xml"
+      }
     }
-  }
+  ]
 }

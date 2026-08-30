@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.edge-devtools",
   "version": "1.0.0",
   "title": "移除 Edge WebView 开发者工具组件",
   "description": "移除 Microsoft.MicrosoftEdgeDevToolsClient Inbox SystemApp。该组件不出现在开始菜单，但可能被 WebView2 开发者工具或系统网页诊断使用；默认不启用。",
   "category": "Developer",
   "riskLevel": "High",
-  "operation": {
-    "resource": "appx.system",
-    "action": "remove",
-    "spec": {
-      "patterns": [
-        "Microsoft.MicrosoftEdgeDevToolsClient*"
-      ]
+  "operations": [
+    {
+      "resource": "appx.system",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.MicrosoftEdgeDevToolsClient*"
+        ]
+      }
     }
-  }
+  ]
 }

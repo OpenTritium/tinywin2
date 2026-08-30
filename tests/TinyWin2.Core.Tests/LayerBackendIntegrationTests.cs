@@ -127,7 +127,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         // The unsupported hive only fails once the step runs (options parse at exec time),
         // so the plan resolves fine and the failure is a genuine step-level event.
         TestPlans.WritePlan(plansDir, "it.registry-boom", o => {
-            o["operation"] = new JsonObject {
+            o["operations"] = new JsonArray(new JsonObject {
                 ["resource"] = "registry.value",
                 ["action"] = "set",
                 ["spec"] = new JsonObject {
@@ -137,7 +137,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
                     ["type"] = "dword",
                     ["data"] = 1
                 }
-            };
+            });
         });
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var log = new BuildLog();
@@ -175,25 +175,25 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
         Directory.CreateDirectory(plansDir);
         WriteRegistryProbePlan(plansDir);
         TestPlans.WritePlan(plansDir, "it.fs-remove", o => {
-            o["operation"] = new JsonObject {
+            o["operations"] = new JsonArray(new JsonObject {
                 ["resource"] = "fs.path",
                 ["action"] = "remove",
                 ["spec"] = new JsonObject { ["paths"] = new JsonArray("Windows/System32") }
-            };
+            });
         });
         // fs.path-present needs the plan assets root: previews must resolve it exactly like builds.
         var payload = Path.Combine(plansDir, "assets", "it.fs-copy", "payload");
         Directory.CreateDirectory(payload);
         await File.WriteAllTextAsync(Path.Combine(payload, "pinned.txt"), "pinned");
         TestPlans.WritePlan(plansDir, "it.fs-copy", o => {
-            o["operation"] = new JsonObject {
+            o["operations"] = new JsonArray(new JsonObject {
                 ["resource"] = "fs.path",
                 ["action"] = "copy",
                 ["spec"] = new JsonObject {
                     ["path"] = "TinyWin2/pinned.txt",
                     ["source"] = "payload/pinned.txt"
                 }
-            };
+            });
         });
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var log = new BuildLog();
@@ -226,7 +226,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
 
     private static void WriteRegistryProbePlan(string plansDir) {
         TestPlans.WritePlan(plansDir, "it.registry-probe", o => {
-            o["operation"] = new JsonObject {
+            o["operations"] = new JsonArray(new JsonObject {
                 ["resource"] = "registry.value",
                 ["action"] = "set",
                 ["spec"] = new JsonObject {
@@ -236,7 +236,7 @@ public sealed class LayerBackendIntegrationTests : IDisposable {
                     ["type"] = "dword",
                     ["data"] = 42
                 }
-            };
+            });
         });
     }
 }

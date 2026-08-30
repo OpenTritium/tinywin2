@@ -1,12 +1,46 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.time-sync",
   "version": "3.0.0",
   "title": "禁用 Windows 时间服务",
   "description": "将 W32Time 改为按需启动：默认手动 + 触发器（域加入/IP 地址到达时由 SCM 自动拉起）；也可选完全禁用（VM 由 Hypervisor 时间同步兜底时）或手动。",
   "category": "System",
   "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "W32Time"
+        ],
+        "start": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "trigger": "trigger",
+              "disabled": "disabled",
+              "manual": "manual"
+            }
+          }
+        },
+        "triggers": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "trigger": [
+                "domain-join",
+                "ip-arrival"
+              ],
+              "disabled": [],
+              "manual": []
+            }
+          }
+        }
+      }
+    }
+  ],
   "parameters": [
     {
       "name": "startMode",
@@ -31,37 +65,5 @@
         }
       ]
     }
-  ],
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "W32Time"
-      ],
-      "start": {
-        "$map": {
-          "parameter": "startMode",
-          "cases": {
-            "trigger": "trigger",
-            "disabled": "disabled",
-            "manual": "manual"
-          }
-        }
-      },
-      "triggers": {
-        "$map": {
-          "parameter": "startMode",
-          "cases": {
-            "trigger": [
-              "domain-join",
-              "ip-arrival"
-            ],
-            "disabled": [],
-            "manual": []
-          }
-        }
-      }
-    }
-  }
+  ]
 }

@@ -1,24 +1,26 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "capability.korean-language",
   "version": "3.0.0",
   "title": "移除韩语输入、字体和语言能力",
   "description": "移除韩语语言基础、输入、字体、手写、OCR、语音和文本转语音能力；韩语显示与输入将不可用。",
   "category": "Languages",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.capability",
-    "action": "remove",
-    "spec": {
-      "capabilities": [
-        "Language.Basic~~~ko-KR~*",
-        "Language.Fonts.Kore~~~und-KORE~*",
-        "Language.Handwriting~~~ko-KR~*",
-        "Language.OCR~~~ko-KR~*",
-        "Language.Speech~~~ko-KR~*",
-        "Language.TextToSpeech~~~ko-KR~*"
-      ]
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "Language.Basic~~~ko-KR~*",
+          "Language.Fonts.Kore~~~und-KORE~*",
+          "Language.Handwriting~~~ko-KR~*",
+          "Language.OCR~~~ko-KR~*",
+          "Language.Speech~~~ko-KR~*",
+          "Language.TextToSpeech~~~ko-KR~*"
+        ]
+      }
     }
-  }
+  ]
 }

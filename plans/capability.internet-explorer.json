@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "capability.internet-explorer",
   "version": "3.0.0",
   "title": "移除 Internet Explorer 兼容组件",
   "description": "移除遗留 Internet Explorer 浏览器能力。",
   "category": "Legacy",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "dism.capability",
-    "action": "remove",
-    "spec": {
-      "capabilities": [
-        "Browser.InternetExplorer~~~~*"
-      ]
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "Browser.InternetExplorer~~~~*"
+        ]
+      }
     }
-  }
+  ]
 }

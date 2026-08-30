@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.apprep",
   "version": "2.0.0",
   "title": "移除 AppRep 应用识别组件",
   "description": "离线移除 Microsoft.Windows.AppRep.ChxApp SystemApp 目录及 AppX 注册项。AppRep 相关应用识别体验不可用，并可能影响部分 AppX 应用入口和部署场景。",
   "category": "Applications",
   "riskLevel": "High",
-  "operation": {
-    "resource": "appx.system",
-    "action": "remove",
-    "spec": {
-      "patterns": [
-        "Microsoft.Windows.Apprep.ChxApp*"
-      ]
+  "operations": [
+    {
+      "resource": "appx.system",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.Windows.Apprep.ChxApp*"
+        ]
+      }
     }
-  }
+  ]
 }

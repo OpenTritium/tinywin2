@@ -1,22 +1,24 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.network-policy-server",
   "version": "3.0.0",
   "title": "移除 Network Policy Server",
   "description": "移除 NPS/RADIUS 服务器及管理工具；网络访问策略、RADIUS 身份验证和记账将不可用。",
   "category": "Server Roles",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "NPAS-Role",
-        "NPSManagementTools",
-        "NPSMMC"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "NPAS-Role",
+          "NPSManagementTools",
+          "NPSMMC"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

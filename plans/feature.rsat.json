@@ -1,23 +1,25 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.rsat",
   "version": "3.0.0",
   "title": "移除 RSAT 管理工具",
   "description": "移除 Server/RSAT 管理工具载荷；不影响普通桌面应用、文件共享客户端或基础远程桌面。",
   "category": "Remote Management",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "RSAT",
-        "ServerManager-Core-RSAT",
-        "ServerManager-Core-RSAT-Role-Tools",
-        "ServerManager-Core-RSAT-Feature-Tools"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "RSAT",
+          "ServerManager-Core-RSAT",
+          "ServerManager-Core-RSAT-Role-Tools",
+          "ServerManager-Core-RSAT-Feature-Tools"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.telephony",
   "version": "3.0.0",
   "title": "禁用电话服务",
   "description": "禁用 Telephony 服务；TAPI 调制解调器和传统电话应用将不可用。",
   "category": "Legacy",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "TapiSrv"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "TapiSrv"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

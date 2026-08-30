@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.biometric",
   "version": "3.0.0",
   "title": "禁用 Windows 生物识别服务",
   "description": "禁用 Windows Biometric Service；指纹、人脸和其他 Windows 生物识别登录将不可用。",
   "category": "Devices",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "WbioSrvc"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "WbioSrvc"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

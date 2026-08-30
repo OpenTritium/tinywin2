@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.tcpipreg",
   "version": "1.0.0",
   "title": "禁用 TCP/IP 注册实验服务",
   "description": "禁用 tcpipreg。该实验性服务不再执行 TCP/IP 名称注册相关后台工作，可能影响少数旧式网络环境。",
   "category": "Networking",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "tcpipreg"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "tcpipreg"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

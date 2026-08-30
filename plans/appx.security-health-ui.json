@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.security-health-ui",
   "version": "3.0.0",
   "title": "移除 Windows 安全中心界面",
   "description": "移除 Microsoft.SecHealthUI 预装界面；不影响 UAC 或 Windows 防火墙服务。",
   "category": "Security",
   "riskLevel": "High",
-  "operation": {
-    "resource": "appx.provisioned",
-    "action": "remove",
-    "spec": {
-      "patterns": [
-        "Microsoft.SecHealthUI"
-      ]
+  "operations": [
+    {
+      "resource": "appx.provisioned",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.SecHealthUI"
+        ]
+      }
     }
-  }
+  ]
 }

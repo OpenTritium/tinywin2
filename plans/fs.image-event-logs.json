@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.image-event-logs",
   "version": "1.0.0",
   "title": "清空 Windows 事件日志",
   "description": "清空 Windows Event Log 的现有 evtx 文件并保留日志目录；事件日志服务和办公娱乐程序仍可运行，但本次构建前的系统审计记录将不可恢复。",
   "category": "Diagnostics",
   "riskLevel": "High",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Windows\\System32\\winevt\\Logs\\*"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\System32\\winevt\\Logs\\*"
+        ]
+      }
     }
-  }
+  ]
 }

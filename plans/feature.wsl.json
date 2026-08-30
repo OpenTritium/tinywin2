@@ -1,21 +1,23 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.wsl",
   "version": "3.0.0",
   "title": "移除 Windows Subsystem for Linux",
   "description": "移除 WSL 与其虚拟机平台依赖；Linux 发行版将无法运行。",
   "category": "Virtualization",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "Microsoft-Windows-Subsystem-Linux",
-        "VirtualMachinePlatform"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "Microsoft-Windows-Subsystem-Linux",
+          "VirtualMachinePlatform"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

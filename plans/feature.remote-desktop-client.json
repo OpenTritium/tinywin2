@@ -1,21 +1,23 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.remote-desktop-client",
   "version": "3.0.0",
   "title": "移除远程桌面客户端功能",
   "description": "移除 Microsoft-RemoteDesktopConnection 可选功能；远程桌面客户端组件不可用。",
   "category": "Remote Access",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "Microsoft-RemoteDesktopConnection"
-      ],
-      "forceExplicit": true,
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "Microsoft-RemoteDesktopConnection"
+        ],
+        "forceExplicit": true,
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

@@ -1,31 +1,33 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.onedrive",
   "version": "3.1.0",
   "title": "清理 OneDrive 残留文件",
   "description": "清理 OneDrive 安装器、WinSxS/CBS 残留、图标、用户同步目录、快捷方式和离线任务文件；不存在的路径安全跳过。",
   "category": "Applications",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Windows\\System32\\OneDriveSetup.exe",
-        "Windows\\SysWOW64\\OneDriveSetup.exe",
-        "Windows\\System32\\OneDrive.ico",
-        "Windows\\System32\\Tasks\\OneDrive*",
-        "Windows\\servicing\\Packages\\Microsoft-Windows-OneDrive-Setup-*",
-        "Windows\\WinSxS\\*microsoft-windows-onedrive-setup_*",
-        "Windows\\WinSxS\\Manifests\\*microsoft-windows-onedrive-setup*",
-        "Windows\\WinSxS\\FileMaps\\*onedrive-setup*",
-        "Windows\\System32\\CatRoot\\*\\*OneDrive-Setup-*",
-        "Users\\*\\AppData\\Local\\Microsoft\\OneDrive",
-        "Users\\*\\AppData\\Local\\Microsoft\\OneDriveSetup",
-        "Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\OneDrive.lnk",
-        "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\OneDrive.lnk"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\System32\\OneDriveSetup.exe",
+          "Windows\\SysWOW64\\OneDriveSetup.exe",
+          "Windows\\System32\\OneDrive.ico",
+          "Windows\\System32\\Tasks\\OneDrive*",
+          "Windows\\servicing\\Packages\\Microsoft-Windows-OneDrive-Setup-*",
+          "Windows\\WinSxS\\*microsoft-windows-onedrive-setup_*",
+          "Windows\\WinSxS\\Manifests\\*microsoft-windows-onedrive-setup*",
+          "Windows\\WinSxS\\FileMaps\\*onedrive-setup*",
+          "Windows\\System32\\CatRoot\\*\\*OneDrive-Setup-*",
+          "Users\\*\\AppData\\Local\\Microsoft\\OneDrive",
+          "Users\\*\\AppData\\Local\\Microsoft\\OneDriveSetup",
+          "Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\OneDrive.lnk",
+          "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\OneDrive.lnk"
+        ]
+      }
     }
-  }
+  ]
 }

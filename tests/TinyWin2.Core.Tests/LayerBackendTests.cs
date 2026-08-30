@@ -364,9 +364,9 @@ public sealed class LayerBackendTests : IDisposable {
                         Title = $"P {index}",
                         Description = "d",
                         Category = "G",
-                        Operation = new(operation.Resource, operation.Action, operation.Spec)
+                        Operations = [new PlanOperation(operation.Resource, operation.Action, operation.Spec)]
                     };
-                    return new PlanStep(new(definition, operation));
+                    return new PlanStep(new(definition, [operation]));
                 }
                 )
                 .ToArray()

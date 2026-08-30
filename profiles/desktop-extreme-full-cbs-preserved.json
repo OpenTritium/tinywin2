@@ -95,11 +95,7 @@
       "enabled": true
     },
     {
-      "planId": "appx.bing-news",
-      "enabled": true
-    },
-    {
-      "planId": "appx.bing-weather",
+      "planId": "appx.bing-consumer",
       "enabled": true
     },
     {
@@ -171,11 +167,7 @@
       "enabled": true
     },
     {
-      "planId": "appx.zune-music",
-      "enabled": true
-    },
-    {
-      "planId": "appx.zune-video",
+      "planId": "appx.zune-media",
       "enabled": true
     },
     {
@@ -187,19 +179,7 @@
       "enabled": true
     },
     {
-      "planId": "capability.chinese-handwriting",
-      "enabled": true
-    },
-    {
-      "planId": "capability.chinese-ocr",
-      "enabled": true
-    },
-    {
-      "planId": "capability.chinese-speech",
-      "enabled": true
-    },
-    {
-      "planId": "capability.chinese-text-to-speech",
+      "planId": "capability.chinese-language",
       "enabled": true
     },
     {
@@ -247,7 +227,7 @@
       "enabled": true
     },
     {
-      "planId": "feature.ras-connection-manager",
+      "planId": "feature.legacy-networking",
       "enabled": true
     },
     {
@@ -260,10 +240,6 @@
     },
     {
       "planId": "feature.server-backup",
-      "enabled": true
-    },
-    {
-      "planId": "feature.simple-tcp",
       "enabled": true
     },
     {
@@ -280,14 +256,6 @@
     },
     {
       "planId": "capability.steps-recorder",
-      "enabled": true
-    },
-    {
-      "planId": "feature.telnet-client",
-      "enabled": true
-    },
-    {
-      "planId": "feature.tftp-client",
       "enabled": true
     },
     {
@@ -315,11 +283,7 @@
       "enabled": true
     },
     {
-      "planId": "registry.chat",
-      "enabled": true
-    },
-    {
-      "planId": "registry.consumer-features",
+      "planId": "registry.consumer-content",
       "enabled": true
     },
     {
@@ -327,15 +291,7 @@
       "enabled": true
     },
     {
-      "planId": "registry.feeds",
-      "enabled": true
-    },
-    {
       "planId": "registry.server-manager-autostart",
-      "enabled": true
-    },
-    {
-      "planId": "registry.suggested-apps",
       "enabled": true
     },
     {
@@ -455,10 +411,6 @@
       "enabled": true
     },
     {
-      "planId": "capability.defender-sense",
-      "enabled": true
-    },
-    {
       "planId": "feature.windows-defender",
       "enabled": true
     },
@@ -551,23 +503,11 @@
       "enabled": true
     },
     {
-      "planId": "fs.edge-legacy-platform",
-      "enabled": true
-    },
-    {
       "planId": "fs.windows-mail",
       "enabled": true
     },
     {
-      "planId": "fs.extra-wallpapers",
-      "enabled": true
-    },
-    {
-      "planId": "fs.extra-system-sounds",
-      "enabled": true
-    },
-    {
-      "planId": "fs.extra-cursor-themes",
+      "planId": "fs.extra-theme-assets",
       "enabled": true
     },
     {
@@ -603,19 +543,11 @@
       "enabled": true
     },
     {
-      "planId": "registry.startup-system",
-      "enabled": true
-    },
-    {
-      "planId": "registry.startup-default-user",
+      "planId": "registry.startup-residuals",
       "enabled": true
     },
     {
       "planId": "driver.legacy-modem",
-      "enabled": true
-    },
-    {
-      "planId": "feature.legacy-networking",
       "enabled": true
     },
     {
@@ -700,10 +632,6 @@
     },
     {
       "planId": "fs.edge-webview-runtime",
-      "enabled": true
-    },
-    {
-      "planId": "registry.edge-webview-residuals",
       "enabled": true
     },
     {

@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.ucpd",
   "version": "1.0.0",
   "title": "禁用 UCPD",
   "description": "禁用 User Choice Protection Driver 服务。默认应用选择保护和部分系统设置保护将不可用；不会删除 AppX 部署服务本身。",
   "category": "Background Services",
   "riskLevel": "High",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "UCPD"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "UCPD"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

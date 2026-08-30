@@ -1,37 +1,39 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "registry.lsa-protection-disabled",
   "version": "1.0.0",
   "title": "关闭 LSA 保护和 PPL",
   "description": "关闭 LSA protection、启动阶段 PPL 和自动启用 PPL。办公、音频、网络和游戏不依赖这些保护；关闭会让凭据和安全进程更易被读取或注入。",
   "category": "Security",
   "riskLevel": "High",
-  "operation": {
-    "resource": "registry.value",
-    "action": "set",
-    "spec": {
-      "hive": "system",
-      "values": [
-        {
-          "key": "ControlSet001\\Control\\Lsa",
-          "name": "RunAsPPL",
-          "type": "dword",
-          "data": 0
-        },
-        {
-          "key": "ControlSet001\\Control\\Lsa",
-          "name": "RunAsPPLBoot",
-          "type": "dword",
-          "data": 0
-        },
-        {
-          "key": "ControlSet001\\Control\\Lsa",
-          "name": "IsPplAutoEnabled",
-          "type": "dword",
-          "data": 0
-        }
-      ]
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "set",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\Lsa",
+            "name": "RunAsPPL",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet001\\Control\\Lsa",
+            "name": "RunAsPPLBoot",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet001\\Control\\Lsa",
+            "name": "IsPplAutoEnabled",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
     }
-  }
+  ]
 }

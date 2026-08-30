@@ -1,0 +1,38 @@
+{
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
+  "id": "registry.startup-residuals",
+  "version": "3.1.0",
+  "title": "清理注册表自启动项",
+  "description": "删除本机与默认用户模板中的 Run、RunOnce 和 StartupApproved 注册表项,阻止软件开机自启动;用户仍可手动启动办公和娱乐软件。",
+  "category": "Background Experience",
+  "riskLevel": "Medium",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "deleteKeys": [
+          "Microsoft\\Windows\\CurrentVersion\\Run",
+          "Microsoft\\Windows\\CurrentVersion\\RunOnce",
+          "Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run",
+          "Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\StartupFolder"
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "default-user",
+        "deleteKeys": [
+          "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+          "Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce",
+          "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run",
+          "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\StartupFolder"
+        ]
+      }
+    }
+  ]
+}

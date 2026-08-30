@@ -1,27 +1,29 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "registry.onedrive-startup",
   "version": "3.1.0",
   "title": "移除 OneDrive 默认启动项",
   "description": "移除默认用户 NTUSER.DAT 中触发 OneDrive 首次安装的启动项，避免新建用户在首次登录时重新安装同步客户端。",
   "category": "Applications",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.value",
-    "action": "remove",
-    "spec": {
-      "hive": "default-user",
-      "values": [
-        {
-          "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-          "name": "OneDriveSetup"
-        },
-        {
-          "key": "Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce",
-          "name": "OneDriveSetup"
-        }
-      ]
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "default-user",
+        "values": [
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+            "name": "OneDriveSetup"
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce",
+            "name": "OneDriveSetup"
+          }
+        ]
+      }
     }
-  }
+  ]
 }

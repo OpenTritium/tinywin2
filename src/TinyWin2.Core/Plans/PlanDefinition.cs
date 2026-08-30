@@ -54,7 +54,7 @@ public sealed record PlanOperation(string Resource, OperationAction Action, Json
 
 /// <summary>A leaf plan definition loaded from <c>plans/*.json</c>.</summary>
 public sealed partial record PlanDefinition {
-    private const int CurrentSchemaVersion = 3;
+    private const int CurrentSchemaVersion = 4;
 
     private static readonly string[] RiskLevels = ["Low", "Medium", "High"];
 
@@ -67,14 +67,14 @@ public sealed partial record PlanDefinition {
     public IReadOnlyList<string> Requires { get; private init; } = [];
     public IReadOnlyList<string> Conflicts { get; private init; } = [];
     public IReadOnlyList<PlanParameter> Parameters { get; private init; } = [];
-    public required PlanOperation Operation { get; init; }
+    public required IReadOnlyList<PlanOperation> Operations { get; init; }
     public string? Hash { get; init; }
 
     public static PlanDefinition FromJson(JsonObject obj, string? sourceFile = null) {
         var errors = new List<string>();
         RejectUnknownProperties(obj, "plan", [
             "$schema", "schemaVersion", "id", "version", "title", "description", "category", "riskLevel",
-            "requires", "conflicts", "parameters", "operation"
+            "requires", "conflicts", "parameters", "operations"
         ], errors);
         var schemaVersion = ReadInt(obj, "schemaVersion", errors);
         if (schemaVersion is not null && schemaVersion != CurrentSchemaVersion) {
@@ -102,7 +102,7 @@ public sealed partial record PlanDefinition {
         var requires = ReadStringArray(obj, "requires", errors);
         var conflicts = ReadStringArray(obj, "conflicts", errors);
         var parameters = ReadParameters(obj, errors);
-        var operation = ReadOperation(obj, errors);
+        var operations = ReadOperations(obj, errors);
         if (errors.Count > 0) {
             throw new PlanValidationException(sourceFile ?? "<memory>", errors);
         }
@@ -117,7 +117,7 @@ public sealed partial record PlanDefinition {
             Requires = requires,
             Conflicts = conflicts,
             Parameters = parameters,
-            Operation = operation!
+            Operations = operations!
         };
     }
 
@@ -303,13 +303,40 @@ public sealed partial record PlanDefinition {
         return result;
     }
 
-    private static PlanOperation? ReadOperation(JsonObject obj, List<string> errors) {
-        if (obj["operation"] is not JsonObject operationObj) {
-            errors.Add("'operation' must be an object.");
+    private static IReadOnlyList<PlanOperation>? ReadOperations(JsonObject obj, List<string> errors) {
+        if (obj["operations"] is not JsonArray array) {
+            errors.Add("'operations' must be an array of operations.");
             return null;
         }
 
-        RejectUnknownProperties(operationObj, "operation", ["resource", "action", "spec"], errors);
+        if (array.Count == 0) {
+            errors.Add("'operations' must contain at least one operation.");
+            return null;
+        }
+
+        var operations = new List<PlanOperation>();
+        var failed = false;
+        for (var index = 0; index < array.Count; index++) {
+            if (array[index] is not JsonObject operationObj) {
+                errors.Add($"operations[{index}]: entry must be an object.");
+                failed = true;
+                continue;
+            }
+
+            var operation = ReadOperation(operationObj, $"operations[{index}]", errors);
+            if (operation is null) {
+                failed = true;
+                continue;
+            }
+
+            operations.Add(operation);
+        }
+
+        return failed ? null : operations;
+    }
+
+    private static PlanOperation? ReadOperation(JsonObject operationObj, string path, List<string> errors) {
+        RejectUnknownProperties(operationObj, path, ["resource", "action", "spec"], errors);
         var inner = new List<string>();
         var resource = ReadString(operationObj, "resource", inner);
         if (resource is not null && !ResourcePattern().IsMatch(resource)) {
@@ -328,7 +355,7 @@ public sealed partial record PlanDefinition {
         }
 
         if (inner.Count > 0) {
-            errors.AddRange(inner.Select(e => $"operation: {e}"));
+            errors.AddRange(inner.Select(e => $"{path}: {e}"));
             return null;
         }
 

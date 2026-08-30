@@ -123,8 +123,9 @@ public sealed class BuildEngine(
         executers.ValidateBuildPlan(plan);
         log.Info($"resolved {plan.PlanIds.Count} plans into {plan.Steps.Count} atomic steps");
         foreach (var step in plan.Steps) {
+            var resources = string.Join(", ", step.Plan.Operations.Select(o => o.Resource).Distinct());
             log.Info(
-                $"  step {step.Id}: plan '{step.Plan.Definition.Id}' ({step.Plan.Operation.Resource})");
+                $"  step {step.Id}: plan '{step.Plan.Definition.Id}' ({resources})");
         }
 
         ValidateImageIndex(options.ImageIndex);
@@ -618,17 +619,22 @@ public sealed class BuildEngine(
         builder.Append(resolved.Definition.Id).Append('|')
             .Append(resolved.Definition.Version).Append('|')
             .Append(resolved.Definition.Hash).Append((char)10);
-        var operation = resolved.Operation;
-        builder.Append(operation.Resource).Append('|').Append(operation.Action).Append('|')
-            .Append(operation.Spec.ToJsonString()).Append((char)10);
-        if (operation is not { Resource: "fs.path", Action: OperationAction.Copy }) {
+        string? copyAssetSource = null;
+        foreach (var operation in resolved.Operations) {
+            builder.Append(operation.Resource).Append('|').Append(operation.Action).Append('|')
+                .Append(operation.Spec.ToJsonString()).Append((char)10);
+            if (operation is { Resource: "fs.path", Action: OperationAction.Copy }) {
+                copyAssetSource = operation.Spec["source"]?.GetValue<string>();
+            }
+        }
+
+        if (copyAssetSource is null) {
             return Fingerprinting.Compute(builder.ToString());
         }
 
-        var source = operation.Spec["source"]?.GetValue<string>();
         var assetsRoot = ResolveAssetsRoot(plansDirectory, resolved.Definition.Id);
-        var assetPath = ResolveAssetPathForFingerprint(assetsRoot, source);
-        var cacheKey = assetPath ?? $"<missing:{source}>";
+        var assetPath = ResolveAssetPathForFingerprint(assetsRoot, copyAssetSource);
+        var cacheKey = assetPath ?? $"<missing:{copyAssetSource}>";
         if (!assetFingerprints.TryGetValue(cacheKey, out var assetFingerprint)) {
             assetFingerprint = await AssetFingerprintAsync(assetPath, ct);
             assetFingerprints[cacheKey] = assetFingerprint;
@@ -703,30 +709,34 @@ public sealed class BuildEngine(
             ResolveAssetsRoot(options.PlansDirectory, resolved.Definition.Id));
         log.PlanId = resolved.Definition.Id;
         try {
-            ct.ThrowIfCancellationRequested();
-            var operation = resolved.Operation;
-            var executer = executers.Get(operation.Resource);
-            log.Debug($"operation {operation.Resource} ({operation.Action})", resolved.Definition.Id,
-                session.Record.Index);
-            var result = await executer.ApplyAsync(context, operation, ct);
-            var operationResult = new JsonObject {
-                ["planId"] = resolved.Definition.Id,
-                ["resource"] = operation.Resource,
-                ["action"] = operation.Action.ToString().ToLowerInvariant(),
-                ["status"] = result.Status.ToString().ToLowerInvariant(),
-                ["changes"] = new JsonArray(result.Changes.Select(c => (JsonNode)c.ToJson()).ToArray()),
-                ["skipReason"] = result.SkipReason
-            };
-            if (result.Status == ExecStatus.Applied) {
-                log.Info($"{operation.Resource}: {result.Changes.Count} change(s)", resolved.Definition.Id,
+            var operationResults = new List<JsonObject>();
+            foreach (var operation in resolved.Operations) {
+                ct.ThrowIfCancellationRequested();
+                var executer = executers.Get(operation.Resource);
+                log.Debug($"operation {operation.Resource} ({operation.Action})", resolved.Definition.Id,
                     session.Record.Index);
-            }
-            else if (result.Status == ExecStatus.Skipped) {
-                log.Info($"{operation.Resource}: skipped ({result.SkipReason})", resolved.Definition.Id,
-                    session.Record.Index);
+                var result = await executer.ApplyAsync(context, operation, ct);
+                operationResults.Add(new JsonObject {
+                    ["resource"] = operation.Resource,
+                    ["action"] = operation.Action.ToString().ToLowerInvariant(),
+                    ["status"] = result.Status.ToString().ToLowerInvariant(),
+                    ["changes"] = new JsonArray(result.Changes.Select(c => (JsonNode)c.ToJson()).ToArray()),
+                    ["skipReason"] = result.SkipReason
+                });
+                if (result.Status == ExecStatus.Applied) {
+                    log.Info($"{operation.Resource}: {result.Changes.Count} change(s)", resolved.Definition.Id,
+                        session.Record.Index);
+                }
+                else if (result.Status == ExecStatus.Skipped) {
+                    log.Info($"{operation.Resource}: skipped ({result.SkipReason})", resolved.Definition.Id,
+                        session.Record.Index);
+                }
             }
 
-            return operationResult;
+            return new JsonObject {
+                ["planId"] = resolved.Definition.Id,
+                ["operations"] = new JsonArray(operationResults.Select(o => (JsonNode)o).ToArray())
+            };
         }
         finally {
             log.PlanId = null;

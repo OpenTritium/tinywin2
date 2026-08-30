@@ -1,21 +1,23 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.connected-devices-platform",
   "version": "3.0.0",
   "title": "禁用 Connected Devices Platform",
   "description": "禁用跨设备体验平台；附近共享、跨设备活动和部分设备配对体验将不可用。",
   "category": "Background Services",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "CDPSvc",
-        "CDPUserSvc"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "CDPSvc",
+          "CDPUserSvc"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

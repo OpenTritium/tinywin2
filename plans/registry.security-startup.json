@@ -1,27 +1,29 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "registry.security-startup",
   "version": "1.0.0",
   "title": "移除 Defender 安全托盘自启动项",
   "description": "删除已移除 Defender 对应的 SecurityHealth 托盘启动项，避免系统保留无效安全中心自启动；不影响桌面、音频、输入或办公软件。",
   "category": "Security",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "registry.value",
-    "action": "remove",
-    "spec": {
-      "hive": "software",
-      "values": [
-        {
-          "key": "Microsoft\\Windows\\CurrentVersion\\Run",
-          "name": "SecurityHealth"
-        },
-        {
-          "key": "Microsoft\\Windows\\CurrentVersion\\RunOnce",
-          "name": "SecurityHealth"
-        }
-      ]
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Microsoft\\Windows\\CurrentVersion\\Run",
+            "name": "SecurityHealth"
+          },
+          {
+            "key": "Microsoft\\Windows\\CurrentVersion\\RunOnce",
+            "name": "SecurityHealth"
+          }
+        ]
+      }
     }
-  }
+  ]
 }

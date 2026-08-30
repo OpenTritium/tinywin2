@@ -29,7 +29,21 @@ public sealed class BuildPlanResolverTests : IDisposable {
         var plan = BuildPlanResolver.Resolve(catalog,
             [new("a.one"), new("a.two"), new("b.three")]);
         await Assert.That(plan.Steps.Count).IsEqualTo(3);
-        await Assert.That(plan.Steps.All(s => s.Plan.Operation is { Resource.Length: > 0 })).IsTrue();
+        await Assert.That(plan.Steps.All(s => s.Plan.Operations.Count == 1)).IsTrue();
+        await Assert.That(plan.Steps.All(s => s.Plan.Operations[0].Resource.Length > 0)).IsTrue();
+    }
+
+    [Test]
+    public async Task MultiOperationPlansResolveEveryOperationInOrder() {
+        TestPlans.WritePlan(_directory, "multi.plan", o => {
+            o["operations"] = new JsonArray(
+                TestPlans.Operation("dism.capability"),
+                TestPlans.Operation("dism.feature"));
+        });
+        var plan = BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory), [new("multi.plan")]);
+        await Assert.That(plan.Steps.Count).IsEqualTo(1);
+        await Assert.That(plan.Steps[0].Plan.Operations.Select(o => o.Resource))
+            .IsEquivalentTo(["dism.capability", "dism.feature"]);
     }
 
     [Test]
@@ -94,7 +108,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
                     new JsonObject { ["value"] = "safe", ["label"] = "安全" },
                     new JsonObject { ["value"] = "hard", ["label"] = "激进" })
             });
-            o["operation"] = new JsonObject {
+            o["operations"] = new JsonArray(new JsonObject {
                 ["resource"] = "fs.path",
                 ["action"] = "remove",
                 ["spec"] = new JsonObject {
@@ -106,7 +120,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
                         }
                     }
                 }
-            };
+            });
         });
         var catalog = PlanCatalog.LoadDirectory(_directory);
         var bad = Assert.Throws<PlanResolutionException>(() => BuildPlanResolver.Resolve(catalog,
@@ -115,7 +129,7 @@ public sealed class BuildPlanResolverTests : IDisposable {
 
         var plan = BuildPlanResolver.Resolve(catalog,
             [new("arg.plan", Parameters: new Dictionary<string, JsonNode?> { ["mode"] = "hard" })]);
-        await Assert.That(plan.Steps[0].Plan.Operation.Spec["level"]!.GetValue<int>()).IsEqualTo(2);
+        await Assert.That(plan.Steps[0].Plan.Operations[0].Spec["level"]!.GetValue<int>()).IsEqualTo(2);
     }
 
     [Test]
@@ -128,14 +142,14 @@ public sealed class BuildPlanResolverTests : IDisposable {
                 ["options"] = new JsonArray(new JsonObject { ["value"] = "safe" },
                     new JsonObject { ["value"] = "hard" })
             });
-            o["operation"] = new JsonObject {
+            o["operations"] = new JsonArray(new JsonObject {
                 ["resource"] = "fs.path",
                 ["action"] = "remove",
                 ["spec"] = new JsonObject { ["paths"] = new JsonArray("X"), ["p"] = new JsonObject { ["$parameter"] = "mode" } }
-            };
+            });
         });
         var plan = BuildPlanResolver.Resolve(PlanCatalog.LoadDirectory(_directory), [new("def.plan")]);
-        await Assert.That(plan.Steps[0].Plan.Operation.Spec["p"]!.GetValue<string>()).IsEqualTo("safe");
+        await Assert.That(plan.Steps[0].Plan.Operations[0].Spec["p"]!.GetValue<string>()).IsEqualTo("safe");
     }
 
     [Test]

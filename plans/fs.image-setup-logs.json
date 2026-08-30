@@ -1,29 +1,31 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.image-setup-logs",
   "version": "1.0.0",
   "title": "清理安装升级日志和转储",
   "description": "删除镜像构建、安装、升级和 Sysprep 产生的日志、临时 Panther 内容及崩溃转储；不删除 CBS/Servicing 元数据、不删除 WinRE。",
   "category": "Servicing",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Windows\\Panther\\*",
-        "Windows\\System32\\Sysprep\\Panther\\*",
-        "Windows\\Logs\\*",
-        "Windows\\INF\\setupapi.dev.log",
-        "Windows\\INF\\setupapi.app.log",
-        "Windows\\INF\\setupapi.offline.log",
-        "Windows\\setupact.log",
-        "Windows\\setuperr.log",
-        "Windows\\memory.dmp",
-        "Windows\\Minidump\\*",
-        "Windows\\LiveKernelReports\\*"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\Panther\\*",
+          "Windows\\System32\\Sysprep\\Panther\\*",
+          "Windows\\Logs\\*",
+          "Windows\\INF\\setupapi.dev.log",
+          "Windows\\INF\\setupapi.app.log",
+          "Windows\\INF\\setupapi.offline.log",
+          "Windows\\setupact.log",
+          "Windows\\setuperr.log",
+          "Windows\\memory.dmp",
+          "Windows\\Minidump\\*",
+          "Windows\\LiveKernelReports\\*"
+        ]
+      }
     }
-  }
+  ]
 }

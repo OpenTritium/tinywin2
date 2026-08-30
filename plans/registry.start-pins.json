@@ -1,43 +1,45 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "registry.start-pins",
   "version": "3.1.0",
   "title": "清理开始菜单和任务栏固定项",
   "description": "通过 Windows 11 官方策略把开始菜单固定区域收敛为文件资源管理器，隐藏推荐区域，并禁止旧的任务栏固定列表。该策略不负责从“所有应用”列表移除 MicrosoftWindows.Client.CBS 内的系统入口。",
   "category": "Desktop Experience",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.value",
-    "action": "set",
-    "spec": {
-      "hive": "software",
-      "values": [
-        {
-          "key": "Policies\\Microsoft\\Windows\\Explorer",
-          "name": "ConfigureStartPins",
-          "type": "dword",
-          "data": 1
-        },
-        {
-          "key": "Policies\\Microsoft\\Windows\\Explorer",
-          "name": "ConfigureStartPinsJSON",
-          "type": "string",
-          "data": "{\"pinnedList\":[{\"desktopAppId\":\"Microsoft.Windows.Explorer\"}]}"
-        },
-        {
-          "key": "Policies\\Microsoft\\Windows\\Explorer",
-          "name": "TaskbarNoPinnedList",
-          "type": "dword",
-          "data": 1
-        },
-        {
-          "key": "Policies\\Microsoft\\Windows\\Explorer",
-          "name": "HideRecommendedSection",
-          "type": "dword",
-          "data": 1
-        }
-      ]
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "set",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Policies\\Microsoft\\Windows\\Explorer",
+            "name": "ConfigureStartPins",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\Explorer",
+            "name": "ConfigureStartPinsJSON",
+            "type": "string",
+            "data": "{\"pinnedList\":[{\"desktopAppId\":\"Microsoft.Windows.Explorer\"}]}"
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\Explorer",
+            "name": "TaskbarNoPinnedList",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\Explorer",
+            "name": "HideRecommendedSection",
+            "type": "dword",
+            "data": 1
+          }
+        ]
+      }
     }
-  }
+  ]
 }

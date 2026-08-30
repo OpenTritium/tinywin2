@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.iscsi-initiator",
   "version": "3.0.0",
   "title": "禁用 iSCSI Initiator",
   "description": "禁用 Microsoft iSCSI Initiator 服务；连接 iSCSI SAN 或远程块存储将不可用。",
   "category": "Storage",
   "riskLevel": "High",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "MSiSCSI"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "MSiSCSI"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

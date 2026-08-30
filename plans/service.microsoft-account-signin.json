@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.microsoft-account-signin",
   "version": "3.0.0",
   "title": "禁用 Microsoft Account Sign-in Assistant",
   "description": "禁用 wlidsvc。离线镜像不使用 Microsoft 账户登录或商店授权时可禁用；本地 Administrator 登录和 Windows 激活核心服务不受影响。",
   "category": "Policies",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "wlidsvc"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "wlidsvc"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

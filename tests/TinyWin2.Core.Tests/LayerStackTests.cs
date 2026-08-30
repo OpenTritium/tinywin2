@@ -333,27 +333,27 @@ public sealed class BuildEngineDryRunTests : IDisposable {
 
     private PlanCatalog Catalog() {
         TestPlans.WritePlan(_plansDir, "engine.sample", o => {
-            o["operation"] = new JsonObject {
+            o["operations"] = new JsonArray(new JsonObject {
                 ["resource"] = "test.noop",
                 ["action"] = "remove",
                 ["spec"] = new JsonObject()
-            };
+            });
         });
         return PlanCatalog.LoadDirectory(_plansDir);
     }
 
     [Test]
     public async Task NoLayersAppliesEverythingAgainstOneAttach() {
-        TestPlans.WritePlan(_plansDir, "no.a", o => o["operation"] = new JsonObject {
+        TestPlans.WritePlan(_plansDir, "no.a", o => o["operations"] = new JsonArray(new JsonObject {
             ["resource"] = "test.noop",
             ["action"] = "remove",
             ["spec"] = new JsonObject()
-        });
-        TestPlans.WritePlan(_plansDir, "no.b", o => o["operation"] = new JsonObject {
+        }));
+        TestPlans.WritePlan(_plansDir, "no.b", o => o["operations"] = new JsonArray(new JsonObject {
             ["resource"] = "test.noop",
             ["action"] = "remove",
             ["spec"] = new JsonObject()
-        });
+        }));
         var runner = new FakeProcessRunner {
             Handler = (_, args) => {
                 if (args.Contains("/Get-WimInfo")) {
@@ -441,16 +441,16 @@ public sealed class BuildEngineDryRunTests : IDisposable {
 
     [Test]
     public async Task NoLayersResumeRebuildsBaseAndRetriesAfterTheFailedStep() {
-        TestPlans.WritePlan(_plansDir, "recover.a", o => o["operation"] = new JsonObject {
+        TestPlans.WritePlan(_plansDir, "recover.a", o => o["operations"] = new JsonArray(new JsonObject {
             ["resource"] = "test.recover",
             ["action"] = "remove",
             ["spec"] = new JsonObject()
-        });
-        TestPlans.WritePlan(_plansDir, "recover.b", o => o["operation"] = new JsonObject {
+        }));
+        TestPlans.WritePlan(_plansDir, "recover.b", o => o["operations"] = new JsonArray(new JsonObject {
             ["resource"] = "test.recover",
             ["action"] = "remove",
             ["spec"] = new JsonObject()
-        });
+        }));
 
         var runner = new FakeProcessRunner {
             Handler = (_, args) => {
@@ -508,11 +508,11 @@ public sealed class BuildEngineDryRunTests : IDisposable {
 
     [Test]
     public async Task VhdxOutputExportsOneDiskWithoutCapturingInstallImage() {
-        TestPlans.WritePlan(_plansDir, "vhdx.noop", o => o["operation"] = new JsonObject {
+        TestPlans.WritePlan(_plansDir, "vhdx.noop", o => o["operations"] = new JsonArray(new JsonObject {
             ["resource"] = "test.noop",
             ["action"] = "remove",
             ["spec"] = new JsonObject()
-        });
+        }));
         var runner = new FakeProcessRunner {
             Handler = (_, args) => {
                 if (args.Contains("/Get-WimInfo")) {

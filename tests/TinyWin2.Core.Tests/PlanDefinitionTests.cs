@@ -5,20 +5,22 @@ using TinyWin2.Core.Plans;
 namespace TinyWin2.Core.Tests;
 
 public static class TestPlans {
+    public static JsonObject Operation(string resource = "fs.path", string action = "remove") => new() {
+        ["resource"] = resource,
+        ["action"] = action,
+        ["spec"] = new JsonObject { ["paths"] = new JsonArray("Windows/Web/Wallpaper") }
+    };
+
     public static void WritePlan(string directory, string id, Action<JsonObject>? mutate = null) {
         var obj = new JsonObject {
-            ["schemaVersion"] = 3,
+            ["schemaVersion"] = 4,
             ["id"] = id,
             ["version"] = "1.0.0",
             ["title"] = $"Plan {id}",
             ["description"] = $"Description for {id}",
             ["category"] = "TestGroup",
             ["riskLevel"] = "Low",
-            ["operation"] = new JsonObject {
-                ["resource"] = "fs.path",
-                ["action"] = "remove",
-                ["spec"] = new JsonObject { ["paths"] = new JsonArray("Windows/Web/Wallpaper") }
-            }
+            ["operations"] = new JsonArray(Operation())
         };
         mutate?.Invoke(obj);
         var path = Path.Combine(directory, $"{id.Replace('.', '_')}.json");
@@ -36,7 +38,7 @@ public sealed class PlanDefinitionTests {
     [Test]
     public async Task ParsesValidPlanWithParameters() {
         var obj = new JsonObject {
-            ["schemaVersion"] = 3,
+            ["schemaVersion"] = 4,
             ["id"] = "service.workstation",
             ["version"] = "1.2.3",
             ["title"] = "Workstation",
@@ -54,44 +56,106 @@ public sealed class PlanDefinitionTests {
                     new JsonObject { ["value"] = "delayed", ["label"] = "延迟" },
                     new JsonObject { ["value"] = "manual", ["label"] = "手动" })
             }),
-            ["operation"] = new JsonObject {
+            ["operations"] = new JsonArray(new JsonObject {
                 ["resource"] = "registry.service",
                 ["action"] = "configure",
                 ["spec"] = new JsonObject {
                     ["services"] = new JsonArray("LanmanWorkstation"),
                     ["start"] = "manual"
                 }
-            }
+            })
         };
         var plan = PlanDefinition.FromJson(obj);
         await Assert.That(plan.Id).IsEqualTo("service.workstation");
         await Assert.That(plan.Category).IsEqualTo("Networking");
         await Assert.That(plan.Parameters.Count).IsEqualTo(1);
         await Assert.That(plan.Parameters[0].Default!.GetValue<string>()).IsEqualTo("delayed");
-        await Assert.That(plan.Operation.Action).IsEqualTo(OperationAction.Configure);
+        await Assert.That(plan.Operations[0].Action).IsEqualTo(OperationAction.Configure);
+    }
+
+    [Test]
+    public async Task ParsesMultipleOperationsAcrossResources() {
+        var obj = new JsonObject {
+            ["schemaVersion"] = 4,
+            ["id"] = "multi.op",
+            ["version"] = "1.0.0",
+            ["title"] = "t",
+            ["description"] = "d",
+            ["category"] = "System",
+            ["riskLevel"] = "Low",
+            ["operations"] = new JsonArray(
+                new JsonObject {
+                    ["resource"] = "dism.capability",
+                    ["action"] = "remove",
+                    ["spec"] = new JsonObject { ["capabilities"] = new JsonArray("App.Everything~~~~") }
+                },
+                new JsonObject {
+                    ["resource"] = "dism.feature",
+                    ["action"] = "remove",
+                    ["spec"] = new JsonObject { ["features"] = new JsonArray("AppEverything") }
+                })
+        };
+        var plan = PlanDefinition.FromJson(obj);
+        await Assert.That(plan.Operations.Count).IsEqualTo(2);
+        await Assert.That(plan.Operations[0].Resource).IsEqualTo("dism.capability");
+        await Assert.That(plan.Operations[1].Resource).IsEqualTo("dism.feature");
     }
 
     [Test]
     public async Task MissingRequiredFieldReportsError() {
-        var obj = new JsonObject { ["schemaVersion"] = 3, ["id"] = "ok.id", ["version"] = "1.0.0" };
+        var obj = new JsonObject { ["schemaVersion"] = 4, ["id"] = "ok.id", ["version"] = "1.0.0" };
         var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
         await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
         await Assert.That(ex.Message).Contains("'title'");
-        await Assert.That(ex.Message).Contains("'operation'");
+        await Assert.That(ex.Message).Contains("'operations'");
     }
 
     [Test]
     public async Task RejectsWrongSchemaVersion() {
-        var obj = new JsonObject { ["schemaVersion"] = 4, ["id"] = "a.b", ["version"] = "1.0.0" };
+        var obj = new JsonObject { ["schemaVersion"] = 3, ["id"] = "a.b", ["version"] = "1.0.0" };
         var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
         await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
         await Assert.That(ex.Message).Contains("schemaVersion");
     }
 
     [Test]
+    public async Task RejectsEmptyOperationsArray() {
+        var obj = new JsonObject {
+            ["schemaVersion"] = 4,
+            ["id"] = "a.b",
+            ["version"] = "1.0.0",
+            ["title"] = "t",
+            ["description"] = "d",
+            ["category"] = "g",
+            ["operations"] = new JsonArray()
+        };
+        var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
+        await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
+        await Assert.That(ex.Message).Contains("at least one operation");
+    }
+
+    [Test]
+    public async Task RejectsInvalidSecondOperation() {
+        var obj = new JsonObject {
+            ["schemaVersion"] = 4,
+            ["id"] = "a.b",
+            ["version"] = "1.0.0",
+            ["title"] = "t",
+            ["description"] = "d",
+            ["category"] = "g",
+            ["operations"] = new JsonArray(
+                TestPlans.Operation(),
+                new JsonObject { ["resource"] = "no executer", ["action"] = "remove" })
+        };
+        var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
+        await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
+        await Assert.That(ex.Message).Contains("operations[1]");
+    }
+
+    [Test]
     public async Task EnumParameterWithoutOptionsIsRejected() {
         var obj = new JsonObject {
-            ["schemaVersion"] = 3,
+            ["schemaVersion"] = 4,
             ["id"] = "a.b",
             ["version"] = "1.0.0",
             ["title"] = "t",
@@ -102,11 +166,7 @@ public sealed class PlanDefinitionTests {
                 ["type"] = "enum",
                 ["options"] = new JsonArray()
             }),
-            ["operation"] = new JsonObject {
-                ["resource"] = "fs.path",
-                ["action"] = "remove",
-                ["spec"] = new JsonObject { ["paths"] = new JsonArray("x") }
-            }
+            ["operations"] = new JsonArray(TestPlans.Operation())
         };
         var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
         await Assert.That(ex.GetType()).IsEqualTo(typeof(PlanValidationException));
@@ -116,18 +176,14 @@ public sealed class PlanDefinitionTests {
     [Test]
     public async Task DefaultMustBeDeclaredOption() {
         var obj = new JsonObject {
-            ["schemaVersion"] = 3,
+            ["schemaVersion"] = 4,
             ["id"] = "a.b",
             ["version"] = "1.0.0",
             ["title"] = "t",
             ["description"] = "d",
             ["category"] = "g",
             ["riskLevel"] = "Low",
-            ["operation"] = new JsonObject {
-                ["resource"] = "fs.path",
-                ["action"] = "remove",
-                ["spec"] = new JsonObject { ["paths"] = new JsonArray("x") }
-            },
+            ["operations"] = new JsonArray(TestPlans.Operation()),
             ["parameters"] = new JsonArray(new JsonObject {
                 ["name"] = "mode",
                 ["type"] = "enum",
@@ -143,17 +199,13 @@ public sealed class PlanDefinitionTests {
     [Test]
     public async Task UnknownPlanFieldIsRejected() {
         var obj = new JsonObject {
-            ["schemaVersion"] = 3,
+            ["schemaVersion"] = 4,
             ["id"] = "a.b",
             ["version"] = "1.0.0",
             ["title"] = "t",
             ["description"] = "d",
             ["category"] = "g",
-            ["operation"] = new JsonObject {
-                ["resource"] = "fs.path",
-                ["action"] = "remove",
-                ["spec"] = new JsonObject { ["paths"] = new JsonArray("x") }
-            },
+            ["operations"] = new JsonArray(TestPlans.Operation()),
             ["legacyField"] = true
         };
         var ex = Assert.Throws<Exception>(() => PlanDefinition.FromJson(obj));
@@ -191,7 +243,7 @@ public sealed class PlanCatalogTests : IDisposable {
         var withoutSchema = PlanCatalog.LoadDirectory(_directory).Get("alpha.one").Hash;
 
         var plan = JsonNode.Parse(await File.ReadAllTextAsync(path))!.AsObject();
-        plan["$schema"] = "../schemas/plan-v3.schema.json";
+        plan["$schema"] = "../schemas/plan-v4.schema.json";
         await File.WriteAllTextAsync(path, plan.ToJsonString());
 
         var withSchema = PlanCatalog.LoadDirectory(_directory).Get("alpha.one").Hash;

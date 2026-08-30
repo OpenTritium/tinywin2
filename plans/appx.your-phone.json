@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.your-phone",
   "version": "3.0.0",
   "title": "移除手机连接",
   "description": "移除 Microsoft Your Phone 预装 Appx。",
   "category": "Applications",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "appx.provisioned",
-    "action": "remove",
-    "spec": {
-      "patterns": [
-        "Microsoft.YourPhone"
-      ]
+  "operations": [
+    {
+      "resource": "appx.provisioned",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.YourPhone"
+        ]
+      }
     }
-  }
+  ]
 }

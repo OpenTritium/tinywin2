@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.recovery-environment",
   "version": "3.0.0",
   "title": "移除 WinRE 恢复环境",
   "description": "移除 Windows Recovery Environment 的 Winre.wim 和注册描述文件。保证范围：输出的 install.wim/install.esd 仍可由 DISM 识别、挂载和应用；不保证标准 ISO 通过 Windows Setup 完成安装，因为 Setup 可能从安装映像提取 winre.wim 作为 SafeOS。正常启动、桌面、娱乐和办公不受影响，但高级启动修复、系统重置、离线恢复和依赖 WinRE 的自动修复不可用；适合使用 DISM/BCDBoot 或自定义部署流程。",
   "category": "Servicing",
   "riskLevel": "High",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Windows\\System32\\Recovery\\Winre.wim",
-        "Windows\\System32\\Recovery\\ReAgent.xml"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\System32\\Recovery\\Winre.wim",
+          "Windows\\System32\\Recovery\\ReAgent.xml"
+        ]
+      }
     }
-  }
+  ]
 }

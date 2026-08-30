@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.device-association",
   "version": "3.0.0",
   "title": "禁用设备关联服务",
   "description": "禁用 Device Association Service；USB、蓝牙和其他即插即用设备的配对与自动关联可能失败。",
   "category": "Devices",
   "riskLevel": "High",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "DeviceAssociationService"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "DeviceAssociationService"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

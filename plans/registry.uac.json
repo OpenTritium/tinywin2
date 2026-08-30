@@ -1,25 +1,27 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "registry.uac",
   "version": "3.0.0",
   "title": "禁用用户帐户控制 (UAC)",
   "description": "将 EnableLUA 设为 0。需要重启；Microsoft Store 应用和依赖 UAC 的功能可能无法运行。",
   "category": "Security",
   "riskLevel": "High",
-  "operation": {
-    "resource": "registry.value",
-    "action": "set",
-    "spec": {
-      "hive": "software",
-      "values": [
-        {
-          "key": "Microsoft\\Windows\\CurrentVersion\\Policies\\System",
-          "name": "EnableLUA",
-          "type": "dword",
-          "data": 0
-        }
-      ]
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "set",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+            "name": "EnableLUA",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
     }
-  }
+  ]
 }

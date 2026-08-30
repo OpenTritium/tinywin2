@@ -1,22 +1,24 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.containers",
   "version": "3.0.0",
   "title": "移除 Windows Containers",
   "description": "移除 Windows 容器、Host Networking Service 与软件定义网络组件。",
   "category": "Virtualization",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "Containers",
-        "Containers-HNS",
-        "Containers-SDN"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "Containers",
+          "Containers-HNS",
+          "Containers-SDN"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

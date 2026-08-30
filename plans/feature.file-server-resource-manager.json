@@ -1,22 +1,24 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.file-server-resource-manager",
   "version": "3.0.0",
   "title": "移除文件服务器资源管理器",
   "description": "移除 FSRM 服务、管理工具和基础结构；无法使用配额、文件筛选或存储报告。",
   "category": "Server Roles",
   "riskLevel": "High",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "FSRM-Infrastructure",
-        "FSRM-Infrastructure-Services",
-        "FSRM-Management"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "FSRM-Infrastructure",
+          "FSRM-Infrastructure-Services",
+          "FSRM-Management"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

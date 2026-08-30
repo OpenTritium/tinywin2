@@ -1,21 +1,23 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.teams",
   "version": "3.0.0",
   "title": "移除 Teams 预装包",
   "description": "移除 Microsoft Teams 新旧预置 AppX（若当前版本提供）；不影响用户自行安装的 Win32 Teams。",
   "category": "Applications",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "appx.provisioned",
-    "action": "remove",
-    "spec": {
-      "patterns": [
-        "MSTeams*",
-        "MicrosoftTeams*",
-        "Microsoft.Teams*"
-      ]
+  "operations": [
+    {
+      "resource": "appx.provisioned",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "MSTeams*",
+          "MicrosoftTeams*",
+          "Microsoft.Teams*"
+        ]
+      }
     }
-  }
+  ]
 }

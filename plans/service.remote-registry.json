@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.remote-registry",
   "version": "3.0.0",
   "title": "禁用远程注册表服务",
   "description": "禁用 RemoteRegistry，阻止其他设备读取或修改本机注册表。依赖远程注册表的管理工具将失效。",
   "category": "Remote Management",
   "riskLevel": "High",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "RemoteRegistry"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "RemoteRegistry"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

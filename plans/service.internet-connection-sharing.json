@@ -1,20 +1,22 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.internet-connection-sharing",
   "version": "3.0.0",
   "title": "禁用 Internet 连接共享",
   "description": "禁用 Internet Connection Sharing (SharedAccess)。移动热点和网络连接共享将不可用。",
   "category": "Network Services",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "SharedAccess"
-      ],
-      "start": "disabled"
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "SharedAccess"
+        ],
+        "start": "disabled"
+      }
     }
-  }
+  ]
 }

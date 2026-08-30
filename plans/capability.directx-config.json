@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "capability.directx-config",
   "version": "3.0.0",
   "title": "移除 DirectX 配置数据库",
   "description": "移除 DirectX.Configuration.Database。无 GPU / 无图形负载的 VM 可移除。",
   "category": "Media",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "dism.capability",
-    "action": "remove",
-    "spec": {
-      "capabilities": [
-        "DirectX.Configuration.Database~~~~*"
-      ]
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "DirectX.Configuration.Database~~~~*"
+        ]
+      }
     }
-  }
+  ]
 }

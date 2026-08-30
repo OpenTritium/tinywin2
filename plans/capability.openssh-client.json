@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "capability.openssh-client",
   "version": "3.0.0",
   "title": "移除 OpenSSH 客户端",
   "description": "移除 ssh、scp 等 OpenSSH 客户端工具。",
   "category": "Networking",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "dism.capability",
-    "action": "remove",
-    "spec": {
-      "capabilities": [
-        "OpenSSH.Client~~~~*"
-      ]
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "OpenSSH.Client~~~~*"
+        ]
+      }
     }
-  }
+  ]
 }

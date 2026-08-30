@@ -1,19 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.prefetch",
   "version": "3.0.0",
   "title": "移除 Prefetch 缓存",
   "description": "移除离线镜像中已有的 Windows Prefetch 缓存；系统启动后会重新生成，首次启动和应用冷启动可能变慢。",
   "category": "Servicing",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Windows/Prefetch"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows/Prefetch"
+        ]
+      }
     }
-  }
+  ]
 }

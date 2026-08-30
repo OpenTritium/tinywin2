@@ -1,44 +1,84 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "fs.internet-explorer",
-  "version": "1.0.0",
-  "title": "清理 Internet Explorer 遗留文件",
-  "description": "移除 Internet Explorer 已禁用后的遗留程序文件和空目录；默认保留系统 WebView、EdgeHTML 兼容库和应用所需的网页组件。需要极限清理旧网页平台时可另选 fs.edge-legacy-platform。",
+  "version": "3.1.0",
+  "title": "清理 Internet Explorer 遗留平台",
+  "description": "移除 Internet Explorer 遗留程序文件、F12 开发工具目录和旧 EdgeHTML 双架构兼容库与内容进程;保留现代 Explorer 与中文输入法依赖的组件。现代 Edge 浏览器由 component.edge 单独移除,独立 WebView2 由 fs.edge-webview-runtime 单独移除。",
   "category": "Applications",
-  "riskLevel": "Medium",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Program Files\\Internet Explorer\\*.exe",
-        "Program Files\\Internet Explorer\\*.dll",
-        "Program Files\\Internet Explorer\\*.ico",
-        "Program Files\\Internet Explorer\\*.ins",
-        "Program Files\\Internet Explorer\\en-US\\*",
-        "Program Files\\Internet Explorer\\images\\*",
-        "Program Files\\Internet Explorer\\SIGNUP\\*",
-        "Program Files\\Internet Explorer\\zh-CN\\*",
-        "Program Files\\Internet Explorer\\en-US",
-        "Program Files\\Internet Explorer\\images",
-        "Program Files\\Internet Explorer\\SIGNUP",
-        "Program Files\\Internet Explorer\\zh-CN",
-        "Program Files\\Internet Explorer",
-        "Program Files (x86)\\Internet Explorer\\*.exe",
-        "Program Files (x86)\\Internet Explorer\\*.dll",
-        "Program Files (x86)\\Internet Explorer\\*.ico",
-        "Program Files (x86)\\Internet Explorer\\*.ins",
-        "Program Files (x86)\\Internet Explorer\\en-US\\*",
-        "Program Files (x86)\\Internet Explorer\\images\\*",
-        "Program Files (x86)\\Internet Explorer\\SIGNUP\\*",
-        "Program Files (x86)\\Internet Explorer\\zh-CN\\*",
-        "Program Files (x86)\\Internet Explorer\\en-US",
-        "Program Files (x86)\\Internet Explorer\\images",
-        "Program Files (x86)\\Internet Explorer\\SIGNUP",
-        "Program Files (x86)\\Internet Explorer\\zh-CN",
-        "Program Files (x86)\\Internet Explorer"
-      ]
+  "riskLevel": "High",
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Program Files\\Internet Explorer\\*.exe",
+          "Program Files\\Internet Explorer\\*.dll",
+          "Program Files\\Internet Explorer\\*.ico",
+          "Program Files\\Internet Explorer\\*.ins",
+          "Program Files\\Internet Explorer\\en-US\\*",
+          "Program Files\\Internet Explorer\\images\\*",
+          "Program Files\\Internet Explorer\\SIGNUP\\*",
+          "Program Files\\Internet Explorer\\zh-CN\\*",
+          "Program Files\\Internet Explorer\\en-US",
+          "Program Files\\Internet Explorer\\images",
+          "Program Files\\Internet Explorer\\SIGNUP",
+          "Program Files\\Internet Explorer\\zh-CN",
+          "Program Files\\Internet Explorer",
+          "Program Files (x86)\\Internet Explorer\\*.exe",
+          "Program Files (x86)\\Internet Explorer\\*.dll",
+          "Program Files (x86)\\Internet Explorer\\*.ico",
+          "Program Files (x86)\\Internet Explorer\\*.ins",
+          "Program Files (x86)\\Internet Explorer\\en-US\\*",
+          "Program Files (x86)\\Internet Explorer\\images\\*",
+          "Program Files (x86)\\Internet Explorer\\SIGNUP\\*",
+          "Program Files (x86)\\Internet Explorer\\zh-CN\\*",
+          "Program Files (x86)\\Internet Explorer\\en-US",
+          "Program Files (x86)\\Internet Explorer\\images",
+          "Program Files (x86)\\Internet Explorer\\SIGNUP",
+          "Program Files (x86)\\Internet Explorer\\zh-CN",
+          "Program Files (x86)\\Internet Explorer"
+        ]
+      }
+    },
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\System32\\F12",
+          "Windows\\SysWOW64\\F12"
+        ]
+      }
+    },
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\System32\\edgeangle.dll",
+          "Windows\\System32\\EdgeContent.dll",
+          "Windows\\System32\\edgehtml.dll",
+          "Windows\\System32\\edgeIso.dll",
+          "Windows\\System32\\EdgeManager.dll",
+          "Windows\\System32\\EdgeResetPlugin.dll",
+          "Windows\\System32\\MicrosoftEdgeBCHost.exe",
+          "Windows\\System32\\MicrosoftEdgeCP.exe",
+          "Windows\\System32\\MicrosoftEdgeDevTools.exe",
+          "Windows\\System32\\MicrosoftEdgeSH.exe",
+          "Windows\\SysWOW64\\edgeangle.dll",
+          "Windows\\SysWOW64\\EdgeContent.dll",
+          "Windows\\SysWOW64\\edgehtml.dll",
+          "Windows\\SysWOW64\\edgeIso.dll",
+          "Windows\\SysWOW64\\EdgeManager.dll",
+          "Windows\\SysWOW64\\EdgeResetPlugin.dll",
+          "Windows\\SysWOW64\\MicrosoftEdgeBCHost.exe",
+          "Windows\\SysWOW64\\MicrosoftEdgeCP.exe",
+          "Windows\\SysWOW64\\MicrosoftEdgeDevTools.exe",
+          "Windows\\SysWOW64\\MicrosoftEdgeSH.exe"
+        ]
+      }
     }
-  }
+  ]
 }

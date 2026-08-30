@@ -1,24 +1,32 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.windows-defender",
-  "version": "4.0.0",
+  "version": "3.1.0",
   "title": "移除 Microsoft Defender 防护组件",
-  "description": "移除 Defender 功能、默认定义和 Defender for Endpoint Sense 客户端；明确保留 UAC 与 Windows 防火墙策略由独立规则控制。",
+  "description": "移除 Defender 功能、默认定义和 Defender for Endpoint Sense 客户端及其按需能力;明确保留 UAC 与 Windows 防火墙策略由独立规则控制。",
   "category": "Security",
   "riskLevel": "High",
-  "requires": [
-    "capability.defender-sense"
-  ],
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "Windows-Defender",
-        "Windows-Defender-Default-Definitions"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.capability",
+      "action": "remove",
+      "spec": {
+        "capabilities": [
+          "Microsoft.Windows.Sense.Client~~~~"
+        ]
+      }
+    },
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "Windows-Defender",
+          "Windows-Defender-Default-Definitions"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }

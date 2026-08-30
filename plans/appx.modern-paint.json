@@ -1,15 +1,21 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.modern-paint",
   "version": "3.0.0",
   "title": "移除现代画图",
   "description": "移除 Microsoft.Paint 预置 Appx；画图应用将不可用。",
   "category": "Applications",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "appx.provisioned",
-    "action": "remove",
-    "spec": { "patterns": ["Microsoft.Paint"] }
-  }
+  "operations": [
+    {
+      "resource": "appx.provisioned",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.Paint"
+        ]
+      }
+    }
+  ]
 }

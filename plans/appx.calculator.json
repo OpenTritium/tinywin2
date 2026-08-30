@@ -1,23 +1,25 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "appx.calculator",
   "version": "3.0.0",
   "title": "移除计算器",
   "description": "移除 Server Desktop Experience 中的经典计算器文件和公共快捷方式；部分 Server 版本不提供 Windows Calculator Appx。",
   "category": "Applications",
   "riskLevel": "Low",
-  "operation": {
-    "resource": "fs.path",
-    "action": "remove",
-    "spec": {
-      "paths": [
-        "Windows\\System32\\calc.exe",
-        "Windows\\SysWOW64\\calc.exe",
-        "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Calculator.lnk",
-        "Users\\*\\Desktop\\Calculator.lnk",
-        "Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Calculator.lnk"
-      ]
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\System32\\calc.exe",
+          "Windows\\SysWOW64\\calc.exe",
+          "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Calculator.lnk",
+          "Users\\*\\Desktop\\Calculator.lnk",
+          "Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Calculator.lnk"
+        ]
+      }
     }
-  }
+  ]
 }

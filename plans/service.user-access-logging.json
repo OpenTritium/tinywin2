@@ -1,12 +1,32 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "service.user-access-logging",
   "version": "3.0.0",
   "title": "延迟启动 User Access Logging",
   "description": "将 User Access Logging Service 设置为延迟自动启动；保留服务器使用统计，但减少开机阶段的服务竞争。",
   "category": "Server",
   "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "configure",
+      "spec": {
+        "services": [
+          "UALSVC"
+        ],
+        "start": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "delayed": "DelayedAuto",
+              "disabled": "disabled"
+            }
+          }
+        }
+      }
+    }
+  ],
   "parameters": [
     {
       "name": "startMode",
@@ -26,23 +46,5 @@
         }
       ]
     }
-  ],
-  "operation": {
-    "resource": "registry.service",
-    "action": "configure",
-    "spec": {
-      "services": [
-        "UALSVC"
-      ],
-      "start": {
-        "$map": {
-          "parameter": "startMode",
-          "cases": {
-            "delayed": "DelayedAuto",
-            "disabled": "disabled"
-          }
-        }
-      }
-    }
-  }
+  ]
 }

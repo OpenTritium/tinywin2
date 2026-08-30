@@ -65,11 +65,11 @@ internal static class PlanHandler {
             ["requires"] = new JsonArray(plan.Requires.Select(r => (JsonNode)r).ToArray()),
             ["conflicts"] = new JsonArray(plan.Conflicts.Select(c => (JsonNode)c).ToArray()),
             ["parameters"] = new JsonArray(plan.Parameters.Select(parameter => (JsonNode)parameter.ToJson()).ToArray()),
-            ["operation"] = new JsonObject {
-                ["resource"] = plan.Operation.Resource,
-                ["action"] = plan.Operation.Action.ToString().ToLowerInvariant(),
-                ["spec"] = plan.Operation.Spec.DeepClone()
-            }
+            ["operations"] = new JsonArray(plan.Operations.Select(operation => (JsonNode)new JsonObject {
+                ["resource"] = operation.Resource,
+                ["action"] = operation.Action.ToString().ToLowerInvariant(),
+                ["spec"] = operation.Spec.DeepClone()
+            }).ToArray())
         }.ToJsonString(Cli.JsonSerializerOptions));
         return 0;
     }

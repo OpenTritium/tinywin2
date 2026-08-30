@@ -1,21 +1,23 @@
 {
-  "$schema": "../schemas/plan-v3.schema.json",
-  "schemaVersion": 3,
+  "$schema": "../schemas/plan-v4.schema.json",
+  "schemaVersion": 4,
   "id": "feature.system-insights",
   "version": "3.0.0",
   "title": "移除 System Insights",
   "description": "移除 System Insights 预测分析服务和管理工具；基于历史指标的容量与性能预测将不可用。",
   "category": "Diagnostics",
   "riskLevel": "Medium",
-  "operation": {
-    "resource": "dism.feature",
-    "action": "remove",
-    "spec": {
-      "features": [
-        "SystemInsights",
-        "SystemInsightsManagement"
-      ],
-      "removePayload": true
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "SystemInsights",
+          "SystemInsightsManagement"
+        ],
+        "removePayload": true
+      }
     }
-  }
+  ]
 }
