@@ -31,7 +31,7 @@ public sealed class AppxProvisionedExecuter(IProcessRunner runner) : DismRemoveE
             // RemoveKey is the dism Package Name; DisplayName is what patterns match and logs show.
             if (displayName is null
                 || DismListParser.Get(record, "PackageName") is not { } packageName
-                || !options.Patterns.Any(p => p.IsMatch(displayName))) {
+                || !options.Patterns.Any(pattern => LikePattern.IsMatch(pattern, displayName))) {
                 continue;
             }
 

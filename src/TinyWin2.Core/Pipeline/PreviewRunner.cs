@@ -88,7 +88,7 @@ public sealed class PreviewRunner(
                     var resolved = step.Plan;
                     var hiveCache = new RegistryHiveCache($"{letter}:\\", runner);
                     var context = new ExecContext($"{letter}:\\", log, hiveCache,
-                        ResolveAssetsRoot(options.PlansDirectory, resolved.Definition.Id));
+                        PlanAssets.ResolveRoot(options.PlansDirectory, resolved.Definition.Id));
                     var differences = new List<ChangeItem>();
                     try {
                         foreach (var operation in resolved.Operations) {
@@ -132,14 +132,5 @@ public sealed class PreviewRunner(
                 }
             }
         }
-    }
-
-    private static string? ResolveAssetsRoot(string? plansDirectory, string planId) {
-        if (plansDirectory is null) {
-            return null;
-        }
-
-        var candidate = Path.Combine(plansDirectory, "assets", planId);
-        return Directory.Exists(candidate) ? candidate : null;
     }
 }

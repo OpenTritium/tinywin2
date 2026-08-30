@@ -123,10 +123,8 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
         var normalized = string.Join('\\', segments);
 
         var mountRoot = GetMountRoot(mountPath);
-        var target = Path.GetFullPath(Path.Combine(mountRoot, normalized));
-        if (!target.StartsWith(mountRoot, StringComparison.OrdinalIgnoreCase)) {
-            throw new ExecException($"path '{relativePath}' resolved outside the mounted image.");
-        }
+        var target = SafePath.TryResolveInside(mountRoot, normalized)
+                     ?? throw new ExecException($"path '{relativePath}' resolved outside the mounted image.");
 
         EnsurePathChainHasNoReparsePoints(mountRoot, target);
         return target;
@@ -225,18 +223,15 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
             throw new ExecException("fs.path present requires a plan assets root, which this build did not provide.");
         }
 
-        var assetRoot = Path.GetFullPath(context.PlanAssetsRoot).TrimEnd(Path.DirectorySeparatorChar) +
-                        Path.DirectorySeparatorChar;
-        var candidate = Path.GetFullPath(Path.Combine(assetRoot, source.Replace('/', '\\')));
-        if (!candidate.StartsWith(assetRoot, StringComparison.OrdinalIgnoreCase)) {
-            throw new ExecException($"asset source '{source}' resolved outside the plan assets directory.");
-        }
+        var candidate = SafePath.TryResolveInside(context.PlanAssetsRoot, source)
+                        ?? throw new ExecException(
+                            $"asset source '{source}' resolved outside the plan assets directory.");
 
         if (!File.Exists(candidate) && !Directory.Exists(candidate)) {
             throw new ExecException($"asset source '{source}' was not found under '{context.PlanAssetsRoot}'.");
         }
 
-        EnsurePathChainHasNoReparsePoints(assetRoot, candidate);
+        EnsurePathChainHasNoReparsePoints(context.PlanAssetsRoot, candidate);
         EnsureTreeHasNoReparsePoints(candidate);
         return candidate;
     }

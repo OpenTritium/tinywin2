@@ -103,11 +103,9 @@ public sealed class AppxSystemExecuter(IProcessRunner runner) : IExecuter {
         && !candidate[(root.Length + 1)..].Contains('\\');
 
     private static void EnsureSystemAppPath(string root, string candidate) {
-        var normalizedRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) +
-                             Path.DirectorySeparatorChar;
-        var normalizedCandidate = Path.GetFullPath(candidate);
-        if (!normalizedCandidate.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase)
-            || File.GetAttributes(normalizedCandidate).HasFlag(FileAttributes.ReparsePoint)) {
+        var inside = SafePath.TryResolveInside(root, candidate);
+        if (inside is null
+            || File.GetAttributes(inside).HasFlag(FileAttributes.ReparsePoint)) {
             throw new ExecException($"unsafe SystemApps removal path '{candidate}'.");
         }
     }

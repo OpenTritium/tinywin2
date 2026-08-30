@@ -12,7 +12,6 @@ namespace TinyWin2.Core.Executers.Driver;
 /// </summary>
 public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBase(runner), IExecuter {
     private const string ResourceId = "driver.store";
-    private readonly IProcessRunner _runner = runner;
 
     public string Resource => ResourceId;
 
@@ -120,7 +119,7 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
                     }
 
                     var package = await InboxDriverPackage.InspectAsync(
-                        context, _runner, infName, options.InfNames, controlSets, enumReferences, ct);
+                        context, Runner, infName, options.InfNames, controlSets, enumReferences, ct);
                     if (package is null) {
                         changes.Add(new(new(ChangeKind.Skipped, infName,
                             "inbox driver package files or DriverDatabase metadata were not found")));
@@ -153,7 +152,7 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
     private async Task<IReadOnlyList<string>> ReadControlSetsAsync(
         ExecContext context, CancellationToken ct) {
         var system = await context.Hives.GetAsync("system", context.Log, ct);
-        var result = await OfflineReg.QueryAsync(_runner, system.HiveKey, ct);
+        var result = await OfflineReg.QueryAsync(Runner, system.HiveKey, ct);
         if (!result.Success) {
             throw new ExecException(
                 "could not enumerate offline SYSTEM control sets; refusing forceUnusedInbox removal.");
@@ -180,7 +179,7 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
         var system = await context.Hives.GetAsync("system", context.Log, ct);
         var services = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var controlSet in controlSets) {
-            var result = await OfflineReg.QueryAsync(_runner,
+            var result = await OfflineReg.QueryAsync(Runner,
                 $@"{system.HiveKey}\{controlSet}\Enum", ct, "/s", "/v", "Service");
             services.UnionWith(RegQuery.NamedValues(result.Output + result.Error, "Service"));
         }
@@ -197,9 +196,9 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
                                                                       .Contains(owner,
                                                                           StringComparer.OrdinalIgnoreCase)))) {
             foreach (var controlSet in package.ControlSets) {
-                await OfflineReg.DeleteKeyAsync(_runner,
+                await OfflineReg.DeleteKeyAsync(Runner,
                     $@"{system.HiveKey}\{controlSet}\Services\{service.Name}", system.HiveKey, ct);
-                await OfflineReg.DeleteKeyAsync(_runner,
+                await OfflineReg.DeleteKeyAsync(Runner,
                     $@"{system.HiveKey}\{controlSet}\Services\EventLog\System\{service.Name}", system.HiveKey,
                     ct);
             }
@@ -216,15 +215,15 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
         }
 
         foreach (var key in package.DeviceIdKeys) {
-            await OfflineReg.DeleteValueAsync(_runner,
+            await OfflineReg.DeleteValueAsync(Runner,
                 $@"{system.HiveKey}\DriverDatabase\DeviceIds\{key}", package.InfName,
                 $@"{system.HiveKey}\DriverDatabase\DeviceIds\{key}", ct);
         }
 
-        await OfflineReg.DeleteKeyAsync(_runner,
+        await OfflineReg.DeleteKeyAsync(Runner,
             $@"{system.HiveKey}\DriverDatabase\DriverInfFiles\{package.InfName}",
             $@"{system.HiveKey}\DriverDatabase\DriverInfFiles\{package.InfName}", ct);
-        await OfflineReg.DeleteKeyAsync(_runner,
+        await OfflineReg.DeleteKeyAsync(Runner,
             $@"{system.HiveKey}\DriverDatabase\DriverPackages\{package.PackageDirectoryName}",
             $@"{system.HiveKey}\DriverDatabase\DriverPackages\{package.PackageDirectoryName}", ct);
 
@@ -267,7 +266,7 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
             return;
         }
 
-        await ImageFs.DeleteWithRescueAsync(_runner, path, ct);
+        await ImageFs.DeleteWithRescueAsync(Runner, path, ct);
     }
 
     private sealed record DriverChange(

@@ -319,10 +319,8 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, BuildLog 
 
     private async Task<string> MountIsoAsync(string isoPath, CancellationToken ct) {
         var result = await runner.RunAsync("pwsh.exe",
-            [
-                "-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
-                $"$ErrorActionPreference = 'Stop'; (Mount-DiskImage -ImagePath {PsQuote(isoPath)} -PassThru -ErrorAction Stop | Get-Volume).DriveLetter"
-            ],
+            Pwsh.Args(
+                $"$ErrorActionPreference = 'Stop'; (Mount-DiskImage -ImagePath {Pwsh.Quote(isoPath)} -PassThru -ErrorAction Stop | Get-Volume).DriveLetter"),
             new() { IgnoreExitCode = true }, ct);
         var letter = result.Output.Trim().LastOrDefault(char.IsLetter);
         if (result.ExitCode != 0 || letter == '\0') {
@@ -353,10 +351,8 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, BuildLog 
 
     private async Task<ProcessRunResult> DismountIsoPathAsync(string isoPath, CancellationToken ct) {
         return await runner.RunAsync("pwsh.exe",
-            [
-                "-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
-                $"$ErrorActionPreference = 'Stop'; Dismount-DiskImage -ImagePath {PsQuote(isoPath)} -ErrorAction Stop | Out-Null"
-            ],
+            Pwsh.Args(
+                $"$ErrorActionPreference = 'Stop'; Dismount-DiskImage -ImagePath {Pwsh.Quote(isoPath)} -ErrorAction Stop | Out-Null"),
             new() { IgnoreExitCode = true }, ct);
     }
 
@@ -401,8 +397,6 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, BuildLog 
         var info = new FileInfo(fullPath);
         return $"{fullPath}|{info.Length}|{info.LastWriteTimeUtc.Ticks}";
     }
-
-    private static string PsQuote(string value) => $"'{value.Replace("'", "''")}'";
 
     private static string FindInstallImage(string root) {
         var wim = Path.Combine(root, "sources", "install.wim");

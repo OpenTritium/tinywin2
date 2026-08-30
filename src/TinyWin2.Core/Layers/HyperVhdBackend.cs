@@ -23,11 +23,11 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
         Directory.CreateDirectory(Path.GetDirectoryName(vhdxPath)!);
         var ps = $"""
                   $ErrorActionPreference = 'Stop'
-                  $vhd = New-VHD -Path {PsQuote(vhdxPath)} -SizeBytes {maximumMb}MB -Dynamic
+                  $vhd = New-VHD -Path {Pwsh.Quote(vhdxPath)} -SizeBytes {maximumMb}MB -Dynamic
                   Mount-VHD -Path $vhd.Path -PassThru |
                       Initialize-Disk -PartitionStyle MBR -PassThru |
                       New-Partition -UseMaximumSize -AssignDriveLetter:$false -DriveLetter X |
-                      Format-Volume -FileSystem NTFS -NewFileSystemLabel {PsQuote(volumeLabel)} -Confirm:$false | Out-Null
+                      Format-Volume -FileSystem NTFS -NewFileSystemLabel {Pwsh.Quote(volumeLabel)} -Confirm:$false | Out-Null
                   Dismount-VHD -Path $vhd.Path
                   """;
         await RunPsAsync(ps, ct);
@@ -39,7 +39,7 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
         }
 
         var ps =
-            $"$ErrorActionPreference = 'Stop'\nNew-VHD -Path {PsQuote(diffPath)} -ParentPath {PsQuote(parentPath)} -Differencing | Out-Null";
+            $"$ErrorActionPreference = 'Stop'\nNew-VHD -Path {Pwsh.Quote(diffPath)} -ParentPath {Pwsh.Quote(parentPath)} -Differencing | Out-Null";
         return RunPsAsync(ps, ct);
     }
 
@@ -50,11 +50,12 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
 
         // Reuse an existing attachment. A build workspace can be inspected or used by
         // another process while the engine is paused; detaching it here would be invasive.
+        var quotedPath = Pwsh.Quote(vhdxPath);
         var ps = string.Join('\n',
             "$ErrorActionPreference = 'Stop'",
-            $"$image = Get-DiskImage -ImagePath {PsQuote(vhdxPath)}",
+            $"$image = Get-DiskImage -ImagePath {quotedPath}",
             "$owned = $false",
-            $"if (-not $image.Attached) {{ Mount-VHD -Path {PsQuote(vhdxPath)} | Out-Null; $owned = $true; $image = Get-DiskImage -ImagePath {PsQuote(vhdxPath)} }}",
+            $"if (-not $image.Attached) {{ Mount-VHD -Path {quotedPath} | Out-Null; $owned = $true; $image = Get-DiskImage -ImagePath {quotedPath} }}",
             "$letter = (Get-Disk -Number $image.Number | Get-Partition | Get-Volume | Where-Object DriveLetter | Select-Object -First 1).DriveLetter",
             "if ($owned) { \"tinywin2-owned|$letter\" } else { \"tinywin2-existing|$letter\" }");
         var output = await RunPsAsync(ps, ct);
@@ -71,7 +72,7 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
 
             try {
                 await RunPsAsync(
-                    $"$ErrorActionPreference = 'SilentlyContinue'\nDismount-VHD -Path {PsQuote(vhdxPath)}",
+                    $"$ErrorActionPreference = 'SilentlyContinue'\nDismount-VHD -Path {Pwsh.Quote(vhdxPath)}",
                     CancellationToken.None);
             }
             catch {
@@ -112,7 +113,7 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
         // from the leaf towards the base, which is the supported Hyper-V operation.
         var ps = string.Join('\n',
             "$ErrorActionPreference = 'Stop'",
-            $"$current = {PsQuote(vhdxPath)}",
+            $"$current = {Pwsh.Quote(vhdxPath)}",
             $"for ($i = 0; $i -lt {depth}; $i++) {{",
             "    $parent = (Get-VHD -Path $current -ErrorAction Stop).ParentPath",
             "    if ([string]::IsNullOrWhiteSpace($parent)) { throw \"VHD chain ended before the requested merge depth.\" }",
@@ -123,7 +124,7 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
     }
 
     private async Task DetachOwnedAsync(string path, CancellationToken ct) {
-        await RunPsAsync($"$ErrorActionPreference = 'Stop'\nDismount-VHD -Path {PsQuote(path)}", ct);
+        await RunPsAsync($"$ErrorActionPreference = 'Stop'\nDismount-VHD -Path {Pwsh.Quote(path)}", ct);
         lock (_attachmentGate) {
             _ownedAttachments.Remove(path);
         }
@@ -155,10 +156,7 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
 
         try {
             var result = probe.RunAsync("pwsh.exe",
-                [
-                    "-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
-                    "[bool](Get-Command New-VHD -ErrorAction SilentlyContinue)"
-                ],
+                Pwsh.Args("[bool](Get-Command New-VHD -ErrorAction SilentlyContinue)"),
                 new() { IgnoreExitCode = true, Timeout = TimeSpan.FromSeconds(30) },
                 CancellationToken.None).GetAwaiter().GetResult();
             return result.Success && result.Output.Trim().EndsWith("True", StringComparison.OrdinalIgnoreCase);
@@ -168,12 +166,8 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
         }
     }
 
-    /// <summary>PowerShell single-quoted literal — apostrophes in paths are doubled.</summary>
-    private static string PsQuote(string value) => $"'{value.Replace("'", "''")}'";
-
     private async Task<string> RunPsAsync(string script, CancellationToken ct) {
-        var result = await runner.RunAsync("pwsh.exe",
-            ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script],
+        var result = await runner.RunAsync("pwsh.exe", Pwsh.Args(script),
             new() { Timeout = TimeSpan.FromMinutes(15) }, ct);
         return result.Output + result.Error;
     }

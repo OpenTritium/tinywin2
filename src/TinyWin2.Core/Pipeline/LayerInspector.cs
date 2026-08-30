@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using TinyWin2.Core.Executers;
 using TinyWin2.Core.Layers;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
@@ -289,14 +290,7 @@ public sealed partial class LayerInspector(
             throw new ArgumentException("image path must be a non-empty relative path", nameof(imageRelativePath));
         }
 
-        var root = Path.GetFullPath(mountPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                                    + Path.DirectorySeparatorChar);
-        var candidate = Path.GetFullPath(Path.Combine(root,
-            imageRelativePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar)));
-        if (!candidate.StartsWith(root, StringComparison.OrdinalIgnoreCase)) {
-            throw new ArgumentException("image path escapes the mounted layer", nameof(imageRelativePath));
-        }
-
-        return candidate;
+        return SafePath.TryResolveInside(mountPath, imageRelativePath)
+               ?? throw new ArgumentException("image path escapes the mounted layer", nameof(imageRelativePath));
     }
 }

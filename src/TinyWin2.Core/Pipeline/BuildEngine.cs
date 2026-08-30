@@ -632,7 +632,7 @@ public sealed class BuildEngine(
             return Fingerprinting.Compute(builder.ToString());
         }
 
-        var assetsRoot = ResolveAssetsRoot(plansDirectory, resolved.Definition.Id);
+        var assetsRoot = PlanAssets.ResolveRoot(plansDirectory, resolved.Definition.Id);
         var assetPath = ResolveAssetPathForFingerprint(assetsRoot, copyAssetSource);
         var cacheKey = assetPath ?? $"<missing:{copyAssetSource}>";
         if (!assetFingerprints.TryGetValue(cacheKey, out var assetFingerprint)) {
@@ -650,11 +650,7 @@ public sealed class BuildEngine(
             return null;
         }
 
-        var root = Path.GetFullPath(assetsRoot).TrimEnd(Path.DirectorySeparatorChar,
-            Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        var candidate = Path.GetFullPath(Path.Combine(root,
-            source.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar)));
-        return candidate.StartsWith(root, StringComparison.OrdinalIgnoreCase) ? candidate : null;
+        return SafePath.TryResolveInside(assetsRoot, source);
     }
 
     private static async Task<string> AssetFingerprintAsync(string? assetPath, CancellationToken ct) {
@@ -706,7 +702,7 @@ public sealed class BuildEngine(
             session.MountPath,
             log,
             hiveCache,
-            ResolveAssetsRoot(options.PlansDirectory, resolved.Definition.Id));
+            PlanAssets.ResolveRoot(options.PlansDirectory, resolved.Definition.Id));
         log.PlanId = resolved.Definition.Id;
         try {
             var operationResults = new List<JsonObject>();
@@ -752,15 +748,6 @@ public sealed class BuildEngine(
             throw new ExecException(
                 $"image health check failed after layer {session.Record.Index:000} (exit {result.ExitCode}).");
         }
-    }
-
-    private static string? ResolveAssetsRoot(string? plansDirectory, string planId) {
-        if (plansDirectory is null) {
-            return null;
-        }
-
-        var candidate = Path.Combine(plansDirectory, "assets", planId);
-        return Directory.Exists(candidate) ? candidate : null;
     }
 
     private async Task<string> WriteManifestAsync(
