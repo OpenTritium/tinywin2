@@ -177,19 +177,22 @@ internal static class CommandLine {
             result.GetRequiredValue(output),
             result.GetRequiredValue(workspace),
             Cli.ParseOutputFormat(result.GetRequiredValue(format)),
-            result.GetValue(export.Fast),
-            result.GetValue(export.Compression),
-            result.GetValue(export.Verify),
-            result.GetValue(export.NoVerify),
-            result.GetValue(export.CheckIntegrity),
-            result.GetValue(continueOnError),
-            result.GetValue(dryRun),
-            result.GetValue(singleLayer),
-            result.GetValue(skipEvidence),
-            result.GetValue(resume),
-            result.GetValue(overwrite),
-            result.GetValue(baseSize),
-            result.GetValue(jsonEvents))));
+            Cli.ResolveExportOptions(
+                result.GetValue(export.Fast),
+                result.GetValue(export.Compression),
+                result.GetValue(export.Verify),
+                result.GetValue(export.NoVerify),
+                result.GetValue(export.CheckIntegrity)),
+            new BuildSwitches(
+                result.GetValue(continueOnError),
+                result.GetValue(dryRun),
+                result.GetValue(singleLayer),
+                result.GetValue(skipEvidence),
+                result.GetValue(export.Fast),
+                result.GetValue(resume),
+                result.GetValue(overwrite),
+                result.GetValue(baseSize),
+                result.GetValue(jsonEvents)))));
         return command;
     }
 
@@ -304,11 +307,12 @@ internal static class CommandLine {
             result.GetRequiredValue(rollbackLayer),
             result.GetRequiredValue(rollbackOutput),
             Cli.ParseCaptureFormat(result.GetRequiredValue(rollbackFormat)),
-            result.GetValue(rollbackExport.Fast),
-            result.GetValue(rollbackExport.Compression),
-            result.GetValue(rollbackExport.Verify),
-            result.GetValue(rollbackExport.NoVerify),
-            result.GetValue(rollbackExport.CheckIntegrity))));
+            Cli.ResolveExportOptions(
+                result.GetValue(rollbackExport.Fast),
+                result.GetValue(rollbackExport.Compression),
+                result.GetValue(rollbackExport.Verify),
+                result.GetValue(rollbackExport.NoVerify),
+                result.GetValue(rollbackExport.CheckIntegrity)))));
 
         command.Add(list);
         command.Add(diff);

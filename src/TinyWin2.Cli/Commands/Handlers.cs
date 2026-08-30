@@ -10,7 +10,7 @@ namespace TinyWin2.Cli.Commands;
 
 internal static class BuildHandler {
     public static async Task<int> ExecuteAsync(BuildRequest request) {
-        if (request.BaseVhdxMaximumMb <= 0) {
+        if (request.Switches.BaseVhdxMaximumMb <= 0) {
             throw new ArgumentException("base VHDX size must be positive");
         }
 
@@ -21,7 +21,7 @@ internal static class BuildHandler {
         var plansDir = Cli.FindPlansDirectory(request.Selection.PlansDirectory);
         var catalog = PlanCatalog.LoadDirectory(plansDir);
         var selections = Cli.BuildSelections(request.Selection, catalog);
-        var jsonEvents = request.JsonEvents;
+        var jsonEvents = request.Switches.JsonEvents;
         // Serilog owns console + file output; the JSONL event stream owns stdout in --json-events mode.
         var log = new BuildLog();
         if (jsonEvents) {
@@ -47,17 +47,16 @@ internal static class BuildHandler {
                 WorkspacePath = workspacePath,
                 Catalog = catalog,
                 OutputFormat = request.Format,
-                SkipLayerHealthCheck = request.Fast,
-                Export = Cli.ResolveExportOptions(request.Fast, request.Compression, request.Verify,
-                    request.NoVerify, request.CheckIntegrity),
-                ContinueOnError = request.ContinueOnError,
-                NoLayers = request.SingleLayer,
-                DryRun = request.DryRun,
-                CaptureEvidence = !request.SkipEvidence,
-                Resume = request.Resume,
-                OverwriteOutput = request.Overwrite,
+                SkipLayerHealthCheck = request.Switches.SkipLayerHealthChecks,
+                Export = request.Export,
+                ContinueOnError = request.Switches.ContinueOnError,
+                NoLayers = request.Switches.SingleLayer,
+                DryRun = request.Switches.DryRun,
+                CaptureEvidence = !request.Switches.SkipEvidence,
+                Resume = request.Switches.Resume,
+                OverwriteOutput = request.Switches.Overwrite,
                 PlansDirectory = plansDir,
-                BaseVhdxMaximumMb = request.BaseVhdxMaximumMb
+                BaseVhdxMaximumMb = request.Switches.BaseVhdxMaximumMb
             }, cts.Token);
             if (jsonEvents) {
                 await Console.Out.WriteLineAsync(new JsonObject {
@@ -93,12 +92,12 @@ internal static class BuildHandler {
         catch (BuildStepFailedException ex) {
             if (!jsonEvents) {
                 await Console.Error.WriteLineAsync(
-                    request.SingleLayer
+                    request.Switches.SingleLayer
                         ? $"✘ step '{ex.StepId}' failed at step {ex.LayerIndex:000}; the single-layer workspace was kept for checkpointed recovery."
                         : $"✘ step '{ex.StepId}' failed at layer {ex.LayerIndex:000}; the failed layer was discarded and the previous layer was kept.");
                 await Console.Error.WriteLineAsync(
                     $"  recovery: rerun the same build command with --resume to replay from the previous completed step and retry '{ex.StepId}'.");
-                if (!request.SingleLayer) {
+                if (!request.Switches.SingleLayer) {
                     await Console.Error.WriteLineAsync(
                         $"  post-mortem: tinywin2 layer diff --workspace \"{request.Workspace}\" " +
                         $"--from {Math.Max(0, ex.LayerIndex - 1)} --to {ex.LayerIndex}");
@@ -386,10 +385,7 @@ internal static class LayerHandler {
         var (runner, _, layers) = Cli.CreateEngineParts();
         var inspector = new LayerInspector(runner, layers, log);
         var captured = await inspector.RollbackCaptureAsync(request.Workspace, request.Layer, request.Output,
-            request.Format,
-            Cli.ResolveExportOptions(request.Fast, request.Compression, request.Verify, request.NoVerify,
-                request.CheckIntegrity),
-            CancellationToken.None);
+            request.Format, request.Export, CancellationToken.None);
         Console.WriteLine($"captured layer state → {captured}");
         return 0;
     }

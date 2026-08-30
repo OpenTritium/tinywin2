@@ -38,15 +38,16 @@ internal sealed record BuildRequest(
     string Output,
     string Workspace,
     OutputFormat Format,
-    bool Fast,
-    string? Compression,
-    bool Verify,
-    bool NoVerify,
-    bool CheckIntegrity,
+    ImageExportOptions Export,
+    BuildSwitches Switches);
+
+/// <summary>Boolean/size build knobs that are not part of selection or export configuration.</summary>
+internal sealed record BuildSwitches(
     bool ContinueOnError,
     bool DryRun,
     bool SingleLayer,
     bool SkipEvidence,
+    bool SkipLayerHealthChecks,
     bool Resume,
     bool Overwrite,
     long BaseVhdxMaximumMb,
@@ -88,8 +89,4 @@ internal sealed record LayerRollbackRequest(
     int Layer,
     string Output,
     OutputFormat Format,
-    bool Fast,
-    string? Compression,
-    bool Verify,
-    bool NoVerify,
-    bool CheckIntegrity);
+    ImageExportOptions Export);
