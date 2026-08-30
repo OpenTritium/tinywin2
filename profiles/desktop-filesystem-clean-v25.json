@@ -1,9 +1,0 @@
-{
-  "$schema": "../schemas/profile-v3.schema.json",
-  "schemaVersion": 3,
-  "name": "desktop-filesystem-clean-v25",
-  "description": "在已验证能进入桌面、现代右键菜单和中文微软拼音正常的 v23 上，移除 3 个非核心 SystemApps 残留。保留 WinRE、现代 Explorer/WinUI、Office/娱乐所需的图形音频网络、Edge WebView 和硬件驱动。",
-  "selections": [
-    { "planId": "fs.optional-system-app-residuals", "enabled": true }
-  ]
-}

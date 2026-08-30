@@ -26,9 +26,9 @@ Typical workflow:
 ```
 tinywin2 inspect --input win11.iso
 tinywin2 preview --input win11.iso --index 1 --workspace ./ws \
-  --profile profiles/desktop-extreme-next-addons.json
+  --profile profiles/full-except-winre.json
 tinywin2 build --input win11.iso --index 1 --output out/install.esd --workspace ./ws \
-  --format esd --profile profiles/desktop-extreme-next-addons.json
+  --format esd --profile profiles/full-except-winre.json
 tinywin2 package iso --input win11.iso --install-image out/install.esd \
   --output out/win11-slim.iso --workspace ./pkg --oscdimg "C:/oscdimg/oscdimg.exe"
 ```

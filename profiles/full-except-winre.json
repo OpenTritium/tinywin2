@@ -1,0 +1,1111 @@
+{
+  "schemaVersion": 3,
+  "name": "Full except WinRE",
+  "description": "Every plan in the catalog enabled except: fs.recovery-environment (WinRE kept), appx.client-cbs (conflicts with service.security-minimal; keeps Chinese IME and modern shell), service.sysmain (conflicts with service.memory-compression, which stays enabled).",
+  "selections": [
+    {
+      "planId": "appx.alarms",
+      "enabled": true
+    },
+    {
+      "planId": "appx.application-compatibility-enhancements",
+      "enabled": true
+    },
+    {
+      "planId": "appx.apprep",
+      "enabled": true
+    },
+    {
+      "planId": "appx.bing-consumer",
+      "enabled": true
+    },
+    {
+      "planId": "appx.bing-search",
+      "enabled": true
+    },
+    {
+      "planId": "appx.calculator",
+      "enabled": true
+    },
+    {
+      "planId": "appx.camera",
+      "enabled": true
+    },
+    {
+      "planId": "appx.client-cbs",
+      "enabled": false
+    },
+    {
+      "planId": "appx.clipchamp",
+      "enabled": true
+    },
+    {
+      "planId": "appx.content-delivery",
+      "enabled": true
+    },
+    {
+      "planId": "appx.copilot",
+      "enabled": true
+    },
+    {
+      "planId": "appx.cross-device",
+      "enabled": true
+    },
+    {
+      "planId": "appx.desktop-app-installer",
+      "enabled": true
+    },
+    {
+      "planId": "appx.dev-home",
+      "enabled": true
+    },
+    {
+      "planId": "appx.edge-devtools",
+      "enabled": true
+    },
+    {
+      "planId": "appx.family",
+      "enabled": true
+    },
+    {
+      "planId": "appx.feedback-hub",
+      "enabled": true
+    },
+    {
+      "planId": "appx.gaming-app",
+      "enabled": true
+    },
+    {
+      "planId": "appx.get-help",
+      "enabled": true
+    },
+    {
+      "planId": "appx.mail-calendar",
+      "enabled": true
+    },
+    {
+      "planId": "appx.maps",
+      "enabled": true
+    },
+    {
+      "planId": "appx.modern-calculator",
+      "enabled": true
+    },
+    {
+      "planId": "appx.modern-notepad",
+      "enabled": true
+    },
+    {
+      "planId": "appx.modern-paint",
+      "enabled": true
+    },
+    {
+      "planId": "appx.narrator-quickstart",
+      "enabled": true
+    },
+    {
+      "planId": "appx.office-hub",
+      "enabled": true
+    },
+    {
+      "planId": "appx.onedrive",
+      "enabled": true
+    },
+    {
+      "planId": "appx.outlook",
+      "enabled": true
+    },
+    {
+      "planId": "appx.parental-controls",
+      "enabled": true
+    },
+    {
+      "planId": "appx.people",
+      "enabled": true
+    },
+    {
+      "planId": "appx.photos",
+      "enabled": true
+    },
+    {
+      "planId": "appx.power-automate",
+      "enabled": true
+    },
+    {
+      "planId": "appx.print-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "appx.quick-assist",
+      "enabled": true
+    },
+    {
+      "planId": "appx.screen-sketch",
+      "enabled": true
+    },
+    {
+      "planId": "appx.security-health-ui",
+      "enabled": true
+    },
+    {
+      "planId": "appx.solitaire",
+      "enabled": true
+    },
+    {
+      "planId": "appx.sound-recorder",
+      "enabled": true
+    },
+    {
+      "planId": "appx.sticky-notes",
+      "enabled": true
+    },
+    {
+      "planId": "appx.store",
+      "enabled": true
+    },
+    {
+      "planId": "appx.teams",
+      "enabled": true
+    },
+    {
+      "planId": "appx.todos",
+      "enabled": true
+    },
+    {
+      "planId": "appx.web-experience",
+      "enabled": true
+    },
+    {
+      "planId": "appx.web-media-extensions",
+      "enabled": true
+    },
+    {
+      "planId": "appx.windows-terminal",
+      "enabled": true
+    },
+    {
+      "planId": "appx.xbox",
+      "enabled": true
+    },
+    {
+      "planId": "appx.your-phone",
+      "enabled": true
+    },
+    {
+      "planId": "appx.zune-media",
+      "enabled": true
+    },
+    {
+      "planId": "capability.braille-support",
+      "enabled": true
+    },
+    {
+      "planId": "capability.chinese-language",
+      "enabled": true
+    },
+    {
+      "planId": "capability.directx-config",
+      "enabled": true
+    },
+    {
+      "planId": "capability.extra-wallpapers",
+      "enabled": true
+    },
+    {
+      "planId": "capability.internet-explorer",
+      "enabled": true
+    },
+    {
+      "planId": "capability.japanese-language",
+      "enabled": true
+    },
+    {
+      "planId": "capability.korean-language",
+      "enabled": true
+    },
+    {
+      "planId": "capability.la57",
+      "enabled": true
+    },
+    {
+      "planId": "capability.legacy-sorting",
+      "enabled": true
+    },
+    {
+      "planId": "capability.math-recognizer",
+      "enabled": true
+    },
+    {
+      "planId": "capability.notepad",
+      "enabled": true
+    },
+    {
+      "planId": "capability.onesync",
+      "enabled": true
+    },
+    {
+      "planId": "capability.openssh-client",
+      "enabled": true
+    },
+    {
+      "planId": "capability.openssh-server",
+      "enabled": true
+    },
+    {
+      "planId": "capability.paint",
+      "enabled": true
+    },
+    {
+      "planId": "capability.powershell-ise",
+      "enabled": true
+    },
+    {
+      "planId": "capability.sense-client",
+      "enabled": true
+    },
+    {
+      "planId": "capability.snipping-tool",
+      "enabled": true
+    },
+    {
+      "planId": "capability.steps-recorder",
+      "enabled": true
+    },
+    {
+      "planId": "capability.vbscript",
+      "enabled": true
+    },
+    {
+      "planId": "capability.wmic",
+      "enabled": true
+    },
+    {
+      "planId": "component.edge",
+      "enabled": true
+    },
+    {
+      "planId": "driver.fibre-channel-drivers",
+      "enabled": true
+    },
+    {
+      "planId": "driver.legacy-modem",
+      "enabled": true
+    },
+    {
+      "planId": "driver.legacy-printing",
+      "enabled": true
+    },
+    {
+      "planId": "driver.mobile-platform-drivers",
+      "enabled": true
+    },
+    {
+      "planId": "driver.vendor-raid-controllers",
+      "enabled": true
+    },
+    {
+      "planId": "feature.active-directory",
+      "enabled": true
+    },
+    {
+      "planId": "feature.ad-certificate-services",
+      "enabled": true
+    },
+    {
+      "planId": "feature.adfs",
+      "enabled": true
+    },
+    {
+      "planId": "feature.bitlocker",
+      "enabled": true
+    },
+    {
+      "planId": "feature.containers",
+      "enabled": true
+    },
+    {
+      "planId": "feature.data-deduplication",
+      "enabled": true
+    },
+    {
+      "planId": "feature.datacenter-bridging",
+      "enabled": true
+    },
+    {
+      "planId": "feature.dfs-replication",
+      "enabled": true
+    },
+    {
+      "planId": "feature.dhcp-server",
+      "enabled": true
+    },
+    {
+      "planId": "feature.distributed-file-system",
+      "enabled": true
+    },
+    {
+      "planId": "feature.dns-server",
+      "enabled": true
+    },
+    {
+      "planId": "feature.dotnet-framework-3.5",
+      "enabled": true
+    },
+    {
+      "planId": "feature.enhanced-storage",
+      "enabled": true
+    },
+    {
+      "planId": "feature.extra-fonts",
+      "enabled": true
+    },
+    {
+      "planId": "feature.failover-clustering",
+      "enabled": true
+    },
+    {
+      "planId": "feature.fax",
+      "enabled": true
+    },
+    {
+      "planId": "feature.file-server-resource-manager",
+      "enabled": true
+    },
+    {
+      "planId": "feature.host-guardian",
+      "enabled": true
+    },
+    {
+      "planId": "feature.hyper-v",
+      "enabled": true
+    },
+    {
+      "planId": "feature.iis",
+      "enabled": true
+    },
+    {
+      "planId": "feature.iscsi-target",
+      "enabled": true
+    },
+    {
+      "planId": "feature.legacy-components",
+      "enabled": true
+    },
+    {
+      "planId": "feature.legacy-networking",
+      "enabled": true
+    },
+    {
+      "planId": "feature.media",
+      "enabled": true
+    },
+    {
+      "planId": "feature.message-queue",
+      "enabled": true
+    },
+    {
+      "planId": "feature.multipath-io",
+      "enabled": true
+    },
+    {
+      "planId": "feature.multipoint-services",
+      "enabled": true
+    },
+    {
+      "planId": "feature.network-policy-server",
+      "enabled": true
+    },
+    {
+      "planId": "feature.nfs",
+      "enabled": true
+    },
+    {
+      "planId": "feature.powershell-v2",
+      "enabled": true
+    },
+    {
+      "planId": "feature.printing",
+      "enabled": true
+    },
+    {
+      "planId": "feature.rds-management-tools",
+      "enabled": true
+    },
+    {
+      "planId": "feature.remote-access",
+      "enabled": true
+    },
+    {
+      "planId": "feature.remote-desktop-client",
+      "enabled": true
+    },
+    {
+      "planId": "feature.rsat",
+      "enabled": true
+    },
+    {
+      "planId": "feature.search",
+      "enabled": true
+    },
+    {
+      "planId": "feature.server-backup",
+      "enabled": true
+    },
+    {
+      "planId": "feature.shielded-vm-tools",
+      "enabled": true
+    },
+    {
+      "planId": "feature.smb-direct",
+      "enabled": true
+    },
+    {
+      "planId": "feature.smb1",
+      "enabled": true
+    },
+    {
+      "planId": "feature.snmp",
+      "enabled": true
+    },
+    {
+      "planId": "feature.storage-migration",
+      "enabled": true
+    },
+    {
+      "planId": "feature.storage-replica",
+      "enabled": true
+    },
+    {
+      "planId": "feature.system-insights",
+      "enabled": true
+    },
+    {
+      "planId": "feature.wcf",
+      "enabled": true
+    },
+    {
+      "planId": "feature.windows-admin-center",
+      "enabled": true
+    },
+    {
+      "planId": "feature.windows-defender",
+      "enabled": true
+    },
+    {
+      "planId": "feature.wireless-networking",
+      "enabled": true
+    },
+    {
+      "planId": "feature.workfolders",
+      "enabled": true
+    },
+    {
+      "planId": "feature.wow64",
+      "enabled": true
+    },
+    {
+      "planId": "feature.wsl",
+      "enabled": true
+    },
+    {
+      "planId": "feature.wsus",
+      "enabled": true
+    },
+    {
+      "planId": "feature.xps",
+      "enabled": true
+    },
+    {
+      "planId": "fs.accessibility-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "fs.bing-search-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "fs.cbs-orphaned-security-edge",
+      "enabled": true
+    },
+    {
+      "planId": "fs.character-map",
+      "enabled": true
+    },
+    {
+      "planId": "fs.edge-webview-runtime",
+      "enabled": true
+    },
+    {
+      "planId": "fs.extra-theme-assets",
+      "enabled": true
+    },
+    {
+      "planId": "fs.font-cache-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "fs.help-content",
+      "enabled": true
+    },
+    {
+      "planId": "fs.image-event-logs",
+      "enabled": true
+    },
+    {
+      "planId": "fs.image-setup-logs",
+      "enabled": true
+    },
+    {
+      "planId": "fs.image-temporary-data",
+      "enabled": true
+    },
+    {
+      "planId": "fs.inetpub",
+      "enabled": true
+    },
+    {
+      "planId": "fs.internet-explorer",
+      "enabled": true
+    },
+    {
+      "planId": "fs.legacy-cjk-fonts",
+      "enabled": true
+    },
+    {
+      "planId": "fs.legacy-ime",
+      "enabled": true
+    },
+    {
+      "planId": "fs.onedrive",
+      "enabled": true
+    },
+    {
+      "planId": "fs.optional-system-app-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "fs.outlook",
+      "enabled": true
+    },
+    {
+      "planId": "fs.prefetch",
+      "enabled": true
+    },
+    {
+      "planId": "fs.recovery-environment",
+      "enabled": false
+    },
+    {
+      "planId": "fs.remote-desktop-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "fs.security-deep-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "fs.security-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "fs.startup-shortcuts",
+      "enabled": true
+    },
+    {
+      "planId": "fs.windows-mail",
+      "enabled": true
+    },
+    {
+      "planId": "fs.windows-old",
+      "enabled": true
+    },
+    {
+      "planId": "fs.windows-photo-viewer",
+      "enabled": true
+    },
+    {
+      "planId": "maintenance.component-cleanup",
+      "enabled": true
+    },
+    {
+      "planId": "maintenance.component-resetbase",
+      "enabled": true
+    },
+    {
+      "planId": "package.edge-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "package.security-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "registry.automatic-maintenance",
+      "enabled": true
+    },
+    {
+      "planId": "registry.bing-search-provider",
+      "enabled": true
+    },
+    {
+      "planId": "registry.consumer-content",
+      "enabled": true
+    },
+    {
+      "planId": "registry.default-user-content-delivery",
+      "enabled": true
+    },
+    {
+      "planId": "registry.default-user-content-delivery-cache",
+      "enabled": true
+    },
+    {
+      "planId": "registry.defender-ui-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "registry.device-guard-disabled",
+      "enabled": true
+    },
+    {
+      "planId": "registry.edge-background-mode",
+      "enabled": true
+    },
+    {
+      "planId": "registry.edge-browser-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "registry.edge-smartscreen",
+      "enabled": true
+    },
+    {
+      "planId": "registry.edge-update-cleanup",
+      "enabled": true
+    },
+    {
+      "planId": "registry.edge-update-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "registry.exploit-protection-disabled",
+      "enabled": true
+    },
+    {
+      "planId": "registry.help-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "registry.llmnr-disabled",
+      "enabled": true
+    },
+    {
+      "planId": "registry.lsa-protection-disabled",
+      "enabled": true
+    },
+    {
+      "planId": "registry.modern-context-menu",
+      "enabled": true
+    },
+    {
+      "planId": "registry.ntfs-8dot3-disabled",
+      "enabled": true
+    },
+    {
+      "planId": "registry.onedrive-profile",
+      "enabled": true
+    },
+    {
+      "planId": "registry.onedrive-startup",
+      "enabled": true
+    },
+    {
+      "planId": "registry.photo-viewer-registration",
+      "enabled": true
+    },
+    {
+      "planId": "registry.photo-viewer-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "registry.prefetch-disabled",
+      "enabled": true
+    },
+    {
+      "planId": "registry.reserved-storage",
+      "enabled": true
+    },
+    {
+      "planId": "registry.security-service-keys",
+      "enabled": true
+    },
+    {
+      "planId": "registry.security-startup",
+      "enabled": true
+    },
+    {
+      "planId": "registry.security-tasks",
+      "enabled": true
+    },
+    {
+      "planId": "registry.server-ie-esc",
+      "enabled": true
+    },
+    {
+      "planId": "registry.server-manager-autostart",
+      "enabled": true
+    },
+    {
+      "planId": "registry.shutdown-event-tracker",
+      "enabled": true
+    },
+    {
+      "planId": "registry.start-layout",
+      "enabled": true
+    },
+    {
+      "planId": "registry.start-pins",
+      "enabled": true
+    },
+    {
+      "planId": "registry.startup-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "registry.uac",
+      "enabled": true
+    },
+    {
+      "planId": "registry.vbs-disabled",
+      "enabled": true
+    },
+    {
+      "planId": "registry.windows-backup",
+      "enabled": true
+    },
+    {
+      "planId": "registry.windows-firewall",
+      "enabled": true
+    },
+    {
+      "planId": "registry.windows-smartscreen",
+      "enabled": true
+    },
+    {
+      "planId": "registry.wpbt-disabled",
+      "enabled": true
+    },
+    {
+      "planId": "service.ai-fabric",
+      "enabled": true
+    },
+    {
+      "planId": "service.audio",
+      "enabled": true
+    },
+    {
+      "planId": "service.biometric",
+      "enabled": true
+    },
+    {
+      "planId": "service.bluetooth",
+      "enabled": true
+    },
+    {
+      "planId": "service.clipboard-user",
+      "enabled": true
+    },
+    {
+      "planId": "service.cloud-backup-restore",
+      "enabled": true
+    },
+    {
+      "planId": "service.compatibility-assistant",
+      "enabled": true
+    },
+    {
+      "planId": "service.connected-devices-platform",
+      "enabled": true
+    },
+    {
+      "planId": "service.data-usage",
+      "enabled": true
+    },
+    {
+      "planId": "service.delivery-optimization",
+      "enabled": true
+    },
+    {
+      "planId": "service.desktop-themes",
+      "enabled": true
+    },
+    {
+      "planId": "service.device-association",
+      "enabled": true
+    },
+    {
+      "planId": "service.device-setup",
+      "enabled": true
+    },
+    {
+      "planId": "service.diagnostic-policy",
+      "enabled": true
+    },
+    {
+      "planId": "service.diagnostic-tracking",
+      "enabled": true
+    },
+    {
+      "planId": "service.display-broker",
+      "enabled": true
+    },
+    {
+      "planId": "service.distributed-link-tracking",
+      "enabled": true
+    },
+    {
+      "planId": "service.distributed-transaction-coordinator",
+      "enabled": true
+    },
+    {
+      "planId": "service.edge-update",
+      "enabled": true
+    },
+    {
+      "planId": "service.event-collector",
+      "enabled": true
+    },
+    {
+      "planId": "service.font-cache",
+      "enabled": true
+    },
+    {
+      "planId": "service.ikeext",
+      "enabled": true
+    },
+    {
+      "planId": "service.internet-connection-sharing",
+      "enabled": true
+    },
+    {
+      "planId": "service.inventory",
+      "enabled": true
+    },
+    {
+      "planId": "service.ip-helper",
+      "enabled": true
+    },
+    {
+      "planId": "service.iscsi-initiator",
+      "enabled": true
+    },
+    {
+      "planId": "service.license-manager",
+      "enabled": true
+    },
+    {
+      "planId": "service.link-discovery",
+      "enabled": true
+    },
+    {
+      "planId": "service.link-tracking",
+      "enabled": true
+    },
+    {
+      "planId": "service.location",
+      "enabled": true
+    },
+    {
+      "planId": "service.maps-broker",
+      "enabled": true
+    },
+    {
+      "planId": "service.memory-compression",
+      "enabled": true
+    },
+    {
+      "planId": "service.microsoft-account-signin",
+      "enabled": true
+    },
+    {
+      "planId": "service.netbios-helper",
+      "enabled": true
+    },
+    {
+      "planId": "service.netbt",
+      "enabled": true
+    },
+    {
+      "planId": "service.network-discovery",
+      "enabled": true
+    },
+    {
+      "planId": "service.network-setup",
+      "enabled": true
+    },
+    {
+      "planId": "service.now-playing-session",
+      "enabled": true
+    },
+    {
+      "planId": "service.offline-files",
+      "enabled": true
+    },
+    {
+      "planId": "service.performance-logs",
+      "enabled": true
+    },
+    {
+      "planId": "service.phone",
+      "enabled": true
+    },
+    {
+      "planId": "service.portable-devices",
+      "enabled": true
+    },
+    {
+      "planId": "service.print-config",
+      "enabled": true
+    },
+    {
+      "planId": "service.print-spooler",
+      "enabled": true
+    },
+    {
+      "planId": "service.privacy-broker",
+      "enabled": true
+    },
+    {
+      "planId": "service.push-notifications",
+      "enabled": true
+    },
+    {
+      "planId": "service.remote-access-connection-manager",
+      "enabled": true
+    },
+    {
+      "planId": "service.remote-desktop-services",
+      "enabled": true
+    },
+    {
+      "planId": "service.remote-registry",
+      "enabled": true
+    },
+    {
+      "planId": "service.security-health",
+      "enabled": true
+    },
+    {
+      "planId": "service.security-minimal",
+      "enabled": true
+    },
+    {
+      "planId": "service.server",
+      "enabled": true
+    },
+    {
+      "planId": "service.smart-card",
+      "enabled": true
+    },
+    {
+      "planId": "service.software-protection",
+      "enabled": true
+    },
+    {
+      "planId": "service.store-install",
+      "enabled": true
+    },
+    {
+      "planId": "service.sysmain",
+      "enabled": false
+    },
+    {
+      "planId": "service.tcpipreg",
+      "enabled": true
+    },
+    {
+      "planId": "service.telephony",
+      "enabled": true
+    },
+    {
+      "planId": "service.time-sync",
+      "enabled": true
+    },
+    {
+      "planId": "service.token-broker",
+      "enabled": true
+    },
+    {
+      "planId": "service.tzautoupdate",
+      "enabled": true
+    },
+    {
+      "planId": "service.ucpd",
+      "enabled": true
+    },
+    {
+      "planId": "service.update-orchestrator",
+      "enabled": true
+    },
+    {
+      "planId": "service.user-access-logging",
+      "enabled": true
+    },
+    {
+      "planId": "service.user-data-services",
+      "enabled": true
+    },
+    {
+      "planId": "service.volume-shadow-copy",
+      "enabled": true
+    },
+    {
+      "planId": "service.wdi-service-host",
+      "enabled": true
+    },
+    {
+      "planId": "service.wdi-system-host",
+      "enabled": true
+    },
+    {
+      "planId": "service.windows-error-reporting",
+      "enabled": true
+    },
+    {
+      "planId": "service.windows-health-optimized-experiences",
+      "enabled": true
+    },
+    {
+      "planId": "service.windows-remote-management",
+      "enabled": true
+    },
+    {
+      "planId": "service.windows-search",
+      "enabled": true
+    },
+    {
+      "planId": "service.windows-update",
+      "enabled": true
+    },
+    {
+      "planId": "service.wlan-config",
+      "enabled": true
+    },
+    {
+      "planId": "service.wlms",
+      "enabled": true
+    },
+    {
+      "planId": "service.workstation",
+      "enabled": true
+    },
+    {
+      "planId": "service.wpad",
+      "enabled": true
+    },
+    {
+      "planId": "service.xbox-gaming",
+      "enabled": true
+    }
+  ]
+}

@@ -1,9 +1,0 @@
-{
-  "$schema": "../schemas/profile-v3.schema.json",
-  "schemaVersion": 3,
-  "name": "desktop-filesystem-clean-v26",
-  "description": "叠加到已验证可进入桌面的 v25：清理 Windows Setup 重新生成的 Defender 和 Windows Update 计划任务文件；配套无人值守首次登录清理任务注册并重新禁用更新服务。保留 WinRE、现代 Explorer/WinUI、中文微软拼音、Edge WebView、图形音频网络和硬件驱动。",
-  "selections": [
-    { "planId": "fs.security-residuals", "enabled": true }
-  ]
-}
