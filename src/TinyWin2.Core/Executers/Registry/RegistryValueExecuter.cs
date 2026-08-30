@@ -80,10 +80,9 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
         var changes = new List<ValueChange>();
         foreach (var value in options.Values) {
             var keyPath = hive.KeyUnderHive(value.Key);
-            var result = await runner.RunAsync("reg.exe",
-                string.IsNullOrEmpty(value.Name) ? ["query", keyPath, "/ve"] : ["query", keyPath, "/v", value.Name],
-                new() { IgnoreExitCode = true }, ct);
-            ThrowIfUnexpectedFailure(result);
+            var result = string.IsNullOrEmpty(value.Name)
+                ? await OfflineReg.QueryAsync(runner, keyPath, ct, "/ve")
+                : await OfflineReg.QueryAsync(runner, keyPath, ct, "/v", value.Name);
             var existing = result.Success
                 ? RegValues.ParseQueryValue(result.Output, string.IsNullOrEmpty(value.Name) ? "(Default)" : value.Name)
                 : null;
@@ -116,9 +115,7 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
 
         if (spec.Action == OperationAction.Remove) {
             foreach (var key in options.DeleteKeys) {
-                var result = await runner.RunAsync("reg.exe", ["query", hive.KeyUnderHive(key)],
-                    new() { IgnoreExitCode = true }, ct);
-                ThrowIfUnexpectedFailure(result);
+                var result = await OfflineReg.QueryAsync(runner, hive.KeyUnderHive(key), ct);
                 if (result.Success) {
                     changes.Add(new(
                         new(ChangeKind.Removed, $"{hive.HiveId}\\{key.Trim('\\')} (key)"),

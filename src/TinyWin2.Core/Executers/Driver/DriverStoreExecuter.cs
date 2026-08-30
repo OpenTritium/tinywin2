@@ -10,7 +10,7 @@ namespace TinyWin2.Core.Executers.Driver;
 ///     names match <c>Original File Name</c>; removal uses DISM's <c>Published Name</c>
 ///     so the driver store metadata remains consistent.
 /// </summary>
-public sealed partial class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBase(runner), IExecuter {
+public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBase(runner), IExecuter {
     private const string ResourceId = "driver.store";
     private readonly IProcessRunner _runner = runner;
 
@@ -153,21 +153,13 @@ public sealed partial class DriverStoreExecuter(IProcessRunner runner) : DismExe
     private async Task<IReadOnlyList<string>> ReadControlSetsAsync(
         ExecContext context, CancellationToken ct) {
         var system = await context.Hives.GetAsync("system", context.Log, ct);
-        var result = await _runner.RunAsync("reg.exe", ["query", system.HiveKey],
-            new() { IgnoreExitCode = true }, ct);
+        var result = await OfflineReg.QueryAsync(_runner, system.HiveKey, ct);
         if (!result.Success) {
             throw new ExecException(
                 "could not enumerate offline SYSTEM control sets; refusing forceUnusedInbox removal.");
         }
 
-        var prefix = system.HiveKey + "\\";
-        var controlSets = result.Output
-            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => line.Trim())
-            .Select(line => line.Replace("HKEY_LOCAL_MACHINE\\", "HKLM\\",
-                StringComparison.OrdinalIgnoreCase))
-            .Where(line => line.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            .Select(line => line[prefix.Length..])
+        var controlSets = RegQuery.DirectChildKeys(result.Output, system.HiveKey)
             .Where(name => name.Length == 13
                            && name.StartsWith("ControlSet", StringComparison.OrdinalIgnoreCase)
                            && name[10..].All(char.IsAsciiDigit))
@@ -188,14 +180,9 @@ public sealed partial class DriverStoreExecuter(IProcessRunner runner) : DismExe
         var system = await context.Hives.GetAsync("system", context.Log, ct);
         var services = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var controlSet in controlSets) {
-            var result = await _runner.RunAsync("reg.exe", [
-                "query", $@"{system.HiveKey}\{controlSet}\Enum", "/s", "/v", "Service"
-            ], new() { IgnoreExitCode = true }, ct);
-            if (!result.Success && result.ExitCode != 1) {
-                throw new ProcessRunnerException("reg.exe", result);
-            }
-
-            services.UnionWith(InboxDriverPackage.ReadNamedValues(result.Output + result.Error, "Service"));
+            var result = await OfflineReg.QueryAsync(_runner,
+                $@"{system.HiveKey}\{controlSet}\Enum", ct, "/s", "/v", "Service");
+            services.UnionWith(RegQuery.NamedValues(result.Output + result.Error, "Service"));
         }
 
         context.Log.Debug($"driver.store: found {services.Count} offline device service reference(s)");
@@ -210,10 +197,11 @@ public sealed partial class DriverStoreExecuter(IProcessRunner runner) : DismExe
                                                                       .Contains(owner,
                                                                           StringComparer.OrdinalIgnoreCase)))) {
             foreach (var controlSet in package.ControlSets) {
-                await DeleteKeyWithAclRescueAsync(
-                    $@"{system.HiveKey}\{controlSet}\Services\{service.Name}", ct);
-                await DeleteKeyWithAclRescueAsync(
-                    $@"{system.HiveKey}\{controlSet}\Services\EventLog\System\{service.Name}", ct);
+                await OfflineReg.DeleteKeyAsync(_runner,
+                    $@"{system.HiveKey}\{controlSet}\Services\{service.Name}", system.HiveKey, ct);
+                await OfflineReg.DeleteKeyAsync(_runner,
+                    $@"{system.HiveKey}\{controlSet}\Services\EventLog\System\{service.Name}", system.HiveKey,
+                    ct);
             }
 
             foreach (var imagePath in service.ImagePaths) {
@@ -228,13 +216,16 @@ public sealed partial class DriverStoreExecuter(IProcessRunner runner) : DismExe
         }
 
         foreach (var key in package.DeviceIdKeys) {
-            await DeleteValueWithAclRescueAsync(
-                $@"{system.HiveKey}\DriverDatabase\DeviceIds\{key}", package.InfName, ct);
+            await OfflineReg.DeleteValueAsync(_runner,
+                $@"{system.HiveKey}\DriverDatabase\DeviceIds\{key}", package.InfName,
+                $@"{system.HiveKey}\DriverDatabase\DeviceIds\{key}", ct);
         }
 
-        await DeleteKeyWithAclRescueAsync(
+        await OfflineReg.DeleteKeyAsync(_runner,
+            $@"{system.HiveKey}\DriverDatabase\DriverInfFiles\{package.InfName}",
             $@"{system.HiveKey}\DriverDatabase\DriverInfFiles\{package.InfName}", ct);
-        await DeleteKeyWithAclRescueAsync(
+        await OfflineReg.DeleteKeyAsync(_runner,
+            $@"{system.HiveKey}\DriverDatabase\DriverPackages\{package.PackageDirectoryName}",
             $@"{system.HiveKey}\DriverDatabase\DriverPackages\{package.PackageDirectoryName}", ct);
 
         await DeletePathIfPresentAsync(
@@ -271,36 +262,6 @@ public sealed partial class DriverStoreExecuter(IProcessRunner runner) : DismExe
         }
     }
 
-    private async Task DeleteKeyWithAclRescueAsync(string key, CancellationToken ct) {
-        var result = await _runner.RunAsync("reg.exe", ["delete", key, "/f"],
-            new() { IgnoreExitCode = true }, ct);
-        if (result.Success || result.ExitCode == 1) {
-            return;
-        }
-
-        await RegistryAcl.RescueAsync(_runner, key, ct);
-        result = await _runner.RunAsync("reg.exe", ["delete", key, "/f"],
-            new() { IgnoreExitCode = true }, ct);
-        if (!result.Success && result.ExitCode != 1) {
-            throw new ProcessRunnerException("reg.exe", result);
-        }
-    }
-
-    private async Task DeleteValueWithAclRescueAsync(string key, string value, CancellationToken ct) {
-        var result = await _runner.RunAsync("reg.exe", ["delete", key, "/v", value, "/f"],
-            new() { IgnoreExitCode = true }, ct);
-        if (result.Success || result.ExitCode == 1) {
-            return;
-        }
-
-        await RegistryAcl.RescueAsync(_runner, key, ct);
-        result = await _runner.RunAsync("reg.exe", ["delete", key, "/v", value, "/f"],
-            new() { IgnoreExitCode = true }, ct);
-        if (!result.Success && result.ExitCode != 1) {
-            throw new ProcessRunnerException("reg.exe", result);
-        }
-    }
-
     private async Task DeletePathIfPresentAsync(string path, CancellationToken ct) {
         if (!File.Exists(path) && !Directory.Exists(path)) {
             return;
@@ -314,14 +275,7 @@ public sealed partial class DriverStoreExecuter(IProcessRunner runner) : DismExe
         string? PublishedName = null,
         InboxDriverPackage? Package = null);
 
-    private sealed partial class InboxDriverPackage {
-        [GeneratedRegex(@"^(?:HKEY_LOCAL_MACHINE|HKLM)\\.+$", RegexOptions.IgnoreCase)]
-        private static partial Regex RegistryKeyLine();
-
-        [GeneratedRegex(@"^\s*(?<name>[^\s].*?)\s{2,}(?<type>REG_[A-Z_]+)\s{2,}(?<data>.*)$",
-            RegexOptions.IgnoreCase)]
-        private static partial Regex ValueLine();
-
+    private sealed class InboxDriverPackage {
         public required string InfName { get; init; }
         public required string PackageDirectoryName { get; init; }
         public required string PackageDirectoryPath { get; init; }
@@ -360,26 +314,19 @@ public sealed partial class DriverStoreExecuter(IProcessRunner runner) : DismExe
 
             var system = await context.Hives.GetAsync("system", context.Log, ct);
             var packageKey = $"{system.HiveKey}\\DriverDatabase\\DriverPackages\\{Path.GetFileName(packageDirectory)}";
-            var packageResult = await QueryAsync(runner, packageKey + "\\Configurations", ct);
-            if (!packageResult.Success && packageResult.ExitCode != 1) {
-                throw new ProcessRunnerException("reg.exe", packageResult);
-            }
+            var packageResult = await OfflineReg.QueryAsync(runner, packageKey + "\\Configurations", ct);
 
-            var serviceNames = ReadNamedValues(packageResult.Output + packageResult.Error, "Service")
+            var serviceNames = RegQuery.NamedValues(packageResult.Output + packageResult.Error, "Service")
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
             // Some inbox packages register an auxiliary boot driver (for example,
             // nvstor) through its Owners value without listing it in the package
             // configuration's Service value. Include those services before cleanup.
             foreach (var controlSet in controlSets) {
-                var ownedServices = await QueryAsync(runner,
-                    $"{system.HiveKey}\\{controlSet}\\Services", ct,
-                    "/s", "/f", infName, "/d");
-                if (!ownedServices.Success && ownedServices.ExitCode != 1) {
-                    throw new ProcessRunnerException("reg.exe", ownedServices);
-                }
+                var ownedServices = await OfflineReg.QueryAsync(runner,
+                    $"{system.HiveKey}\\{controlSet}\\Services", ct, "/s", "/f", infName, "/d");
 
-                serviceNames.AddRange(ReadDirectServiceNames(
+                serviceNames.AddRange(RegQuery.DirectChildKeys(
                     ownedServices.Output + ownedServices.Error,
                     $@"{system.HiveKey}\{controlSet}\Services"));
             }
@@ -394,20 +341,16 @@ public sealed partial class DriverStoreExecuter(IProcessRunner runner) : DismExe
                 var imagePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var controlSet in controlSets) {
                     var serviceKey = $"{system.HiveKey}\\{controlSet}\\Services\\{serviceName}";
-                    var serviceResult = await QueryAsync(runner, serviceKey, ct);
-                    if (!serviceResult.Success && serviceResult.ExitCode != 1) {
-                        throw new ProcessRunnerException("reg.exe", serviceResult);
-                    }
-
+                    var serviceResult = await OfflineReg.QueryAsync(runner, serviceKey, ct);
                     if (!serviceResult.Success) {
                         continue;
                     }
 
-                    owners.UnionWith(ReadNamedValues(serviceResult.Output + serviceResult.Error, "Owners")
+                    owners.UnionWith(RegQuery.NamedValues(serviceResult.Output + serviceResult.Error, "Owners")
                         .SelectMany(SplitMultiString));
                     var serviceOutput = serviceResult.Output + serviceResult.Error;
-                    foreach (var imagePath in ReadNamedValues(serviceOutput,
-                                 "ImagePath").SelectMany(SplitMultiString)) {
+                    foreach (var imagePath in RegQuery.NamedValues(serviceOutput, "ImagePath")
+                                 .SelectMany(SplitMultiString)) {
                         var fileName = Path.GetFileName(imagePath.Replace('/', '\\'));
                         if (IsSafeDriverFileName(fileName)) {
                             imagePaths.Add(fileName);
@@ -419,12 +362,9 @@ public sealed partial class DriverStoreExecuter(IProcessRunner runner) : DismExe
             }
 
             var deviceIdRoot = $"{system.HiveKey}\\DriverDatabase\\DeviceIds";
-            var deviceIds = await QueryAsync(runner, deviceIdRoot, ct, "/s", "/f", infName, "/d");
-            if (!deviceIds.Success && deviceIds.ExitCode != 1) {
-                throw new ProcessRunnerException("reg.exe", deviceIds);
-            }
+            var deviceIds = await OfflineReg.QueryAsync(runner, deviceIdRoot, ct, "/s", "/f", infName, "/d");
 
-            var deviceIdKeys = ReadKeysContainingValue(deviceIds.Output + deviceIds.Error, infName);
+            var deviceIdKeys = RegQuery.KeysWithNamedValue(deviceIds.Output + deviceIds.Error, infName).ToList();
             var activeServices = services.Where(service => enumReferences.Contains(service.Name))
                 .Select(service => service.Name)
                 .ToList();
@@ -440,65 +380,6 @@ public sealed partial class DriverStoreExecuter(IProcessRunner runner) : DismExe
                 DeviceIdKeys = deviceIdKeys,
                 ActiveServices = activeServices
             };
-        }
-
-        private static async Task<ProcessRunResult> QueryAsync(
-            IProcessRunner runner,
-            string key,
-            CancellationToken ct,
-            params string[] suffix) {
-            var args = new List<string> { "query", key };
-            args.AddRange(suffix);
-            return await runner.RunAsync("reg.exe", args, new() { IgnoreExitCode = true }, ct);
-        }
-
-        public static IEnumerable<string> ReadNamedValues(string output, string name) {
-            foreach (var line in output.Split('\n')) {
-                var match = ValueLine().Match(line.TrimEnd('\r'));
-                if (match.Success && string.Equals(match.Groups["name"].Value.Trim(), name,
-                        StringComparison.OrdinalIgnoreCase)) {
-                    yield return match.Groups["data"].Value.Trim();
-                }
-            }
-        }
-
-        private static IEnumerable<string> ReadDirectServiceNames(string output, string servicesRoot) {
-            var prefix = servicesRoot + "\\";
-            foreach (var rawLine in output.Split('\n')) {
-                var key = rawLine.Trim();
-                key = key.Replace("HKEY_LOCAL_MACHINE\\", "HKLM\\",
-                    StringComparison.OrdinalIgnoreCase);
-                if (!RegistryKeyLine().IsMatch(key)
-                    || !key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) {
-                    continue;
-                }
-
-                var suffix = key[prefix.Length..];
-                if (suffix.Length > 0 && !suffix.Contains('\\')) {
-                    yield return suffix;
-                }
-            }
-        }
-
-        private static IReadOnlyList<string> ReadKeysContainingValue(string output, string valueName) {
-            var keys = new List<string>();
-            string? current = null;
-            foreach (var rawLine in output.Split('\n')) {
-                var line = rawLine.TrimEnd('\r');
-                if (RegistryKeyLine().IsMatch(line.Trim())) {
-                    current = line.Trim();
-                    continue;
-                }
-
-                var match = ValueLine().Match(line);
-                if (current is not null && match.Success
-                                        && string.Equals(match.Groups["name"].Value.Trim(), valueName,
-                                            StringComparison.OrdinalIgnoreCase)) {
-                    keys.Add(current);
-                }
-            }
-
-            return keys;
         }
 
         private static IEnumerable<string> SplitMultiString(string value) =>

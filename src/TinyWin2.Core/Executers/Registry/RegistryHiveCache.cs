@@ -129,15 +129,10 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
 public static partial class RegValues {
     /// <summary>Extracts a named value from <c>reg query KEY /v NAME</c> output; null if absent.</summary>
     public static RegValue? ParseQueryValue(string output, string valueName) {
-        return (from rawLine in output.Split('\n')
-                select rawLine.TrimEnd('\r')
-            into line
-                select ValueLine().Match(line)
-            into match
-                where match.Success
-                let name = match.Groups[1].Value.Trim()
-                where string.Equals(name, valueName, StringComparison.OrdinalIgnoreCase)
-                select new RegValue(match.Groups[2].Value, match.Groups[3].Value)).FirstOrDefault();
+        return (from entry in RegQuery.Parse(output)
+                from value in entry.Values
+                where string.Equals(value.Name, valueName, StringComparison.OrdinalIgnoreCase)
+                select new RegValue(value.Type, value.Data)).FirstOrDefault();
     }
 
     /// <summary>Renders desired data for reg.exe /d for each supported type.</summary>
@@ -252,10 +247,6 @@ public static partial class RegValues {
         return ulong.TryParse(trimmed, NumberStyles.HexNumber,
             CultureInfo.InvariantCulture, out number);
     }
-
-    /// <summary>reg query value line: four-space separated name, type, data.</summary>
-    [GeneratedRegex(@"^\s+(.+?)(?:\s{4})(REG_[A-Z_]+)(?:\s{4})(.*)$")]
-    private static partial Regex ValueLine();
 
     /// <summary>Strips whitespace, colons, and hyphens from hexadecimal strings.</summary>
     [GeneratedRegex(@"[\s:-]", RegexOptions.CultureInvariant)]

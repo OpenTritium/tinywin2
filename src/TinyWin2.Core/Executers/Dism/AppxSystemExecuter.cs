@@ -40,7 +40,7 @@ public sealed class AppxSystemExecuter(IProcessRunner runner) : IExecuter {
         // Remove registrations first so the package cannot be resolved while its files
         // are being removed. The build engine rolls back the layer if file deletion fails.
         foreach (var change in changes.Where(c => c.RegistryKey is not null)) {
-            await DeleteRegistryKeyAsync(change.RegistryKey!, ct);
+            await OfflineReg.DeleteKeyAsync(runner, change.RegistryKey!, change.RegistryKey!, ct);
             context.Log.Info($"deleted inbox AppX registration '{change.Change.Target}'");
         }
 
@@ -77,17 +77,13 @@ public sealed class AppxSystemExecuter(IProcessRunner runner) : IExecuter {
 
         var hive = await context.Hives.GetAsync("software", context.Log, ct);
         var appxRoot = $"{hive.HiveKey}\\{AppxStoreRelativePath}";
-        var result = await runner.RunAsync("reg.exe", ["query", appxRoot, "/s"],
-            new() { IgnoreExitCode = true }, ct);
-        if (!result.Success && result.ExitCode != 1) {
-            throw new ProcessRunnerException("reg.exe", result);
-        }
+        var result = await OfflineReg.QueryAsync(runner, appxRoot, ct, "/s");
 
         var acceptedRoots = new[] {
             $"{appxRoot}\\Config",
             $"{appxRoot}\\InboxApplications"
         };
-        changes.AddRange(from key in ParseRegistryKeys(result.Output, hive.HiveKey)
+        changes.AddRange(from key in RegQuery.KeysUnder(result.Output, hive.HiveKey)
                          where acceptedRoots.Any(root => IsDirectChild(root, key))
                          let name = key[(key.LastIndexOf('\\') + 1)..]
                          where options.Patterns.Any(pattern => LikePattern.IsMatch(pattern, name))
@@ -100,36 +96,6 @@ public sealed class AppxSystemExecuter(IProcessRunner runner) : IExecuter {
                 .GroupBy(change => change.Change.Target, StringComparer.OrdinalIgnoreCase)
                 .Select(group => group.First())
         ];
-    }
-
-    private async Task DeleteRegistryKeyAsync(string key, CancellationToken ct) {
-        var result = await runner.RunAsync("reg.exe", ["delete", key, "/f"],
-            new() { IgnoreExitCode = true }, ct);
-        if (result.Success || result.ExitCode == 1) {
-            return;
-        }
-
-        await RegistryAcl.RescueAsync(runner, key, ct);
-        result = await runner.RunAsync("reg.exe", ["delete", key, "/f"],
-            new() { IgnoreExitCode = true }, ct);
-        if (!result.Success && result.ExitCode != 1) {
-            throw new ProcessRunnerException("reg.exe", result);
-        }
-    }
-
-    private static IEnumerable<string> ParseRegistryKeys(string output, string hiveKey) {
-        const string machinePrefix = "HKEY_LOCAL_MACHINE\\";
-        foreach (var line in output.Split('\n')) {
-            var trimmed = line.TrimEnd('\r').Trim();
-            if (!trimmed.StartsWith(machinePrefix, StringComparison.OrdinalIgnoreCase)) {
-                continue;
-            }
-
-            var key = "HKLM\\" + trimmed[machinePrefix.Length..];
-            if (key.StartsWith(hiveKey + "\\", StringComparison.OrdinalIgnoreCase)) {
-                yield return key;
-            }
-        }
     }
 
     private static bool IsDirectChild(string root, string candidate) =>

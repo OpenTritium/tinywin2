@@ -253,8 +253,10 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
             }
 
             if (args.Count == 2 && args[1] == servicesRoot) {
-                var lines = services.Select(s => $"{servicesRoot}\\{s.Name}");
-                return FakeProcessRunner.Ok($"\r\n{servicesRoot}\r\n" + string.Join("\r\n", lines) + "\r\n");
+                // Real reg.exe prints key lines with the full HKEY_LOCAL_MACHINE prefix.
+                var machineRoot = $"HKEY_LOCAL_MACHINE\\{servicesRoot["HKLM\\".Length..]}";
+                var lines = services.Select(s => $"{machineRoot}\\{s.Name}");
+                return FakeProcessRunner.Ok($"\r\n{machineRoot}\r\n" + string.Join("\r\n", lines) + "\r\n");
             }
 
             if (args.Count >= 2 && args[1].ToString().Contains("\\TriggerInfo", StringComparison.OrdinalIgnoreCase)) {
@@ -377,11 +379,13 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
             }
 
             if (args.Count == 2 && args[1] == servicesRoot) {
-                return FakeProcessRunner.Ok($"\r\n{servicesRoot}\r\n{serviceKey}\r\n");
+                var machineRoot = $"HKEY_LOCAL_MACHINE\\{servicesRoot["HKLM\\".Length..]}";
+                return FakeProcessRunner.Ok($"\r\n{machineRoot}\r\n{machineRoot}\\W32Time\r\n");
             }
 
             if (args.Count >= 2 && args[1] == triggerRoot) {
-                return FakeProcessRunner.Ok($"\r\n{triggerRoot}\r\n{triggerKey}\r\n");
+                var machineTriggerRoot = $"HKEY_LOCAL_MACHINE\\{triggerRoot["HKLM\\".Length..]}";
+                return FakeProcessRunner.Ok($"\r\n{machineTriggerRoot}\r\n{machineTriggerRoot}\\0\r\n");
             }
 
             if (args.Count == 2 && args[1] == triggerKey) {
@@ -446,7 +450,8 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
             }
 
             if (args.Count == 2 && args[1] == servicesRoot) {
-                return FakeProcessRunner.Ok($"\r\n{servicesRoot}\r\n{deniedKey}\r\n");
+                var machineRoot = $"HKEY_LOCAL_MACHINE\\{servicesRoot["HKLM\\".Length..]}";
+                return FakeProcessRunner.Ok($"\r\n{machineRoot}\r\n{machineRoot}\\DPS\r\n");
             }
 
             if (args.Count >= 2 && args[1].ToString().Contains("\\TriggerInfo", StringComparison.OrdinalIgnoreCase)) {
