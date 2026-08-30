@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.server-ie-esc",
   "version": "3.0.0",
   "title": "关闭 Server Internet Explorer 增强安全配置",

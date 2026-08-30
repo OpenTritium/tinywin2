@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "feature.storage-replica",
   "version": "3.0.0",
   "title": "移除存储副本",

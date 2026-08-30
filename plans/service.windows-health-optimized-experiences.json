@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.windows-health-optimized-experiences",
   "version": "3.0.0",
   "title": "禁用 Windows 健康状况和优化体验服务",

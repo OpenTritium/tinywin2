@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.start-pins",
   "version": "3.1.0",
   "title": "清理开始菜单和任务栏固定项",

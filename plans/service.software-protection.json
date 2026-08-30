@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.software-protection",
   "version": "3.0.0",
   "title": "软件保护服务改为延迟启动",

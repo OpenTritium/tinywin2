@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.server-manager-autostart",
   "version": "3.0.0",
   "title": "禁用服务器管理器自动启动",

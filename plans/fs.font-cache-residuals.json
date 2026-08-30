@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "fs.font-cache-residuals",
   "version": "1.0.0",
   "title": "清理字体缓存文件",

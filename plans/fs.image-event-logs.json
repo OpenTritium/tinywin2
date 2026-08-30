@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "fs.image-event-logs",
   "version": "1.0.0",
   "title": "清空 Windows 事件日志",

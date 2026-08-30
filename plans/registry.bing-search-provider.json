@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.bing-search-provider",
   "version": "1.0.0",
   "title": "清理 Bing Search 提供程序注册项",

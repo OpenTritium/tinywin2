@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.uac",
   "version": "3.0.0",
   "title": "禁用用户帐户控制 (UAC)",

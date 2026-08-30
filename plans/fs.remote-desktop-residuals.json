@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "fs.remote-desktop-residuals",
   "version": "1.0.0",
   "title": "移除远程桌面客户端和核心文件",

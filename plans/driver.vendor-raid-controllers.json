@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "driver.vendor-raid-controllers",
   "version": "3.0.1",
   "title": "移除厂商 RAID 和存储控制器驱动",

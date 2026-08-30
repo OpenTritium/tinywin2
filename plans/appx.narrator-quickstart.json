@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "appx.narrator-quickstart",
   "version": "1.0.0",
   "title": "移除旁白快速入门组件",

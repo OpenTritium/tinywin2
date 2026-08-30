@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "appx.edge-devtools",
   "version": "1.0.0",
   "title": "移除 Edge WebView 开发者工具组件",

@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.edge-smartscreen",
   "version": "3.0.0",
   "title": "关闭 Edge SmartScreen",

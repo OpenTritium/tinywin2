@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.device-guard-disabled",
   "version": "1.0.0",
   "title": "关闭系统级 Device Guard、HVCI 和驱动阻止策略",

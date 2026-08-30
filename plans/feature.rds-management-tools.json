@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "feature.rds-management-tools",
   "version": "3.0.0",
   "title": "移除远程桌面服务管理工具",

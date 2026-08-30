@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "fs.security-residuals",
   "version": "1.2.0",
   "title": "清理安全组件入口和任务文件",

@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "appx.client-cbs",
   "version": "2.1.0",
   "title": "移除 MicrosoftWindows.Client.CBS",

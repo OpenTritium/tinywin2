@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.license-manager",
   "version": "3.0.0",
   "title": "禁用 Windows 许可证管理器服务",

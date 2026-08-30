@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "fs.security-deep-residuals",
   "version": "1.2.0",
   "title": "深度清理 Defender、SmartScreen 和 WebThreat 文件残留",

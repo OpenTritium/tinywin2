@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.print-config",
   "version": "3.0.0",
   "title": "禁用打印设备配置服务",

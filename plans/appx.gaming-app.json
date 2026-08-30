@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "appx.gaming-app",
   "version": "3.0.0",
   "title": "移除 Xbox Gaming App",

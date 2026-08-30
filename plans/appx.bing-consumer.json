@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "appx.bing-consumer",
   "version": "3.1.0",
   "title": "移除 Bing 消费类应用",

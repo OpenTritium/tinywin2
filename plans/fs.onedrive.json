@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "fs.onedrive",
   "version": "3.1.0",
   "title": "清理 OneDrive 残留文件",

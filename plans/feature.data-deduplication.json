@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "feature.data-deduplication",
   "version": "3.0.0",
   "title": "移除数据重复删除",

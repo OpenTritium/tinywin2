@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.wdi-service-host",
   "version": "3.0.0",
   "title": "将服务诊断主机改为按需启动",

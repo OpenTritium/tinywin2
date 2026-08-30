@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "driver.legacy-modem",
   "version": "3.0.0",
   "title": "移除传统调制解调器驱动",

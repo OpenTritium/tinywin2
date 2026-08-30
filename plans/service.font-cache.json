@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.font-cache",
   "version": "3.0.0",
   "title": "禁用 Windows 字体缓存服务",

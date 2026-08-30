@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "feature.hyper-v",
   "version": "3.0.0",
   "title": "移除 Hyper-V 平台与管理工具",

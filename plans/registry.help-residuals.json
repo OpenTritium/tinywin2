@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.help-residuals",
   "version": "1.0.0",
   "title": "清理旧版帮助程序注册项",

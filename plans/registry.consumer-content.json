@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.consumer-content",
   "version": "3.1.0",
   "title": "禁用消费者内容推广",

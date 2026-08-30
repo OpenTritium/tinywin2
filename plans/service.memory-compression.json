@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.memory-compression",
   "version": "1.0.0",
   "title": "启用高性价比内存压缩和页面合并",

@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "appx.zune-media",
   "version": "3.1.0",
   "title": "移除媒体播放器与电影电视",

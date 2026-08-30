@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.ntfs-8dot3-disabled",
   "version": "1.0.0",
   "title": "禁用 NTFS 8.3 短文件名",

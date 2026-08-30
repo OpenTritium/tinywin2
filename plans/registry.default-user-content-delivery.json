@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.default-user-content-delivery",
   "version": "1.0.0",
   "title": "关闭默认用户消费者内容投放",

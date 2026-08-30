@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.inventory",
   "version": "3.0.0",
   "title": "禁用清单与兼容性评估服务",

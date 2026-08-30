@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.windows-error-reporting",
   "version": "3.0.0",
   "title": "禁用 Windows 错误报告服务",

@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.clipboard-user",
   "version": "3.0.0",
   "title": "禁用剪贴板用户服务",

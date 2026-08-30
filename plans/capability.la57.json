@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "capability.la57",
   "version": "3.0.0",
   "title": "移除 LA57 5 级分页支持",

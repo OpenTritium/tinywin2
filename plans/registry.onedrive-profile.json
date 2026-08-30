@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.onedrive-profile",
   "version": "1.0.0",
   "title": "清理默认用户 OneDrive 配置",

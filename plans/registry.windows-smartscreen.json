@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.windows-smartscreen",
   "version": "3.0.0",
   "title": "关闭 Windows SmartScreen",

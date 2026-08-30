@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.automatic-maintenance",
   "version": "1.0.0",
   "title": "禁用自动维护",

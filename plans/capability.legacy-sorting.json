@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "capability.legacy-sorting",
   "version": "3.0.0",
   "title": "移除旧版排序兼容",

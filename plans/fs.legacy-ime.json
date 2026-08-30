@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "fs.legacy-ime",
   "version": "3.0.0",
   "title": "移除非中文输入法文件",

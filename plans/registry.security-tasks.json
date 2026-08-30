@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.security-tasks",
   "version": "1.0.0",
   "title": "删除安全防护计划任务注册项",

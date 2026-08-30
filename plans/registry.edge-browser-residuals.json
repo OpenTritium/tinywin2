@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.edge-browser-residuals",
   "version": "1.0.0",
   "title": "清理 Edge 浏览器注册表残留",

@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "capability.openssh-client",
   "version": "3.0.0",
   "title": "移除 OpenSSH 客户端",

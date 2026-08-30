@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.wdi-system-host",
   "version": "3.0.0",
   "title": "配置系统诊断主机启动方式",

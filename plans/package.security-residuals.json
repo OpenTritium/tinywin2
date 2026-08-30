@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "package.security-residuals",
   "version": "1.0.0",
   "title": "移除 Defender 和 Sense CBS 残留包",

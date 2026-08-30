@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.offline-files",
   "version": "3.0.0",
   "title": "禁用 Offline Files 同步中心后端",

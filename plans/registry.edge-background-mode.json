@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.edge-background-mode",
   "version": "3.0.0",
   "title": "禁止 Edge 后台驻留",

@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "appx.application-compatibility-enhancements",
   "version": "3.1.0",
   "title": "移除应用程序兼容性增强",

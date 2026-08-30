@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "appx.parental-controls",
   "version": "1.0.1",
   "title": "移除家庭控制系统组件",

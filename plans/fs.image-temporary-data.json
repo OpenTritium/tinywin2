@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "fs.image-temporary-data",
   "version": "1.0.0",
   "title": "清理系统临时目录和下载缓存",

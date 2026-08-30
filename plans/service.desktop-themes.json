@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.desktop-themes",
   "version": "3.0.0",
   "title": "主题服务改为延迟启动",

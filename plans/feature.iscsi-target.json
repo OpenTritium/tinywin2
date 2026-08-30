@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "feature.iscsi-target",
   "version": "3.0.0",
   "title": "移除 iSCSI Target 存储提供程序",

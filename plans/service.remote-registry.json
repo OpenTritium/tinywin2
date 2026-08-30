@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.remote-registry",
   "version": "3.0.0",
   "title": "禁用远程注册表服务",

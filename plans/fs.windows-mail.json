@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "fs.windows-mail",
   "version": "3.1.0",
   "title": "移除 Windows Mail 文件",

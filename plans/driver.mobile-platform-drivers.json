@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "driver.mobile-platform-drivers",
   "version": "3.0.1",
   "title": "移除移动平台与消费级芯片组驱动",

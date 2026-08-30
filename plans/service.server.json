@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.server",
   "version": "3.0.0",
   "title": "延迟启动 Server 文件共享服务",

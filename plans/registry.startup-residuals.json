@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.startup-residuals",
   "version": "3.1.0",
   "title": "清理注册表自启动项",

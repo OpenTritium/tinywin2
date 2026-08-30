@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "driver.fibre-channel-drivers",
   "version": "3.0.1",
   "title": "移除 Fibre Channel 与 FCoE 驱动",

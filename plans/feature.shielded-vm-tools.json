@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "feature.shielded-vm-tools",
   "version": "3.0.0",
   "title": "移除受防护虚拟机管理工具",

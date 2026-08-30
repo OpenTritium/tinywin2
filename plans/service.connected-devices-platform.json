@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.connected-devices-platform",
   "version": "3.0.0",
   "title": "禁用 Connected Devices Platform",

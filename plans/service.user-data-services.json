@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.user-data-services",
   "version": "3.1.0",
   "title": "禁用用户数据与联系人索引服务",

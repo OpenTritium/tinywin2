@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "feature.enhanced-storage",
   "version": "3.0.0",
   "title": "移除增强型存储支持",

@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "feature.dotnet-framework-3.5",
   "version": "3.0.0",
   "title": "移除 .NET Framework 3.5",

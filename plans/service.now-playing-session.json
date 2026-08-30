@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.now-playing-session",
   "version": "3.0.0",
   "title": "禁用正在播放会话管理器服务",

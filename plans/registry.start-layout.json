@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.start-layout",
   "version": "3.0.0",
   "title": "替换默认开始菜单布局",

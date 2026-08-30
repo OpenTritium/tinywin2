@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "fs.image-setup-logs",
   "version": "1.0.0",
   "title": "清理安装升级日志和转储",

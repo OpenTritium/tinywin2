@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "feature.windows-admin-center",
   "version": "3.1.0",
   "title": "移除 Windows Admin Center 与 Azure Arc 安装器",

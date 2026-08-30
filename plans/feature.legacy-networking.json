@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "feature.legacy-networking",
   "version": "3.1.0",
   "title": "移除遗留网络功能",

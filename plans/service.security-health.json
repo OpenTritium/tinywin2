@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.security-health",
   "version": "3.0.0",
   "title": "配置 Windows 安全中心服务启动方式",

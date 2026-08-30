@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.security-minimal",
   "version": "3.1.0",
   "title": "Disable security services and filtering drivers",

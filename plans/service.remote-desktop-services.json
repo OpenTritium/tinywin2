@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "service.remote-desktop-services",
   "version": "3.0.0",
   "title": "移除远程桌面服务启动能力",

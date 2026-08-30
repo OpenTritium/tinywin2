@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "registry.photo-viewer-registration",
   "version": "1.0.0",
   "title": "移除经典照片查看器注册应用入口",

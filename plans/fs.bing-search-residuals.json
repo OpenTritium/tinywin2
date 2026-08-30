@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "fs.bing-search-residuals",
   "version": "1.0.0",
   "title": "清理 Bing Search InboxApp 和 CBS 残留",

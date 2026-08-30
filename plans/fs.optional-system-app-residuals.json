@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "fs.optional-system-app-residuals",
   "version": "1.0.0",
   "title": "移除非核心 SystemApps 残留",

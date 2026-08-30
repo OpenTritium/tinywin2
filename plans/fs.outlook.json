@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "fs.outlook",
   "version": "4.0.0",
   "title": "清理 Outlook PWA 残留文件",

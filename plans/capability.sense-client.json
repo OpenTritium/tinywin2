@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "capability.sense-client",
   "version": "3.0.0",
   "title": "移除 Defender for Endpoint 传感器桩",

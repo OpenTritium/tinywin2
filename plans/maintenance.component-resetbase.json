@@ -1,6 +1,6 @@
 {
   "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "maintenance.component-resetbase",
   "version": "3.0.0",
   "title": "固化组件存储基线",
