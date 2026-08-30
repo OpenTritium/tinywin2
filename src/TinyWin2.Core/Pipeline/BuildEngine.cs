@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using TinyWin2.Core.Env;
 using TinyWin2.Core.Executers;
+using TinyWin2.Core.Executers.Fs;
 using TinyWin2.Core.Executers.Registry;
 using TinyWin2.Core.Hashing;
 using TinyWin2.Core.Layers;
@@ -601,7 +602,7 @@ public sealed class BuildEngine(
     }
 
     /// <summary>Content hash of one step and its file assets.</summary>
-    private static async Task<string> FingerprintAsync(
+    internal static async Task<string> FingerprintAsync(
         PlanStep step, string? plansDirectory, IDictionary<string, string> assetFingerprints,
         CancellationToken ct) {
         var builder = new StringBuilder();
@@ -609,76 +610,32 @@ public sealed class BuildEngine(
         builder.Append(resolved.Definition.Id).Append('|')
             .Append(resolved.Definition.Version).Append('|')
             .Append(resolved.Definition.Hash).Append((char)10);
-        string? copyAssetSource = null;
+        var copyAssetSources = new List<string>();
         foreach (var operation in resolved.Operations) {
             builder.Append(operation.Resource).Append('|').Append(operation.Action).Append('|')
                 .Append(operation.Spec.ToJsonString()).Append((char)10);
-            if (operation is { Resource: "fs.path", Action: OperationAction.Copy }) {
-                copyAssetSource = operation.Spec["source"]?.GetValue<string>();
+            if (FsPathAssets.GetCopyAssetSource(operation) is { } assetSource) {
+                copyAssetSources.Add(assetSource);
             }
         }
 
-        if (copyAssetSource is null) {
+        if (copyAssetSources.Count == 0) {
             return Fingerprinting.Compute(builder.ToString());
         }
 
         var assetsRoot = PlanAssets.ResolveRoot(plansDirectory, resolved.Definition.Id);
-        var assetPath = ResolveAssetPathForFingerprint(assetsRoot, copyAssetSource);
-        var cacheKey = assetPath ?? $"<missing:{copyAssetSource}>";
-        if (!assetFingerprints.TryGetValue(cacheKey, out var assetFingerprint)) {
-            assetFingerprint = await AssetFingerprintAsync(assetPath, ct);
-            assetFingerprints[cacheKey] = assetFingerprint;
-        }
+        foreach (var assetSource in copyAssetSources) {
+            var assetPath = FsPathAssets.ResolveAssetPath(assetsRoot, assetSource);
+            var cacheKey = assetPath ?? $"<missing:{assetSource}>";
+            if (!assetFingerprints.TryGetValue(cacheKey, out var assetFingerprint)) {
+                assetFingerprint = await Fingerprinting.ComputeTreeAsync(assetPath, ct);
+                assetFingerprints[cacheKey] = assetFingerprint;
+            }
 
-        builder.Append("asset|").Append(assetFingerprint).Append((char)10);
+            builder.Append("asset|").Append(assetFingerprint).Append((char)10);
+        }
 
         return Fingerprinting.Compute(builder.ToString());
-    }
-
-    private static string? ResolveAssetPathForFingerprint(string? assetsRoot, string? source) {
-        if (assetsRoot is null || source is null) {
-            return null;
-        }
-
-        return SafePath.TryResolveInside(assetsRoot, source);
-    }
-
-    private static async Task<string> AssetFingerprintAsync(string? assetPath, CancellationToken ct) {
-        if (assetPath is null || (!File.Exists(assetPath) && !Directory.Exists(assetPath))) {
-            return "missing";
-        }
-
-        if (File.Exists(assetPath)) {
-            return await Fingerprinting.ComputeFileAsync(assetPath, ct);
-        }
-
-        var entries = new List<string>();
-        var pending = new Stack<string>();
-        pending.Push(assetPath);
-        while (pending.TryPop(out var currentPath)) {
-            ct.ThrowIfCancellationRequested();
-            foreach (var entry in Directory.EnumerateFileSystemEntries(currentPath)
-                         .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)) {
-                var relative = Path.GetRelativePath(assetPath, entry);
-                var attributes = File.GetAttributes(entry);
-                if ((attributes & FileAttributes.ReparsePoint) != 0) {
-                    entries.Add("reparse:" + relative);
-                    continue;
-                }
-
-                if ((attributes & FileAttributes.Directory) != 0) {
-                    entries.Add("directory:" + relative);
-                    pending.Push(entry);
-                }
-                else {
-                    var hash = await Fingerprinting.ComputeFileAsync(entry, ct);
-                    entries.Add($"file:{relative}:{hash}");
-                }
-            }
-        }
-
-        var canonical = string.Join('\n', entries.OrderBy(entry => entry, StringComparer.Ordinal));
-        return Fingerprinting.Compute(canonical);
     }
 
     private async Task<JsonObject> RunPlanInLayerAsync(
