@@ -1,4 +1,8 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using TinyWin2.Core.Executers;
+using TinyWin2.Core.Native;
+using TinyWin2.Core.Pipeline;
 using TinyWin2.Core.Plans;
 
 namespace TinyWin2.Cli.Commands;
@@ -72,6 +76,90 @@ internal static class PlanHandler {
             }).ToArray())
         }.ToJsonString(Cli.JsonSerializerOptions));
         return ExitCodes.Success;
+    }
+
+    /// <summary>
+    ///     Validates one plan file: schema first, then the full production pipeline
+    ///     (requires/conflicts resolution, parameter binding, operation binding). This is
+    ///     the self-check entry point for tools and agents authoring plan JSON.
+    /// </summary>
+    public static int Validate(PlanValidateRequest request) {
+        var file = Path.GetFullPath(request.File);
+        var errors = new List<string>();
+        PlanDefinition? definition = null;
+        try {
+            var node = JsonNode.Parse(File.ReadAllText(file));
+            if (node is not JsonObject obj) {
+                throw new PlanValidationException(file, ["root must be a JSON object."]);
+            }
+
+            definition = PlanDefinition.FromJson(obj, file);
+        }
+        catch (PlanValidationException ex) {
+            errors.AddRange(ex.Errors);
+        }
+        catch (JsonException ex) {
+            errors.Add($"invalid JSON: {ex.Message}");
+        }
+
+        if (definition is not null && errors.Count == 0) {
+            try {
+                var registry = new ExecuterRegistry(new ProcessRunner());
+                var catalog = PlanCatalog.LoadDirectory(Cli.FindPlansDirectory(request.PlansDirectory));
+                if (catalog.ById.ContainsKey(definition.Id)) {
+                    BuildPlanResolver.Resolve(catalog, [new PlanSelection(definition.Id)], registry);
+                }
+                else {
+                    // The file is not part of the located catalog; bind it standalone.
+                    BuildPlanResolver.Resolve(new PlanCatalog([definition]),
+                        [new PlanSelection(definition.Id)], registry);
+                }
+            }
+            catch (PlanValidationException ex) {
+                errors.AddRange(ex.Errors);
+            }
+            catch (PlanResolutionException ex) {
+                errors.Add(ex.Message);
+            }
+            catch (ParameterBindingException ex) {
+                errors.Add(ex.Message);
+            }
+            catch (ExecException ex) {
+                errors.Add(ex.Message);
+            }
+            catch (KeyNotFoundException ex) {
+                errors.Add(ex.Message);
+            }
+        }
+
+        if (request.Json) {
+            Console.WriteLine(new JsonObject {
+                ["file"] = file,
+                ["valid"] = errors.Count == 0,
+                ["errors"] = new JsonArray([.. errors.Select(e => (JsonNode)JsonValue.Create(e))]),
+                ["plan"] = definition is null
+                    ? null
+                    : new JsonObject {
+                        ["id"] = definition.Id,
+                        ["version"] = definition.Version,
+                        ["operations"] = definition.Operations.Count,
+                        ["parameters"] = definition.Parameters.Count
+                    }
+            }.ToJsonString(Cli.JsonSerializerOptions));
+        }
+        else if (errors.Count > 0) {
+            Console.WriteLine($"✘ invalid plan ({errors.Count} error(s)):");
+            foreach (var error in errors) {
+                Console.WriteLine($"  - {error}");
+            }
+        }
+        else {
+            Console.WriteLine(
+                $"✔ plan '{definition!.Id}' is valid ({definition.Operations.Count} operation(s), " +
+                $"{definition.Parameters.Count} parameter(s))");
+        }
+
+        return errors.Count == 0 ? ExitCodes.Success : ExitCodes.Failure;
     }
 
     private static PlanCatalog LoadCatalog(string? plansDirectory) =>

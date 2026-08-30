@@ -74,6 +74,7 @@ internal static class CliErrors {
         "output-exists" => "pass --overwrite to replace the existing artifact",
         "workspace-conflict" => "choose a new workspace, or pass --resume when continuing an earlier build",
         "plan-resolution-failed" => "run `tinywin2 plan list` to browse valid plan ids",
+        "plan-validation-failed" => "run `tinywin2 plan validate --file <plan.json>` for the full error list",
         "environment-check-failed" => "run `tinywin2 doctor --workspace <dir>` for the failing checks",
         "native-tool-failed" => "run `tinywin2 doctor` to check tool availability",
         "invalid-argument" => "run with --help to see the accepted options",

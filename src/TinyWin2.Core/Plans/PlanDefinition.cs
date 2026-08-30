@@ -94,7 +94,7 @@ public sealed partial record PlanDefinition {
         var title = ReadString(obj, "title", errors);
         var description = ReadString(obj, "description", errors);
         var category = ReadString(obj, "category", errors);
-        var riskLevel = ReadString(obj, "riskLevel", errors) ?? "Medium";
+        var riskLevel = ReadString(obj, "riskLevel", errors, required: false) ?? "Medium";
         if (!RiskLevels.Contains(riskLevel)) {
             errors.Add($"riskLevel '{riskLevel}' invalid (Low|Medium|High).");
         }
@@ -382,5 +382,8 @@ public sealed partial record PlanDefinition {
     private static partial Regex ResourcePattern();
 }
 
-public sealed class PlanValidationException(string source, IReadOnlyList<string> errors)
-    : Exception($"Invalid plan '{source}':{Environment.NewLine}{string.Join(Environment.NewLine + "  - ", errors)}");
+public sealed class PlanValidationException(string source, IReadOnlyList<string> errors) : Exception(
+    $"Invalid plan '{source}':{Environment.NewLine}{string.Join(Environment.NewLine + "  - ", errors)}") {
+    /// <summary>The individual validation errors, without the header line.</summary>
+    public IReadOnlyList<string> Errors { get; } = errors;
+}

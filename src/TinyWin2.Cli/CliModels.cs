@@ -18,6 +18,8 @@ internal sealed record PlanListRequest(string? PlansDirectory, string? Category,
 
 internal sealed record PlanShowRequest(string Id, string? PlansDirectory);
 
+internal sealed record PlanValidateRequest(string File, string? PlansDirectory, bool Json);
+
 internal sealed record ProfileListRequest(string? PlansDirectory, string? ProfilesDirectory);
 
 internal sealed record ProfileShowRequest(string File);

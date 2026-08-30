@@ -70,8 +70,21 @@ internal static class CommandLine {
             result.GetRequiredValue(id),
             result.GetValue(showPlansDirectory))));
 
+        var validate = new Command("validate", "validate one plan JSON file (schema, dependencies, binding)");
+        var validateFile = RequiredText("--file", "plan JSON file to validate");
+        var validatePlansDirectory = Text("--plans-dir", "directory containing the full plan catalog");
+        var validateJson = Flag("--json", "write machine-readable JSON");
+        validate.Add(validateFile);
+        validate.Add(validatePlansDirectory);
+        validate.Add(validateJson);
+        validate.SetAction(result => PlanHandler.Validate(new(
+            result.GetRequiredValue(validateFile),
+            result.GetValue(validatePlansDirectory),
+            result.GetValue(validateJson))));
+
         command.Add(list);
         command.Add(show);
+        command.Add(validate);
         return command;
     }
 
