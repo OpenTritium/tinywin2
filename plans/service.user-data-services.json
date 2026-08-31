@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.user-data-services",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "title": "禁用用户数据与联系人索引服务",
-  "description": "禁用每用户 UserData、Unistore、Unistack、联系人索引和 OneSync 同步主机服务；邮件、联系人、日历和依赖 Windows 用户数据 API 的应用可能无法工作。",
+  "description": "禁用每用户 UserData、Unistore、Unistack、联系人索引和 OneSync 同步主机服务的模板与实例；邮件、联系人、日历和依赖 Windows 用户数据 API 的应用可能无法工作。模式同时匹配无下划线的模板键（离线镜像中只有模板）与带 SID 后缀的运行期实例。",
   "category": "Background Services",
   "riskLevel": "High",
   "operations": [
@@ -13,11 +13,11 @@
       "action": "apply",
       "spec": {
         "servicePatterns": [
-          "UserDataSvc_*",
-          "UnistoreSvc_*",
-          "UnistackSvc_*",
-          "PimIndexMaintenanceSvc_*",
-          "OneSyncSvc_*"
+          "UserDataSvc*",
+          "UnistoreSvc*",
+          "UnistackSvc*",
+          "PimIndexMaintenanceSvc*",
+          "OneSyncSvc*"
         ],
         "start": "disabled"
       }

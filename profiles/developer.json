@@ -1068,7 +1068,10 @@
     },
     {
       "planId": "service.user-access-logging",
-      "enabled": true
+      "enabled": true,
+      "parameters": {
+        "startMode": "disabled"
+      }
     },
     {
       "planId": "service.user-data-services",
