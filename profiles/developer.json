@@ -1104,7 +1104,7 @@
       "planId": "service.windows-remote-management",
       "enabled": true,
       "parameters": {
-        "startMode": "manual"
+        "startMode": "auto"
       }
     },
     {
