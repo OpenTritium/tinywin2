@@ -2,7 +2,7 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.clipboard-user",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "title": "禁用剪贴板用户服务",
   "description": "禁用每用户 Clipboard User Service；剪贴板历史、跨设备剪贴板和部分剪贴板同步功能将不可用。",
   "category": "Background Services",
@@ -13,7 +13,7 @@
       "action": "apply",
       "spec": {
         "servicePatterns": [
-          "cbdhsvc_*"
+          "cbdhsvc*"
         ],
         "start": "disabled"
       }
