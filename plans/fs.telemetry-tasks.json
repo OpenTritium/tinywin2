@@ -4,7 +4,7 @@
   "id": "fs.telemetry-tasks",
   "version": "1.0.0",
   "title": "移除诊断与兼容性遥测计划任务",
-  "description": "删除 Application Experience（兼容性评估/差异合并/程序遥测）、CEIP、磁盘诊断、WinSAT 基准和语音模型下载的计划任务：同时清掉 TaskCache 注册项和任务文件，并移除 WinSAT 基准媒体。只删任务注册与文件，不改二进制；Windows Setup 可能在功能变更时重建个别任务。",
+  "description": "删除 Application Experience（兼容性评估/差异合并/程序遥测）、CEIP、磁盘诊断、WinSAT 基准和语音模型下载的计划任务：同时清掉 TaskCache 注册项和任务文件，并移除 WinSAT 基准媒体。注意：Windows Setup 在 specialize 阶段会重新供给收件箱任务（实测任务以 Ready 状态回来，与 fs.security-residuals 记录的行为一致），任务的持久移除需要无人值守首次登录清理；WinSAT 基准媒体目录不会回来，是本计划的持久收益。",
   "category": "Diagnostics",
   "riskLevel": "Low",
   "operations": [
