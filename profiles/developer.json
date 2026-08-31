@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "name": "Developer Workstation",
-  "description": "Developer scenario whitelist. Keeps: WinRE; virtualization (Hyper-V, Containers, WSL); app compatibility (NETFx 3.5, WOW64, VBScript, WMIC, ApplicationCompatibilityEnhancements); dev tools (Windows Terminal, classic Notepad, Snipping Tool, OpenSSH client, App Installer/winget, WebView2 runtime). Plus the full-profile conflict baseline: Client.CBS kept (IME/shell), memory compression on (SysMain off). Everything else (gaming, entertainment, consumer apps, server roles, legacy hardware) is removed.",
+  "description": "Developer scenario whitelist. Keeps: WinRE; virtualization (Hyper-V, Containers, WSL); app compatibility (NETFx 3.5, WOW64, VBScript, WMIC, ApplicationCompatibilityEnhancements); dev tools (Windows Terminal, classic Notepad, Snipping Tool incl. ScreenSketch appx, OpenSSH client, App Installer/winget, WebView2 runtime); Windows Hello (biometric service). Plus the full-profile conflict baseline: Client.CBS kept (IME/shell), memory compression on (SysMain off). Everything else (gaming, entertainment, consumer apps, server roles, legacy hardware) is removed.",
   "selections": [
     {
       "planId": "appx.alarms",
@@ -141,7 +141,7 @@
     },
     {
       "planId": "appx.screen-sketch",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "appx.security-health-ui",
@@ -805,7 +805,7 @@
     },
     {
       "planId": "service.biometric",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.bluetooth",
