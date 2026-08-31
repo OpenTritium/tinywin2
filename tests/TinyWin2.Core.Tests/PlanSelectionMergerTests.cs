@@ -35,6 +35,34 @@ public sealed class PlanSelectionMergerTests {
     }
 
     [Test]
+    public async Task LaterLayerOverridesEnabledStateAndParameters() {
+        var selections = PlanSelectionMerger.Merge(
+            [
+                new("service.winrm", true, new Dictionary<string, JsonNode?> { ["startMode"] = "disabled" }),
+                new("service.spplib", true)
+            ],
+            [
+                new("service.winrm", true, new Dictionary<string, JsonNode?> { ["startMode"] = "auto" }),
+                new("service.spplib", false)
+            ],
+            Catalog("service.winrm", "service.spplib"));
+
+        await Assert.That(selections.Single(s => s.PlanId == "service.winrm").Parameters!["startMode"]!
+            .ToJsonString()).IsEqualTo("\"auto\"");
+        await Assert.That(selections.Single(s => s.PlanId == "service.spplib").Enabled).IsFalse();
+    }
+
+    [Test]
+    public async Task LaterLayerWithoutParametersCarriesEarlierParameters() {
+        var selections = PlanSelectionMerger.Merge(
+            [new("service.winrm", true, new Dictionary<string, JsonNode?> { ["startMode"] = "auto" })],
+            [new("service.winrm")],
+            Catalog("service.winrm"));
+
+        await Assert.That(selections[0].Parameters!["startMode"]!.ToJsonString()).IsEqualTo("\"auto\"");
+    }
+
+    [Test]
     public async Task EnsureSelectedAppendsAndHonoursProfileExclusions() {
         var catalog = Catalog("known.plan");
         var selections = new List<PlanSelection>();

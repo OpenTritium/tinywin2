@@ -1,27 +1,34 @@
 namespace TinyWin2.Core.Plans;
 
-/// <summary>Merges explicit plan additions without silently overriding profile safety exclusions.</summary>
+/// <summary>Merges layered profile selections without silently overriding safety exclusions.</summary>
 public static class PlanSelectionMerger {
     /// <summary>
-    ///     Appends explicit selections to the profile's, rejecting any attempt to resurrect a
-    ///     plan the profile disabled. Unknown ids fail here so callers share one vocabulary.
+    ///     Folds profile layers (later files override earlier ones) and explicit CLI selections
+    ///     into one selection set: absent ids are appended, later entries override earlier
+    ///     enabled state and parameters, and any attempt to resurrect a plan a layer disabled
+    ///     is rejected. Unknown ids fail here so callers share one vocabulary.
     /// </summary>
     public static List<PlanSelection> Merge(
         IReadOnlyList<PlanSelection> profileSelections,
         IEnumerable<PlanSelection> explicitSelections,
         PlanCatalog catalog) {
-        var result = profileSelections.ToList();
-        foreach (var selection in explicitSelections) {
+        var result = new List<PlanSelection>();
+        var index = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var selection in profileSelections.Concat(explicitSelections)) {
             EnsureKnown(catalog, selection.PlanId);
-            var existing = Find(result, selection.PlanId);
-            if (existing < 0) {
-                result.Add(selection);
+            if (index.TryGetValue(selection.PlanId, out var existing)) {
+                if (!result[existing].Enabled && selection.Enabled) {
+                    throw ProfileExclusionConflict(selection.PlanId);
+                }
+
+                result[existing] = selection.Parameters is null
+                    ? selection with { Parameters = result[existing].Parameters }
+                    : selection;
                 continue;
             }
 
-            if (!result[existing].Enabled && selection.Enabled) {
-                throw ProfileExclusionConflict(selection.PlanId);
-            }
+            index[selection.PlanId] = result.Count;
+            result.Add(selection);
         }
 
         return result;
