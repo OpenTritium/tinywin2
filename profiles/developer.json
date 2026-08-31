@@ -1025,7 +1025,10 @@
     },
     {
       "planId": "service.software-protection",
-      "enabled": true
+      "enabled": true,
+      "parameters": {
+        "startMode": "disabled"
+      }
     },
     {
       "planId": "service.store-install",
@@ -1093,7 +1096,10 @@
     },
     {
       "planId": "service.windows-remote-management",
-      "enabled": true
+      "enabled": true,
+      "parameters": {
+        "startMode": "auto"
+      }
     },
     {
       "planId": "service.windows-search",

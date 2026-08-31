@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.windows-remote-management",
-  "version": "3.0.0",
-  "title": "禁用 Windows 远程管理",
-  "description": "禁用 WinRM。PowerShell Remoting、Windows Admin Center 和多数远程服务器管理流程将不可用。",
+  "version": "3.1.0",
+  "title": "控制 Windows 远程管理启动方式",
+  "description": "控制 WinRM 启动方式：默认禁用（PowerShell Remoting、Windows Admin Center 和多数远程服务器管理流程将不可用）；远程管理场景可选 auto 保持自动启动。",
   "category": "Remote Management",
   "riskLevel": "High",
   "operations": [
@@ -15,8 +15,42 @@
         "services": [
           "WinRM"
         ],
-        "start": "disabled"
+        "start": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "disabled": "disabled",
+              "manual": "manual",
+              "auto": "auto"
+            }
+          }
+        }
       }
+    }
+  ],
+  "parameters": [
+    {
+      "name": "startMode",
+      "type": "enum",
+      "label": "启动方式",
+      "default": "disabled",
+      "options": [
+        {
+          "value": "disabled",
+          "label": "禁用",
+          "riskLevel": "High"
+        },
+        {
+          "value": "auto",
+          "label": "自动启动",
+          "riskLevel": "Low"
+        },
+        {
+          "value": "manual",
+          "label": "手动",
+          "riskLevel": "Low"
+        }
+      ]
     }
   ]
 }
