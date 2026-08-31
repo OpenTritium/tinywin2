@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
-  "name": "Full except WinRE",
-  "description": "Every plan in the catalog enabled except: fs.recovery-environment (WinRE kept), appx.client-cbs (conflicts with service.security-minimal; keeps Chinese IME and modern shell), service.sysmain (conflicts with service.memory-compression, which stays enabled).",
+  "name": "Full Base",
+  "description": "Full catalog base: every removal plan enabled except the conflict baseline (Client.CBS kept for IME/shell, SysMain kept for memory compression). Scenario profiles layer on top of this one.",
   "selections": [
     {
       "planId": "appx.alarms",
@@ -601,7 +601,7 @@
     },
     {
       "planId": "fs.recovery-environment",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "fs.remote-desktop-residuals",

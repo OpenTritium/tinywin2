@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "name": "Developer Workstation Overlay",
-  "description": "Layer on top of the full-except-winre base profile: developer keeps (WinRE already excluded in base; adds virtualization, app compatibility, dev tools, Windows Hello, graphics), and startup-type overrides (WinRM auto, sppsvc/UALSVC/LanmanServer disabled). Build with: --profile profiles/full-except-winre.json --profile profiles/developer-overlay.json",
+  "description": "Layer on top of the full base profile: developer keeps (virtualization, app compatibility, dev tools, WebView2, graphics) and startup-type overrides (WinRM auto, sppsvc/UALSVC/LanmanServer disabled). Build with: --profile profiles/base-full.json --profile profiles/developer-overlay.json",
   "selections": [
     {
       "planId": "appx.application-compatibility-enhancements",
@@ -32,23 +32,7 @@
       "enabled": false
     },
     {
-      "planId": "capability.snipping-tool",
-      "enabled": false
-    },
-    {
-      "planId": "capability.vbscript",
-      "enabled": false
-    },
-    {
-      "planId": "capability.wmic",
-      "enabled": false
-    },
-    {
       "planId": "feature.containers",
-      "enabled": false
-    },
-    {
-      "planId": "feature.dotnet-framework-3.5",
       "enabled": false
     },
     {
@@ -65,10 +49,6 @@
     },
     {
       "planId": "fs.edge-webview-runtime",
-      "enabled": false
-    },
-    {
-      "planId": "service.biometric",
       "enabled": false
     },
     {

@@ -26,16 +26,16 @@ Typical workflow:
 ```
 tinywin2 inspect --input win11.iso
 tinywin2 preview --input win11.iso --index 1 --workspace ./ws \
-  --profile profiles/full-except-winre.json
+  --profile profiles/base-full.json
 tinywin2 build --input win11.iso --index 1 --output out/install.esd --workspace ./ws \
-  --format esd --single-layer --profile profiles/full-except-winre.json \
+  --format esd --single-layer --profile profiles/base-full.json \
   --profile profiles/developer-overlay.json
 tinywin2 package iso --input win11.iso --install-image out/install.esd \
   --output out/win11-slim.iso --workspace ./pkg --oscdimg "C:/oscdimg/oscdimg.exe"
 ```
 
 Profiles layer in `--profile` order (later overrides earlier): the base
-`profiles/full-except-winre.json` lists the whole catalog; scenario overlays
+`profiles/base-full.json` (the whole catalog, every removal enabled except the Client.CBS/SysMain baseline); scenario overlays
 (e.g. `profiles/developer-overlay.json`) carry only their deltas — keeps
 (`enabled: false`) and parameter overrides. A plan disabled by any layer cannot
 be re-enabled by a later one. New plans: add an enabled selection to the base
