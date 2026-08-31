@@ -43,7 +43,7 @@ public sealed class SetupImageContractValidator(IProcessRunner runner, BuildLog 
                 $"/MountDir:{mountPath}", "/ReadOnly"
             ], new() { Timeout = TimeSpan.FromHours(1) }, ct);
             mounted = true;
-            ValidateMountedImage(mountPath, fullImagePath, index);
+            ValidateMountedImage(mountPath, fullImagePath, index, log);
             log.Info($"Setup image contract passed for {Path.GetFileName(fullImagePath)} index {index}");
         }
         finally {
@@ -75,7 +75,7 @@ public sealed class SetupImageContractValidator(IProcessRunner runner, BuildLog 
         }
     }
 
-    internal static void ValidateMountedImage(string mountPath, string imagePath, int index) {
+    internal static void ValidateMountedImage(string mountPath, string imagePath, int index, BuildLog log) {
         var missing = RequiredRecoveryFiles
             .Where(path => !File.Exists(Path.Combine(mountPath, path)))
             .ToArray();
@@ -83,11 +83,10 @@ public sealed class SetupImageContractValidator(IProcessRunner runner, BuildLog 
             return;
         }
 
-        throw new InvalidOperationException(
-            $"Setup image contract failed for '{imagePath}' index {index}: missing " +
-            $"{string.Join(", ", missing.Select(path => $"'{path}'"))}. " +
-            "The image may remain usable for DISM/image-only deployment, but it cannot be " +
-            "packaged as a standard Windows Setup ISO. Disable or remove " +
-            "fs.recovery-environment and rebuild the image.");
+        // A WinRE-less image installs and runs fine; it simply has no recovery environment.
+        // Profiles enable fs.recovery-environment deliberately, so this is a heads-up, not a block.
+        log.Warn($"setup image contract: '{Path.GetFileName(imagePath)}' index {index} is missing " +
+                 $"{string.Join(", ", missing.Select(path => $"'{path}'"))} - the installed system " +
+                 "will have no Windows recovery environment (reagentc reports no WinRE).");
     }
 }

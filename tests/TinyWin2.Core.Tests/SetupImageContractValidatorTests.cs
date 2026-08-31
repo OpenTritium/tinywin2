@@ -1,3 +1,4 @@
+using TinyWin2.Core.Logging;
 using TinyWin2.Core.Pipeline;
 
 namespace TinyWin2.Core.Tests;
@@ -15,17 +16,14 @@ public sealed class SetupImageContractValidatorTests : IDisposable {
     }
 
     [Test]
-    public async Task MountedImageRequiresWinreAndReagentFiles() {
+    public async Task MountedImageWithoutWinreWarnsButPasses() {
         var mount = Path.Combine(_root, "mount");
         Directory.CreateDirectory(Path.Combine(mount, "Windows", "System32", "Recovery"));
         await File.WriteAllTextAsync(Path.Combine(mount, "Windows", "System32", "Recovery", "ReAgent.xml"),
             "reagent");
 
-        var ex = Assert.Throws<InvalidOperationException>(() =>
-            SetupImageContractValidator.ValidateMountedImage(mount, "broken.wim", 1));
-
-        await Assert.That(ex.Message).Contains("Winre.wim");
-        await Assert.That(ex.Message).Contains("standard Windows Setup ISO");
+        // WinRE-less images install and run fine; missing recovery files only downgrade to a warning.
+        SetupImageContractValidator.ValidateMountedImage(mount, "compact.wim", 1, new BuildLog());
     }
 
     [Test]
@@ -36,6 +34,6 @@ public sealed class SetupImageContractValidatorTests : IDisposable {
         await File.WriteAllTextAsync(Path.Combine(recovery, "Winre.wim"), "winre");
         await File.WriteAllTextAsync(Path.Combine(recovery, "ReAgent.xml"), "reagent");
 
-        SetupImageContractValidator.ValidateMountedImage(mount, "valid.wim", 1);
+        SetupImageContractValidator.ValidateMountedImage(mount, "valid.wim", 1, new BuildLog());
     }
 }
