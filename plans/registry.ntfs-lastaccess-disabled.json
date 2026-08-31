@@ -1,0 +1,33 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.ntfs-lastaccess-disabled",
+  "version": "1.0.0",
+  "title": "禁用 NTFS 最后访问时间戳",
+  "description": "将 NtfsDisableLastAccessUpdate 设为 3（系统托管且禁用）。读取文件不再触发元数据写回，海量小文件场景（构建、checkout、包管理器）减少额外 I/O。依赖精确 atime 的备份/归档工具会受影响。",
+  "category": "Storage",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\FileSystem",
+            "name": "NtfsDisableLastAccessUpdate",
+            "type": "dword",
+            "data": 3
+          },
+          {
+            "key": "ControlSet002\\Control\\FileSystem",
+            "name": "NtfsDisableLastAccessUpdate",
+            "type": "dword",
+            "data": 3
+          }
+        ]
+      }
+    }
+  ]
+}

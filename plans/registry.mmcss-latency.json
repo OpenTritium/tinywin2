@@ -1,0 +1,45 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.mmcss-latency",
+  "version": "1.0.0",
+  "title": "降低多媒体与网络后台节流",
+  "description": "MMCSS 调整：NetworkThrottlingIndex 设为 0xFFFFFFFF（豁免网络节流包间隔），SystemResponsiveness 降到 10%（Server 默认 100%，为后台保留的调度占比）。交互与多媒体延迟更平滑；后台批量任务的调度份额变小。",
+  "category": "Background Experience",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\Multimedia\\SystemProfile",
+            "name": "NetworkThrottlingIndex",
+            "type": "dword",
+            "data": 4294967295
+          },
+          {
+            "key": "ControlSet001\\Control\\Multimedia\\SystemProfile",
+            "name": "SystemResponsiveness",
+            "type": "dword",
+            "data": 10
+          },
+          {
+            "key": "ControlSet002\\Control\\Multimedia\\SystemProfile",
+            "name": "NetworkThrottlingIndex",
+            "type": "dword",
+            "data": 4294967295
+          },
+          {
+            "key": "ControlSet002\\Control\\Multimedia\\SystemProfile",
+            "name": "SystemResponsiveness",
+            "type": "dword",
+            "data": 10
+          }
+        ]
+      }
+    }
+  ]
+}

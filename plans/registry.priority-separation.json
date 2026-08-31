@@ -1,0 +1,33 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.priority-separation",
+  "version": "1.0.0",
+  "title": "优化前台调度优先级",
+  "description": "将 Win32PrioritySeparation 设为 0x26（短量子、前台三倍提升，开发工作站常用值）；前台进程获得更长的调度量子，编译/IDE 交互更顺滑，后台任务吞吐略降。",
+  "category": "Policies",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\PriorityControl",
+            "name": "Win32PrioritySeparation",
+            "type": "dword",
+            "data": 38
+          },
+          {
+            "key": "ControlSet002\\Control\\PriorityControl",
+            "name": "Win32PrioritySeparation",
+            "type": "dword",
+            "data": 38
+          }
+        ]
+      }
+    }
+  ]
+}

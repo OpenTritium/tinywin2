@@ -720,11 +720,19 @@
       "enabled": true
     },
     {
+      "planId": "registry.mmcss-latency",
+      "enabled": true
+    },
+    {
       "planId": "registry.modern-context-menu",
       "enabled": true
     },
     {
       "planId": "registry.ntfs-8dot3-disabled",
+      "enabled": true
+    },
+    {
+      "planId": "registry.ntfs-lastaccess-disabled",
       "enabled": true
     },
     {
@@ -745,6 +753,10 @@
     },
     {
       "planId": "registry.prefetch-disabled",
+      "enabled": true
+    },
+    {
+      "planId": "registry.priority-separation",
       "enabled": true
     },
     {
@@ -773,6 +785,10 @@
     },
     {
       "planId": "registry.shutdown-event-tracker",
+      "enabled": true
+    },
+    {
+      "planId": "registry.shutdown-timeout",
       "enabled": true
     },
     {
