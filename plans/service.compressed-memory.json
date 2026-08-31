@@ -1,0 +1,28 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "service.compressed-memory",
+  "version": "1.1.0",
+  "title": "保持内存压缩与页面合并",
+  "description": "将 SysMain 保持自动启动：Windows 的内存压缩（MemoryCompression）和页面合并（PageCombining）的压缩存储由 SysMain 宿主，服务停止后压缩即失效。预取的磁盘活动由 registry.prefetch-disabled 在策略层关闭，因此这里保留 SysMain 只为压缩收益。与 service.sysmain（整体禁用 SysMain）互斥；pagefile 保持系统管理，不固定大小。",
+  "category": "Background Services",
+  "riskLevel": "Medium",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "apply",
+      "spec": {
+        "services": [
+          "SysMain"
+        ],
+        "start": "auto"
+      }
+    }
+  ],
+  "requires": [
+    "registry.prefetch-disabled"
+  ],
+  "conflicts": [
+    "service.sysmain"
+  ]
+}

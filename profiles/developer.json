@@ -656,6 +656,10 @@
       "enabled": true
     },
     {
+      "planId": "registry.active-power-scheme",
+      "enabled": true
+    },
+    {
       "planId": "registry.automatic-maintenance",
       "enabled": true
     },
@@ -804,6 +808,10 @@
       "enabled": true
     },
     {
+      "planId": "registry.telemetry-policy",
+      "enabled": true
+    },
+    {
       "planId": "registry.uac",
       "enabled": true
     },
@@ -853,6 +861,10 @@
     },
     {
       "planId": "service.compatibility-assistant",
+      "enabled": true
+    },
+    {
+      "planId": "service.compressed-memory",
       "enabled": true
     },
     {
@@ -949,10 +961,6 @@
     },
     {
       "planId": "service.maps-broker",
-      "enabled": true
-    },
-    {
-      "planId": "service.memory-compression",
       "enabled": true
     },
     {

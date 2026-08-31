@@ -1,0 +1,33 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.active-power-scheme",
+  "version": "1.0.0",
+  "title": "默认电源方案设为高性能",
+  "description": "将活动电源方案设为高性能（8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c），减少空闲降频与定时器合并带来的交互延迟。虚拟机内客户机电源管理是虚拟化的，收益温和；裸机部署收益明显。功耗与发热上升。",
+  "category": "Policies",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Power",
+            "name": "ActivePowerScheme",
+            "type": "string",
+            "data": "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
+          },
+          {
+            "key": "ControlSet002\\Power",
+            "name": "ActivePowerScheme",
+            "type": "string",
+            "data": "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
+          }
+        ]
+      }
+    }
+  ]
+}
