@@ -1,0 +1,21 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "fs.catroot2",
+  "version": "1.0.0",
+  "title": "清理 catroot2 签名验证数据库",
+  "description": "清空 CryptoAPI 的 catroot2 目录（目录数据库与日志，长期运行可积累到数百 MB）。CryptSvc 在需要时按需重建该目录；构建在离线镜像上执行，服务未运行。catroot 目录内的 .cat 签名文件保留，不影响签名校验。",
+  "category": "System",
+  "riskLevel": "Medium",
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\System32\\catroot2\\*"
+        ]
+      }
+    }
+  ]
+}

@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "capability.sense-client",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "title": "移除 Defender for Endpoint 传感器桩",
-  "description": "移除 Microsoft.Windows.Sense.Client。不用 MDE 接入的机器是纯死重。",
+  "description": "移除 Microsoft.Windows.Sense.Client。不用 MDE 接入的机器是纯死重。注意：Server SKU 上该 FoD 及其 CBS 包被标记为不可卸载（CBS_E_CANNOT_UNINSTALL），能力与包两条移除路径均会被降级为 skipped，属于已知的 Server 侧限制。",
   "category": "Security",
   "riskLevel": "Low",
   "operations": [

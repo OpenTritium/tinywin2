@@ -1,0 +1,52 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "fs.telemetry-tasks",
+  "version": "1.0.0",
+  "title": "移除诊断与兼容性遥测计划任务",
+  "description": "删除 Application Experience（兼容性评估/差异合并/程序遥测）、CEIP、磁盘诊断、WinSAT 基准和语音模型下载的计划任务：同时清掉 TaskCache 注册项和任务文件，并移除 WinSAT 基准媒体。只删任务注册与文件，不改二进制；Windows Setup 可能在功能变更时重建个别任务。",
+  "category": "Diagnostics",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "deleteKeys": [
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Application Experience\\MareBackup",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Application Experience\\Microsoft Compatibility Appraiser",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Application Experience\\Microsoft Compatibility Appraiser Exp",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Application Experience\\ProgramDataUpdater",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Application Experience\\PcaPatchDbTask",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Application Experience\\SdbinstMergeDbTask",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Customer Experience Improvement Program\\Consolidator",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Customer Experience Improvement Program\\UsbCeip",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\DiskDiagnostic\\Microsoft-Windows-DiskDiagnosticDataCollector",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\DiskDiagnostic\\Microsoft-Windows-DiskDiagnosticResolver",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Maintenance\\WinSAT",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Speech\\SpeechModelDownloadTask"
+        ]
+      }
+    },
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\System32\\Tasks\\Microsoft\\Windows\\Application Experience\\MareBackup",
+          "Windows\\System32\\Tasks\\Microsoft\\Windows\\Application Experience\\Microsoft Compatibility Appraiser*",
+          "Windows\\System32\\Tasks\\Microsoft\\Windows\\Application Experience\\ProgramDataUpdater",
+          "Windows\\System32\\Tasks\\Microsoft\\Windows\\Application Experience\\PcaPatchDbTask",
+          "Windows\\System32\\Tasks\\Microsoft\\Windows\\Application Experience\\SdbinstMergeDbTask",
+          "Windows\\System32\\Tasks\\Microsoft\\Windows\\Customer Experience Improvement Program\\Consolidator",
+          "Windows\\System32\\Tasks\\Microsoft\\Windows\\Customer Experience Improvement Program\\UsbCeip",
+          "Windows\\System32\\Tasks\\Microsoft\\Windows\\DiskDiagnostic\\*",
+          "Windows\\System32\\Tasks\\Microsoft\\Windows\\Maintenance\\WinSAT",
+          "Windows\\System32\\Tasks\\Microsoft\\Windows\\Speech\\SpeechModelDownloadTask",
+          "Windows\\Performance\\WinSAT"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "fs.migwiz",
+  "version": "1.0.0",
+  "title": "移除迁移向导",
+  "description": "删除 Windows Easy Transfer / 用户状态迁移向导（System32\\migwiz）。全新安装的镜像没有迁移来源，客户端与服务端均为死重。",
+  "category": "System",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\System32\\migwiz"
+        ]
+      }
+    }
+  ]
+}

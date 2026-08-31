@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "feature.printing",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "title": "移除打印与 Microsoft Print to PDF",
-  "description": "移除本地打印客户端、打印基础结构、Internet Printing Client、图形打印组件和 Microsoft Print to PDF；不移除远程桌面功能。",
+  "description": "移除本地打印客户端、打印基础结构、Internet Printing Client、图形打印组件、Microsoft Print to PDF 以及 Server 的打印驱动特性（Server-Drivers-Printers）；不移除远程桌面功能。",
   "category": "Devices",
   "riskLevel": "High",
   "operations": [
@@ -18,7 +18,8 @@
           "Printing-Client",
           "Printing-Client-Gui",
           "Printing-PrintToPDFServices-Features",
-          "Microsoft-Windows-Printing-PremiumTools"
+          "Microsoft-Windows-Printing-PremiumTools",
+          "Server-Drivers-Printers"
         ],
         "removePayload": true
       }

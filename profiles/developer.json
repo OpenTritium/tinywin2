@@ -524,6 +524,10 @@
       "enabled": true
     },
     {
+      "planId": "fs.catroot2",
+      "enabled": true
+    },
+    {
       "planId": "fs.cbs-orphaned-security-edge",
       "enabled": true
     },
@@ -576,6 +580,10 @@
       "enabled": true
     },
     {
+      "planId": "fs.migwiz",
+      "enabled": true
+    },
+    {
       "planId": "fs.onedrive",
       "enabled": true
     },
@@ -612,6 +620,10 @@
       "enabled": true
     },
     {
+      "planId": "fs.telemetry-tasks",
+      "enabled": true
+    },
+    {
       "planId": "fs.windows-mail",
       "enabled": true
     },
@@ -633,6 +645,10 @@
     },
     {
       "planId": "package.edge-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "package.ras-residuals",
       "enabled": true
     },
     {
