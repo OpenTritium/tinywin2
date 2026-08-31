@@ -24,6 +24,13 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
     protected virtual DismOutcome? DowngradeOutcome => null;
 
     /// <summary>
+    ///     Target switch the remove command accepts repeatedly (e.g. "/FeatureName"), letting
+    ///     several targets share one DISM/CBS session; null when targets must be removed one by one.
+    ///     A failed batch falls back to per-target removal so a single bad target cannot mask others.
+    /// </summary>
+    protected virtual string? BatchableTargetSwitch => null;
+
+    /// <summary>
     ///     Exit codes meaning "this listing does not apply to the image" — treated as
     ///     provider-unavailable (satisfied no-op) instead of a hard failure. Server without
     ///     provisioning (appx) answers 87, ERROR_INVALID_PARAMETER.
@@ -86,8 +93,28 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
         var applied = diff.Differences
             .Where(d => d.Kind == ChangeKind.Skipped)
             .ToList();
+        var pending = diff.Differences
+            .Where(d => d.Kind != ChangeKind.Skipped)
+            .ToList();
         var removedCount = 0;
-        foreach (var change in diff.Differences.Where(d => d.Kind != ChangeKind.Skipped)) {
+
+        var batchSwitch = BatchableTargetSwitch;
+        if (batchSwitch is not null && pending.Count > 1) {
+            var (batchExit, batchOutput) = await RunDismAsync(context,
+                BatchArguments(operation, batchSwitch, pending), ct);
+            if (DismErrors.Classify(batchExit, batchOutput) is DismOutcome.Success or DismOutcome.SuccessRebootRequired) {
+                context.Log.Info($"{Resource}: {pending.Count} targets removed in one batch");
+                applied.AddRange(pending);
+                removedCount = pending.Count;
+                pending = [];
+            }
+            else {
+                context.Log.Warn(
+                    $"batched {Resource} removal failed (exit {batchExit}); retrying targets one by one.");
+            }
+        }
+
+        foreach (var change in pending) {
             var (exitCode, output) = await RunDismAsync(context,
                 RemoveArguments(operation, new(change.Target, change.Before)), ct);
             var outcome = DismErrors.Classify(exitCode, output);
@@ -109,6 +136,18 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
         return removedCount == 0
             ? ExecResult.Skipped("every target was absent or not removable in this edition", applied)
             : ExecResult.Applied(applied);
+    }
+
+    /// <summary>One combined remove command carrying every pending target switch.</summary>
+    private IReadOnlyList<string> BatchArguments(
+        BoundOperation operation, string targetSwitch, IReadOnlyList<ChangeItem> targets) {
+        var args = RemoveArguments(operation, new(targets[0].Target, targets[0].Before)).ToList();
+        var insertAt = args.FindIndex(a => a.StartsWith(targetSwitch, StringComparison.Ordinal)) + 1;
+        for (var i = 1; i < targets.Count; i++) {
+            args.Insert(insertAt + i - 1, targetSwitch + ":" + targets[i].Target);
+        }
+
+        return args;
     }
 
     /// <summary>Maps one /Format:List record to a removal target; may log skips.</summary>

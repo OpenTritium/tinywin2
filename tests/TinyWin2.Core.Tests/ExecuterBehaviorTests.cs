@@ -63,6 +63,42 @@ public sealed class FeatureExecuterTests : IDisposable {
     }
 
     [Test]
+    public async Task MultipleFeaturesShareOneDisableCall() {
+        SetupFeatures(("FeatA", "Enabled"), ("FeatB", "Enabled"));
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
+                ("features", new JsonArray("FeatA", "FeatB")), ("removePayload", true)), CancellationToken.None);
+
+        await Assert.That(result.IsSkipped).IsFalse();
+        await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Removed)).IsEqualTo(2);
+        var removeCalls = _harness.Runner.Calls.Where(c => c.Args.Contains("/Disable-Feature")).ToList();
+        await Assert.That(removeCalls.Count).IsEqualTo(1);
+        var args = removeCalls[0].Args;
+        await Assert.That(args.Count(a => a.StartsWith("/FeatureName:"))).IsEqualTo(2);
+        await Assert.That(args).Contains("/FeatureName:FeatA");
+        await Assert.That(args).Contains("/FeatureName:FeatB");
+        await Assert.That(args).Contains("/Remove");
+    }
+
+    [Test]
+    public async Task BatchedFeatureFailureFallsBackToPerTargetRemoval() {
+        var blocks = "Feature Name : FeatA\r\nState : Enabled\r\n\r\nFeature Name : FeatB\r\nState : Enabled";
+        _harness.Runner.Handler = (_, args) => args.Contains("/Get-Features")
+            ? FakeProcessRunner.Ok(blocks)
+            : args.Count(a => a.StartsWith("/FeatureName:")) > 1
+                ? FakeProcessRunner.Fail(DismErrors.CbsEInvalidInstallState)
+                : FakeProcessRunner.Ok();
+
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
+                ("features", new JsonArray("FeatA", "FeatB")), ("removePayload", true)), CancellationToken.None);
+
+        await Assert.That(result.IsSkipped).IsFalse();
+        await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Removed)).IsEqualTo(2);
+        await Assert.That(_harness.Runner.Calls.Count(c => c.Args.Contains("/Disable-Feature"))).IsEqualTo(3);
+    }
+
+    [Test]
     public async Task PermanentFeatureIsSkippedNotFailed() {
         SetupFeatures(("Permanent", "Enabled"));
         _harness.Runner.Handler = (_, args) => args.Contains("/Get-Features")
@@ -156,6 +192,26 @@ public sealed class CapabilityAndPackageTests : IDisposable {
         await Assert.That(result.IsSkipped).IsTrue();
         await Assert.That(result.SkipReason).Contains("not removable");
         await Assert.That(result.Changes[0].Kind).IsEqualTo(ChangeKind.Skipped);
+    }
+
+    [Test]
+    public async Task MultipleCapabilitiesShareOneRemoveCall() {
+        var listing = "Capability Identity : Cap.A~~~~\r\nState : Installed\r\n\r\n"
+                      + "Capability Identity : Cap.B~~~~\r\nState : Installed";
+        var capabilities = new CapabilityExecuter(_harness.Runner);
+        _harness.Runner.Handler = (_, args) => args.Contains("/Get-Capabilities")
+            ? FakeProcessRunner.Ok(listing)
+            : FakeProcessRunner.Ok();
+
+        var result = await capabilities.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("dism.capability", OperationAction.Remove,
+                ("capabilities", new JsonArray("Cap.*"))), CancellationToken.None);
+
+        await Assert.That(result.IsSkipped).IsFalse();
+        await Assert.That(result.Changes.Count(c => c.Kind == ChangeKind.Removed)).IsEqualTo(2);
+        var removeCalls = _harness.Runner.Calls.Where(c => c.Args.Contains("/Remove-Capability")).ToList();
+        await Assert.That(removeCalls.Count).IsEqualTo(1);
+        await Assert.That(removeCalls[0].Args.Count(a => a.StartsWith("/CapabilityName:"))).IsEqualTo(2);
     }
 
     [Test]

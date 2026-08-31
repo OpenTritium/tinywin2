@@ -13,6 +13,8 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterB
 
     protected override DismOutcome? DowngradeOutcome => DismOutcome.InvalidInstallState;
 
+    protected override string? BatchableTargetSwitch => "/FeatureName";
+
     protected override object BindOptions(OperationSpec spec) => FeatureOptions.FromDesired(spec.Spec);
 
     protected override string SatisfiedSkipReason => "features already absent or unavailable";

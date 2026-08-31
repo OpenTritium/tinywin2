@@ -12,6 +12,8 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismRemoveExecut
 
     protected override DismOutcome? DowngradeOutcome => DismOutcome.CannotUninstall;
 
+    protected override string? BatchableTargetSwitch => "/CapabilityName";
+
     protected override object BindOptions(OperationSpec spec) => CapabilityOptions.FromDesired(spec.Spec);
 
     protected override string SatisfiedSkipReason => "capabilities already absent or unavailable";
