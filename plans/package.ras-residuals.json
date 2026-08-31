@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "package.ras-residuals",
-  "version": "1.0.0",
-  "title": "移除远程访问服务端残留包",
-  "description": "移除 RRAS / 远程访问的服务端部署包与 RemoteAccess PowerShell 管理模块包。feature.remote-access 已移除对应功能，这里清理仍以 CBS 包形式存在的载荷。保留 Microsoft-OneCore-RasSstp-Api-Package，维持 SSTP VPN 客户端兼容。",
+  "version": "1.1.0",
+  "title": "移除远程访问 PowerShell 管理包",
+  "description": "移除 RemoteAccess PowerShell 管理模块的 CBS 包（正常情况下 feature.remote-access 移除功能载荷时已连带清除，此处兜底）。不含 OneCoreUAP-RRAS-ServerCore-Deployment-Package：Server SKU 将其标记为永久包，Remove-Package 直接拒绝（exit 5），属于 CBS 侧限制。保留 Microsoft-OneCore-RasSstp-Api-Package，维持 SSTP VPN 客户端兼容。",
   "category": "Remote Access",
   "riskLevel": "Medium",
   "operations": [
@@ -13,8 +13,7 @@
       "action": "remove",
       "spec": {
         "patterns": [
-          "^Microsoft-Windows-Networking-RemoteAccess-PowerShell-Base-Package~.*$",
-          "^Microsoft-Windows-OneCoreUAP-RRAS-ServerCore-Deployment-Package~.*$"
+          "^Microsoft-Windows-Networking-RemoteAccess-PowerShell-Base-Package~.*$"
         ]
       }
     }
