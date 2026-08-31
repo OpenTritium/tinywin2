@@ -1017,7 +1017,10 @@
     },
     {
       "planId": "service.server",
-      "enabled": true
+      "enabled": true,
+      "parameters": {
+        "startMode": "disabled"
+      }
     },
     {
       "planId": "service.smart-card",
