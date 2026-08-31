@@ -86,6 +86,7 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
         var applied = diff.Differences
             .Where(d => d.Kind == ChangeKind.Skipped)
             .ToList();
+        var removedCount = 0;
         foreach (var change in diff.Differences.Where(d => d.Kind != ChangeKind.Skipped)) {
             var (exitCode, output) = await RunDismAsync(context,
                 RemoveArguments(operation, new(change.Target, change.Before)), ct);
@@ -97,6 +98,7 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
             else if (outcome is DismOutcome.Success or DismOutcome.SuccessRebootRequired) {
                 context.Log.Info($"{Resource}: {change.Target} removed");
                 applied.Add(change);
+                removedCount++;
             }
             else {
                 throw new ExecException(
@@ -104,7 +106,9 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
             }
         }
 
-        return ExecResult.Applied(applied);
+        return removedCount == 0
+            ? ExecResult.Skipped("every target was absent or not removable in this edition", applied)
+            : ExecResult.Applied(applied);
     }
 
     /// <summary>Maps one /Format:List record to a removal target; may log skips.</summary>

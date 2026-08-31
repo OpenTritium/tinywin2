@@ -71,7 +71,8 @@ public sealed class FeatureExecuterTests : IDisposable {
         var result = await _executer.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
                 ("features", new JsonArray("Permanent"))), CancellationToken.None);
-        await Assert.That(result.IsSkipped).IsFalse();
+        await Assert.That(result.IsSkipped).IsTrue();
+        await Assert.That(result.SkipReason).Contains("not removable");
         await Assert.That(result.Changes[0].Kind).IsEqualTo(ChangeKind.Skipped);
     }
 
@@ -152,7 +153,8 @@ public sealed class CapabilityAndPackageTests : IDisposable {
         var result = await capabilities.ApplyAsync(_harness.NewContext(),
             ExecuterTestHarness.Spec("dism.capability", OperationAction.Remove,
                 ("capabilities", new JsonArray("Cap1"))), CancellationToken.None);
-        await Assert.That(result.IsSkipped).IsFalse();
+        await Assert.That(result.IsSkipped).IsTrue();
+        await Assert.That(result.SkipReason).Contains("not removable");
         await Assert.That(result.Changes[0].Kind).IsEqualTo(ChangeKind.Skipped);
     }
 
