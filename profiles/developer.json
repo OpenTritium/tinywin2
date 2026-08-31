@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "name": "Developer Workstation",
-  "description": "Developer scenario whitelist. Keeps: WinRE; virtualization (Hyper-V, Containers, WSL); app compatibility (NETFx 3.5, WOW64, VBScript, WMIC, ApplicationCompatibilityEnhancements); dev tools (Windows Terminal, classic Notepad, Snipping Tool incl. ScreenSketch appx, OpenSSH client, App Installer/winget, WebView2 runtime); Windows Hello (biometric service). Plus the full-profile conflict baseline: Client.CBS kept (IME/shell), memory compression on (SysMain off). Everything else (gaming, entertainment, consumer apps, server roles, legacy hardware) is removed.",
+  "description": "Developer scenario whitelist. Keeps: WinRE; virtualization (Hyper-V, Containers, WSL); app compatibility (NETFx 3.5, WOW64, VBScript, WMIC, ApplicationCompatibilityEnhancements); dev tools (Windows Terminal, classic Notepad, Snipping Tool incl. ScreenSketch appx, OpenSSH client, App Installer/winget, WebView2 runtime); Windows Hello (biometric service); graphics (DirectX configuration database, display broker - dev workstations are not headless VMs). Plus the full-profile conflict baseline: Client.CBS kept (IME/shell), memory compression on (SysMain off). Everything else (gaming, entertainment, consumer apps, server roles, legacy hardware) is removed.",
   "selections": [
     {
       "planId": "appx.alarms",
@@ -205,7 +205,7 @@
     },
     {
       "planId": "capability.directx-config",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "capability.extra-wallpapers",
@@ -857,7 +857,7 @@
     },
     {
       "planId": "service.display-broker",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.distributed-link-tracking",
