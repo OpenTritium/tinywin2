@@ -72,7 +72,7 @@
     {
       "planId": "service.time-sync",
       "enabled": true,
-      "params": {
+      "parameters": {
         "startMode": "disabled"
       }
     },
