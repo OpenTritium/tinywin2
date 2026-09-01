@@ -63,6 +63,29 @@ public sealed class FeatureExecuterTests : IDisposable {
     }
 
     [Test]
+    public async Task ExplicitRemovalOfUnknownFeatureDowngradesToSkipped() {
+        // The listing does not carry the feature and CBS rejects the explicit name (0x800F080C):
+        // the target simply does not exist in this edition, which satisfies the desired state.
+        SetupFeatures(("Hyper-V", "Enabled"));
+        _harness.Runner.Handler = (_, args) => args.Contains("/Get-Features")
+            ? FakeProcessRunner.Ok("Feature Name : Hyper-V\r\nState : Enabled")
+            : args.Any(a => a.Contains("RemoteDesktopConnection"))
+                ? FakeProcessRunner.Fail(DismErrors.CbsEUnknownUpdate)
+                : FakeProcessRunner.Ok();
+
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("dism.feature", OperationAction.Remove,
+                ("features", new JsonArray("Hyper-V", "Microsoft-RemoteDesktopConnection")),
+                ("removePayload", true), ("forceExplicit", true)), CancellationToken.None);
+
+        await Assert.That(result.IsSkipped).IsFalse();
+        var change = result.Changes.First(c => c.Target.Contains("RemoteDesktopConnection"));
+        await Assert.That(change.Kind).IsEqualTo(ChangeKind.Skipped);
+        var applied = result.Changes.First(c => c.Target == "Hyper-V");
+        await Assert.That(applied.Kind).IsEqualTo(ChangeKind.Removed);
+    }
+
+    [Test]
     public async Task MultipleFeaturesShareOneDisableCall() {
         SetupFeatures(("FeatA", "Enabled"), ("FeatB", "Enabled"));
         var result = await _executer.ApplyAsync(_harness.NewContext(),

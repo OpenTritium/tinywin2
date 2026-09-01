@@ -8,6 +8,7 @@ public enum DismOutcome {
     ProviderUnavailable,
     InvalidInstallState,
     CannotUninstall,
+    UnknownTarget,
     ComponentCleanupUnsupported,
     Fatal
 }
@@ -21,6 +22,9 @@ public static partial class DismErrors {
 
     /// <summary>0x800F0805 — an older/inbox package cannot be removed independently.</summary>
     public const int CbsEInvalidPackage = unchecked((int)0x800F0805);
+
+    /// <summary>0x800F080C — CBS does not know the named feature/capability (CBS_E_UNKNOWN_UPDATE).</summary>
+    public const int CbsEUnknownUpdate = unchecked((int)0x800F080C);
 
     /// <summary>Win32 ERROR_NOT_SUPPORTED — the edition exposes no servicing provider for this operation.</summary>
     private const int ErrorNotSupported = 50;
@@ -40,6 +44,7 @@ public static partial class DismErrors {
             CbsEInvalidInstallState => DismOutcome.InvalidInstallState,
             CbsECannotUninstall => DismOutcome.CannotUninstall,
             CbsEInvalidPackage => DismOutcome.CannotUninstall,
+            CbsEUnknownUpdate => DismOutcome.UnknownTarget,
             _ => ProviderUnavailableText().IsMatch(output) ? DismOutcome.ProviderUnavailable : DismOutcome.Fatal
         };
     }

@@ -118,7 +118,13 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
             var (exitCode, output) = await RunDismAsync(context,
                 RemoveArguments(operation, new(change.Target, change.Before)), ct);
             var outcome = DismErrors.Classify(exitCode, output);
-            if (outcome == DowngradeOutcome) {
+            if (outcome is DismOutcome.UnknownTarget) {
+                // CBS rejects the name outright: the target does not exist in this edition,
+                // so the desired state (absent) already holds.
+                context.Log.Info($"{Resource}: {change.Target} is not known to CBS; treating as absent.");
+                applied.Add(new(ChangeKind.Skipped, change.Target, "not present in this edition"));
+            }
+            else if (outcome == DowngradeOutcome) {
                 context.Log.Warn($"skipping unremovable {Resource} target: {change.Target} ({outcome})");
                 applied.Add(new(ChangeKind.Skipped, change.Target, "not removable in this edition"));
             }
