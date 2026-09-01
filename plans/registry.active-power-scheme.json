@@ -4,7 +4,7 @@
   "id": "registry.active-power-scheme",
   "version": "1.0.0",
   "title": "默认电源方案设为高性能",
-  "description": "将活动电源方案设为高性能（8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c），减少空闲降频与定时器合并带来的交互延迟。虚拟机内客户机电源管理是虚拟化的，收益温和；裸机部署收益明显。功耗与发热上升。",
+  "description": "将活动电源方案设为高性能（8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c），减少空闲降频与定时器合并带来的交互延迟。注意实测局限：离线写入的 ActivePowerScheme 会被电源服务在首次启动时用默认方案覆盖，因此对离线部署的镜像不生效；需在系统内以 powercfg /setactive 或无人值守 FirstLogonCommand 执行。裸机装机（经 setup.exe specialize）则保留离线值。功耗与发热上升。",
   "category": "Policies",
   "riskLevel": "Low",
   "operations": [
