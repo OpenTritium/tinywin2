@@ -70,6 +70,13 @@
       }
     },
     {
+      "planId": "service.time-sync",
+      "enabled": true,
+      "params": {
+        "startMode": "disabled"
+      }
+    },
+    {
       "planId": "service.user-access-logging",
       "enabled": true,
       "parameters": {
