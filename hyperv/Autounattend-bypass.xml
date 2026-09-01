@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<unattend xmlns="urn:schemas-microsoft-com:unattend"
+          xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <settings pass="windowsPE">
+    <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <SetupUILanguage>
+        <UILanguage>zh-CN</UILanguage>
+      </SetupUILanguage>
+      <InputLocale>zh-CN</InputLocale>
+      <SystemLocale>zh-CN</SystemLocale>
+      <UILanguage>zh-CN</UILanguage>
+      <UserLocale>zh-CN</UserLocale>
+    </component>
+    <component name="Microsoft-Windows-Setup" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <RunSynchronous>
+          <RunSynchronousCommand wcm:action="add">
+            <Order>1</Order>
+            <Path>reg add HKLM\SYSTEM\Setup\LabConfig /v BypassRAMCheck /t REG_DWORD /d 1 /f</Path>
+          </RunSynchronousCommand>
+          <RunSynchronousCommand wcm:action="add">
+            <Order>2</Order>
+            <Path>reg add HKLM\SYSTEM\Setup\LabConfig /v BypassTPMCheck /t REG_DWORD /d 1 /f</Path>
+          </RunSynchronousCommand>
+          <RunSynchronousCommand wcm:action="add">
+            <Order>3</Order>
+            <Path>reg add HKLM\SYSTEM\Setup\LabConfig /v BypassSecureBootCheck /t REG_DWORD /d 1 /f</Path>
+          </RunSynchronousCommand>
+          <RunSynchronousCommand wcm:action="add">
+            <Order>4</Order>
+            <Path>reg add HKLM\SYSTEM\Setup\LabConfig /v BypassCPUCheck /t REG_DWORD /d 1 /f</Path>
+          </RunSynchronousCommand>
+        </RunSynchronous>
+        <DiskConfiguration>
+        <Disk wcm:action="add">
+          <DiskID>0</DiskID>
+          <WillWipeDisk>true</WillWipeDisk>
+          <CreatePartitions>
+            <CreatePartition wcm:action="add">
+              <Order>1</Order>
+              <Size>260</Size>
+              <Type>EFI</Type>
+            </CreatePartition>
+            <CreatePartition wcm:action="add">
+              <Order>2</Order>
+              <Size>16</Size>
+              <Type>MSR</Type>
+            </CreatePartition>
+            <CreatePartition wcm:action="add">
+              <Order>3</Order>
+              <Extend>true</Extend>
+              <Type>Primary</Type>
+            </CreatePartition>
+          </CreatePartitions>
+          <ModifyPartitions>
+            <ModifyPartition wcm:action="add">
+              <Order>1</Order>
+              <PartitionID>1</PartitionID>
+              <Format>FAT32</Format>
+              <Label>System</Label>
+            </ModifyPartition>
+            <ModifyPartition wcm:action="add">
+              <Order>2</Order>
+              <PartitionID>2</PartitionID>
+            </ModifyPartition>
+            <ModifyPartition wcm:action="add">
+              <Order>3</Order>
+              <PartitionID>3</PartitionID>
+              <Format>NTFS</Format>
+              <Label>Windows</Label>
+              <Letter>C</Letter>
+            </ModifyPartition>
+          </ModifyPartitions>
+        </Disk>
+        <WillShowUI>Never</WillShowUI>
+      </DiskConfiguration>
+      <ImageInstall>
+        <OSImage>
+          <InstallFrom>
+            <MetaData wcm:action="add">
+              <Key>/IMAGE/INDEX</Key>
+              <Value>1</Value>
+            </MetaData>
+          </InstallFrom>
+          <InstallTo>
+            <DiskID>0</DiskID>
+            <PartitionID>3</PartitionID>
+          </InstallTo>
+          <WillShowUI>Never</WillShowUI>
+        </OSImage>
+      </ImageInstall>
+      <UserData>
+        <AcceptEula>true</AcceptEula>
+        <FullName>TinyWin</FullName>
+        <Organization>TinyWin</Organization>
+        <ProductKey>
+          <Key></Key>
+          <WillShowUI>Never</WillShowUI>
+        </ProductKey>
+      </UserData>
+    </component>
+  </settings>
+  <settings pass="specialize">
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <ComputerName>TINYWIN2-HV</ComputerName>
+      <TimeZone>China Standard Time</TimeZone>
+    </component>
+    <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <InputLocale>zh-CN</InputLocale>
+      <SystemLocale>zh-CN</SystemLocale>
+      <UILanguage>zh-CN</UILanguage>
+      <UserLocale>zh-CN</UserLocale>
+    </component>
+  </settings>
+  <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <AutoLogon>
+        <Enabled>true</Enabled>
+          <LogonCount>999</LogonCount>
+        <Username>TinyWin</Username>
+        <Password>
+          <Value>TinyWin2Temp!2026</Value>
+          <PlainText>true</PlainText>
+        </Password>
+      </AutoLogon>
+      <UserAccounts>
+        <LocalAccounts>
+          <LocalAccount wcm:action="add">
+            <Name>TinyWin</Name>
+            <DisplayName>TinyWin</DisplayName>
+            <Description>Local console account for Hyper-V smoke testing</Description>
+            <Group>Administrators</Group>
+            <Password>
+              <Value>TinyWin2Temp!2026</Value>
+              <PlainText>true</PlainText>
+            </Password>
+          </LocalAccount>
+        </LocalAccounts>
+      </UserAccounts>
+      <FirstLogonCommands>
+        <SynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <Description>Enable unattended console auto logon</Description>
+          <CommandLine>cmd /c reg add &quot;HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon&quot; /v AutoAdminLogon /t REG_SZ /d 1 /f &amp; reg add &quot;HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon&quot; /v DefaultUserName /t REG_SZ /d TinyWin /f &amp; reg add &quot;HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon&quot; /v DefaultPassword /t REG_SZ /d &quot;TinyWin2Temp!2026&quot; /f</CommandLine>
+        </SynchronousCommand>
+        <SynchronousCommand wcm:action="add">
+          <Order>2</Order>
+          <Description>Remove setup regenerated Defender and update tasks</Description>
+          <CommandLine>cmd /c schtasks.exe /Delete /TN &quot;\Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance&quot; /F &amp; schtasks.exe /Delete /TN &quot;\Microsoft\Windows\Windows Defender\Windows Defender Cleanup&quot; /F &amp; schtasks.exe /Delete /TN &quot;\Microsoft\Windows\Windows Defender\Windows Defender Scheduled Scan&quot; /F &amp; schtasks.exe /Delete /TN &quot;\Microsoft\Windows\Windows Defender\Windows Defender Verification&quot; /F &amp; schtasks.exe /Delete /TN &quot;\Microsoft\Windows\WindowsUpdate\Refresh Group Policy Cache&quot; /F &amp; schtasks.exe /Delete /TN &quot;\Microsoft\Windows\WindowsUpdate\Scheduled Start&quot; /F</CommandLine>
+        </SynchronousCommand>
+        <SynchronousCommand wcm:action="add">
+          <Order>3</Order>
+          <Description>Restore disabled Windows Update services after setup</Description>
+          <CommandLine>cmd /c net.exe stop wuauserv /y &amp; reg.exe add &quot;HKLM\SYSTEM\CurrentControlSet\Services\wuauserv&quot; /v Start /t REG_DWORD /d 4 /f &amp; reg.exe add &quot;HKLM\SYSTEM\CurrentControlSet\Services\UsoSvc&quot; /v Start /t REG_DWORD /d 4 /f &amp; reg.exe add &quot;HKLM\SYSTEM\CurrentControlSet\Services\WaaSMedicSvc&quot; /v Start /t REG_DWORD /d 4 /f</CommandLine>
+        </SynchronousCommand>
+              <SynchronousCommand wcm:action="add">
+          <Order>5</Order>
+          <Description>Set High Performance power scheme</Description>
+          <CommandLine>powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c</CommandLine>
+        </SynchronousCommand>
+</FirstLogonCommands>
+      <OOBE>
+        <SkipMachineOOBE>true</SkipMachineOOBE>
+        <SkipUserOOBE>true</SkipUserOOBE>
+        <HideEULAPage>true</HideEULAPage>
+        <HideLocalAccountScreen>true</HideLocalAccountScreen>
+        <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+        <NetworkLocation>Work</NetworkLocation>
+        <ProtectYourPC>1</ProtectYourPC>
+      </OOBE>
+    </component>
+  </settings>
+</unattend>
