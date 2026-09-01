@@ -3,6 +3,19 @@
 Host-side scripts for driving the smoke-test VM without a GUI console. All paths
 reference `F:\tinywin2\` (vm/, iso/, out/, probe/) — adjust to your layout.
 
+## Canonical build
+
+The smoke image is Server 2025 **Datacenter with Desktop Experience** — source
+index **4** (index 1/2 are Standard, 3 is Datacenter without desktop experience;
+the wrong index yields a deceptively healthy but half-sized ESD).
+
+```
+tinywin2 build --input <26100 ISO> --index 4 \
+  --profile profiles/base-full.json --profile profiles/developer-overlay.json \
+  --output F:/tinywin2/out/dev-server.esd --workspace F:/tinywin2/ws-dev-server \
+  --format esd --single-layer --overwrite
+```
+
 ## Pipeline
 
 1. `vm-recreate.ps1` — recreate the Gen2 VM (TPM, nested virtualization, 80GB vhdx).
