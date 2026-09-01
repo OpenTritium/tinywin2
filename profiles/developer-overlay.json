@@ -52,8 +52,23 @@
       "enabled": false
     },
     {
+      "planId": "fs.remote-desktop-residuals",
+      "enabled": false
+    },
+    {
+      "planId": "registry.remote-desktop-enabled",
+      "enabled": true
+    },
+    {
       "planId": "service.display-broker",
       "enabled": false
+    },
+    {
+      "planId": "service.remote-desktop-services",
+      "enabled": true,
+      "parameters": {
+        "startMode": "manual"
+      }
     },
     {
       "planId": "service.server",

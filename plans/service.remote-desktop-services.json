@@ -2,11 +2,11 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.remote-desktop-services",
-  "version": "3.0.0",
-  "title": "移除远程桌面服务启动能力",
-  "description": "禁用 TermService、SessionEnv 和 UmRdpService，关闭 RDP 入站及远程桌面会话环境；本地控制台登录和桌面 Shell 保留，远程桌面功能不可用。",
+  "version": "3.1.0",
+  "title": "远程桌面服务启动方式",
+  "description": "TermService、SessionEnv 和 UmRdpService 的启动方式：disabled 关闭 RDP 入站及远程桌面会话环境（本地控制台与桌面 Shell 保留）；manual 保持 Windows 默认（按需启动），配合 fDenyTSConnections=0 即可被 RDP 连入。",
   "category": "Remote Management",
-  "riskLevel": "High",
+  "riskLevel": "Medium",
   "operations": [
     {
       "resource": "registry.service",
@@ -17,8 +17,36 @@
           "SessionEnv",
           "UmRdpService"
         ],
-        "start": "disabled"
+        "start": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "manual": "manual",
+              "disabled": "disabled"
+            }
+          }
+        }
       }
+    }
+  ],
+  "parameters": [
+    {
+      "name": "startMode",
+      "type": "enum",
+      "label": "启动方式",
+      "default": "disabled",
+      "options": [
+        {
+          "value": "disabled",
+          "label": "禁用",
+          "riskLevel": "High"
+        },
+        {
+          "value": "manual",
+          "label": "手动（保留远程桌面服务端）",
+          "riskLevel": "Low"
+        }
+      ]
     }
   ]
 }

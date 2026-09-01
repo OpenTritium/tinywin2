@@ -1,0 +1,33 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.remote-desktop-enabled",
+  "version": "1.0.0",
+  "title": "允许远程桌面连入",
+  "description": "fDenyTSConnections=0：允许 RDP 入站连接（管理远程桌面，Administrators 组成员可直接连入）。需配合 TermService 保持可启动与 3389 防火墙放行。",
+  "category": "Remote Management",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\Terminal Server",
+            "name": "fDenyTSConnections",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet002\\Control\\Terminal Server",
+            "name": "fDenyTSConnections",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
+    }
+  ]
+}

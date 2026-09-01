@@ -68,6 +68,11 @@
           <Description>Set High Performance power scheme</Description>
           <CommandLine>powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c</CommandLine>
         </SynchronousCommand>
+        <SynchronousCommand wcm:action="add">
+          <Order>6</Order>
+          <Description>Allow inbound RDP on port 3389</Description>
+          <CommandLine>cmd /c netsh advfirewall firewall add rule name=&quot;TinyWinRDP-TCP&quot; dir=in action=allow protocol=TCP localport=3389 &amp; netsh advfirewall firewall add rule name=&quot;TinyWinRDP-UDP&quot; dir=in action=allow protocol=UDP localport=3389</CommandLine>
+        </SynchronousCommand>
       </FirstLogonCommands>
       <OOBE>
         <SkipMachineOOBE>true</SkipMachineOOBE>
