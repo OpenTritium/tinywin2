@@ -27,6 +27,10 @@ bcdboot "${w}\Windows" /s $s /f UEFI | Select-Object -Last 1
 # whole transaction atomically (0x800f0916)
 dism /Image:${w}\ /English /Enable-Feature /FeatureName:Microsoft-Hyper-V /All /NoRestart | Select-Object -Last 2
 
+# best effort: management tools when their payload ships staged in the ESD; a Resolved
+# payload fails this call but must not block the deploy
+dism /Image:${w}\ /English /Enable-Feature /FeatureName:Microsoft-Hyper-V-Management-Clients /FeatureName:Microsoft-Hyper-V-Management-PowerShell /FeatureName:RSAT-Hyper-V-Tools-Feature /All /NoRestart 2>&1 | Select-Object -Last 1
+
 New-Item -ItemType Directory -Path "${w}\Panther" -Force | Out-Null
 Copy-Item 'F:\tinywin2\probe\Unattend-oobe.xml' "${w}\Panther\Unattend.xml" -Force
 New-Item -ItemType Directory -Path "${w}\Windows\System32\Sysprep" -Force | Out-Null
