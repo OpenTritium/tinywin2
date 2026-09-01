@@ -59,7 +59,7 @@
       "planId": "service.server",
       "enabled": true,
       "parameters": {
-        "startMode": "disabled"
+        "startMode": "delayed"
       }
     },
     {
