@@ -1,0 +1,21 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "fs.searchhost",
+  "version": "1.0.0",
+  "title": "移除任务栏搜索 UI 宿主",
+  "description": "删除保留包 Client.CBS 内的 SearchHost.exe（任务栏搜索框 UI，常驻 ~45MB）。搜索服务 WSearch 与搜索功能已由其他计划移除，该宿主仅是空壳入口。已在运行中的镜像上验证：移除后任务栏/开始菜单/中文输入法不受影响，仅任务栏搜索框失效。CBS 更新可能在未来累积更新中还原该文件。",
+  "category": "Desktop Experience",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchHost.exe"
+        ]
+      }
+    }
+  ]
+}

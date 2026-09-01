@@ -1,0 +1,26 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "service.background-trim",
+  "version": "1.0.0",
+  "title": "精简闲置后台服务",
+  "description": "禁用四类开发/虚拟机场景用不到的后台服务：PolicyAgent（IPsec 策略）、DisplayEnhancementService（亮度/夜间模式调节）、W32Time（域时间同步；虚拟机由 vmictimesync 接管；裸机禁用后需自行 NTP 对时）、vmicrdv（Hyper-V 远桌面虚拟化集成），以及 UdkUserSvc*（Undocked DevKit 每用户服务模板与实例）。进程实测每项常驻 ~3-10MB。",
+  "category": "Background Services",
+  "riskLevel": "Medium",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "apply",
+      "spec": {
+        "servicePatterns": [
+          "PolicyAgent",
+          "DisplayEnhancementService",
+          "W32Time",
+          "vmicrdv",
+          "UdkUserSvc*"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

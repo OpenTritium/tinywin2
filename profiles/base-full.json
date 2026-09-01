@@ -608,6 +608,10 @@
       "enabled": true
     },
     {
+      "planId": "fs.searchhost",
+      "enabled": true
+    },
+    {
       "planId": "fs.security-deep-residuals",
       "enabled": true
     },
@@ -841,6 +845,10 @@
     },
     {
       "planId": "service.audio",
+      "enabled": true
+    },
+    {
+      "planId": "service.background-trim",
       "enabled": true
     },
     {
