@@ -2,6 +2,9 @@ $ErrorActionPreference = 'Stop'
 $name = 'TinyWin2-ServerSmoke'
 $vhdx = 'F:\tinywin2\vm\ServerSmoke.vhdx'
 $esd = 'F:\tinywin2\out\dev-server.esd'
+# optional: raw install ISO/WIM for restoring feature payloads the build's
+# component cleanup already stripped (e.g. Hyper-V management tools)
+$SourceMedia = 'F:\tinywin2\ws-dev-server\install.source.wim'
 
 Stop-VM $name -TurnOff -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 3
@@ -27,9 +30,15 @@ bcdboot "${w}\Windows" /s $s /f UEFI | Select-Object -Last 1
 # whole transaction atomically (0x800f0916)
 dism /Image:${w}\ /English /Enable-Feature /FeatureName:Microsoft-Hyper-V /All /NoRestart | Select-Object -Last 2
 
-# best effort: management tools when their payload ships staged in the ESD; a Resolved
-# payload fails this call but must not block the deploy
-dism /Image:${w}\ /English /Enable-Feature /FeatureName:Microsoft-Hyper-V-Management-Clients /FeatureName:Microsoft-Hyper-V-Management-PowerShell /FeatureName:RSAT-Hyper-V-Tools-Feature /All /NoRestart 2>&1 | Select-Object -Last 1
+# best effort: management tools. When the component cleanup/resetbase plans ran at
+# build time the payload is Resolved (gone) — /Source from the staged original WIM
+# restores it offline. A failure here must not block the deploy.
+if (Test-Path $SourceMedia) {
+    dism /Image:${w}\ /English /Enable-Feature /FeatureName:Microsoft-Hyper-V-Management-Clients /FeatureName:Microsoft-Hyper-V-Management-PowerShell /FeatureName:RSAT-Hyper-V-Tools-Feature /All /Source:wim:${SourceMedia}:4 /LimitAccess /NoRestart 2>&1 | Select-Object -Last 1
+}
+else {
+    dism /Image:${w}\ /English /Enable-Feature /FeatureName:Microsoft-Hyper-V-Management-Clients /FeatureName:Microsoft-Hyper-V-Management-PowerShell /FeatureName:RSAT-Hyper-V-Tools-Feature /All /NoRestart 2>&1 | Select-Object -Last 1
+}
 
 New-Item -ItemType Directory -Path "${w}\Panther" -Force | Out-Null
 Copy-Item 'F:\tinywin2\probe\Unattend-oobe.xml' "${w}\Panther\Unattend.xml" -Force

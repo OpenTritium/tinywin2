@@ -36,6 +36,15 @@ tinywin2 build --input <26100 ISO> --index 4 \
 
 ## Known behaviors
 
+- The `maintenance.component-cleanup` / `maintenance.component-resetbase` plans strip the
+  payload of every *disabled* optional feature (that is most of the size win). Features
+  that must be installable later — e.g. Hyper-V management tools, whose payload is not on
+  the Server media at all — need either their feature enabled in the image or a `/Source`
+  restore at deploy time; `offline-deploy.ps1` restores Hyper-V management from the staged
+  original WIM automatically.
+- Windows Setup specialize payload-scrubs *disabled* optional features on first boot.
+  Anything that must survive has to be enabled offline **before** the first boot
+  (`offline-deploy.ps1` does this for the Hyper-V core).
 - Windows Setup specialize re-provisions inbox scheduled tasks and may reset
   `W32Time` to manual for OOBE time sync; FirstLogonCommands re-delete/re-disable
   after logon. The dev overlay pins `service.time-sync` to `startMode: disabled`
