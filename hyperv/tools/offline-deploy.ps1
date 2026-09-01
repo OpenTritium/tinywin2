@@ -41,7 +41,7 @@ $mgmtArgs = @('/English', '/Enable-Feature',
     '/FeatureName:RSAT-Hyper-V-Tools-Feature',
     '/All', '/NoRestart')
 if (Test-Path $SourceMedia) {
-    $mnt = 'F:	inywin2\mnt-src'
+    $mnt = 'F:\tinywin2\mnt-src'
     New-Item -ItemType Directory -Path $mnt -Force | Out-Null
     dism /Mount-Image /ImageFile:$SourceMedia /Index:4 /MountDir:$mnt /ReadOnly | Select-Object -Last 1
     dism /Image:${w}\ @mgmtArgs /Source:"$mnt\Windows" /LimitAccess 2>&1 | Select-Object -Last 1
