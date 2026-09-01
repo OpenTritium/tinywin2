@@ -30,14 +30,25 @@ bcdboot "${w}\Windows" /s $s /f UEFI | Select-Object -Last 1
 # whole transaction atomically (0x800f0916)
 dism /Image:${w}\ /English /Enable-Feature /FeatureName:Microsoft-Hyper-V /All /NoRestart | Select-Object -Last 2
 
-# best effort: management tools. When the component cleanup/resetbase plans ran at
-# build time the payload is Resolved (gone) — /Source from the staged original WIM
-# restores it offline. A failure here must not block the deploy.
+# best effort: management tools. The component cleanup/resetbase plans strip their
+# payload at build time — restore offline with the staged original WIM MOUNTED as the
+# /Source store (dism's wim:/index source form silently no-ops here; a mounted image's
+# Windows directory is what actually works). The mount dir must exist before Mount-Image.
+# A failure here must not block the deploy.
+$mgmtArgs = @('/English', '/Enable-Feature',
+    '/FeatureName:Microsoft-Hyper-V-Management-Clients',
+    '/FeatureName:Microsoft-Hyper-V-Management-PowerShell',
+    '/FeatureName:RSAT-Hyper-V-Tools-Feature',
+    '/All', '/NoRestart')
 if (Test-Path $SourceMedia) {
-    dism /Image:${w}\ /English /Enable-Feature /FeatureName:Microsoft-Hyper-V-Management-Clients /FeatureName:Microsoft-Hyper-V-Management-PowerShell /FeatureName:RSAT-Hyper-V-Tools-Feature /All /Source:wim:${SourceMedia}:4 /LimitAccess /NoRestart 2>&1 | Select-Object -Last 1
+    $mnt = 'F:	inywin2\mnt-src'
+    New-Item -ItemType Directory -Path $mnt -Force | Out-Null
+    dism /Mount-Image /ImageFile:$SourceMedia /Index:4 /MountDir:$mnt /ReadOnly | Select-Object -Last 1
+    dism /Image:${w}\ @mgmtArgs /Source:"$mnt\Windows" /LimitAccess 2>&1 | Select-Object -Last 1
+    dism /Unmount-Image /MountDir:$mnt /Discard | Select-Object -Last 1
 }
 else {
-    dism /Image:${w}\ /English /Enable-Feature /FeatureName:Microsoft-Hyper-V-Management-Clients /FeatureName:Microsoft-Hyper-V-Management-PowerShell /FeatureName:RSAT-Hyper-V-Tools-Feature /All /NoRestart 2>&1 | Select-Object -Last 1
+    dism /Image:${w}\ @mgmtArgs 2>&1 | Select-Object -Last 1
 }
 
 New-Item -ItemType Directory -Path "${w}\Panther" -Force | Out-Null
