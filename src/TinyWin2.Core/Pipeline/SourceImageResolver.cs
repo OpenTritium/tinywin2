@@ -302,6 +302,12 @@ public sealed partial class SourceImageResolver(IProcessRunner runner, BuildLog 
     public async Task StageAsWimAsync(SourceInput source, int imageIndex, string targetWimPath,
         WimCompression compression, bool checkIntegrity, CancellationToken ct) {
         if (!source.IsEsd) {
+            if (File.Exists(targetWimPath)) {
+                // resume re-copies over the previous staging WIM; media copies carry the
+                // read-only attribute, which File.Copy(overwrite) cannot clear
+                File.SetAttributes(targetWimPath, FileAttributes.Normal);
+            }
+
             File.Copy(source.InstallImagePath, targetWimPath, true);
             try {
                 File.Delete(targetWimPath + ".tinywin2.json");
