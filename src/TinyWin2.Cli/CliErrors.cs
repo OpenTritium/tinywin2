@@ -72,7 +72,7 @@ internal static class CliErrors {
     private static string? Hint(string code) => code switch {
         "step-failed" => "rerun the same build command with --resume to replay from the last completed step",
         "output-exists" => "pass --overwrite to replace the existing artifact",
-        "workspace-conflict" => "choose a new workspace, or pass --resume when continuing an earlier build",
+        "workspace-conflict" => "choose a new workspace, or delete the stale one if it can be discarded",
         "plan-resolution-failed" => "run `tinywin2 plan list` to browse valid plan ids",
         "plan-validation-failed" => "run `tinywin2 plan validate --file <plan.json>` for the full error list",
         "environment-check-failed" => "run `tinywin2 doctor --workspace <dir>` for the failing checks",
