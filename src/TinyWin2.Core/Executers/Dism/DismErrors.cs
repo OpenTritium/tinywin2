@@ -26,6 +26,12 @@ public static partial class DismErrors {
     /// <summary>0x800F080C — CBS does not know the named feature/capability (CBS_E_UNKNOWN_UPDATE).</summary>
     public const int CbsEUnknownUpdate = unchecked((int)0x800F080C);
 
+    /// <summary>0x800F081F — the files needed to enable the feature are missing (CBS_E_SOURCE_MISSING).</summary>
+    public const int CbsESourceMissing = unchecked((int)0x800F081F);
+
+    /// <summary>0x800F0954 — the source could not be downloaded (WSU/Windows Update unreachable offline).</summary>
+    public const int CbsESourceNotDownloadable = unchecked((int)0x800F0954);
+
     /// <summary>Win32 ERROR_NOT_SUPPORTED — the edition exposes no servicing provider for this operation.</summary>
     private const int ErrorNotSupported = 50;
 

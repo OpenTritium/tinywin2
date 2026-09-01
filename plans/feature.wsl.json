@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "feature.wsl",
-  "version": "3.0.0",
-  "title": "移除 Windows Subsystem for Linux",
-  "description": "移除 WSL 与其虚拟机平台依赖；Linux 发行版将无法运行。",
+  "version": "3.1.0",
+  "title": "移除 WSL1 组件",
+  "description": "移除 WSL1（Microsoft-Windows-Subsystem-Linux / lxcore）。WSL2 不受影响：其前置 VirtualMachinePlatform 由 feature.vm-platform 计划启用；WSL2 本体在部署后经 wsl --install --web-download 安装。",
   "category": "Virtualization",
   "riskLevel": "High",
   "operations": [
@@ -13,8 +13,7 @@
       "action": "remove",
       "spec": {
         "features": [
-          "Microsoft-Windows-Subsystem-Linux",
-          "VirtualMachinePlatform"
+          "Microsoft-Windows-Subsystem-Linux"
         ],
         "removePayload": true
       }

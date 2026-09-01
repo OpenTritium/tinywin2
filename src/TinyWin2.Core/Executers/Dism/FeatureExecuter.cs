@@ -1,11 +1,18 @@
+using System.Collections.Frozen;
 using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Executers.Dism;
 
-/// <summary>Converges optional features. absent = disable (optionally removing payload).</summary>
+/// <summary>Converges optional features: absent = disable (optionally removing payload), apply = enable.</summary>
 public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterBase(runner) {
     private const string ResourceId = "dism.feature";
     public override string Resource => ResourceId;
+
+    protected override bool SupportsApply => true;
+
+    /// <summary>Enabling needs the feature payload, which cleanup plans may have stripped.</summary>
+    protected override FrozenSet<int> ApplyPayloadMissingExitCodes =>
+        FrozenSet.ToFrozenSet([DismErrors.CbsESourceMissing, DismErrors.CbsESourceNotDownloadable]);
 
     protected override IReadOnlyList<string> ListArguments => ["/Get-Features", "/Format:List"];
 
@@ -30,6 +37,13 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterB
             StringComparer.OrdinalIgnoreCase);
         foreach (var feature in options.Features) {
             if (!states.TryGetValue(feature, out var state)) {
+                if (operation.Action == OperationAction.Apply) {
+                    // nothing to enable: the feature does not exist in this edition
+                    context.Log.Info($"feature '{feature}' is not present in this image; skipping.");
+                    yield return new(feature, SkipReason: "feature not present in image");
+                    continue;
+                }
+
                 if (options.ForceExplicit) {
                     context.Log.Info($"feature '{feature}' is not listed; attempting explicit removal.");
                     yield return new(feature, Before: "feature not listed");
@@ -37,6 +51,14 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterB
                 else {
                     context.Log.Info($"feature '{feature}' is not present in this image; skipping.");
                     yield return new(feature, SkipReason: "feature not present in image");
+                }
+            }
+            else if (operation.Action == OperationAction.Apply) {
+                if (state.Contains("Enabled", StringComparison.OrdinalIgnoreCase)) {
+                    // already in the desired state: no difference entry at all.
+                }
+                else {
+                    yield return new(feature, state);
                 }
             }
             else if (state.Contains("Removed", StringComparison.OrdinalIgnoreCase)

@@ -86,6 +86,65 @@ public sealed class FeatureExecuterTests : IDisposable {
     }
 
     [Test]
+    public async Task ApplyEnablesDisabledFeature() {
+        SetupFeatures(("VirtualMachinePlatform", "Disabled"));
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("dism.feature", OperationAction.Apply,
+                ("features", new JsonArray("VirtualMachinePlatform"))), CancellationToken.None);
+
+        await Assert.That(result.IsSkipped).IsFalse();
+        var enable = _harness.Runner.Calls.First(c => c.Args.Contains("/Enable-Feature"));
+        await Assert.That(string.Join(" ", enable.Args)).Contains("/FeatureName:VirtualMachinePlatform");
+        await Assert.That(string.Join(" ", enable.Args)).Contains("/All");
+        var change = result.Changes.Single();
+        await Assert.That(change.Kind).IsEqualTo(ChangeKind.Modified);
+        await Assert.That(change.After).IsEqualTo("Enabled");
+    }
+
+    [Test]
+    public async Task ApplySatisfiedWhenFeatureAlreadyEnabled() {
+        SetupFeatures(("VirtualMachinePlatform", "Enabled"));
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("dism.feature", OperationAction.Apply,
+                ("features", new JsonArray("VirtualMachinePlatform"))), CancellationToken.None);
+
+        await Assert.That(result.IsSkipped).IsTrue();
+        await Assert.That(_harness.Runner.Calls.Any(c => c.Args.Contains("/Enable-Feature"))).IsFalse();
+    }
+
+    [Test]
+    public async Task ApplySkipsFeatureMissingFromImage() {
+        SetupFeatures(("Hyper-V", "Enabled"));
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("dism.feature", OperationAction.Apply,
+                ("features", new JsonArray("Not-In-Image"))), CancellationToken.None);
+
+        await Assert.That(result.IsSkipped).IsTrue();
+        var change = result.Changes.Single();
+        await Assert.That(change.Kind).IsEqualTo(ChangeKind.Skipped);
+        await Assert.That(_harness.Runner.Calls.Any(c => c.Args.Contains("/Enable-Feature"))).IsFalse();
+    }
+
+    [Test]
+    public async Task ApplyDowngradesMissingPayloadToSkipped() {
+        // feature is Disabled but its payload was stripped (0x800F081F): the enable cannot
+        // proceed, and the executer leaves the feature disabled instead of failing the build.
+        _harness.Runner.Handler = (_, args) => args.Contains("/Get-Features")
+            ? FakeProcessRunner.Ok("Feature Name : VirtualMachinePlatform\r\nState : Disabled")
+            : args.Any(a => a.Contains("/Enable-Feature"))
+                ? FakeProcessRunner.Fail(DismErrors.CbsESourceMissing)
+                : FakeProcessRunner.Ok();
+
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("dism.feature", OperationAction.Apply,
+                ("features", new JsonArray("VirtualMachinePlatform"))), CancellationToken.None);
+
+        await Assert.That(result.IsSkipped).IsTrue();
+        var change = result.Changes.Single();
+        await Assert.That(change.Kind).IsEqualTo(ChangeKind.Skipped);
+    }
+
+    [Test]
     public async Task MultipleFeaturesShareOneDisableCall() {
         SetupFeatures(("FeatA", "Enabled"), ("FeatB", "Enabled"));
         var result = await _executer.ApplyAsync(_harness.NewContext(),

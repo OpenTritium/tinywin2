@@ -23,6 +23,16 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
     /// <summary>Outcome that downgrades a failed removal to Skipped (e.g. CBS_E_CANNOT_UNINSTALL); null for none.</summary>
     protected virtual DismOutcome? DowngradeOutcome => null;
 
+    /// <summary>Whether this executer also converges features to enabled (action apply).</summary>
+    protected virtual bool SupportsApply => false;
+
+    /// <summary>
+    ///     Exit codes meaning "the feature's payload is not in this image" during an apply —
+    ///     enabling cannot proceed, but the desired state is left unchanged rather than failing.
+    ///     CBS_E_SOURCE_MISSING (0x800F081F), CBS_E_SOURCE_NOT_FOUND (0x800F0954).
+    /// </summary>
+    protected virtual FrozenSet<int> ApplyPayloadMissingExitCodes => FrozenSet<int>.Empty;
+
     /// <summary>
     ///     Target switch the remove command accepts repeatedly (e.g. "/FeatureName"), letting
     ///     several targets share one DISM/CBS session; null when targets must be removed one by one.
@@ -44,8 +54,9 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
     public abstract string Resource { get; }
 
     public object Bind(OperationSpec spec) {
-        if (spec.Action != OperationAction.Remove) {
-            throw new ExecException($"{Resource} supports only action 'remove'.");
+        var valid = spec.Action == OperationAction.Remove || (SupportsApply && spec.Action == OperationAction.Apply);
+        if (!valid) {
+            throw new ExecException($"{Resource} supports actions 'remove'{(SupportsApply ? " and 'apply'" : "")}.");
         }
 
         return BindOptions(spec);
@@ -78,7 +89,9 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
         var differences = SelectTargets(records, context, operation)
             .Select(t => t.SkipReason is not null
                 ? new(ChangeKind.Skipped, t.RemoveKey, t.SkipReason)
-                : new ChangeItem(ChangeKind.Removed, t.RemoveKey, t.Before))
+                : operation.Action == OperationAction.Apply
+                    ? new ChangeItem(ChangeKind.Modified, t.RemoveKey, t.Before, After: "Enabled")
+                    : new ChangeItem(ChangeKind.Removed, t.RemoveKey, t.Before))
             .ToList();
         return new(differences.All(d => d.Kind == ChangeKind.Skipped), differences);
     }
@@ -96,6 +109,7 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
         var pending = diff.Differences
             .Where(d => d.Kind != ChangeKind.Skipped)
             .ToList();
+        var apply = operation.Action == OperationAction.Apply;
         var removedCount = 0;
 
         var batchSwitch = BatchableTargetSwitch;
@@ -103,22 +117,27 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
             var (batchExit, batchOutput) = await RunDismAsync(context,
                 BatchArguments(operation, batchSwitch, pending), ct);
             if (DismErrors.Classify(batchExit, batchOutput) is DismOutcome.Success or DismOutcome.SuccessRebootRequired) {
-                context.Log.Info($"{Resource}: {pending.Count} targets removed in one batch");
+                context.Log.Info($"{Resource}: {pending.Count} targets converged in one batch");
                 applied.AddRange(pending);
                 removedCount = pending.Count;
                 pending = [];
             }
             else {
                 context.Log.Warn(
-                    $"batched {Resource} removal failed (exit {batchExit}); retrying targets one by one.");
+                    $"batched {Resource} {(apply ? "enable" : "removal")} failed (exit {batchExit}); retrying targets one by one.");
             }
         }
 
         foreach (var change in pending) {
             var (exitCode, output) = await RunDismAsync(context,
-                RemoveArguments(operation, new(change.Target, change.Before)), ct);
+                TargetArguments(operation, new(change.Target, change.Before)), ct);
             var outcome = DismErrors.Classify(exitCode, output);
-            if (outcome is DismOutcome.UnknownTarget) {
+            if (apply && ApplyPayloadMissingExitCodes.Contains(exitCode)) {
+                context.Log.Warn(
+                    $"skipping {Resource} target without payload: {change.Target} (exit 0x{exitCode:X8}); feature left disabled");
+                applied.Add(new(ChangeKind.Skipped, change.Target, "payload not present in this edition"));
+            }
+            else if (outcome is DismOutcome.UnknownTarget) {
                 // CBS rejects the name outright: the target does not exist in this edition,
                 // so the desired state (absent) already holds.
                 context.Log.Info($"{Resource}: {change.Target} is not known to CBS; treating as absent.");
@@ -129,13 +148,13 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
                 applied.Add(new(ChangeKind.Skipped, change.Target, "not removable in this edition"));
             }
             else if (outcome is DismOutcome.Success or DismOutcome.SuccessRebootRequired) {
-                context.Log.Info($"{Resource}: {change.Target} removed");
+                context.Log.Info($"{Resource}: {change.Target} {(apply ? "enabled" : "removed")}");
                 applied.Add(change);
                 removedCount++;
             }
             else {
                 throw new ExecException(
-                    $"dism.exe failed to remove {Resource} target '{change.Target}' (exit {exitCode}).");
+                    $"dism.exe failed to {(apply ? "enable" : "remove")} {Resource} target '{change.Target}' (exit {exitCode}).");
             }
         }
 
@@ -147,13 +166,25 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
     /// <summary>One combined remove command carrying every pending target switch.</summary>
     private IReadOnlyList<string> BatchArguments(
         BoundOperation operation, string targetSwitch, IReadOnlyList<ChangeItem> targets) {
-        var args = RemoveArguments(operation, new(targets[0].Target, targets[0].Before)).ToList();
+        var args = TargetArguments(operation, new(targets[0].Target, targets[0].Before)).ToList();
         var insertAt = args.FindIndex(a => a.StartsWith(targetSwitch, StringComparison.Ordinal)) + 1;
         for (var i = 1; i < targets.Count; i++) {
             args.Insert(insertAt + i - 1, targetSwitch + ":" + targets[i].Target);
         }
 
         return args;
+    }
+
+    /// <summary>Arguments for one target, chosen by the operation's action (enable vs remove).</summary>
+    protected IReadOnlyList<string> TargetArguments(BoundOperation operation, DismRemovalTarget target) {
+        return operation.Action == OperationAction.Apply
+            ? EnableArguments(operation, target)
+            : RemoveArguments(operation, target);
+    }
+
+    /// <summary>Default enable command; subclasses with apply support may adjust switches.</summary>
+    protected virtual IReadOnlyList<string> EnableArguments(BoundOperation operation, DismRemovalTarget target) {
+        return ["/Enable-Feature", $"/FeatureName:{target.RemoveKey}", "/All", "/NoRestart"];
     }
 
     /// <summary>Maps one /Format:List record to a removal target; may log skips.</summary>

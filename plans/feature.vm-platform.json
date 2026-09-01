@@ -1,0 +1,21 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "feature.vm-platform",
+  "version": "1.0.0",
+  "title": "启用虚拟机平台（WSL2 前置）",
+  "description": "启用 VirtualMachinePlatform：WSL2、Windows 沙盒等基于轻量虚拟化的组件所依赖的平台层。功能保持 Enabled 状态，不会被组件清理和 specialize 清扫剥离。WSL2 本体（wsl.exe 现代包）仍需在部署后通过 wsl --install --web-download 或离线 msixbundle 安装。",
+  "category": "Developer Experience",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "apply",
+      "spec": {
+        "features": [
+          "VirtualMachinePlatform"
+        ]
+      }
+    }
+  ]
+}

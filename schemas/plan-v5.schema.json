@@ -78,7 +78,11 @@
     },
     "riskLevel": {
       "type": "string",
-      "enum": ["Low", "Medium", "High"],
+      "enum": [
+        "Low",
+        "Medium",
+        "High"
+      ],
       "default": "Medium"
     },
     "requires": {
@@ -128,7 +132,10 @@
     "parameterBase": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "type"],
+      "required": [
+        "name",
+        "type"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -149,7 +156,9 @@
     "parameterOption": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["value"],
+      "required": [
+        "value"
+      ],
       "properties": {
         "value": {
           "$ref": "#/$defs/nonEmptyString"
@@ -159,7 +168,11 @@
         },
         "riskLevel": {
           "type": "string",
-          "enum": ["Low", "Medium", "High"]
+          "enum": [
+            "Low",
+            "Medium",
+            "High"
+          ]
         }
       }
     },
@@ -172,7 +185,9 @@
             },
             {
               "type": "object",
-              "required": ["options"],
+              "required": [
+                "options"
+              ],
               "properties": {
                 "type": {
                   "const": "enum"
@@ -252,7 +267,11 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["resource", "action", "spec"],
+          "required": [
+            "resource",
+            "action",
+            "spec"
+          ],
           "properties": {
             "resource": {
               "const": "appx.provisioned"
@@ -268,7 +287,11 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["resource", "action", "spec"],
+          "required": [
+            "resource",
+            "action",
+            "spec"
+          ],
           "properties": {
             "resource": {
               "const": "appx.system"
@@ -284,7 +307,11 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["resource", "action", "spec"],
+          "required": [
+            "resource",
+            "action",
+            "spec"
+          ],
           "properties": {
             "resource": {
               "const": "dism.capability"
@@ -300,7 +327,11 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["resource", "action", "spec"],
+          "required": [
+            "resource",
+            "action",
+            "spec"
+          ],
           "properties": {
             "resource": {
               "const": "dism.component-store"
@@ -316,13 +347,20 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["resource", "action", "spec"],
+          "required": [
+            "resource",
+            "action",
+            "spec"
+          ],
           "properties": {
             "resource": {
               "const": "dism.feature"
             },
             "action": {
-              "const": "remove"
+              "enum": [
+                "remove",
+                "apply"
+              ]
             },
             "spec": {
               "$ref": "#/$defs/featureSpec"
@@ -332,7 +370,11 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["resource", "action", "spec"],
+          "required": [
+            "resource",
+            "action",
+            "spec"
+          ],
           "properties": {
             "resource": {
               "const": "dism.package"
@@ -348,7 +390,11 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["resource", "action", "spec"],
+          "required": [
+            "resource",
+            "action",
+            "spec"
+          ],
           "properties": {
             "resource": {
               "const": "driver.store"
@@ -364,7 +410,11 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["resource", "action", "spec"],
+          "required": [
+            "resource",
+            "action",
+            "spec"
+          ],
           "properties": {
             "resource": {
               "const": "fs.path"
@@ -380,7 +430,11 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["resource", "action", "spec"],
+          "required": [
+            "resource",
+            "action",
+            "spec"
+          ],
           "properties": {
             "resource": {
               "const": "fs.path"
@@ -396,7 +450,11 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["resource", "action", "spec"],
+          "required": [
+            "resource",
+            "action",
+            "spec"
+          ],
           "properties": {
             "resource": {
               "const": "registry.service"
@@ -412,7 +470,11 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["resource", "action", "spec"],
+          "required": [
+            "resource",
+            "action",
+            "spec"
+          ],
           "properties": {
             "resource": {
               "const": "registry.value"
@@ -428,7 +490,11 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["resource", "action", "spec"],
+          "required": [
+            "resource",
+            "action",
+            "spec"
+          ],
           "properties": {
             "resource": {
               "const": "registry.value"
@@ -446,7 +512,9 @@
     "appxProvisionedSpec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["patterns"],
+      "required": [
+        "patterns"
+      ],
       "properties": {
         "patterns": {
           "$ref": "#/$defs/stringArray"
@@ -456,7 +524,9 @@
     "appxSystemSpec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["patterns"],
+      "required": [
+        "patterns"
+      ],
       "properties": {
         "patterns": {
           "$ref": "#/$defs/stringArray",
@@ -467,7 +537,9 @@
     "capabilitySpec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["capabilities"],
+      "required": [
+        "capabilities"
+      ],
       "properties": {
         "capabilities": {
           "$ref": "#/$defs/stringArray",
@@ -488,7 +560,9 @@
     "featureSpec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["features"],
+      "required": [
+        "features"
+      ],
       "properties": {
         "features": {
           "$ref": "#/$defs/stringArray"
@@ -507,7 +581,9 @@
     "packageSpec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["patterns"],
+      "required": [
+        "patterns"
+      ],
       "properties": {
         "patterns": {
           "$ref": "#/$defs/stringArray",
@@ -518,7 +594,9 @@
     "driverSpec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["infNames"],
+      "required": [
+        "infNames"
+      ],
       "properties": {
         "infNames": {
           "type": "array",
@@ -538,7 +616,9 @@
     "fsRemoveSpec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["paths"],
+      "required": [
+        "paths"
+      ],
       "properties": {
         "paths": {
           "$ref": "#/$defs/stringArray",
@@ -549,7 +629,10 @@
     "fsCopySpec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "source"],
+      "required": [
+        "path",
+        "source"
+      ],
       "properties": {
         "path": {
           "$ref": "#/$defs/nonEmptyString",
@@ -564,13 +647,19 @@
     "registryServiceSpec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["start"],
+      "required": [
+        "start"
+      ],
       "anyOf": [
         {
-          "required": ["services"]
+          "required": [
+            "services"
+          ]
         },
         {
-          "required": ["servicePatterns"]
+          "required": [
+            "servicePatterns"
+          ]
         }
       ],
       "properties": {
@@ -584,7 +673,14 @@
           "oneOf": [
             {
               "type": "string",
-              "enum": ["auto", "delayedAuto", "manual", "Manual", "disabled", "trigger"]
+              "enum": [
+                "auto",
+                "delayedAuto",
+                "manual",
+                "Manual",
+                "disabled",
+                "trigger"
+              ]
             },
             {
               "$ref": "#/$defs/mapExpression"
@@ -617,7 +713,9 @@
             }
           },
           "then": {
-            "required": ["triggers"]
+            "required": [
+              "triggers"
+            ]
           }
         }
       ]
@@ -625,7 +723,11 @@
     "registryValueTargetSet": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["key", "type", "data"],
+      "required": [
+        "key",
+        "type",
+        "data"
+      ],
       "properties": {
         "key": {
           "$ref": "#/$defs/nonEmptyString"
@@ -635,7 +737,14 @@
         },
         "type": {
           "type": "string",
-          "enum": ["dword", "qword", "string", "expand", "multi", "binary"]
+          "enum": [
+            "dword",
+            "qword",
+            "string",
+            "expand",
+            "multi",
+            "binary"
+          ]
         },
         "data": {}
       }
@@ -643,12 +752,16 @@
     "mapExpression": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["$map"],
+      "required": [
+        "$map"
+      ],
       "properties": {
         "$map": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["parameter"],
+          "required": [
+            "parameter"
+          ],
           "properties": {
             "parameter": {
               "$ref": "#/$defs/nonEmptyString"
@@ -666,7 +779,9 @@
     "registryValueTargetRemove": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["key"],
+      "required": [
+        "key"
+      ],
       "properties": {
         "key": {
           "$ref": "#/$defs/nonEmptyString"
@@ -679,19 +794,35 @@
     "registryValueSetSpec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["hive"],
+      "required": [
+        "hive"
+      ],
       "anyOf": [
         {
-          "required": ["values"]
+          "required": [
+            "values"
+          ]
         },
         {
-          "required": ["key", "type", "data"]
+          "required": [
+            "key",
+            "type",
+            "data"
+          ]
         }
       ],
       "properties": {
         "hive": {
           "type": "string",
-          "enum": ["software", "system", "default", "default-user", "components", "sam", "security"]
+          "enum": [
+            "software",
+            "system",
+            "default",
+            "default-user",
+            "components",
+            "sam",
+            "security"
+          ]
         },
         "key": {
           "$ref": "#/$defs/nonEmptyString"
@@ -701,7 +832,14 @@
         },
         "type": {
           "type": "string",
-          "enum": ["dword", "qword", "string", "expand", "multi", "binary"]
+          "enum": [
+            "dword",
+            "qword",
+            "string",
+            "expand",
+            "multi",
+            "binary"
+          ]
         },
         "data": {},
         "values": {
@@ -716,22 +854,38 @@
     "registryValueRemoveSpec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["hive"],
+      "required": [
+        "hive"
+      ],
       "anyOf": [
         {
-          "required": ["values"]
+          "required": [
+            "values"
+          ]
         },
         {
-          "required": ["key"]
+          "required": [
+            "key"
+          ]
         },
         {
-          "required": ["deleteKeys"]
+          "required": [
+            "deleteKeys"
+          ]
         }
       ],
       "properties": {
         "hive": {
           "type": "string",
-          "enum": ["software", "system", "default", "default-user", "components", "sam", "security"]
+          "enum": [
+            "software",
+            "system",
+            "default",
+            "default-user",
+            "components",
+            "sam",
+            "security"
+          ]
         },
         "key": {
           "$ref": "#/$defs/nonEmptyString"

@@ -40,11 +40,11 @@
       "enabled": false
     },
     {
-      "planId": "feature.wow64",
-      "enabled": false
+      "planId": "feature.vm-platform",
+      "enabled": true
     },
     {
-      "planId": "feature.wsl",
+      "planId": "feature.wow64",
       "enabled": false
     },
     {
