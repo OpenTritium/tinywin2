@@ -21,6 +21,12 @@ $s = $efi.DriveLetter + ':'
 dism /English /Apply-Image /ImageFile:$esd /Index:1 /ApplyDir:${w}\ | Select-Object -Last 3
 bcdboot "${w}\Windows" /s $s /f UEFI | Select-Object -Last 1
 
+# enable Hyper-V offline so setup's specialize pass sees Enabled (it otherwise
+# payload-scrubs Disabled optional features on first boot) — payload ships in the ESD.
+# core only: management features are payload-scrubbed (Resolved) and would fail the
+# whole transaction atomically (0x800f0916)
+dism /Image:${w}\ /English /Enable-Feature /FeatureName:Microsoft-Hyper-V /All /NoRestart | Select-Object -Last 2
+
 New-Item -ItemType Directory -Path "${w}\Panther" -Force | Out-Null
 Copy-Item 'F:\tinywin2\probe\Unattend-oobe.xml' "${w}\Panther\Unattend.xml" -Force
 New-Item -ItemType Directory -Path "${w}\Windows\System32\Sysprep" -Force | Out-Null
