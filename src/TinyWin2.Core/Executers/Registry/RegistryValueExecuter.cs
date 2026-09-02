@@ -34,15 +34,25 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
         foreach (var change in changes) {
             if (change.DeleteKey is { } deleteKey) {
                 var keyPath = hive.KeyUnderHive(deleteKey);
-                await OfflineReg.DeleteKeyAsync(runner, keyPath, keyPath, ct);
+                if (!await OfflineReg.DeleteKeyAsync(runner, keyPath, keyPath, ct)) {
+                    throw new ExecException(
+                        $"registry key '{hive.HiveId}\\{deleteKey}' is locked and could not be deleted " +
+                        "even after an ACL rescue.");
+                }
+
                 context.Log.Info($"deleted registry key {hive.HiveId}\\{deleteKey}");
                 continue;
             }
 
             var target = change.Value!;
             if (operation.Action == OperationAction.Remove) {
-                await OfflineReg.DeleteValueAsync(runner, hive.KeyUnderHive(target.Key), target.Name,
-                    hive.KeyUnderHive(target.Key), ct);
+                var valuePath = hive.KeyUnderHive(target.Key);
+                if (!await OfflineReg.DeleteValueAsync(runner, valuePath, target.Name, valuePath, ct)) {
+                    throw new ExecException(
+                        $"registry value '{change.Change.Target}' is locked and could not be deleted " +
+                        "even after an ACL rescue.");
+                }
+
                 context.Log.Info($"deleted registry value {change.Change.Target}");
             }
             else {

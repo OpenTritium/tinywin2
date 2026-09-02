@@ -183,7 +183,7 @@ public sealed class RegistryValueExecuterTests : IDisposable {
     public async Task ApplyDeniedDeleteSurfacesWhenRescueCannotReachTheKey() {
         // reg.exe exits 1 for "access denied" as well as "not found"; a denied delete of an
         // existing value must trigger the ownership rescue, and when the grant cannot reach
-        // the (fake, nonexistent) key the denial must surface instead of a silent success.
+        // the (fake, nonexistent) key the locked value must surface instead of a silent success.
         _harness.Runner.Handler = (fileName, args) => (fileName, args[0]) switch {
             ("reg.exe", "query") => FakeProcessRunner.Ok(QueryOutput("EnableSpyware", "REG_DWORD", "0x1")),
             ("reg.exe", "delete") => FakeProcessRunner.Fail(1, "Access is denied."),
@@ -195,7 +195,7 @@ public sealed class RegistryValueExecuterTests : IDisposable {
                     ("hive", "software"),
                     ("values", new JsonArray(new JsonObject { ["key"] = "Policies\\Test", ["name"] = "EnableSpyware" }))),
                 CancellationToken.None)))!;
-        await Assert.That(ex.Message).Contains("could not grant write access");
+        await Assert.That(ex.Message).Contains("is locked and could not be deleted");
     }
 
     [Test]

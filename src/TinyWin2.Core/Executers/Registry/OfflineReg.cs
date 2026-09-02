@@ -23,13 +23,22 @@ internal static class OfflineReg {
         return result;
     }
 
-    public static Task DeleteKeyAsync(
+    /// <summary>
+    ///     Deletes a whole key. Returns true when the key is gone; false when it survives the
+    ///     rescue (CBS locks component registrations with descriptors that deny Administrators).
+    ///     Callers decide whether a surviving key is acceptable.
+    /// </summary>
+    public static Task<bool> DeleteKeyAsync(
         IProcessRunner runner, string key, string aclRescueKey, CancellationToken ct) =>
         DeleteAsync(runner, aclRescueKey,
             async () => (await QueryAsync(runner, key, ct)).Success,
             ct, "delete", key, "/f");
 
-    public static Task DeleteValueAsync(
+    /// <summary>
+    ///     Deletes one value. Returns true when the value is gone; false when it survives the
+    ///     rescue (see <see cref="DeleteKeyAsync" />).
+    /// </summary>
+    public static Task<bool> DeleteValueAsync(
         IProcessRunner runner, string key, string valueName, string aclRescueKey, CancellationToken ct) {
         var arguments = string.IsNullOrEmpty(valueName)
             ? new[] { "delete", key, "/ve", "/f" }
@@ -69,24 +78,27 @@ internal static class OfflineReg {
 
     /// <summary>
     ///     Deletes; reg.exe exits 1 for "not found" and "access denied" alike, so a failed delete
-    ///     is re-queried: a genuinely missing target is success, an existing one gets one
-    ///     rescue-then-retry pass (RegistryAcl ownership grant) before surfacing as
-    ///     <see cref="ProcessRunnerException" />.
+    ///     is re-queried: a genuinely missing target counts as deleted, an existing one gets one
+    ///     rescue-then-retry pass (RegistryAcl ownership grant). Returns false only when the
+    ///     target survives the rescue.
     /// </summary>
-    private static async Task DeleteAsync(
+    private static async Task<bool> DeleteAsync(
         IProcessRunner runner, string aclRescueKey, Func<Task<bool>> stillExists,
         CancellationToken ct, params string[] arguments) {
         var result = await runner.RunAsync("reg.exe", arguments, new() { IgnoreExitCode = true }, ct);
         if (result.Success || !await stillExists()) {
-            return;
+            return true;
         }
 
-        await RegistryAcl.RescueAsync(runner, aclRescueKey, ct);
+        try {
+            await RegistryAcl.RescueAsync(runner, aclRescueKey, ct);
+        }
+        catch (ExecException) {
+            // the ownership grant itself could not reach the key: leave the decision to the caller
+            return false;
+        }
+
         result = await runner.RunAsync("reg.exe", arguments, new() { IgnoreExitCode = true }, ct);
-        if (result.Success || !await stillExists()) {
-            return;
-        }
-
-        throw new ProcessRunnerException("reg.exe", result);
+        return result.Success || !await stillExists();
     }
 }

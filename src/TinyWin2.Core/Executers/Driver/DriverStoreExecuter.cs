@@ -186,6 +186,13 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
         return services;
     }
 
+    /// <summary>Deletes a service key; a CBS-locked survivor is logged and left in place.</summary>
+    private async Task DeleteKeyTolerantAsync(ExecContext context, string key, CancellationToken ct) {
+        if (!await OfflineReg.DeleteKeyAsync(Runner, key, key, ct)) {
+            context.Log.Warn($"driver.store: '{key}' is ACL-locked; left in place");
+        }
+    }
+
     private async Task RemoveUnusedInboxPackageAsync(
         ExecContext context, InboxDriverPackage package, CancellationToken ct) {
         var system = await context.Hives.GetAsync("system", context.Log, ct);
@@ -194,11 +201,10 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
                                                                       .Contains(owner,
                                                                           StringComparer.OrdinalIgnoreCase)))) {
             foreach (var controlSet in package.ControlSets) {
-                await OfflineReg.DeleteKeyAsync(Runner,
-                    $@"{system.HiveKey}\{controlSet}\Services\{service.Name}", system.HiveKey, ct);
-                await OfflineReg.DeleteKeyAsync(Runner,
-                    $@"{system.HiveKey}\{controlSet}\Services\EventLog\System\{service.Name}", system.HiveKey,
-                    ct);
+                await DeleteKeyTolerantAsync(context,
+                    $@"{system.HiveKey}\{controlSet}\Services\{service.Name}", ct);
+                await DeleteKeyTolerantAsync(context,
+                    $@"{system.HiveKey}\{controlSet}\Services\EventLog\System\{service.Name}", ct);
             }
 
             foreach (var imagePath in service.ImagePaths) {
@@ -218,12 +224,22 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
                 $@"{system.HiveKey}\DriverDatabase\DeviceIds\{key}", ct);
         }
 
-        await OfflineReg.DeleteKeyAsync(Runner,
-            $@"{system.HiveKey}\DriverDatabase\DriverInfFiles\{package.InfName}",
-            $@"{system.HiveKey}\DriverDatabase\DriverInfFiles\{package.InfName}", ct);
-        await OfflineReg.DeleteKeyAsync(Runner,
-            $@"{system.HiveKey}\DriverDatabase\DriverPackages\{package.PackageDirectoryName}",
-            $@"{system.HiveKey}\DriverDatabase\DriverPackages\{package.PackageDirectoryName}", ct);
+        // DriverDatabase registrations are CBS-owned: the ACL rescue recovers most, but any
+        // key that still survives is metadata worth a few kilobytes — warn and move on rather
+        // than failing the step, the payload removals below are what actually reclaim space.
+        if (!await OfflineReg.DeleteKeyAsync(Runner,
+                $@"{system.HiveKey}\DriverDatabase\DriverInfFiles\{package.InfName}",
+                $@"{system.HiveKey}\DriverDatabase\DriverInfFiles\{package.InfName}", ct)) {
+            context.Log.Warn(
+                $"driver.store: '{package.InfName}' DriverInfFiles key is ACL-locked; left in place");
+        }
+
+        if (!await OfflineReg.DeleteKeyAsync(Runner,
+                $@"{system.HiveKey}\DriverDatabase\DriverPackages\{package.PackageDirectoryName}",
+                $@"{system.HiveKey}\DriverDatabase\DriverPackages\{package.PackageDirectoryName}", ct)) {
+            context.Log.Warn(
+                $"driver.store: '{package.PackageDirectoryName}' DriverPackages key is ACL-locked; left in place");
+        }
 
         await DeletePathIfPresentAsync(
             Path.Combine(context.MountPath, "Windows", "INF", package.InfName), ct);
