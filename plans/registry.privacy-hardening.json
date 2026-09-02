@@ -1,0 +1,117 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.privacy-hardening",
+  "version": "1.0.0",
+  "title": "隐私策略面加固",
+  "description": "补齐 WPD/ShutUp10 等隐私工具覆盖的组策略面（全部为 HKLM Policies 键，对镜像内所有用户生效）：关闭反馈通知与定制体验、限制墨迹/文本/联系人采集、禁用错误报告与位置策略、关闭活动历史记录（时间线）、禁用云优化内容与账户状态内容、禁用设置同步、阻止设备元数据联网获取。服务层（DiagTrack/WerSvc/lfsvc 等）由对应 service.* 计划单独覆盖。",
+  "category": "Privacy",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Policies\\Microsoft\\Windows\\DataCollection",
+            "name": "DoNotShowFeedbackNotifications",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\DataCollection",
+            "name": "AllowTailoredExperiencesWithDiagnosticData",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\InputPersonalization",
+            "name": "RestrictImplicitInkCollection",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\InputPersonalization",
+            "name": "RestrictImplicitTextCollection",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\InputPersonalization",
+            "name": "HarvestContacts",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\InputPersonalization",
+            "name": "AllowInputPersonalization",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\Windows Error Reporting",
+            "name": "Disabled",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\LocationAndSensors",
+            "name": "DisableLocation",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\System",
+            "name": "EnableActivityFeed",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\System",
+            "name": "PublishUserActivities",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\System",
+            "name": "UploadUserActivities",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\CloudContent",
+            "name": "DisableCloudOptimizedContent",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\CloudContent",
+            "name": "DisableConsumerAccountStateContent",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\SettingSync",
+            "name": "DisableSettingSync",
+            "type": "dword",
+            "data": 2
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\SettingSync",
+            "name": "DisableSettingSyncUserOverride",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\DeviceMetadata",
+            "name": "PreventDeviceMetadataFromNetwork",
+            "type": "dword",
+            "data": 1
+          }
+        ]
+      }
+    }
+  ]
+}

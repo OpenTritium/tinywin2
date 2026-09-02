@@ -776,6 +776,10 @@
       "enabled": true
     },
     {
+      "planId": "registry.privacy-hardening",
+      "enabled": true
+    },
+    {
       "planId": "registry.reserved-storage",
       "enabled": true
     },
