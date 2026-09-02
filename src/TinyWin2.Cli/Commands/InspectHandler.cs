@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using TinyWin2.Core;
 using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
 using TinyWin2.Core.Pipeline;
@@ -29,7 +30,7 @@ internal static class InspectHandler {
                         ["sizeBytes"] = i.SizeBytes
                     }).ToArray())
                 };
-                Console.WriteLine(root.ToJsonString(Cli.JsonSerializerOptions));
+                Console.WriteLine(root.ToPrettyString());
                 return ExitCodes.Success;
             }
 

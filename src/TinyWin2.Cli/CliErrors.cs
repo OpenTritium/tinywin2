@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using TinyWin2.Core;
 using TinyWin2.Core.Env;
@@ -63,6 +64,7 @@ internal static class CliErrors {
         OutputExistsException => ("output-exists", ExitCodes.Failure),
         WorkspaceConflictException => ("workspace-conflict", ExitCodes.Failure),
         ArgumentException => ("invalid-argument", ExitCodes.Failure),
+        JsonException => ("invalid-argument", ExitCodes.Failure),
         UnknownPlanException => ("not-found", ExitCodes.Failure),
         FileNotFoundException or DirectoryNotFoundException => ("not-found", ExitCodes.Failure),
         IOException => ("io-failed", ExitCodes.Failure),

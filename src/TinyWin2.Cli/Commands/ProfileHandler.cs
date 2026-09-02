@@ -1,3 +1,4 @@
+using TinyWin2.Core;
 using TinyWin2.Core.Plans;
 using TinyWin2.Core.Profiles;
 
@@ -26,7 +27,7 @@ internal static class ProfileHandler {
     }
 
     public static int Show(ProfileShowRequest request) {
-        Console.WriteLine(ProfileStore.Load(request.File).ToJson().ToJsonString(Cli.JsonSerializerOptions));
+        Console.WriteLine(ProfileStore.Load(request.File).ToJson().ToPrettyString());
         return ExitCodes.Success;
     }
 

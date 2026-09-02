@@ -367,8 +367,7 @@ public sealed partial record PlanDefinition {
         string path,
         IReadOnlyList<string> allowed,
         List<string> errors) {
-        errors.AddRange(obj.Select(property => property.Key)
-            .Where(name => !allowed.Contains(name, StringComparer.Ordinal))
+        errors.AddRange(Json.UnknownProperties(obj, allowed)
             .Select(property => $"{path} contains unknown field '{property}'."));
     }
 

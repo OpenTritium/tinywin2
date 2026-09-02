@@ -66,7 +66,7 @@ public abstract class DismRemoveExecuterBase(IProcessRunner runner) : DismExecut
     protected abstract object BindOptions(OperationSpec spec);
 
     public async Task<ResourceDiff> InspectAsync(ExecContext context, BoundOperation operation, CancellationToken ct) {
-        var (exitCode, output) = await RunDismAsync(context, [.. ListArguments], ct);
+        var (exitCode, output) = await RunDismAsync(context, ListArguments, ct);
         var outcome = DismErrors.Classify(exitCode, output);
         if (outcome == DismOutcome.ProviderUnavailable || InapplicableExitCodes.Contains(exitCode)) {
             return new(true, []);

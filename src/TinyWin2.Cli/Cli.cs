@@ -12,11 +12,6 @@ namespace TinyWin2.Cli;
 
 /// <summary>Shared CLI services: catalog discovery, selection resolution, and engine composition.</summary>
 internal static class Cli {
-    internal static readonly JsonSerializerOptions JsonSerializerOptions = new() {
-        WriteIndented = true,
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-    };
-
     public static string FindPlansDirectory(string? explicitPath) {
         if (explicitPath is not null) {
             return Directory.Exists(explicitPath)
@@ -50,27 +45,7 @@ internal static class Cli {
             catalog);
 
         foreach (var assignment in request.Sets) {
-            var separator = assignment.IndexOf('=');
-            if (separator <= 0) {
-                throw new ArgumentException($"--set expects plan.parameter=value, got '{assignment}'");
-            }
-
-            var target = assignment[..separator];
-            var dot = target.LastIndexOf('.');
-            if (dot <= 0) {
-                throw new ArgumentException($"--set expects plan.parameter=value, got '{assignment}'");
-            }
-
-            var planId = target[..dot];
-            var parameterName = target[(dot + 1)..];
-            PlanSelectionMerger.EnsureSelected(selections, catalog, planId);
-            var index = selections.FindIndex(s => s.PlanId == planId);
-            var parameters = selections[index].Parameters as IDictionary<string, JsonNode?>
-                             ?? new Dictionary<string, JsonNode?>();
-            parameters[parameterName] = ParseValue(assignment[(separator + 1)..]);
-            selections[index] = selections[index] with {
-                Parameters = (IReadOnlyDictionary<string, JsonNode?>?)parameters
-            };
+            PlanSelectionMerger.WithParameter(selections, catalog, assignment);
         }
 
         if (selections.Count == 0 || selections.All(s => !s.Enabled)) {
@@ -135,12 +110,4 @@ internal static class Cli {
         var runner = new ProcessRunner();
         return (runner, new(runner), LayerBackendFactory.Create(runner));
     }
-
-    private static JsonNode ParseValue(string text) =>
-        text.Trim() switch {
-            "true" => JsonValue.Create(true),
-            "false" => JsonValue.Create(false),
-            _ when int.TryParse(text, out var number) => JsonValue.Create(number),
-            _ => JsonValue.Create(text)
-        };
 }

@@ -40,4 +40,12 @@ public static class DismListParser {
 
     public static string? Get(IReadOnlyDictionary<string, string> record, string key) =>
         record.GetValueOrDefault(key);
+
+    /// <summary>Maps each record's identity field to its State, the common shape of list-then-converge executers.</summary>
+    public static IReadOnlyDictionary<string, string> BuildStateMap(
+        IReadOnlyList<IReadOnlyDictionary<string, string>> records, string identityKey) =>
+        records.ToDictionary(
+            r => Get(r, identityKey) ?? "",
+            r => Get(r, "State") ?? "",
+            StringComparer.OrdinalIgnoreCase);
 }

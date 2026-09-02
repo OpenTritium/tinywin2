@@ -73,46 +73,37 @@ public sealed class PreviewRunner(
                 log.Info("preview: reusing the existing base layer");
             }
 
-            var letter = await layerBackend.AttachAsync(stack.BaseVhdxPath, ct);
-            var inspectionCompleted = false;
-            try {
-                var previews = new List<PlanPreview>();
-                foreach (var step in plan.Steps) {
-                    var resolved = step.Plan;
-                    var hiveCache = new RegistryHiveCache($"{letter}:\\", runner);
-                    var context = new ExecContext($"{letter}:\\", log, hiveCache,
-                        PlanAssets.ResolveRoot(options.PlansDirectory, resolved.Definition.Id));
-                    var differences = new List<ChangeItem>();
-                    try {
-                        foreach (var operation in resolved.Operations) {
-                            var diff = await executers.Get(operation.Resource)
-                                .InspectAsync(context, operation, ct);
-                            differences.AddRange(diff.Differences.Where(d => d.Kind != ChangeKind.Skipped));
+            var previews = await MountScope.RunAsync(layerBackend, stack.BaseVhdxPath, log, "preview inspection",
+                async mountPath => {
+                    var previews = new List<PlanPreview>();
+                    foreach (var step in plan.Steps) {
+                        var resolved = step.Plan;
+                        var hiveCache = new RegistryHiveCache(mountPath, runner);
+                        var context = new ExecContext(mountPath, log, hiveCache,
+                            PlanAssets.ResolveRoot(options.PlansDirectory, resolved.Definition.Id));
+                        var differences = new List<ChangeItem>();
+                        try {
+                            foreach (var operation in resolved.Operations) {
+                                var diff = await executers.Get(operation.Resource)
+                                    .InspectAsync(context, operation, ct);
+                                differences.AddRange(diff.Differences.Where(d => d.Kind != ChangeKind.Skipped));
+                            }
                         }
-                    }
-                    finally {
-                        await hiveCache.UnloadAllAsync(log, CancellationToken.None);
+                        finally {
+                            await hiveCache.UnloadAllAsync(log, CancellationToken.None);
+                        }
+
+                        previews.Add(new(
+                            resolved.Definition.Id,
+                            resolved.Definition.Title,
+                            differences.Count == 0,
+                            differences));
                     }
 
-                    previews.Add(new(
-                        resolved.Definition.Id,
-                        resolved.Definition.Title,
-                        differences.Count == 0,
-                        differences));
-                }
-
-                inspectionCompleted = true;
-                previewCompleted = true;
-                return previews;
-            }
-            finally {
-                try {
-                    await layerBackend.DetachAsync(stack.BaseVhdxPath, CancellationToken.None);
-                }
-                catch (Exception ex) when (!inspectionCompleted) {
-                    log.Error($"preview base detach failed after inspection failure: {ex.Message}");
-                }
-            }
+                    return previews;
+                }, ct);
+            previewCompleted = true;
+            return previews;
         }
         finally {
             try {

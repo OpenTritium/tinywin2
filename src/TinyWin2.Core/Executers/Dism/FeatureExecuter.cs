@@ -31,10 +31,7 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterB
         ExecContext context,
         BoundOperation operation) {
         var options = (FeatureOptions)operation.Options;
-        var states = records.ToDictionary(
-            r => DismListParser.Get(r, "Feature Name") ?? "",
-            r => DismListParser.Get(r, "State") ?? "",
-            StringComparer.OrdinalIgnoreCase);
+        var states = DismListParser.BuildStateMap(records, "Feature Name");
         foreach (var feature in options.Features) {
             if (!states.TryGetValue(feature, out var state)) {
                 if (operation.Action == OperationAction.Apply) {
@@ -54,12 +51,10 @@ public sealed class FeatureExecuter(IProcessRunner runner) : DismRemoveExecuterB
                 }
             }
             else if (operation.Action == OperationAction.Apply) {
-                if (state.Contains("Enabled", StringComparison.OrdinalIgnoreCase)) {
-                    // already in the desired state: no difference entry at all.
-                }
-                else {
+                if (!state.Contains("Enabled", StringComparison.OrdinalIgnoreCase)) {
                     yield return new(feature, state);
                 }
+                // already in the desired state: no difference entry at all.
             }
             else if (state.Contains("Removed", StringComparison.OrdinalIgnoreCase)
                      || (state.Contains("Disabled", StringComparison.OrdinalIgnoreCase) && !options.RemovePayload)) {

@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace TinyWin2.Core.Plans;
 
 /// <summary>Merges layered profile selections without silently overriding safety exclusions.</summary>
@@ -50,6 +52,43 @@ public static class PlanSelectionMerger {
             throw ProfileExclusionConflict(planId);
         }
     }
+
+    /// <summary>
+    ///     Applies one <c>plan.parameter=value</c> assignment in place: the target plan is
+    ///     ensured to participate, the raw CLI text is parsed into a JSON value, and the
+    ///     selection's parameter map is replaced (the map handed in by a profile is copied,
+    ///     never mutated through the record).
+    /// </summary>
+    public static void WithParameter(List<PlanSelection> selections, PlanCatalog catalog, string assignment) {
+        var separator = assignment.IndexOf('=');
+        if (separator <= 0) {
+            throw new ArgumentException($"--set expects plan.parameter=value, got '{assignment}'");
+        }
+
+        var target = assignment[..separator];
+        var dot = target.LastIndexOf('.');
+        if (dot <= 0) {
+            throw new ArgumentException($"--set expects plan.parameter=value, got '{assignment}'");
+        }
+
+        var planId = target[..dot];
+        var parameterName = target[(dot + 1)..];
+        EnsureSelected(selections, catalog, planId);
+        var index = Find(selections, planId);
+        var parameters = selections[index].Parameters is { } existing
+            ? new Dictionary<string, JsonNode?>(existing, StringComparer.Ordinal)
+            : new Dictionary<string, JsonNode?>(StringComparer.Ordinal);
+        parameters[parameterName] = ParseValue(assignment[(separator + 1)..]);
+        selections[index] = selections[index] with { Parameters = parameters };
+    }
+
+    private static JsonNode ParseValue(string text) =>
+        text.Trim() switch {
+            "true" => JsonValue.Create(true),
+            "false" => JsonValue.Create(false),
+            _ when int.TryParse(text, out var number) => JsonValue.Create(number),
+            _ => JsonValue.Create(text)
+        };
 
     private static int Find(List<PlanSelection> selections, string planId) =>
         selections.FindIndex(item => item.PlanId == planId);

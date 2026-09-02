@@ -23,10 +23,7 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismRemoveExecut
         ExecContext context,
         BoundOperation operation) {
         var options = (CapabilityOptions)operation.Options;
-        var states = records.ToDictionary(
-            r => DismListParser.Get(r, "Capability Identity") ?? "",
-            r => DismListParser.Get(r, "State") ?? "",
-            StringComparer.OrdinalIgnoreCase);
+        var states = DismListParser.BuildStateMap(records, "Capability Identity");
         var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var pattern in options.Capabilities) {
             var matches = states.Keys.Where(identity => LikePattern.IsMatch(pattern, identity)).ToList();
@@ -36,9 +33,16 @@ public sealed class CapabilityExecuter(IProcessRunner runner) : DismRemoveExecut
                 continue;
             }
 
-            foreach (var identity in matches.Where(identity => selected.Add(identity)
-                                                               && states[identity].Contains("Installed",
-                                                                   StringComparison.OrdinalIgnoreCase))) {
+            foreach (var identity in matches) {
+                if (!selected.Add(identity)) {
+                    continue; // already covered through another pattern
+                }
+
+                if (!states[identity].Contains("Installed", StringComparison.OrdinalIgnoreCase)) {
+                    yield return new(identity, states[identity], SkipReason: "capability not installed");
+                    continue;
+                }
+
                 // DISM receives the concrete identity, never the wildcard pattern.
                 yield return new(identity, states[identity]);
             }

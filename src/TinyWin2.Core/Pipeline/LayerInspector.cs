@@ -202,14 +202,12 @@ public sealed partial class LayerInspector(
     }
 
     /// <summary>Extracts one file (image-relative) from a layer to a host destination.</summary>
-    public async Task ExtractAsync(string workDirectory, int layerIndex, string imageRelativePath,
+    public Task ExtractAsync(string workDirectory, int layerIndex, string imageRelativePath,
         string destinationPath, CancellationToken ct) {
         var stack = VhdLayerStack.Load(workDirectory, backend, log);
         var vhdxPath = stack.VhdxForLayer(layerIndex);
-        var letter = await backend.AttachAsync(vhdxPath, ct);
-        var operationSucceeded = false;
-        try {
-            var source = ResolveImagePath($"{letter}:\\", imageRelativePath);
+        return MountScope.RunAsync(backend, vhdxPath, log, $"layer {layerIndex:000} extract", mountPath => {
+            var source = ResolveImagePath(mountPath, imageRelativePath);
             if (!File.Exists(source)) {
                 throw new FileNotFoundException($"'{imageRelativePath}' not found in layer {layerIndex:000}.");
             }
@@ -217,20 +215,12 @@ public sealed partial class LayerInspector(
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(destinationPath))!);
             File.Copy(source, destinationPath, true);
             log.Info($"extracted '{imageRelativePath}' from layer {layerIndex:000} → {destinationPath}");
-            operationSucceeded = true;
-        }
-        finally {
-            try {
-                await backend.DetachAsync(vhdxPath, CancellationToken.None);
-            }
-            catch (Exception ex) when (!operationSucceeded) {
-                log.Warn($"detach failed after extract failure for layer {layerIndex:000}: {ex.Message}");
-            }
-        }
+            return Task.CompletedTask;
+        }, ct);
     }
 
     /// <summary>Captures output from an earlier layer — the natural "rollback" of a diff chain.</summary>
-    public async Task<string> RollbackCaptureAsync(
+    public Task<string> RollbackCaptureAsync(
         string workDirectory,
         int layerIndex,
         string destinationPath,
@@ -243,25 +233,13 @@ public sealed partial class LayerInspector(
 
         var stack = VhdLayerStack.Load(workDirectory, backend, log);
         var vhdxPath = stack.VhdxForLayer(layerIndex);
-        var letter = await backend.AttachAsync(vhdxPath, ct);
         var builder = new OutputBuilder(runner, log);
-        var operationSucceeded = false;
-        try {
+        return MountScope.RunAsync(backend, vhdxPath, log, $"layer {layerIndex:000} rollback capture", mountPath => {
             var name = $"TinyWin2 layer {layerIndex:000}";
             var intermediate = Path.Combine(Path.GetTempPath(), $"tinywin2-rollback-{Guid.NewGuid():N}.wim");
-            var captured = await builder.CaptureInstallImageAsync($"{letter}:\\", name, null, intermediate,
+            return builder.CaptureInstallImageAsync(mountPath, name, null, intermediate,
                 destinationPath, format, export, ct);
-            operationSucceeded = true;
-            return captured;
-        }
-        finally {
-            try {
-                await backend.DetachAsync(vhdxPath, CancellationToken.None);
-            }
-            catch (Exception ex) when (!operationSucceeded) {
-                log.Warn($"detach failed after rollback capture failure for layer {layerIndex:000}: {ex.Message}");
-            }
-        }
+        }, ct);
     }
 
     private static string ResolveImagePath(string mountPath, string imageRelativePath) {

@@ -251,9 +251,11 @@ public sealed class CapabilityAndPackageTests : IDisposable {
 
         var diff = await capabilities.InspectAsync(_harness.NewContext(), spec, CancellationToken.None);
         await Assert.That(diff.Satisfied).IsFalse();
-        await Assert.That(diff.Differences.Count).IsEqualTo(1);
+        // the installed version is pending removal; the not-present one is recorded as skipped
+        await Assert.That(diff.Differences.Count).IsEqualTo(2);
         await Assert.That(diff.Differences[0].Target)
             .IsEqualTo("Browser.InternetExplorer~~~~0.0.11.0");
+        await Assert.That(diff.Differences[1].Kind).IsEqualTo(ChangeKind.Skipped);
 
         var result = await capabilities.ApplyAsync(_harness.NewContext(), spec, CancellationToken.None);
         await Assert.That(result.IsSkipped).IsFalse();

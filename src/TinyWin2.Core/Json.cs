@@ -23,4 +23,13 @@ public static class Json {
         public string ToPrettyString() => obj.ToJsonString(Pretty);
         public string ToCompactString() => obj.ToJsonString(Compact);
     }
+
+    /// <summary>
+    ///     Field names on <paramref name="obj" /> outside the allowed set, in document order.
+    ///     Shared by the plan, profile, and parameter-binding parsers so unknown-field
+    ///     rejection cannot drift between them.
+    /// </summary>
+    public static IEnumerable<string> UnknownProperties(JsonObject obj, IReadOnlyCollection<string> allowed) =>
+        obj.Select(property => property.Key)
+            .Where(name => !allowed.Contains(name, StringComparer.Ordinal));
 }

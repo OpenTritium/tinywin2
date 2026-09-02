@@ -72,8 +72,7 @@ public static class ParameterBinder {
 
     private static JsonNode? ApplyMap(JsonObject map, IReadOnlyDictionary<string, JsonNode?> parameterValues,
         string path) {
-        var unknown = map.Select(property => property.Key)
-            .FirstOrDefault(pname => pname is not "parameter" and not "cases" and not "default");
+        var unknown = Json.UnknownProperties(map, ["parameter", "cases", "default"]).FirstOrDefault();
         if (unknown is not null) {
             throw new ParameterBindingException(path, $"$map contains unknown field '{unknown}'.");
         }

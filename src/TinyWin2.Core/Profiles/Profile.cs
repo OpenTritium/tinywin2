@@ -26,13 +26,13 @@ public sealed record Profile(
 
     public static Profile FromJson(JsonObject obj) {
         RejectUnknownProperties(obj, "profile", ["$schema", "schemaVersion", "name", "description", "selections"]);
-        var schemaVersion = obj["schemaVersion"]?.GetValue<int>()
+        var schemaVersion = ReadInt(obj, "schemaVersion")
                             ?? throw new JsonException("profile requires 'schemaVersion'.");
         if (schemaVersion != CurrentSchemaVersion) {
             throw new JsonException($"profile schemaVersion must be {CurrentSchemaVersion}.");
         }
 
-        var name = obj["name"]?.GetValue<string>()
+        var name = ReadString(obj, "name")
                    ?? throw new JsonException("profile requires 'name'.");
         if (string.IsNullOrWhiteSpace(name)) {
             throw new JsonException("profile 'name' must not be empty.");
@@ -51,7 +51,7 @@ public sealed record Profile(
             }
 
             RejectUnknownProperties(node, $"profile selection {index}", ["planId", "enabled", "parameters"]);
-            var planId = node["planId"]?.GetValue<string>()
+            var planId = ReadString(node, "planId")
                          ?? throw new JsonException("profile selection requires 'planId'.");
             if (string.IsNullOrWhiteSpace(planId)) {
                 throw new JsonException("profile selection 'planId' must not be empty.");
@@ -72,16 +72,37 @@ public sealed record Profile(
 
             selections.Add(new(
                 planId,
-                node["enabled"]?.GetValue<bool>() ?? true,
+                ReadBool(node, "enabled") ?? true,
                 ToParameterMap(parametersNode as JsonObject)));
         }
 
         return new(name, description, selections);
     }
 
+    /// <summary>Typed reads throw <see cref="JsonException" /> (not InvalidOperationException) on wrong JSON types.</summary>
+    private static int? ReadInt(JsonObject obj, string name) =>
+        obj[name] is null
+            ? null
+            : obj[name] is JsonValue value && value.TryGetValue<int>(out var number)
+                ? number
+                : throw new JsonException($"profile '{name}' must be an integer.");
+
+    private static string? ReadString(JsonObject obj, string name) =>
+        obj[name] is null
+            ? null
+            : obj[name] is JsonValue value && value.TryGetValue<string>(out var text)
+                ? text
+                : throw new JsonException($"profile '{name}' must be a string.");
+
+    private static bool? ReadBool(JsonObject obj, string name) =>
+        obj[name] is null
+            ? null
+            : obj[name] is JsonValue value && value.TryGetValue<bool>(out var flag)
+                ? flag
+                : throw new JsonException($"profile '{name}' must be a boolean.");
+
     private static void RejectUnknownProperties(JsonObject obj, string path, IReadOnlyList<string> allowed) {
-        var unknown = obj.Select(property => property.Key)
-            .FirstOrDefault(name => !allowed.Contains(name, StringComparer.Ordinal));
+        var unknown = Json.UnknownProperties(obj, allowed).FirstOrDefault();
         if (unknown is not null) {
             throw new JsonException($"{path} contains unknown field '{unknown}'.");
         }

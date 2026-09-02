@@ -73,7 +73,7 @@ public sealed class VhdLayerStack(
     BuildLog log) {
     private const string BaseFileName = "base.vhdx";
     private const string ManifestFileName = "layers.json";
-    private readonly object _gate = new();
+    private readonly Lock _gate = new();
     private readonly List<LayerRecord> _records = [];
     private bool _baseReady;
     private bool _consolidationPending;
@@ -166,8 +166,8 @@ public sealed class VhdLayerStack(
             }
 
             var records = new List<LayerRecord>(layers.Count);
-            foreach (var (node, ordinal) in layers.Select((node, ordinal) => (node, ordinal))) {
-                if (node is not JsonObject layer) {
+            for (var ordinal = 0; ordinal < layers.Count; ordinal++) {
+                if (layers[ordinal] is not JsonObject layer) {
                     throw new InvalidDataException($"layer entry {ordinal} is not an object");
                 }
 

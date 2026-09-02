@@ -15,14 +15,14 @@ internal static class DoctorHandler {
         var json = request.Json;
         if (json) {
             var root = new JsonObject {
-                ["checks"] = new JsonArray(checks.Select(check => (JsonNode)new JsonObject {
+                ["checks"] = new JsonArray([.. checks.Select(check => new JsonObject {
                     ["name"] = check.Name,
                     ["ok"] = check.Ok,
                     ["required"] = check.Required,
                     ["detail"] = check.Detail
-                }).ToArray())
+                })])
             };
-            Console.WriteLine(root.ToJsonString(Cli.JsonSerializerOptions));
+            Console.WriteLine(root.ToPrettyString());
             var failed = checks.Any(c => c is { Required: true, Ok: false });
             return failed ? ExitCodes.Failure : ExitCodes.Success;
         }

@@ -92,6 +92,9 @@ public sealed class BuildStepFailedException(
     public int LayerIndex { get; } = layerIndex;
 }
 
+/// <summary>A step that failed but did not abort the build (ContinueOnError), recorded in the manifest.</summary>
+public readonly record struct StepFailure(string StepId, int LayerIndex, string Error);
+
 /// <summary>
 ///     Orchestrates a build: source prep → base layer (apply) → CBS health scan → per-step
 ///     VHDX diff layers (atomic) → capture WIM/ESD or export debug VHDX → manifest.
@@ -181,7 +184,7 @@ public sealed class BuildEngine(
             // observes post-plan state would resurrect registry keys deleted by cleanup plans.
             await ScanBaseHealthAsync(stack, options.NoLayers, ct);
 
-            List<(string StepId, int LayerIndex, string Error)> failedSteps;
+            List<StepFailure> failedSteps;
             string? installPath;
             if (options.NoLayers) {
                 if (options.Resume && layerlessCheckpoint is not null && layerlessCheckpoint.CompletedCount > 0) {
@@ -272,21 +275,16 @@ public sealed class BuildEngine(
     ///     live volume, detach. A failed step logs and (without ContinueOnError) aborts; the last completed
     ///     prefix is persisted for a future clean replay.
     /// </summary>
-    private async Task<(List<(string StepId, int LayerIndex, string Error)>, string? InstallPath)>
-        RunStepsAndCaptureLayerlessAsync(
-            BuildOptions options, BuildPlan plan, VhdLayerStack stack, string workspace, OutputBuilder builder,
-            ImageIndexInfo sourceIndex, LayerlessCheckpoint checkpoint, CancellationToken ct) {
-        var failedSteps = new List<(string, int, string)>();
+    private async Task<(List<StepFailure>, string? InstallPath)> RunStepsAndCaptureLayerlessAsync(
+        BuildOptions options, BuildPlan plan, VhdLayerStack stack, string workspace, OutputBuilder builder,
+        ImageIndexInfo sourceIndex, LayerlessCheckpoint checkpoint, CancellationToken ct) {
+        var failedSteps = new List<StepFailure>();
         return await WithMountedAsync(stack.LeafVhdxPath, async mountPath => {
             var stepNumber = checkpoint.CompletedCount;
             foreach (var step in plan.Steps.Skip(checkpoint.CompletedCount)) {
                 ct.ThrowIfCancellationRequested();
                 stepNumber++;
-                log.Info($"step {stepNumber}/{plan.Steps.Count}: '{step.Title}' (no-layers)",
-                    data: new() {
-                        ["progress"] = ProgressAfterBase +
-                                       (int)(ProgressPlanWeight * stepNumber / (double)plan.Steps.Count)
-                    });
+                LogStepStart(step, stepNumber, plan.Steps.Count, "no-layers");
                 var session = new LayerSession {
                     Record = new() { Index = stepNumber, StepId = step.Id, Title = step.Title },
                     VhdxPath = stack.LeafVhdxPath,
@@ -300,7 +298,7 @@ public sealed class BuildEngine(
                     }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
-                    failedSteps.Add((step.Id, stepNumber, ex.Message));
+                    failedSteps.Add(new(step.Id, stepNumber, ex.Message));
                     log.Error($"step '{step.Id}' failed (no rollback in no-layers mode): {ex.Message}", step.Id,
                         stepNumber);
                     if (!options.ContinueOnError) {
@@ -378,11 +376,11 @@ public sealed class BuildEngine(
     }
 
     /// <summary>Runs every plan step as one atomic layer; returns the failed ones (ContinueOnError).</summary>
-    private async Task<List<(string StepId, int LayerIndex, string Error)>> RunStepsAsync(
+    private async Task<List<StepFailure>> RunStepsAsync(
         BuildOptions options, BuildPlan plan, VhdLayerStack stack, string workspace,
         IDictionary<string, string> assetFingerprints, CancellationToken ct) {
         log.Phase = BuildPhases.Plan;
-        var failedSteps = new List<(string, int, string)>();
+        var failedSteps = new List<StepFailure>();
         var skipCount = 0;
         if (options.Resume) {
             skipCount = await ResumePrefixAsync(plan, stack, options.PlansDirectory, assetFingerprints, ct);
@@ -392,11 +390,7 @@ public sealed class BuildEngine(
         foreach (var step in plan.Steps.Skip(skipCount)) {
             ct.ThrowIfCancellationRequested();
             stepNumber++;
-            log.Info($"step {stepNumber}/{plan.Steps.Count}: '{step.Title}'",
-                data: new() {
-                    ["progress"] =
-                        ProgressAfterBase + (int)(ProgressPlanWeight * stepNumber / (double)plan.Steps.Count)
-                });
+            LogStepStart(step, stepNumber, plan.Steps.Count);
             var session = await stack.BeginLayerAsync(step.Id, step.Title, ct,
                 await FingerprintAsync(step, options.PlansDirectory, assetFingerprints, ct));
             try {
@@ -437,7 +431,7 @@ public sealed class BuildEngine(
                     throw;
                 }
 
-                failedSteps.Add((step.Id, session.Record.Index, ex.Message));
+                failedSteps.Add(new(step.Id, session.Record.Index, ex.Message));
                 log.Error($"step '{step.Id}' failed and its layer was discarded: {ex.Message}", step.Id,
                     session.Record.Index);
                 if (!options.ContinueOnError) {
@@ -472,31 +466,13 @@ public sealed class BuildEngine(
         }, ct, "final capture");
     }
 
-    private async Task<T> WithMountedAsync<T>(
-        string vhdxPath, Func<string, Task<T>> operation, CancellationToken ct, string operationName) {
-        var letter = await layerBackend.AttachAsync(vhdxPath, ct);
-        try {
-            return await operation($"{letter}:\\");
-        }
-        finally {
-            try {
-                await layerBackend.DetachAsync(vhdxPath, CancellationToken.None);
-            }
-            catch (Exception cleanupError) {
-                // Never silent: a surviving attachment poisons the chain — the next diff
-                // creation fails on a still-attached parent with a confusing error.
-                log.Error($"detach failed after {operationName}: {cleanupError.Message}");
-            }
-        }
-    }
+    private Task<T> WithMountedAsync<T>(
+        string vhdxPath, Func<string, Task<T>> operation, CancellationToken ct, string operationName) =>
+        MountScope.RunAsync(layerBackend, vhdxPath, log, operationName, operation, ct);
 
-    private async Task WithMountedAsync(
-        string vhdxPath, Func<string, Task> operation, CancellationToken ct, string operationName) {
-        await WithMountedAsync<object?>(vhdxPath, async mountPath => {
-            await operation(mountPath);
-            return null;
-        }, ct, operationName);
-    }
+    private Task WithMountedAsync(
+        string vhdxPath, Func<string, Task> operation, CancellationToken ct, string operationName) =>
+        MountScope.RunAsync(layerBackend, vhdxPath, log, operationName, operation, ct);
 
     private async Task<string?> CaptureInstallImageFromMountAsync(
         BuildOptions options, string workspace, OutputBuilder builder, ImageIndexInfo sourceIndex,
@@ -620,11 +596,11 @@ public sealed class BuildEngine(
         var resolved = step.Plan;
         builder.Append(resolved.Definition.Id).Append('|')
             .Append(resolved.Definition.Version).Append('|')
-            .Append(resolved.Definition.Hash).Append((char)10);
+            .Append(resolved.Definition.Hash).Append('\n');
         var copyAssetSources = new List<string>();
         foreach (var operation in resolved.Operations) {
             builder.Append(operation.Resource).Append('|').Append(operation.Action).Append('|')
-                .Append(operation.Spec.Spec.ToJsonString()).Append((char)10);
+                .Append(operation.Spec.Spec.ToJsonString()).Append('\n');
             if (FsPathAssets.GetCopyAssetSource(operation.Spec) is { } assetSource) {
                 copyAssetSources.Add(assetSource);
             }
@@ -643,10 +619,19 @@ public sealed class BuildEngine(
                 assetFingerprints[cacheKey] = assetFingerprint;
             }
 
-            builder.Append("asset|").Append(assetFingerprint).Append((char)10);
+            builder.Append("asset|").Append(assetFingerprint).Append('\n');
         }
 
         return Fingerprinting.Compute(builder.ToString());
+    }
+
+    /// <summary>One step-start log line shared by both execution modes (progress is event-stream data).</summary>
+    private void LogStepStart(PlanStep step, int stepNumber, int total, string? mode = null) {
+        var suffix = mode is null ? "" : $" ({mode})";
+        log.Info($"step {stepNumber}/{total}: '{step.Title}'{suffix}",
+            data: new() {
+                ["progress"] = ProgressAfterBase + (int)(ProgressPlanWeight * stepNumber / (double)total)
+            });
     }
 
     private async Task<JsonObject> RunPlanInLayerAsync(
@@ -707,7 +692,7 @@ public sealed class BuildEngine(
         VhdLayerStack stack,
         string outputPath,
         ImageIndexInfo sourceIndex,
-        List<(string StepId, int LayerIndex, string Error)> failedSteps,
+        List<StepFailure> failedSteps,
         CancellationToken ct) {
         log.Info("writing build manifest");
         var outputMetadata = await FileMetadataAsync(outputPath, ct);

@@ -87,7 +87,7 @@ internal static class BuildHandler {
                 Console.WriteLine($"  layers:    {result.LayerCount}");
             }
 
-            return result.Succeeded ? 0 : 1;
+            return result.Succeeded ? ExitCodes.Success : ExitCodes.Failure;
         }
         catch (BuildStepFailedException ex) {
             if (jsonEvents) {
@@ -182,8 +182,8 @@ internal static class PreviewHandler {
             }, cts.Token);
             if (json) {
                 Console.WriteLine(new JsonObject {
-                    ["plans"] = new JsonArray(previews.Select(p => (JsonNode)p.ToJson()).ToArray())
-                }.ToJsonString(Cli.JsonSerializerOptions));
+                    ["plans"] = new JsonArray([.. previews.Select(p => p.ToJson())])
+                }.ToPrettyString());
             }
             else {
                 Console.WriteLine();
@@ -247,13 +247,13 @@ internal static class SourceValidateHandler {
                     ["kind"] = kind.ToString().ToLowerInvariant(),
                     ["installImage"] = source.InstallImagePath,
                     ["bootable"] = kind != SourceInputKind.Image,
-                    ["indexes"] = new JsonArray(indexes.Select(index => (JsonNode)new JsonObject {
+                    ["indexes"] = new JsonArray([.. indexes.Select(index => new JsonObject {
                         ["index"] = index.Index,
                         ["name"] = index.Name,
                         ["editionId"] = index.EditionId,
                         ["version"] = index.Version
-                    }).ToArray())
-                }.ToJsonString(Cli.JsonSerializerOptions));
+                    })])
+                }.ToPrettyString());
             }
             else {
                 Console.WriteLine(
@@ -351,7 +351,7 @@ internal static class LayerHandler {
         var inspector = new LayerInspector(runner, layers, log);
         var report = await inspector.DiffAsync(request.Workspace, request.From, request.To);
         if (request.Json) {
-            Console.WriteLine(report.ToJson().ToJsonString(Cli.JsonSerializerOptions));
+            Console.WriteLine(report.ToJson().ToPrettyString());
             return ExitCodes.Success;
         }
 
@@ -407,8 +407,8 @@ internal static class LayerHandler {
         var stack = VhdLayerStack.Load(workDirectory, layers, log);
         if (json) {
             Console.WriteLine(new JsonObject {
-                ["layers"] = new JsonArray(stack.Records.Select(r => (JsonNode)r.ToJson()).ToArray())
-            }.ToJsonString(Cli.JsonSerializerOptions));
+                ["layers"] = new JsonArray([.. stack.Records.Select(r => r.ToJson())])
+            }.ToPrettyString());
             return ExitCodes.Success;
         }
 

@@ -59,8 +59,8 @@ internal sealed class LayerlessCheckpoint {
             }
 
             var records = new List<LayerlessCheckpointStep>(steps.Count);
-            foreach (var (node, index) in steps.Select((node, index) => (node, index))) {
-                if (node is not JsonObject step) {
+            for (var index = 0; index < steps.Count; index++) {
+                if (steps[index] is not JsonObject step) {
                     throw new InvalidDataException($"checkpoint step {index} is not an object");
                 }
 

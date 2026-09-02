@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using TinyWin2.Core;
 using TinyWin2.Core.Executers;
 using TinyWin2.Core.Native;
 using TinyWin2.Core.Pipeline;
@@ -19,17 +20,17 @@ internal static class PlanHandler {
 
         if (request.Json) {
             Console.WriteLine(new JsonObject {
-                ["plans"] = new JsonArray(plans.Select(plan => (JsonNode)new JsonObject {
+                ["plans"] = new JsonArray([.. plans.Select(plan => new JsonObject {
                     ["id"] = plan.Id,
                     ["title"] = plan.Title,
                     ["category"] = plan.Category,
                     ["riskLevel"] = plan.RiskLevel,
-                    ["requires"] = new JsonArray(plan.Requires.Select(r => (JsonNode)r).ToArray()),
-                    ["conflicts"] = new JsonArray(plan.Conflicts.Select(c => (JsonNode)c).ToArray()),
+                    ["requires"] = new JsonArray([.. plan.Requires]),
+                    ["conflicts"] = new JsonArray([.. plan.Conflicts]),
                     ["parameters"] =
-                        new JsonArray(plan.Parameters.Select(parameter => (JsonNode)parameter.ToJson()).ToArray())
-                }).ToArray())
-            }.ToJsonString(Cli.JsonSerializerOptions));
+                        new JsonArray([.. plan.Parameters.Select(parameter => parameter.ToJson())])
+                })])
+            }.ToPrettyString());
             return ExitCodes.Success;
         }
 
@@ -66,15 +67,15 @@ internal static class PlanHandler {
             ["description"] = plan.Description,
             ["category"] = plan.Category,
             ["riskLevel"] = plan.RiskLevel,
-            ["requires"] = new JsonArray(plan.Requires.Select(r => (JsonNode)r).ToArray()),
-            ["conflicts"] = new JsonArray(plan.Conflicts.Select(c => (JsonNode)c).ToArray()),
-            ["parameters"] = new JsonArray(plan.Parameters.Select(parameter => (JsonNode)parameter.ToJson()).ToArray()),
-            ["operations"] = new JsonArray(plan.Operations.Select(operation => (JsonNode)new JsonObject {
+            ["requires"] = new JsonArray([.. plan.Requires]),
+            ["conflicts"] = new JsonArray([.. plan.Conflicts]),
+            ["parameters"] = new JsonArray([.. plan.Parameters.Select(parameter => parameter.ToJson())]),
+            ["operations"] = new JsonArray([.. plan.Operations.Select(operation => new JsonObject {
                 ["resource"] = operation.Resource,
                 ["action"] = operation.Action.ToString().ToLowerInvariant(),
                 ["spec"] = operation.Spec.DeepClone()
-            }).ToArray())
-        }.ToJsonString(Cli.JsonSerializerOptions));
+            })])
+        }.ToPrettyString());
         return ExitCodes.Success;
     }
 
@@ -145,7 +146,7 @@ internal static class PlanHandler {
                         ["operations"] = definition.Operations.Count,
                         ["parameters"] = definition.Parameters.Count
                     }
-            }.ToJsonString(Cli.JsonSerializerOptions));
+            }.ToPrettyString());
         }
         else if (errors.Count > 0) {
             Console.WriteLine($"✘ invalid plan ({errors.Count} error(s)):");
