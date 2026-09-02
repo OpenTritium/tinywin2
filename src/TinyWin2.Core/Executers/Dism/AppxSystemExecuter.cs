@@ -37,13 +37,21 @@ public sealed class AppxSystemExecuter(IProcessRunner runner) : IExecuter {
 
         // Remove registrations first so the package cannot be resolved while its files
         // are being removed. The build engine rolls back the layer if file deletion fails.
-        foreach (var change in changes.Where(c => c.RegistryKey is not null)) {
-            await OfflineReg.DeleteKeyAsync(runner, change.RegistryKey!, change.RegistryKey!, ct);
+        foreach (var change in changes) {
+            if (change.RegistryKey is not { } registryKey) {
+                continue;
+            }
+
+            await OfflineReg.DeleteKeyAsync(runner, registryKey, ct);
             context.Log.Info($"deleted inbox AppX registration '{change.Change.Target}'");
         }
 
-        foreach (var change in changes.Where(c => c.FilePath is not null)) {
-            await ImageFs.DeleteWithRescueAsync(runner, change.FilePath!, ct);
+        foreach (var change in changes) {
+            if (change.FilePath is not { } filePath) {
+                continue;
+            }
+
+            await ImageFs.DeleteWithRescueAsync(runner, filePath, ct);
             context.Log.Info($"deleted SystemApps directory '{change.Change.Target}'");
         }
 

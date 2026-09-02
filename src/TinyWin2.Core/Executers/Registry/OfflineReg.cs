@@ -5,7 +5,7 @@ namespace TinyWin2.Core.Executers.Registry;
 /// <summary>
 ///     Shared reg.exe plumbing for the offline-registry executers: tolerant queries
 ///     (exit 1 = key or value not found) and mutations that retry once behind an
-///     <see cref="RegistryAcl.RescueAsync" /> ownership grant.
+///     <see cref="RegistryAcl.Rescue" /> ownership grant.
 /// </summary>
 internal static class OfflineReg {
     /// <summary>
@@ -26,11 +26,12 @@ internal static class OfflineReg {
     /// <summary>
     ///     Deletes a whole key. Returns true when the key is gone; false when it survives the
     ///     rescue (CBS locks component registrations with descriptors that deny Administrators).
-    ///     Callers decide whether a surviving key is acceptable.
+    ///     Callers decide whether a surviving key is acceptable. The ACL rescue targets
+    ///     <paramref name="key" /> itself unless another (parent) key is given.
     /// </summary>
     public static Task<bool> DeleteKeyAsync(
-        IProcessRunner runner, string key, string aclRescueKey, CancellationToken ct) =>
-        DeleteAsync(runner, aclRescueKey,
+        IProcessRunner runner, string key, CancellationToken ct, string? aclRescueKey = null) =>
+        DeleteAsync(runner, aclRescueKey ?? key,
             async () => (await QueryAsync(runner, key, ct)).Success,
             ct, "delete", key, "/f");
 
@@ -39,11 +40,12 @@ internal static class OfflineReg {
     ///     rescue (see <see cref="DeleteKeyAsync" />).
     /// </summary>
     public static Task<bool> DeleteValueAsync(
-        IProcessRunner runner, string key, string valueName, string aclRescueKey, CancellationToken ct) {
+        IProcessRunner runner, string key, string valueName, CancellationToken ct,
+        string? aclRescueKey = null) {
         var arguments = string.IsNullOrEmpty(valueName)
             ? new[] { "delete", key, "/ve", "/f" }
             : new[] { "delete", key, "/v", valueName, "/f" };
-        return DeleteAsync(runner, aclRescueKey,
+        return DeleteAsync(runner, aclRescueKey ?? key,
             () => ValueExistsAsync(runner, key, valueName, ct), ct, arguments);
     }
 
@@ -60,7 +62,7 @@ internal static class OfflineReg {
             await runner.RunAsync("reg.exe", arguments, cancellationToken: ct);
         }
         catch (ProcessRunnerException) {
-            await RegistryAcl.RescueAsync(runner, aclRescueKey, ct);
+            RegistryAcl.Rescue(aclRescueKey);
             await runner.RunAsync("reg.exe", arguments, cancellationToken: ct);
         }
     }
@@ -91,7 +93,7 @@ internal static class OfflineReg {
         }
 
         try {
-            await RegistryAcl.RescueAsync(runner, aclRescueKey, ct);
+            RegistryAcl.Rescue(aclRescueKey);
         }
         catch (ExecException) {
             // the ownership grant itself could not reach the key: fall through to the

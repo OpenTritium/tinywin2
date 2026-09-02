@@ -43,10 +43,7 @@ internal static partial class RegistryAcl {
             return false;
         }
 
-        var subKey = hklmSubKeyPath.Replace("\"", "");
-        if (subKey.StartsWith("HKLM\\", StringComparison.OrdinalIgnoreCase)) {
-            subKey = subKey["HKLM\\".Length..];
-        }
+        var subKey = NormalizeSubKey(hklmSubKeyPath);
 
         try {
             using var root = RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, RegistryView.Default);
@@ -97,19 +94,23 @@ internal static partial class RegistryAcl {
         }
     }
 
-    public static Task RescueAsync(IProcessRunner runner, string hklmSubKeyPath, CancellationToken ct) {
-        _ = runner;
-        _ = ct;
-        var subKey = hklmSubKeyPath.Replace("\"", "");
-        if (subKey.StartsWith("HKLM\\", StringComparison.OrdinalIgnoreCase)) {
-            subKey = subKey["HKLM\\".Length..];
-        }
-
-        if (TryGrantAdministratorsFullControl(subKey) == 0) {
-            return Task.CompletedTask;
+    /// <summary>
+    ///     Grants Administrators + SYSTEM FullControl on the key through the backup/restore
+    ///     registry path; throws when the grant cannot reach the key.
+    /// </summary>
+    public static void Rescue(string hklmSubKeyPath) {
+        if (TryGrantAdministratorsFullControl(NormalizeSubKey(hklmSubKeyPath)) == 0) {
+            return;
         }
 
         throw new ExecException($"could not grant write access to registry key '{hklmSubKeyPath}'.");
+    }
+
+    private static string NormalizeSubKey(string hklmSubKeyPath) {
+        var subKey = hklmSubKeyPath.Replace("\"", "");
+        return subKey.StartsWith("HKLM\\", StringComparison.OrdinalIgnoreCase)
+            ? subKey["HKLM\\".Length..]
+            : subKey;
     }
 
     private static int TryGrantAdministratorsFullControl(string subKey) {

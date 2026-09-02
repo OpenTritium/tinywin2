@@ -43,6 +43,7 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
 
     private readonly Lock _gate = new();
     private readonly Dictionary<string, RegistryHive> _loaded = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Task<RegistryHive>> _inFlight = new(StringComparer.OrdinalIgnoreCase);
     private string _sessionPrefix = "TinyWin2";
 
     private string MountPath { get; } = mountPath;
@@ -50,7 +51,7 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
 
     public void SetSessionPrefix(string prefix) => _sessionPrefix = prefix;
 
-    public async Task<RegistryHive> GetAsync(string hiveId, BuildLog log, CancellationToken ct) {
+    public Task<RegistryHive> GetAsync(string hiveId, BuildLog log, CancellationToken ct) {
         if (!HiveFiles.TryGetValue(hiveId, out var relativePath)) {
             throw new ExecException(
                 $"unknown registry hive '{hiveId}' (expected one of: {string.Join(", ", HiveFiles.Keys)}).");
@@ -58,21 +59,41 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
 
         lock (_gate) {
             if (_loaded.TryGetValue(hiveId, out var hive) && hive.IsLoaded) {
-                return hive;
+                return Task.FromResult(hive);
             }
-        }
 
-        var hiveFilePath = Path.GetFullPath(Path.Combine(MountPath, relativePath));
-        if (!File.Exists(hiveFilePath)) {
-            throw new ExecException($"offline registry hive '{hiveId}' was not found at '{hiveFilePath}'.");
-        }
+            // Serialize concurrent loads of the same hive: two callers would otherwise both
+            // run `reg.exe load` and the second would fail on the existing mount point.
+            if (!_inFlight.TryGetValue(hiveId, out var load)) {
+                load = LoadAsync(hiveId, relativePath, log, ct);
+                _inFlight[hiveId] = load;
+            }
 
-        var hiveKey = $"HKLM\\{_sessionPrefix}_{hiveId.ToLowerInvariant()}";
-        await Runner.RunAsync("reg.exe", ["load", hiveKey, hiveFilePath], cancellationToken: ct);
-        log.Debug($"loaded offline hive '{hiveId}' at {hiveKey}");
-        lock (_gate) {
-            _loaded[hiveId] = new(hiveId.ToLowerInvariant(), hiveKey) { IsLoaded = true };
-            return _loaded[hiveId];
+            return load;
+        }
+    }
+
+    private async Task<RegistryHive> LoadAsync(string hiveId, string relativePath, BuildLog log, CancellationToken ct) {
+        try {
+            var hiveFilePath = Path.GetFullPath(Path.Combine(MountPath, relativePath));
+            if (!File.Exists(hiveFilePath)) {
+                throw new ExecException($"offline registry hive '{hiveId}' was not found at '{hiveFilePath}'.");
+            }
+
+            var hiveKey = $"HKLM\\{_sessionPrefix}_{hiveId.ToLowerInvariant()}";
+            await Runner.RunAsync("reg.exe", ["load", hiveKey, hiveFilePath], cancellationToken: ct);
+            log.Debug($"loaded offline hive '{hiveId}' at {hiveKey}");
+            var hive = new RegistryHive(hiveId.ToLowerInvariant(), hiveKey) { IsLoaded = true };
+            lock (_gate) {
+                _loaded[hiveId] = hive;
+            }
+
+            return hive;
+        }
+        finally {
+            lock (_gate) {
+                _inFlight.Remove(hiveId);
+            }
         }
     }
 

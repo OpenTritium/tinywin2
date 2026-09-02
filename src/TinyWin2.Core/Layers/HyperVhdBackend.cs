@@ -21,12 +21,15 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
 
     public async Task CreateBaseAsync(string vhdxPath, long maximumMb, string volumeLabel, CancellationToken ct) {
         Directory.CreateDirectory(Path.GetDirectoryName(vhdxPath)!);
+        // Same reserved S..Z range as the diskpart backend: pinning a verified-free letter
+        // beats letting Mount-VHD assign one that collides with a transient reservation.
+        var driveLetter = DriveLetters.FirstFreeMountLetter("base volume formatting");
         var ps = $"""
                   $ErrorActionPreference = 'Stop'
                   $vhd = New-VHD -Path {Pwsh.Quote(vhdxPath)} -SizeBytes {maximumMb}MB -Dynamic
                   Mount-VHD -Path $vhd.Path -PassThru |
                       Initialize-Disk -PartitionStyle MBR -PassThru |
-                      New-Partition -UseMaximumSize -AssignDriveLetter:$false -DriveLetter X |
+                      New-Partition -UseMaximumSize -AssignDriveLetter:$false -DriveLetter {driveLetter} |
                       Format-Volume -FileSystem NTFS -NewFileSystemLabel {Pwsh.Quote(volumeLabel)} -Confirm:$false | Out-Null
                   Dismount-VHD -Path $vhd.Path
                   """;
@@ -120,7 +123,9 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
             "    Merge-VHD -Path $current -DestinationPath $parent -ErrorAction Stop",
             "    $current = $parent",
             "}");
-        return RunPsAsync(ps, ct);
+        // A merge copies up to the full base-VHDX size leaf-to-base; the default pwsh
+        // timeout would abort mid-merge and force a clean rebuild of the chain.
+        return RunPsAsync(ps, ct, MergeTimeout);
     }
 
     private async Task DetachOwnedAsync(string path, CancellationToken ct) {
@@ -166,9 +171,12 @@ public sealed class HyperVhdBackend(IProcessRunner runner) : ILayerBackend {
         }
     }
 
-    private async Task<string> RunPsAsync(string script, CancellationToken ct) {
+    private static readonly TimeSpan DefaultPsTimeout = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan MergeTimeout = TimeSpan.FromHours(6);
+
+    private async Task<string> RunPsAsync(string script, CancellationToken ct, TimeSpan? timeout = null) {
         var result = await runner.RunAsync("pwsh.exe", Pwsh.Args(script),
-            new() { Timeout = TimeSpan.FromMinutes(15) }, ct);
+            new() { Timeout = timeout ?? DefaultPsTimeout }, ct);
         return result.Output + result.Error;
     }
 }

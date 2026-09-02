@@ -188,7 +188,7 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
 
     /// <summary>Deletes a service key; a CBS-locked survivor is logged and left in place.</summary>
     private async Task DeleteKeyTolerantAsync(ExecContext context, string key, CancellationToken ct) {
-        if (!await OfflineReg.DeleteKeyAsync(Runner, key, key, ct)) {
+        if (!await OfflineReg.DeleteKeyAsync(Runner, key, ct)) {
             context.Log.Warn($"driver.store: '{key}' is ACL-locked; left in place");
         }
     }
@@ -220,22 +220,19 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
 
         foreach (var key in package.DeviceIdKeys) {
             await OfflineReg.DeleteValueAsync(Runner,
-                $@"{system.HiveKey}\DriverDatabase\DeviceIds\{key}", package.InfName,
-                $@"{system.HiveKey}\DriverDatabase\DeviceIds\{key}", ct);
+                $@"{system.HiveKey}\DriverDatabase\DeviceIds\{key}", package.InfName, ct);
         }
 
         // DriverDatabase registrations are CBS-owned: the ACL rescue recovers most, but any
         // key that still survives is metadata worth a few kilobytes — warn and move on rather
         // than failing the step, the payload removals below are what actually reclaim space.
         if (!await OfflineReg.DeleteKeyAsync(Runner,
-                $@"{system.HiveKey}\DriverDatabase\DriverInfFiles\{package.InfName}",
                 $@"{system.HiveKey}\DriverDatabase\DriverInfFiles\{package.InfName}", ct)) {
             context.Log.Warn(
                 $"driver.store: '{package.InfName}' DriverInfFiles key is ACL-locked; left in place");
         }
 
         if (!await OfflineReg.DeleteKeyAsync(Runner,
-                $@"{system.HiveKey}\DriverDatabase\DriverPackages\{package.PackageDirectoryName}",
                 $@"{system.HiveKey}\DriverDatabase\DriverPackages\{package.PackageDirectoryName}", ct)) {
             context.Log.Warn(
                 $"driver.store: '{package.PackageDirectoryName}' DriverPackages key is ACL-locked; left in place");

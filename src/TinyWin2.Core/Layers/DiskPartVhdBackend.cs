@@ -17,12 +17,7 @@ public sealed class DiskPartVhdBackend(IProcessRunner runner) : ILayerBackend {
     public async Task CreateBaseAsync(string vhdxPath, long maximumMb, string volumeLabel, CancellationToken ct) {
         vhdxPath = Normalize(vhdxPath);
         Directory.CreateDirectory(Path.GetDirectoryName(vhdxPath)!);
-        // Same S..Z preference as AttachAsync: low letters collide with ISO mounts and
-        // other transient reservations that Directory.GetLogicalDrives() cannot see.
-        var driveLetter = FreeDriveLetters().FirstOrDefault(l => l is >= 'S' and <= 'Z');
-        if (driveLetter == '\0') {
-            throw new IOException("no free drive letter in S..Z for base volume formatting");
-        }
+        var driveLetter = DriveLetters.FirstFreeMountLetter("base volume formatting");
 
         var script = $"""
                       create vdisk file="{vhdxPath}" maximum={maximumMb} type=expandable
@@ -59,10 +54,7 @@ public sealed class DiskPartVhdBackend(IProcessRunner runner) : ILayerBackend {
             throw new FileNotFoundException($"layer VHDX not found: {vhdxPath}");
         }
 
-        var letter = FreeDriveLetters().FirstOrDefault(l => l is >= 'S' and <= 'Z');
-        if (letter == '\0') {
-            throw new IOException("no free drive letter in S..Z for layer attach");
-        }
+        var letter = DriveLetters.FirstFreeMountLetter("layer attach");
 
         await AttachWithRecoveryAsync(vhdxPath, letter, ct);
         return letter;
@@ -149,17 +141,6 @@ public sealed class DiskPartVhdBackend(IProcessRunner runner) : ILayerBackend {
             }
             catch {
                 /* best effort */
-            }
-        }
-    }
-
-    private static IEnumerable<char> FreeDriveLetters() {
-        var used = Directory.GetLogicalDrives()
-            .Select(d => char.ToUpperInvariant(d[0]))
-            .ToHashSet();
-        for (var letter = 'D'; letter <= 'Z'; letter++) {
-            if (!used.Contains(letter)) {
-                yield return letter;
             }
         }
     }

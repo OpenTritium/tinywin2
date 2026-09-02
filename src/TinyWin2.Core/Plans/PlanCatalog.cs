@@ -12,7 +12,9 @@ public sealed class PlanCatalog(IReadOnlyList<PlanDefinition> plans) {
         plans.ToDictionary(p => p.Id, StringComparer.Ordinal);
 
     public PlanDefinition Get(string planId) =>
-        ById.TryGetValue(planId, out var plan) ? plan : throw new KeyNotFoundException($"Unknown plan id '{planId}'.");
+        ById.TryGetValue(planId, out var plan)
+            ? plan
+            : throw new UnknownPlanException($"Unknown plan id '{planId}'.");
 
     public static PlanCatalog LoadDirectory(string directory) {
         if (!Directory.Exists(directory)) {
@@ -86,3 +88,6 @@ public sealed class PlanCatalog(IReadOnlyList<PlanDefinition> plans) {
         return Fingerprinting.Compute(semantic.ToJsonString());
     }
 }
+
+/// <summary>A plan id was requested that the catalog does not contain (maps to the not-found error code).</summary>
+public sealed class UnknownPlanException(string message) : Exception(message);

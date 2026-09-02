@@ -63,6 +63,7 @@ internal static class CliErrors {
         OutputExistsException => ("output-exists", ExitCodes.Failure),
         WorkspaceConflictException => ("workspace-conflict", ExitCodes.Failure),
         ArgumentException => ("invalid-argument", ExitCodes.Failure),
+        UnknownPlanException => ("not-found", ExitCodes.Failure),
         FileNotFoundException or DirectoryNotFoundException => ("not-found", ExitCodes.Failure),
         IOException => ("io-failed", ExitCodes.Failure),
         InvalidOperationException => ("invalid-operation", ExitCodes.Failure),
@@ -78,6 +79,7 @@ internal static class CliErrors {
         "environment-check-failed" => "run `tinywin2 doctor --workspace <dir>` for the failing checks",
         "native-tool-failed" => "run `tinywin2 doctor` to check tool availability",
         "invalid-argument" => "run with --help to see the accepted options",
+        "not-found" => "check the path or plan id; run `tinywin2 plan list` to browse valid plan ids",
         "internal" => "set TINYWIN2_DEBUG=1 and rerun for a stack trace",
         _ => null
     };

@@ -475,20 +475,17 @@ public sealed class BuildEngine(
     private async Task<T> WithMountedAsync<T>(
         string vhdxPath, Func<string, Task<T>> operation, CancellationToken ct, string operationName) {
         var letter = await layerBackend.AttachAsync(vhdxPath, ct);
-        Exception? operationError = null;
         try {
             return await operation($"{letter}:\\");
-        }
-        catch (Exception ex) {
-            operationError = ex;
-            throw;
         }
         finally {
             try {
                 await layerBackend.DetachAsync(vhdxPath, CancellationToken.None);
             }
-            catch (Exception cleanupError) when (operationError is not null) {
-                log.Error($"detach failed after {operationName} failure: {cleanupError.Message}");
+            catch (Exception cleanupError) {
+                // Never silent: a surviving attachment poisons the chain — the next diff
+                // creation fails on a still-attached parent with a confusing error.
+                log.Error($"detach failed after {operationName}: {cleanupError.Message}");
             }
         }
     }
@@ -553,7 +550,6 @@ public sealed class BuildEngine(
 
         var resolvedInstallPath = installPath
                                   ?? throw new InvalidOperationException("WIM/ESD output requires a captured image.");
-        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
         File.Move(resolvedInstallPath, outputPath, options.OverwriteOutput);
         return outputPath;
     }

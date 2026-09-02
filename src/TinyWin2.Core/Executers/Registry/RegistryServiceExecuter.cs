@@ -116,7 +116,9 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
     private async Task WriteTriggerInfoAsync(
         string serviceKey, IReadOnlyList<RegistryServiceOptions.ServiceTrigger> triggers, CancellationToken ct) {
         var triggerRoot = $"{serviceKey}\\TriggerInfo";
-        await OfflineReg.DeleteKeyAsync(runner, triggerRoot, serviceKey, ct);
+        // Rescue the owning service key: the TrustedInstaller descriptor that denies access
+        // typically sits there, not on the TriggerInfo subtree.
+        await OfflineReg.DeleteKeyAsync(runner, triggerRoot, ct, serviceKey);
 
         for (var i = 0; i < triggers.Count; i++) {
             var kind = triggers[i];

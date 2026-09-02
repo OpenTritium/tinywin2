@@ -47,7 +47,7 @@ public sealed class RegistryAclRescueTests : IDisposable {
         await Assert.That(denied).IsEqualTo(1);
 
         // the rescue grants Administrators/SYSTEM FullControl via the backup/restore path
-        await RegistryAcl.RescueAsync(new FakeProcessRunner(), lockedLoaded, CancellationToken.None);
+        RegistryAcl.Rescue(lockedLoaded);
 
         var deleteExit = Run($"delete {lockedLoaded} /f");
         await Assert.That(deleteExit).IsEqualTo(0);
