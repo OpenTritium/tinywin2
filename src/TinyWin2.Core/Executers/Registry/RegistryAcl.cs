@@ -55,7 +55,7 @@ internal static partial class RegistryAcl {
                 return false;
             }
 
-            using var parent = root.OpenSubKey(subKey[..separator], true);
+            using var parent = OpenRescued(root, subKey[..separator]);
             if (parent is null) {
                 return false;
             }
@@ -70,6 +70,42 @@ internal static partial class RegistryAcl {
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             return false;
+        }
+    }
+
+    /// <summary>
+    ///     Opens <paramref name="path" /> writable, claiming ownership along every ancestor
+    ///     that denies it — TaskCache and component trees lock intermediate keys as well as
+    ///     leaves, and the delete needs a writable parent handle.
+    /// </summary>
+    private static RegistryKey? OpenRescued(RegistryKey root, string path) {
+        RegistryKey current = root;
+        List<RegistryKey>? opened = null;
+        try {
+            foreach (var segment in path.Split('\\')) {
+                RegistryKey next;
+                try {
+                    next = current.OpenSubKey(segment, true)!;
+                }
+                catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException) {
+                    next = ForceOpen(current, segment)
+                           ?? throw new UnauthorizedAccessException($"cannot take over '{segment}'.");
+                }
+
+                (opened ??= []).Add(next);
+                current = next;
+            }
+
+            return current;
+        }
+        catch {
+            if (opened is not null) {
+                foreach (var key in opened) {
+                    key.Dispose();
+                }
+            }
+
+            return null;
         }
     }
 
