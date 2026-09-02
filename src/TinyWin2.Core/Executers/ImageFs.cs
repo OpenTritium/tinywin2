@@ -20,32 +20,24 @@ internal static class ImageFs {
         // .NET returns extended-length paths for mounted WIM volumes. The legacy
         // command-line ACL tools do not consistently accept the \\?\ prefix.
         var nativeTarget = ToNativeToolPath(target);
-        var attribArguments = new List<string> { "-R", "-S", "-H", nativeTarget };
-        if (recursive) {
-            attribArguments.AddRange(["/S", "/D"]);
-        }
+        string[] recursiveAttrib = recursive ? ["/S", "/D"] : [];
+        await runner.RunAsync("attrib.exe", ["-R", "-S", "-H", nativeTarget, .. recursiveAttrib],
+            new() { IgnoreExitCode = true }, ct);
 
         // Mounted WIM trees can contain mixed attributes and ACLs. These tools are
         // deliberately best-effort: one protected child must not prevent the rest
         // of the tree from being rescued.
-        await runner.RunAsync("attrib.exe", attribArguments,
+        string[] recursiveTakeOwn = recursive ? ["/R", "/D", "Y"] : [];
+        await runner.RunAsync("takeown.exe", ["/F", nativeTarget, "/A", .. recursiveTakeOwn],
             new() { IgnoreExitCode = true }, ct);
-
-        var takeOwnArguments = new List<string> { "/F", nativeTarget, "/A" };
-        if (recursive) {
-            takeOwnArguments.AddRange(["/R", "/D", "Y"]);
-        }
-
-        await runner.RunAsync("takeown.exe", takeOwnArguments,
-            new() { IgnoreExitCode = true }, ct);
-        var icaclsArguments = new List<string> {
-            nativeTarget, "/grant", recursive ? "*S-1-5-32-544:(OI)(CI)F" : "*S-1-5-32-544:F"
-        };
-        if (recursive) {
-            icaclsArguments.AddRange(["/T", "/C"]);
-        }
-
-        await runner.RunAsync("icacls.exe", icaclsArguments,
+        string[] recursiveIcacls = recursive ? ["/T", "/C"] : [];
+        await runner.RunAsync("icacls.exe",
+            [
+                nativeTarget,
+                "/grant",
+                recursive ? "*S-1-5-32-544:(OI)(CI)F" : "*S-1-5-32-544:F",
+                .. recursiveIcacls
+            ],
             new() { IgnoreExitCode = true }, ct);
     }
 
@@ -71,7 +63,7 @@ internal static class ImageFs {
         try {
             DeleteIfExists(target);
         }
-        catch (Exception ex) when (ex is UnauthorizedAccessException || ex is IOException) {
+        catch (Exception ex) when (IsDeleteRescueCandidate(ex)) {
             await TryNativeDeleteAsync(runner, target, ct);
         }
 

@@ -106,8 +106,39 @@ internal static class Cli {
     public static string Truncate(string value, int width) =>
         value.Length <= width ? value : value[..(width - 1)] + "…";
 
+    public static string NewLogFilePath(string directory, string prefix) =>
+        Path.Combine(directory, $"{prefix}-{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfff}-{Guid.NewGuid():N}.log");
+
     public static (IProcessRunner Runner, ExecuterRegistry Executers, ILayerBackend Layers) CreateEngineParts() {
         var runner = new ProcessRunner();
         return (runner, new(runner), LayerBackendFactory.Create(runner));
+    }
+
+    /// <summary>
+    ///     Runs a handler wired to Ctrl+C: the first keypress cancels the token so the
+    ///     handler's finally blocks run, and an OperationCanceledException maps to the
+    ///     canceled exit code instead of surfacing as a failure.
+    /// </summary>
+    public static async Task<int> RunCancellableAsync(
+        string cancelMessage, Func<CancellationToken, Task<int>> handler) {
+        using var cts = new CancellationTokenSource();
+        var reference = new WeakReference<CancellationTokenSource>(cts);
+        ConsoleCancelEventHandler onCancel = (_, e) => {
+            e.Cancel = true;
+            if (reference.TryGetTarget(out var source)) {
+                source.Cancel();
+            }
+        };
+        Console.CancelKeyPress += onCancel;
+        try {
+            return await handler(cts.Token);
+        }
+        catch (OperationCanceledException) {
+            await Console.Error.WriteLineAsync(cancelMessage);
+            return ExitCodes.Canceled;
+        }
+        finally {
+            Console.CancelKeyPress -= onCancel;
+        }
     }
 }

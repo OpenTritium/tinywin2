@@ -83,32 +83,18 @@ public sealed class ProcessRunner : IProcessRunner {
             // reads. Normal completion still waits for both streams to reach EOF.
             await WaitForCompletionAsync(processExitTask, outputTask, errorTask, linked.Token);
         }
-        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested &&
-                                                 !cancellationToken.IsCancellationRequested) {
-            CancelStreamReads(linked);
-            var cleanupError = await StopProcessAsync(process, outputTask, errorTask);
-            var timeoutError = new TimeoutException(
-                $"'{fileName}' timed out after {timeout}. Command line: {commandLine}");
-            if (cleanupError is not null) {
-                throw new AggregateException("Native process cleanup failed.", timeoutError, cleanupError);
-            }
-
-            throw timeoutError;
-        }
-        catch (OperationCanceledException ex) {
-            CancelStreamReads(linked);
-            var cleanupError = await StopProcessAsync(process, outputTask, errorTask);
-            if (cleanupError is not null) {
-                throw new AggregateException("Native process cleanup failed.", ex, cleanupError);
-            }
-
-            throw;
-        }
         catch (Exception ex) {
             CancelStreamReads(linked);
             var cleanupError = await StopProcessAsync(process, outputTask, errorTask);
             if (cleanupError is not null) {
                 throw new AggregateException("Native process cleanup failed.", ex, cleanupError);
+            }
+
+            if (ex is OperationCanceledException && timeoutCts.IsCancellationRequested
+                                                  && !cancellationToken.IsCancellationRequested) {
+                // The wait was cancelled by the timeout, not by the caller: surface the reason.
+                throw new TimeoutException(
+                    $"'{fileName}' timed out after {timeout}. Command line: {commandLine}");
             }
 
             throw;

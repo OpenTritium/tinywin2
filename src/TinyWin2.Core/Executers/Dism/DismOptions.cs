@@ -11,13 +11,15 @@ public sealed record FeatureOptions {
 
     public static FeatureOptions FromDesired(JsonObject desired) {
         var features = Desired.RequiredStringArray(desired, "features", "dism.feature");
-        return features.Count == 0
-            ? throw new ExecException("dism.feature requires at least one feature name.")
-            : new() {
-                Features = features,
-                RemovePayload = Desired.OptionalBool(desired, "removePayload", true),
-                ForceExplicit = Desired.OptionalBool(desired, "forceExplicit", false)
-            };
+        if (features.Count == 0) {
+            throw new ExecException("dism.feature requires at least one feature name.");
+        }
+
+        return new() {
+            Features = features,
+            RemovePayload = Desired.OptionalBool(desired, "removePayload", true),
+            ForceExplicit = Desired.OptionalBool(desired, "forceExplicit", false)
+        };
     }
 }
 
@@ -26,9 +28,11 @@ public sealed record CapabilityOptions {
 
     public static CapabilityOptions FromDesired(JsonObject desired) {
         var capabilities = Desired.RequiredStringArray(desired, "capabilities", "dism.capability");
-        return capabilities.Count == 0
-            ? throw new ExecException("dism.capability requires at least one capability name.")
-            : new CapabilityOptions { Capabilities = capabilities };
+        if (capabilities.Count == 0) {
+            throw new ExecException("dism.capability requires at least one capability name.");
+        }
+
+        return new CapabilityOptions { Capabilities = capabilities };
     }
 }
 

@@ -9,7 +9,7 @@ internal static class CommandLine {
     public static RootCommand CreateRootCommand() {
         var root = new RootCommand("layered Windows image slimming with explicit inputs, outputs, and workspaces");
         var help = new HelpAction();
-        root.SetAction(_ => help.Invoke(root.Parse(["--help"])));
+        root.SetAction(parseResult => help.Invoke(parseResult));
         root.Add(Doctor());
         root.Add(Inspect());
         root.Add(Source());

@@ -91,7 +91,7 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             var existingStart = await ReadDwordAsync(serviceKey, "Start", ct);
             if (existingStart is null) {
                 context.Log.Warn($"service '{service}' was not present in {controlSet}; skipping.");
-                changes.Add(new(new(ChangeKind.Skipped, service, "service not present"), serviceKey, 0, 0, []));
+                changes.Add(ServiceChange.NotPresent(service, serviceKey));
                 continue;
             }
 
@@ -220,5 +220,9 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         int Start,
         int Delayed,
         IReadOnlyList<RegistryServiceOptions.ServiceTrigger> Triggers,
-        bool TriggerInfoChanged = false);
+        bool TriggerInfoChanged = false) {
+        /// <summary>Skip record for a service absent from this control set (no proposed state).</summary>
+        public static ServiceChange NotPresent(string service, string serviceKey) =>
+            new(new(ChangeKind.Skipped, service, "service not present"), serviceKey, 0, 0, []);
+    }
 }

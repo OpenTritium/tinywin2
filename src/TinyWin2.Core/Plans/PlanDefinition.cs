@@ -293,8 +293,6 @@ public sealed partial record PlanDefinition {
                 case PlanParameterType.String:
                 case null:
                     break;
-                default:
-                    throw new ArgumentOutOfRangeException();
             }
 
             result.Add(new(name!, type!.Value, label!, defaultNode, options));

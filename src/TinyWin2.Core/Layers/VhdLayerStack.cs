@@ -234,44 +234,7 @@ public sealed class VhdLayerStack(
             // A base file without the completion marker may be the result of a crashed or
             // failed Apply-Image. Every diff depends on that base, so the whole incomplete
             // chain must be discarded before creating a new one.
-            var stalePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            lock (_gate) {
-                foreach (var record in _records.Where(r => r is { Index: > 0, VhdxPath: not null })) {
-                    stalePaths.Add(record.VhdxPath!);
-                }
-            }
-
-            if (Directory.Exists(WorkDirectory)) {
-                foreach (var path in Directory.EnumerateFiles(WorkDirectory, "L*.vhdx")) {
-                    stalePaths.Add(path);
-                }
-            }
-
-            if (File.Exists(BaseVhdxPath)) {
-                stalePaths.Add(BaseVhdxPath);
-            }
-
-            foreach (var path in stalePaths) {
-                try {
-                    await backend.DetachAsync(path, CancellationToken.None);
-                }
-                catch (Exception ex) {
-                    log.Warn($"could not detach incomplete layer '{Path.GetFileName(path)}': {ex.Message}");
-                }
-
-                if (!TryDelete(path)) {
-                    throw new IOException(
-                        $"incomplete layer '{path}' could not be removed; delete the workspace and rebuild.");
-                }
-            }
-
-            lock (_gate) {
-                _records.Clear();
-                _nextIndex = 1;
-                _baseReady = false;
-            }
-
-            Save();
+            await DiscardIncompleteChainAsync(ct);
         }
 
         if (!File.Exists(BaseVhdxPath)) {
@@ -293,25 +256,7 @@ public sealed class VhdLayerStack(
         }
 
         if (File.Exists(BaseVhdxPath)) {
-            bool hasRecord;
-            lock (_gate) {
-                hasRecord = _records.Any(r => r is { Index: 0, Status: LayerStatus.Committed });
-                _records.RemoveAll(r => r.Index == 0 && r.Status != LayerStatus.Committed);
-                if (!hasRecord) {
-                    _records.Insert(0, new() {
-                        Index = 0,
-                        Title = "base image (applied from source index)",
-                        VhdxFileName = BaseFileName,
-                        Status = LayerStatus.Committed,
-                        VhdxPath = BaseVhdxPath
-                    });
-                }
-            }
-
-            if (!hasRecord) {
-                Save();
-            }
-
+            ReconcileBaseRecord();
             log.Info($"reusing existing base layer {BaseFileName}");
             return;
         }
@@ -333,19 +278,78 @@ public sealed class VhdLayerStack(
         }
 
         lock (_gate) {
-            _records.Add(new() {
-                Index = 0,
-                StepId = null,
-                Title = "base image (applied from source index)",
-                VhdxFileName = BaseFileName,
-                Status = LayerStatus.Committed,
-                VhdxPath = BaseVhdxPath
-            });
+            _records.Add(CreateBaseRecord());
             _baseReady = false;
         }
 
         Save();
     }
+
+    /// <summary>Detaches and deletes every stale base/diff file, then resets the manifest.</summary>
+    private async Task DiscardIncompleteChainAsync(CancellationToken ct) {
+        var stalePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        lock (_gate) {
+            foreach (var record in _records.Where(r => r is { Index: > 0, VhdxPath: not null })) {
+                stalePaths.Add(record.VhdxPath!);
+            }
+        }
+
+        if (Directory.Exists(WorkDirectory)) {
+            foreach (var path in Directory.EnumerateFiles(WorkDirectory, "L*.vhdx")) {
+                stalePaths.Add(path);
+            }
+        }
+
+        if (File.Exists(BaseVhdxPath)) {
+            stalePaths.Add(BaseVhdxPath);
+        }
+
+        foreach (var path in stalePaths) {
+            try {
+                await backend.DetachAsync(path, CancellationToken.None);
+            }
+            catch (Exception ex) {
+                log.Warn($"could not detach incomplete layer '{Path.GetFileName(path)}': {ex.Message}");
+            }
+
+            if (!TryDelete(path)) {
+                throw new IOException(
+                    $"incomplete layer '{path}' could not be removed; delete the workspace and rebuild.");
+            }
+        }
+
+        lock (_gate) {
+            _records.Clear();
+            _nextIndex = 1;
+            _baseReady = false;
+        }
+
+        Save();
+    }
+
+    /// <summary>Guarantees the base file on disk is mirrored by a committed layer-0 record.</summary>
+    private void ReconcileBaseRecord() {
+        bool hasRecord;
+        lock (_gate) {
+            hasRecord = _records.Any(r => r is { Index: 0, Status: LayerStatus.Committed });
+            _records.RemoveAll(r => r.Index == 0 && r.Status != LayerStatus.Committed);
+            if (!hasRecord) {
+                _records.Insert(0, CreateBaseRecord());
+            }
+        }
+
+        if (!hasRecord) {
+            Save();
+        }
+    }
+
+    private LayerRecord CreateBaseRecord() => new() {
+        Index = 0,
+        Title = "base image (applied from source index)",
+        VhdxFileName = BaseFileName,
+        Status = LayerStatus.Committed,
+        VhdxPath = BaseVhdxPath
+    };
 
     public async Task ApplyImageToBaseAsync(Func<string, CancellationToken, Task> applyAsync, CancellationToken ct) {
         var letter = await backend.AttachAsync(BaseVhdxPath, ct);

@@ -30,8 +30,7 @@ internal static class BuildHandler {
 
         var logDirectory = Path.Combine(workspacePath, "logs");
         Directory.CreateDirectory(logDirectory);
-        var logFilePath = Path.Combine(logDirectory,
-            $"tinywin2-{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfff}-{Guid.NewGuid():N}.log");
+        var logFilePath = Cli.NewLogFilePath(logDirectory, "tinywin2");
         using var serilog = log.UseSerilog(logFilePath, !jsonEvents);
         var (runner, executers, layers) = Cli.CreateEngineParts();
         var engine = new BuildEngine(runner, executers, layers, log);
@@ -156,10 +155,7 @@ internal static class PreviewHandler {
         var workDirectory = Path.GetFullPath(request.Workspace);
         var previewLogDirectory = Path.Combine(Path.GetDirectoryName(workDirectory)!, "logs");
         Directory.CreateDirectory(previewLogDirectory);
-        using var previewSerilog = log.UseSerilog(
-            Path.Combine(previewLogDirectory,
-                $"tinywin2-preview-{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfff}-{Guid.NewGuid():N}.log"),
-            !json);
+        using var previewSerilog = log.UseSerilog(Cli.NewLogFilePath(previewLogDirectory, "tinywin2-preview"), !json);
         using var cts = new CancellationTokenSource();
         var ctsReference = new WeakReference<CancellationTokenSource>(cts);
         ConsoleCancelEventHandler onCancel = (_, e) => {
@@ -215,7 +211,7 @@ internal static class PreviewHandler {
 }
 
 internal static class SourceValidateHandler {
-    public static async Task<int> ExecuteAsync(ValidateRequest request) {
+    public static Task<int> ExecuteAsync(ValidateRequest request) {
         var input = Path.GetFullPath(request.Input);
         SourceInputKind? assertedKind = request.Kind?.ToLowerInvariant() switch {
             null => null,
@@ -224,52 +220,54 @@ internal static class SourceValidateHandler {
             "iso" => SourceInputKind.Iso,
             _ => throw new ArgumentException("validation kind must be image, media, or iso", nameof(request.Kind))
         };
-        var resolver = new SourceImageResolver(new ProcessRunner(), new());
-        var source = await resolver.ResolveAsync(input, CancellationToken.None);
-        try {
-            // An explicit --kind is an assertion the input must satisfy; otherwise it is inferred.
-            if (assertedKind is { } expected && source.Kind != expected) {
-                throw new ArgumentException(
-                    $"input '{input}' is {source.Kind.ToString().ToLowerInvariant()}, not {request.Kind}");
-            }
+        return Cli.RunCancellableAsync("source validation cancelled.", async ct => {
+            var resolver = new SourceImageResolver(new ProcessRunner(), new());
+            var source = await resolver.ResolveAsync(input, ct);
+            try {
+                // An explicit --kind is an assertion the input must satisfy; otherwise it is inferred.
+                if (assertedKind is { } expected && source.Kind != expected) {
+                    throw new ArgumentException(
+                        $"input '{input}' is {source.Kind.ToString().ToLowerInvariant()}, not {request.Kind}");
+                }
 
-            var kind = source.Kind;
-            if (kind != SourceInputKind.Image) {
-                OutputBuilder.ValidateBootMedia(source.MediaRootPath!);
-                await new SetupImageContractValidator(new ProcessRunner(), new())
-                    .ValidateAsync(source.InstallImagePath, 1, CancellationToken.None);
-            }
+                var kind = source.Kind;
+                if (kind != SourceInputKind.Image) {
+                    OutputBuilder.ValidateBootMedia(source.MediaRootPath!);
+                    await new SetupImageContractValidator(new ProcessRunner(), new())
+                        .ValidateAsync(source.InstallImagePath, 1, ct);
+                }
 
-            var indexes = await resolver.GetIndexesAsync(source.InstallImagePath, CancellationToken.None);
-            if (request.Json) {
-                Console.WriteLine(new JsonObject {
-                    ["input"] = input,
-                    ["kind"] = kind.ToString().ToLowerInvariant(),
-                    ["installImage"] = source.InstallImagePath,
-                    ["bootable"] = kind != SourceInputKind.Image,
-                    ["indexes"] = new JsonArray([.. indexes.Select(index => new JsonObject {
-                        ["index"] = index.Index,
-                        ["name"] = index.Name,
-                        ["editionId"] = index.EditionId,
-                        ["version"] = index.Version
-                    })])
-                }.ToPrettyString());
-            }
-            else {
-                Console.WriteLine(
-                    $"valid {kind.ToString().ToLowerInvariant()}: {indexes.Count} index(es), install image {source.InstallImagePath}");
-            }
+                var indexes = await resolver.GetIndexesAsync(source.InstallImagePath, ct);
+                if (request.Json) {
+                    Console.WriteLine(new JsonObject {
+                        ["input"] = input,
+                        ["kind"] = kind.ToString().ToLowerInvariant(),
+                        ["installImage"] = source.InstallImagePath,
+                        ["bootable"] = kind != SourceInputKind.Image,
+                        ["indexes"] = new JsonArray([.. indexes.Select(index => new JsonObject {
+                            ["index"] = index.Index,
+                            ["name"] = index.Name,
+                            ["editionId"] = index.EditionId,
+                            ["version"] = index.Version
+                        })])
+                    }.ToPrettyString());
+                }
+                else {
+                    Console.WriteLine(
+                        $"valid {kind.ToString().ToLowerInvariant()}: {indexes.Count} index(es), install image {source.InstallImagePath}");
+                }
 
-            return ExitCodes.Success;
-        }
-        finally {
-            await resolver.DismountIsoAsync(source, CancellationToken.None);
-        }
+                return ExitCodes.Success;
+            }
+            finally {
+                await resolver.DismountIsoAsync(source, CancellationToken.None);
+            }
+        });
     }
 }
 
 internal static class PackageHandler {
-    public static async Task<int> CreateIsoAsync(PackageIsoRequest request) {
+    public static Task<int> CreateIsoAsync(PackageIsoRequest request) {
         var input = Path.GetFullPath(request.Input);
         var image = Path.GetFullPath(request.InstallImage);
         var output = Path.GetFullPath(request.Output);
@@ -306,35 +304,37 @@ internal static class PackageHandler {
             throw new WorkspaceConflictException($"package workspace '{workspace}' is not empty; choose a new directory.");
         }
 
-        var resolver = new SourceImageResolver(new ProcessRunner(), new());
-        var source = await resolver.ResolveAsync(input, CancellationToken.None);
-        try {
-            if (!source.HasMediaTree) {
-                throw new ArgumentException("--input for package iso must be an ISO or media directory.",
-                    nameof(request.Input));
-            }
+        return Cli.RunCancellableAsync("packaging cancelled.", async ct => {
+            var resolver = new SourceImageResolver(new ProcessRunner(), new());
+            var source = await resolver.ResolveAsync(input, ct);
+            try {
+                if (!source.HasMediaTree) {
+                    throw new ArgumentException("--input for package iso must be an ISO or media directory.",
+                        nameof(request.Input));
+                }
 
-            await new SetupImageContractValidator(new ProcessRunner(), new())
-                .ValidateAsync(image, 1, CancellationToken.None);
+                await new SetupImageContractValidator(new ProcessRunner(), new())
+                    .ValidateAsync(image, 1, ct);
 
-            Directory.CreateDirectory(workspace);
-            var media = Path.Combine(workspace, "media");
-            var builder = new OutputBuilder(new ProcessRunner(), new());
-            await builder.StageMediaAsync(source.MediaRootPath!, media, image, format, request.Overwrite,
-                CancellationToken.None);
-            if (unattended is not null) {
-                File.Copy(unattended, Path.Combine(media, "Autounattend.xml"), true);
-                Console.WriteLine($"unattended: {unattended}");
+                Directory.CreateDirectory(workspace);
+                var media = Path.Combine(workspace, "media");
+                var builder = new OutputBuilder(new ProcessRunner(), new());
+                await builder.StageMediaAsync(source.MediaRootPath!, media, image, format, request.Overwrite, ct);
+                if (unattended is not null) {
+                    File.Copy(unattended, Path.Combine(media, "Autounattend.xml"), true);
+                    Console.WriteLine($"unattended: {unattended}");
+                }
+
+                Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+                await builder.CreateIsoAsync(media, output, oscdimg, ct);
+                Console.WriteLine($"ISO: {output}");
+                Console.WriteLine($"media workspace: {workspace}");
+                return ExitCodes.Success;
             }
-            Directory.CreateDirectory(Path.GetDirectoryName(output)!);
-            await builder.CreateIsoAsync(media, output, oscdimg, CancellationToken.None);
-            Console.WriteLine($"ISO: {output}");
-            Console.WriteLine($"media workspace: {workspace}");
-            return ExitCodes.Success;
-        }
-        finally {
-            await resolver.DismountIsoAsync(source, CancellationToken.None);
-        }
+            finally {
+                await resolver.DismountIsoAsync(source, CancellationToken.None);
+            }
+        });
     }
 }
 
@@ -383,24 +383,28 @@ internal static class LayerHandler {
         return ExitCodes.Success;
     }
 
-    public static async Task<int> Extract(LayerExtractRequest request) {
+    public static Task<int> Extract(LayerExtractRequest request) {
         var log = new BuildLog();
         var (runner, _, layers) = Cli.CreateEngineParts();
         var inspector = new LayerInspector(runner, layers, log);
-        await inspector.ExtractAsync(request.Workspace, request.Layer, request.ImagePath, request.Destination,
-            CancellationToken.None);
-        Console.WriteLine("extracted.");
-        return ExitCodes.Success;
+        return Cli.RunCancellableAsync("extract cancelled.", async ct => {
+            await inspector.ExtractAsync(request.Workspace, request.Layer, request.ImagePath, request.Destination,
+                ct);
+            Console.WriteLine("extracted.");
+            return ExitCodes.Success;
+        });
     }
 
-    public static async Task<int> Capture(LayerCaptureRequest request) {
+    public static Task<int> Capture(LayerCaptureRequest request) {
         var log = new BuildLog();
         var (runner, _, layers) = Cli.CreateEngineParts();
         var inspector = new LayerInspector(runner, layers, log);
-        var captured = await inspector.RollbackCaptureAsync(request.Workspace, request.Layer, request.Output,
-            request.Format, request.Export, CancellationToken.None);
-        Console.WriteLine($"captured layer state → {captured}");
-        return ExitCodes.Success;
+        return Cli.RunCancellableAsync("capture cancelled.", async ct => {
+            var captured = await inspector.RollbackCaptureAsync(request.Workspace, request.Layer, request.Output,
+                request.Format, request.Export, ct);
+            Console.WriteLine($"captured layer state → {captured}");
+            return ExitCodes.Success;
+        });
     }
 
     private static int PrintList(ILayerBackend layers, BuildLog log, string workDirectory, bool json) {
