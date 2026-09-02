@@ -104,6 +104,10 @@
       "parameters": {
         "startMode": "auto"
       }
+    },
+    {
+      "planId": "registry.control-panel-orphans",
+      "enabled": true
     }
   ]
 }

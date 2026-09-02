@@ -1170,10 +1170,6 @@
     {
       "planId": "service.xbox-gaming",
       "enabled": true
-    },
-    {
-      "planId": "registry.control-panel-orphans",
-      "enabled": true
     }
   ]
 }
