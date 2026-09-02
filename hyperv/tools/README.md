@@ -71,5 +71,12 @@ Not baked into the image — apply per machine when the workload calls for it:
   `W32Time` to manual for OOBE time sync; FirstLogonCommands re-delete/re-disable
   after logon. The dev overlay pins `service.time-sync` to `startMode: disabled`
   so both plans agree on W32Time.
+- CBS "reginf repair": any servicing transaction (`/StartComponentCleanup`,
+  `/ResetBase`, feature enable) re-applies the registry registrations of still-
+  present components and re-creates *missing* keys with a TrustedInstaller-only
+  security descriptor that not even SYSTEM can delete. Deleting component-owned
+  registry keys must therefore be the **last** step after every CBS operation —
+  `registry.control-panel-orphans` is selected at the tail of `developer-overlay`
+  and `requires maintenance.component-resetbase` for exactly this reason.
 - Detach the smoke-test VM's DVD before `package iso --overwrite`: oscdimg fails
   with "file in use" while the VM holds the ISO mounted.
