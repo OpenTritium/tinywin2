@@ -94,11 +94,18 @@ internal static class OfflineReg {
             await RegistryAcl.RescueAsync(runner, aclRescueKey, ct);
         }
         catch (ExecException) {
-            // the ownership grant itself could not reach the key: leave the decision to the caller
-            return false;
+            // the ownership grant itself could not reach the key: fall through to the
+            // ownership-takeover deletion below
         }
 
         result = await runner.RunAsync("reg.exe", arguments, new() { IgnoreExitCode = true }, ct);
-        return result.Success || !await stillExists();
+        if (result.Success || !await stillExists()) {
+            return true;
+        }
+
+        // final fallback: claim ownership of the key with SeTakeOwnershipPrivilege and delete
+        // the subtree through the .NET registry API — some CBS descriptors cannot be DACL-edited
+        // in place at all
+        return RegistryAcl.TryForceDeleteSubKeyTree(aclRescueKey) || !await stillExists();
     }
 }

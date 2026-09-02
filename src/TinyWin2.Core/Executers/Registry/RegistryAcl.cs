@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Principal;
+using Microsoft.Win32;
 using TinyWin2.Core.Native;
 
 namespace TinyWin2.Core.Executers.Registry;
@@ -11,7 +12,9 @@ namespace TinyWin2.Core.Executers.Registry;
 ///     (CBS re-creates component and driver-database registrations with descriptors that
 ///     deny Administrators any access). Claims ownership + FullControl for Administrators
 ///     and SYSTEM via the backup/restore registry path — regini cannot be used here: on
-///     current hosts it exits 0 without changing a reg.exe-loaded hive.
+///     current hosts it exits 0 without changing a reg.exe-loaded hive. The .NET ownership
+///     takeover is the stronger fallback: some CBS descriptors cannot be DACL-edited in
+///     place and require SeTakeOwnershipPrivilege before the delete can succeed.
 /// </summary>
 [SuppressMessage("Interoperability", "CA1416",
     Justification = "TinyWin executes Windows registry operations only on Windows build hosts.")]
@@ -27,6 +30,72 @@ internal static partial class RegistryAcl {
     private const int ErrorInsufficientBuffer = 122;
     private const int RegistryFullControl = 0xF003F;
     private static readonly IntPtr HkeyLocalMachine = new(unchecked((int)0x80000002));
+
+    /// <summary>
+    ///     Last-resort deletion: takes ownership of the key (and rewrites its DACL) with
+    ///     SeTakeOwnershipPrivilege, then deletes the whole subtree through the .NET registry
+    ///     API. Returns true when the key is gone afterwards.
+    /// </summary>
+    public static bool TryForceDeleteSubKeyTree(string hklmSubKeyPath) {
+        if (!EnablePrivilege("SeTakeOwnershipPrivilege")
+            || !EnablePrivilege("SeBackupPrivilege")
+            || !EnablePrivilege("SeRestorePrivilege")) {
+            return false;
+        }
+
+        var subKey = hklmSubKeyPath.Replace("\"", "");
+        if (subKey.StartsWith("HKLM\\", StringComparison.OrdinalIgnoreCase)) {
+            subKey = subKey["HKLM\\".Length..];
+        }
+
+        try {
+            using var root = RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, RegistryView.Default);
+            var separator = subKey.LastIndexOf('\\');
+            if (separator < 0) {
+                return false;
+            }
+
+            using var parent = root.OpenSubKey(subKey[..separator], true);
+            if (parent is null) {
+                return false;
+            }
+
+            var name = subKey[(separator + 1)..];
+            ForceOpen(parent, name);
+            parent.DeleteSubKeyTree(name, false);
+            return parent.OpenSubKey(name) is null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return false;
+        }
+    }
+
+    /// <summary>Opens <paramref name="name" /> under <paramref name="parent" />, claims ownership and grants Administrators FullControl.</summary>
+    private static void ForceOpen(RegistryKey parent, string name) {
+        using (var key = parent.OpenSubKey(name, RegistryKeyPermissionCheck.ReadWriteSubTree,
+                   RegistryRights.TakeOwnership)) {
+            if (key is null) {
+                return;
+            }
+
+            var owner = key.GetAccessControl(AccessControlSections.Owner);
+            owner.SetOwner(new NTAccount("BUILTIN\\Administrators"));
+            key.SetAccessControl(owner);
+        }
+
+        using (var key = parent.OpenSubKey(name, RegistryKeyPermissionCheck.ReadWriteSubTree,
+                   RegistryRights.ChangePermissions)) {
+            if (key is null) {
+                return;
+            }
+
+            var acl = key.GetAccessControl();
+            acl.ResetAccessRule(new RegistryAccessRule(
+                new NTAccount("BUILTIN\\Administrators"), RegistryRights.FullControl,
+                InheritanceFlags.ContainerInherit, PropagationFlags.None, AccessControlType.Allow));
+            key.SetAccessControl(acl);
+        }
+    }
 
     public static Task RescueAsync(IProcessRunner runner, string hklmSubKeyPath, CancellationToken ct) {
         _ = runner;
