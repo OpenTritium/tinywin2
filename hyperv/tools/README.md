@@ -54,6 +54,10 @@ Not baked into the image — apply per machine when the workload calls for it:
 
 ## Known behaviors
 
+- After killing an interrupted build, its `workspace\base.vhdx` stays attached at the
+  Virtual Disk level: `Dismount-VHD -Path <workspace>\base.vhdx` **before** deleting the
+  workspace, or the delete fails with "Device or resource busy" and the next build
+  rejects the leftover as a non-empty workspace.
 - The `maintenance.component-cleanup` / `maintenance.component-resetbase` plans strip the
   payload of every *disabled* optional feature (that is most of the size win). Features
   that must be installable later — e.g. Hyper-V management tools, whose payload is not on
