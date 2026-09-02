@@ -55,18 +55,30 @@ internal static partial class RegistryAcl {
                 return false;
             }
 
-            using var parent = OpenRescued(root, subKey[..separator]);
-            if (parent is null) {
-                return false;
-            }
+            var opened = new List<RegistryKey>();
+            try {
+                var parent = OpenRescued(root, subKey[..separator], opened);
+                if (parent is null) {
+                    return false;
+                }
 
-            var name = subKey[(separator + 1)..];
-            using (var key = ForceOpen(parent, name)) {
-                ForceDeleteChildren(key);
-            }
+                using (parent) {
+                    var name = subKey[(separator + 1)..];
+                    using (var key = ForceOpen(parent, name)) {
+                        ForceDeleteChildren(key);
+                    }
 
-            parent.DeleteSubKeyTree(name, false);
-            return parent.OpenSubKey(name) is null;
+                    parent.DeleteSubKeyTree(name, false);
+                    return parent.OpenSubKey(name) is null;
+                }
+            }
+            finally {
+                // every handle opened along the loaded hive must be released or the engine's
+                // reg.exe unload of that hive fails with access denied
+                foreach (var key in opened) {
+                    key.Dispose();
+                }
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             return false;
@@ -76,37 +88,26 @@ internal static partial class RegistryAcl {
     /// <summary>
     ///     Opens <paramref name="path" /> writable, claiming ownership along every ancestor
     ///     that denies it — TaskCache and component trees lock intermediate keys as well as
-    ///     leaves, and the delete needs a writable parent handle.
+    ///     leaves, and the delete needs a writable parent handle. Appends every opened key
+    ///     (including the returned one) to <paramref name="opened" /> for the caller to dispose.
     /// </summary>
-    private static RegistryKey? OpenRescued(RegistryKey root, string path) {
+    private static RegistryKey? OpenRescued(RegistryKey root, string path, List<RegistryKey> opened) {
         RegistryKey current = root;
-        List<RegistryKey>? opened = null;
-        try {
-            foreach (var segment in path.Split('\\')) {
-                RegistryKey next;
-                try {
-                    next = current.OpenSubKey(segment, true)!;
-                }
-                catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException) {
-                    next = ForceOpen(current, segment)
-                           ?? throw new UnauthorizedAccessException($"cannot take over '{segment}'.");
-                }
-
-                (opened ??= []).Add(next);
-                current = next;
+        foreach (var segment in path.Split('\\')) {
+            RegistryKey next;
+            try {
+                next = current.OpenSubKey(segment, true)!;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException) {
+                next = ForceOpen(current, segment)
+                       ?? throw new UnauthorizedAccessException($"cannot take over '{segment}'.");
             }
 
-            return current;
+            opened.Add(next);
+            current = next;
         }
-        catch {
-            if (opened is not null) {
-                foreach (var key in opened) {
-                    key.Dispose();
-                }
-            }
 
-            return null;
-        }
+        return current;
     }
 
     private static void ForceDeleteChildren(RegistryKey? key) {
