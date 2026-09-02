@@ -25,11 +25,18 @@ internal static class OfflineReg {
 
     public static Task DeleteKeyAsync(
         IProcessRunner runner, string key, string aclRescueKey, CancellationToken ct) =>
-        DeleteAsync(runner, aclRescueKey, ct, ["delete", key, "/f"]);
+        DeleteAsync(runner, aclRescueKey,
+            async () => (await QueryAsync(runner, key, ct)).Success,
+            ct, "delete", key, "/f");
 
     public static Task DeleteValueAsync(
-        IProcessRunner runner, string key, string valueName, string aclRescueKey, CancellationToken ct) =>
-        DeleteAsync(runner, aclRescueKey, ct, ["delete", key, "/v", valueName, "/f"]);
+        IProcessRunner runner, string key, string valueName, string aclRescueKey, CancellationToken ct) {
+        var arguments = string.IsNullOrEmpty(valueName)
+            ? new[] { "delete", key, "/ve", "/f" }
+            : new[] { "delete", key, "/v", valueName, "/f" };
+        return DeleteAsync(runner, aclRescueKey,
+            () => ValueExistsAsync(runner, key, valueName, ct), ct, arguments);
+    }
 
     /// <summary>
     ///     Writes one value; on access failure rescues the ACL and retries once.
@@ -49,21 +56,37 @@ internal static class OfflineReg {
         }
     }
 
+    private static async Task<bool> ValueExistsAsync(
+        IProcessRunner runner, string key, string valueName, CancellationToken ct) {
+        var result = await QueryAsync(runner, key, ct);
+        if (!result.Success) {
+            return false;
+        }
+
+        var displayName = string.IsNullOrEmpty(valueName) ? "(Default)" : valueName;
+        return RegValues.ParseQueryValue(result.Output, displayName) is not null;
+    }
+
     /// <summary>
-    ///     Deletes; a missing target (exit 1) is success, any other failure gets one
-    ///     rescue-then-retry pass before surfacing as <see cref="ProcessRunnerException" />.
+    ///     Deletes; reg.exe exits 1 for "not found" and "access denied" alike, so a failed delete
+    ///     is re-queried: a genuinely missing target is success, an existing one gets one
+    ///     rescue-then-retry pass (RegistryAcl ownership grant) before surfacing as
+    ///     <see cref="ProcessRunnerException" />.
     /// </summary>
     private static async Task DeleteAsync(
-        IProcessRunner runner, string aclRescueKey, CancellationToken ct, string[] arguments) {
+        IProcessRunner runner, string aclRescueKey, Func<Task<bool>> stillExists,
+        CancellationToken ct, params string[] arguments) {
         var result = await runner.RunAsync("reg.exe", arguments, new() { IgnoreExitCode = true }, ct);
-        if (result.Success || result.ExitCode == 1) {
+        if (result.Success || !await stillExists()) {
             return;
         }
 
         await RegistryAcl.RescueAsync(runner, aclRescueKey, ct);
         result = await runner.RunAsync("reg.exe", arguments, new() { IgnoreExitCode = true }, ct);
-        if (!result.Success && result.ExitCode != 1) {
-            throw new ProcessRunnerException("reg.exe", result);
+        if (result.Success || !await stillExists()) {
+            return;
         }
+
+        throw new ProcessRunnerException("reg.exe", result);
     }
 }

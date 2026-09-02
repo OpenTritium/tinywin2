@@ -33,21 +33,16 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
         var hive = await context.Hives.GetAsync(options.Hive, context.Log, ct);
         foreach (var change in changes) {
             if (change.DeleteKey is { } deleteKey) {
-                var result = await runner.RunAsync("reg.exe", ["delete", hive.KeyUnderHive(deleteKey), "/f"],
-                    new() { IgnoreExitCode = true }, ct);
-                ThrowIfUnexpectedFailure(result);
+                var keyPath = hive.KeyUnderHive(deleteKey);
+                await OfflineReg.DeleteKeyAsync(runner, keyPath, keyPath, ct);
                 context.Log.Info($"deleted registry key {hive.HiveId}\\{deleteKey}");
                 continue;
             }
 
             var target = change.Value!;
             if (operation.Action == OperationAction.Remove) {
-                var args = string.IsNullOrEmpty(target.Name)
-                    ? (string[])["delete", hive.KeyUnderHive(target.Key), "/ve", "/f"]
-                    : ["delete", hive.KeyUnderHive(target.Key), "/v", target.Name, "/f"];
-                var result = await runner.RunAsync("reg.exe", args,
-                    new() { IgnoreExitCode = true }, ct);
-                ThrowIfUnexpectedFailure(result);
+                await OfflineReg.DeleteValueAsync(runner, hive.KeyUnderHive(target.Key), target.Name,
+                    hive.KeyUnderHive(target.Key), ct);
                 context.Log.Info($"deleted registry value {change.Change.Target}");
             }
             else {
@@ -123,12 +118,6 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
         }
 
         return changes;
-    }
-
-    private static void ThrowIfUnexpectedFailure(ProcessRunResult result) {
-        if (!result.Success && result.ExitCode != 1) {
-            throw new ProcessRunnerException("reg.exe", result);
-        }
     }
 
     /// <summary>One structured difference: exactly one of Value/DeleteKey is set.</summary>

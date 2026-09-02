@@ -180,6 +180,47 @@ public sealed class RegistryValueExecuterTests : IDisposable {
     }
 
     [Test]
+    public async Task ApplyRetriesDeniedDeleteBehindAclRescue() {
+        // reg.exe exits 1 for "access denied" as well as "not found"; a denied delete of an
+        // existing value must get the ownership rescue and one retry, not a silent success.
+        var deletes = 0;
+        _harness.Runner.Handler = (fileName, args) => (fileName, args[0]) switch {
+            ("reg.exe", "query") => FakeProcessRunner.Ok(QueryOutput("EnableSpyware", "REG_DWORD", "0x1")),
+            ("reg.exe", "delete") => ++deletes == 1
+                ? FakeProcessRunner.Fail(1, "Access is denied.")
+                : FakeProcessRunner.Ok(),
+            _ => FakeProcessRunner.Ok() // regini.exe rescue script
+        };
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("registry.value", OperationAction.Remove,
+                ("hive", "software"),
+                ("values", new JsonArray(new JsonObject { ["key"] = "Policies\\Test", ["name"] = "EnableSpyware" }))),
+            CancellationToken.None);
+        await Assert.That(result.IsSkipped).IsFalse();
+        await Assert.That(deletes).IsEqualTo(2);
+        await Assert.That(_harness.Runner.Calls.Any(c => c.File == "regini.exe")).IsTrue();
+    }
+
+    [Test]
+    public async Task ApplyToleratesDeleteOfTargetThatVanishedAfterInspect() {
+        var queries = 0;
+        _harness.Runner.Handler = (fileName, args) => (fileName, args[0]) switch {
+            ("reg.exe", "query") => ++queries == 1
+                ? FakeProcessRunner.Ok(QueryOutput("EnableSpyware", "REG_DWORD", "0x1"))
+                : FakeProcessRunner.Fail(1, "The system was unable to find the specified registry key or value."),
+            _ => FakeProcessRunner.Ok()
+        };
+        var result = await _executer.ApplyAsync(_harness.NewContext(),
+            ExecuterTestHarness.Spec("registry.value", OperationAction.Remove,
+                ("hive", "software"),
+                ("values", new JsonArray(new JsonObject { ["key"] = "Policies\\Test", ["name"] = "EnableSpyware" }))),
+            CancellationToken.None);
+        await Assert.That(result.IsSkipped).IsFalse();
+        // the post-failure query showed the target gone: success, no rescue pass
+        await Assert.That(_harness.Runner.Calls.Any(c => c.File == "regini.exe")).IsFalse();
+    }
+
+    [Test]
     public async Task IdempotentSecondApplySkips() {
         var existing = QueryOutput("Value", "REG_SZ", "hello");
         _harness.Runner.Handler = (_, args) => args[0] == "query"
