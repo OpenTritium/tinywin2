@@ -1,0 +1,69 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.timer-resolution",
+  "version": "1.0.0",
+  "title": "内核定时器精度策略",
+  "description": "Win11/Server 2025 起系统默认忽略进程的 timeBeginPeriod 定时器精度请求（省电优先），音频/游戏/模拟器/低延迟网络服务等需要 0.5ms 定时器的场景会出现计时毛刺。honor 恢复传统行为（尊重进程请求），ignore 维持新默认。物理机上按工作负载选择；虚拟化客机内收益有限。",
+  "category": "Performance",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\Session Manager\\kernel",
+            "name": "GlobalTimerResolutionRequests",
+            "type": "dword",
+            "data": {
+              "$map": {
+                "parameter": "mode",
+                "cases": {
+                  "honor": 1,
+                  "ignore": 0
+                }
+              }
+            }
+          },
+          {
+            "key": "ControlSet002\\Control\\Session Manager\\kernel",
+            "name": "GlobalTimerResolutionRequests",
+            "type": "dword",
+            "data": {
+              "$map": {
+                "parameter": "mode",
+                "cases": {
+                  "honor": 1,
+                  "ignore": 0
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "parameters": [
+    {
+      "name": "mode",
+      "type": "enum",
+      "label": "定时器请求策略",
+      "default": "honor",
+      "options": [
+        {
+          "value": "honor",
+          "label": "尊重进程请求（传统行为，低延迟场景）",
+          "riskLevel": "Low"
+        },
+        {
+          "value": "ignore",
+          "label": "忽略请求（新默认，省电）",
+          "riskLevel": "Low"
+        }
+      ]
+    }
+  ]
+}

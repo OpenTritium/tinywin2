@@ -34,6 +34,24 @@ tinywin2 build --input <26100 ISO> --index 4 \
    (service start types, SearchHost removal, perf registry values, power scheme,
    process/service counts).
 
+## Physical deployment runbook (optional, workload-specific)
+
+Not baked into the image — apply per machine when the workload calls for it:
+
+- **BBR2 congestion control** (cross-region / lossy WAN throughput; LAN gains nothing):
+
+  ```powershell
+  Set-NetTCPSetting -SettingName Internet -CongestionProvider BBR2
+  ```
+
+- **Timer resolution**: ships governed by `registry.timer-resolution` (default honors
+  process `timeBeginPeriod` requests; override with
+  `--set registry.timer-resolution.mode=ignore` on battery-sensitive builds).
+- **HAGS** is on by default for supported GPUs on Server 2025 — no plan needed.
+- Deliberately NOT provided: Spectre/Meltdown mitigation toggles (security-hostile),
+  standby-list purge tools (self-defeating), DisablePagingExecutive (RAM cost with no
+  server-side benefit).
+
 ## Known behaviors
 
 - The `maintenance.component-cleanup` / `maintenance.component-resetbase` plans strip the

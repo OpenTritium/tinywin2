@@ -824,6 +824,10 @@
       "enabled": true
     },
     {
+      "planId": "registry.timer-resolution",
+      "enabled": true
+    },
+    {
       "planId": "registry.uac",
       "enabled": true
     },
