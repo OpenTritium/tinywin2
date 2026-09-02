@@ -1,0 +1,63 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.rdp-tuning",
+  "version": "1.0.0",
+  "title": "RDP 现代编码与传输优化",
+  "description": "写入当前仍受支持的 RDP 参数：AVC444ModePreferred=1 优先 H.264/AVC 4:4:4 编码（文字更锐利、带宽更低，旧客户端自动回退），AVCHardwareEncodePreferred=1 允许 GPU 硬件编码（无 GPU 时自动软编），KeepAliveInterval=60000ms 空闲保活（避免 NAT/防火墙回收映射导致随机掉线），SelectTransport=2 显式钉住 TCP+UDP 双传输（UDP 降低交互延迟，防火墙未放行 UDP 时自动回退 TCP）。不包含已废弃参数：XDDM/WDDM 显示驱动切换（Server 2025 已移除 XDDM）、位图数据压缩策略与色彩深度策略（均被 AVC 编码路径取代）。仅在被远程桌面启用时生效。",
+  "category": "Remote Management",
+  "riskLevel": "Low",
+  "requires": [
+    "registry.remote-desktop-enabled"
+  ],
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Policies\\Microsoft\\Windows NT\\Terminal Services",
+            "name": "AVC444ModePreferred",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows NT\\Terminal Services",
+            "name": "AVCHardwareEncodePreferred",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows NT\\Terminal Services",
+            "name": "KeepAliveInterval",
+            "type": "dword",
+            "data": 60000
+          }
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\Terminal Server\\WinStations\\RDP-Tcp",
+            "name": "SelectTransport",
+            "type": "dword",
+            "data": 2
+          },
+          {
+            "key": "ControlSet002\\Control\\Terminal Server\\WinStations\\RDP-Tcp",
+            "name": "SelectTransport",
+            "type": "dword",
+            "data": 2
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -60,6 +60,10 @@
       "enabled": true
     },
     {
+      "planId": "registry.rdp-tuning",
+      "enabled": true
+    },
+    {
       "planId": "service.display-broker",
       "enabled": false
     },
