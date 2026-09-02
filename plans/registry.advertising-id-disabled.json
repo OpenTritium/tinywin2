@@ -1,0 +1,27 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.advertising-id-disabled",
+  "version": "1.0.0",
+  "title": "禁用广告 ID",
+  "description": "通过 HKLM 策略禁用广告 ID（应用不得使用该标识做个性化广告），策略层写法对镜像内置 Administrator 与后续新建用户一致生效，弥补 HKCU 用户偏好无法在镜像层预设的问题。",
+  "category": "Privacy",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Policies\\Microsoft\\Windows\\AdvertisingInfo",
+            "name": "Enabled",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
+    }
+  ]
+}
