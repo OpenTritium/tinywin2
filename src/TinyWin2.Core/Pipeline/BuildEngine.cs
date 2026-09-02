@@ -93,8 +93,8 @@ public sealed class BuildStepFailedException(
 }
 
 /// <summary>
-///     Orchestrates a build: source prep → base layer (apply) → per-step VHDX diff layers
-///     (atomic) → CBS scan → capture WIM/ESD or export debug VHDX → manifest.
+///     Orchestrates a build: source prep → base layer (apply) → CBS health scan → per-step
+///     VHDX diff layers (atomic) → capture WIM/ESD or export debug VHDX → manifest.
 /// </summary>
 public sealed class BuildEngine(
     IProcessRunner runner,
@@ -176,6 +176,11 @@ public sealed class BuildEngine(
                     options is { CaptureEvidence: true, NoLayers: false });
             }
 
+            // Scan the applied (or reused) base health once, before any plan step: CBS repair
+            // re-applies component registrations for keys missing at scan time, so a scan that
+            // observes post-plan state would resurrect registry keys deleted by cleanup plans.
+            await ScanBaseHealthAsync(stack, options.NoLayers, ct);
+
             List<(string StepId, int LayerIndex, string Error)> failedSteps;
             string? installPath;
             if (options.NoLayers) {
@@ -189,7 +194,7 @@ public sealed class BuildEngine(
             }
             else {
                 failedSteps = await RunStepsAsync(options, plan, stack, workspace, assetFingerprints, ct);
-                installPath = await ScanAndCaptureLeafAsync(
+                installPath = await CaptureLeafAsync(
                     options, workspace, stack, builder, sourceIndex, ct);
             }
 
@@ -304,7 +309,6 @@ public sealed class BuildEngine(
                 }
             }
 
-            await ScanCbsAsync(mountPath, ct);
             return (failedSteps,
                 await CaptureInstallImageFromMountAsync(
                     options, workspace, builder, sourceIndex, mountPath, ct));
@@ -445,15 +449,27 @@ public sealed class BuildEngine(
         return failedSteps;
     }
 
-    /// <summary>Scans and captures the final leaf while its single attachment is still mounted.</summary>
-    private async Task<string?> ScanAndCaptureLeafAsync(
+    /// <summary>
+    ///     Scans the freshly applied base image health once, before any plan step mutates it.
+    ///     CBS repair re-applies component registrations for registry keys missing at scan time,
+    ///     so the scan must never observe post-plan state.
+    /// </summary>
+    private async Task ScanBaseHealthAsync(VhdLayerStack stack, bool layerless, CancellationToken ct) {
+        var vhdxPath = layerless ? stack.LeafVhdxPath : stack.BaseVhdxPath;
+        await WithMountedAsync(vhdxPath, async mountPath => {
+            await ScanCbsAsync(mountPath, ct);
+            return true;
+        }, ct, "base health scan");
+    }
+
+    /// <summary>Captures the final leaf while its single attachment is still mounted.</summary>
+    private async Task<string?> CaptureLeafAsync(
         BuildOptions options, string workspace, VhdLayerStack stack, OutputBuilder builder,
         ImageIndexInfo sourceIndex, CancellationToken ct) {
         return await WithMountedAsync(stack.LeafVhdxPath, async mountPath => {
-            await ScanCbsAsync(mountPath, ct);
             return await CaptureInstallImageFromMountAsync(
                 options, workspace, builder, sourceIndex, mountPath, ct);
-        }, ct, "CBS scan/capture");
+        }, ct, "final capture");
     }
 
     private async Task<T> WithMountedAsync<T>(

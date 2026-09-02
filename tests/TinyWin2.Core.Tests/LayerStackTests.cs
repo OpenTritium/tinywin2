@@ -396,12 +396,15 @@ public sealed class BuildEngineDryRunTests : IDisposable {
             SkipEnvironmentChecks = true
         }, CancellationToken.None);
         await Assert.That(result.Succeeded).IsTrue();
-        // layerless: no differencing layers at all; exactly two attaches (base image apply + the single working mount)
+        // layerless: no differencing layers at all; exactly three attaches (base image apply,
+        // the pre-plan CBS health scan, and the single working mount)
         await Assert.That(backend.Calls.Count(c => c.StartsWith("create-diff:"))).IsEqualTo(0);
-        await Assert.That(backend.Calls.Count(c => c.StartsWith("attach:"))).IsEqualTo(2);
+        await Assert.That(backend.Calls.Count(c => c.StartsWith("attach:"))).IsEqualTo(3);
+        var applyIndex = runner.Calls.FindIndex(c => c.Args.Contains("/Apply-Image"));
         var scanIndex = runner.Calls.FindIndex(c => c.Args.Contains("/ScanHealth"));
         var captureIndex = runner.Calls.FindIndex(c => c.Args.Contains("/Capture-Image"));
-        await Assert.That(scanIndex).IsGreaterThanOrEqualTo(0);
+        await Assert.That(applyIndex).IsGreaterThanOrEqualTo(0);
+        await Assert.That(scanIndex).IsGreaterThan(applyIndex);
         await Assert.That(captureIndex).IsGreaterThan(scanIndex);
         await Assert.That(runner.ArgsOf(scanIndex)).Contains("/English");
         await Assert.That(runner.ArgsOf(scanIndex)).Contains("/Image:S:\\");
