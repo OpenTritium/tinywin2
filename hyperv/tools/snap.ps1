@@ -27,7 +27,7 @@ $bmpBytes = New-Object byte[] $fileSize
 # BITMAPINFOHEADER
 [BitConverter]::GetBytes([uint32]40).CopyTo($bmpBytes, 14)
 [BitConverter]::GetBytes([int32]$w).CopyTo($bmpBytes, 18)
-[BitConverter]::GetBytes([int32]$h).CopyTo($bmpBytes, 22)            # positive = bottom-up
+[BitConverter]::GetBytes([int32](-$h)).CopyTo($bmpBytes, 22)           # negative = top-down (WMI payload order)
 [BitConverter]::GetBytes([uint16]1).CopyTo($bmpBytes, 26)
 [BitConverter]::GetBytes([uint16]16).CopyTo($bmpBytes, 28)
 [BitConverter]::GetBytes([uint32]$pixLen).CopyTo($bmpBytes, 34)
