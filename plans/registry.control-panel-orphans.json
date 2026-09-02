@@ -2,14 +2,15 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "registry.control-panel-orphans",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "title": "清理失效的控制面板条目",
-  "description": "删除指向已移除组件的失效控制面板注册：Indexing Options (32 位) 指向被 feature.search 移除的 srchadmin.dll（同时删除 SysWOW64 残留的 32 位副本），Text to Speech 指向被 fs.accessibility-residuals 移除的 Speech\\SpeechUX\\sapi.cpl。这些条目图标变白、点击报错；删除对应的命名空间与 CLSID 键后控制面板不再显示它们。",
+  "description": "删除指向已移除组件的失效控制面板注册：Indexing Options (32 位) 指向被 feature.search 移除的 srchadmin.dll（同时删除 SysWOW64 残留的 32 位副本），Text to Speech 指向被 fs.accessibility-residuals 移除的 Speech\\SpeechUX\\sapi.cpl。这些条目图标变白、点击报错；删除对应的命名空间与 CLSID 键后控制面板不再显示它们。必须排在全部 CBS 操作之后执行：cleanup/ResetBase/功能启用等 servicing 事务会为缺失的组件注册做 reginf 修复，重建的键带 TrustedInstaller-only 安全描述符，管理员（含 SYSTEM）都无法再删除。",
   "category": "Desktop Experience",
   "riskLevel": "Low",
   "requires": [
     "feature.search",
-    "fs.accessibility-residuals"
+    "fs.accessibility-residuals",
+    "maintenance.component-resetbase"
   ],
   "operations": [
     {

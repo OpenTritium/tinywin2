@@ -520,10 +520,6 @@
       "enabled": true
     },
     {
-      "planId": "registry.control-panel-orphans",
-      "enabled": true
-    },
-    {
       "planId": "fs.bing-search-residuals",
       "enabled": true
     },
@@ -1173,6 +1169,10 @@
     },
     {
       "planId": "service.xbox-gaming",
+      "enabled": true
+    },
+    {
+      "planId": "registry.control-panel-orphans",
       "enabled": true
     }
   ]
