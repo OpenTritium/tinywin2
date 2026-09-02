@@ -32,9 +32,9 @@ internal static partial class RegistryAcl {
     private static readonly IntPtr HkeyLocalMachine = new(unchecked((int)0x80000002));
 
     /// <summary>
-    ///     Last-resort deletion: takes ownership of the key (and rewrites its DACL) with
-    ///     SeTakeOwnershipPrivilege, then deletes the whole subtree through the .NET registry
-    ///     API. Returns true when the key is gone afterwards.
+    ///     Last-resort deletion: takes ownership of the key and every descendant (each can
+    ///     carry its own Administrators-deny descriptor), rewrites the DACLs, then deletes
+    ///     the subtree through the .NET registry API. Returns true when the key is gone.
     /// </summary>
     public static bool TryForceDeleteSubKeyTree(string hklmSubKeyPath) {
         if (!EnablePrivilege("SeTakeOwnershipPrivilege")
@@ -61,7 +61,10 @@ internal static partial class RegistryAcl {
             }
 
             var name = subKey[(separator + 1)..];
-            ForceOpen(parent, name);
+            using (var key = ForceOpen(parent, name)) {
+                ForceDeleteChildren(key);
+            }
+
             parent.DeleteSubKeyTree(name, false);
             return parent.OpenSubKey(name) is null;
         }
@@ -70,12 +73,32 @@ internal static partial class RegistryAcl {
         }
     }
 
+    private static void ForceDeleteChildren(RegistryKey? key) {
+        if (key is null) {
+            return;
+        }
+
+        foreach (var child in key.GetSubKeyNames()) {
+            RegistryKey? childKey;
+            try {
+                childKey = ForceOpen(key, child);
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException) {
+                continue; // cannot reach this child; DeleteSubKeyTree will surface it if it matters
+            }
+
+            using (childKey) {
+                ForceDeleteChildren(childKey);
+            }
+        }
+    }
+
     /// <summary>Opens <paramref name="name" /> under <paramref name="parent" />, claims ownership and grants Administrators FullControl.</summary>
-    private static void ForceOpen(RegistryKey parent, string name) {
+    private static RegistryKey? ForceOpen(RegistryKey parent, string name) {
         using (var key = parent.OpenSubKey(name, RegistryKeyPermissionCheck.ReadWriteSubTree,
                    RegistryRights.TakeOwnership)) {
             if (key is null) {
-                return;
+                return null;
             }
 
             var owner = key.GetAccessControl(AccessControlSections.Owner);
@@ -86,7 +109,7 @@ internal static partial class RegistryAcl {
         using (var key = parent.OpenSubKey(name, RegistryKeyPermissionCheck.ReadWriteSubTree,
                    RegistryRights.ChangePermissions)) {
             if (key is null) {
-                return;
+                return null;
             }
 
             var acl = key.GetAccessControl();
@@ -95,6 +118,8 @@ internal static partial class RegistryAcl {
                 InheritanceFlags.ContainerInherit, PropagationFlags.None, AccessControlType.Allow));
             key.SetAccessControl(acl);
         }
+
+        return parent.OpenSubKey(name, true);
     }
 
     public static Task RescueAsync(IProcessRunner runner, string hklmSubKeyPath, CancellationToken ct) {
