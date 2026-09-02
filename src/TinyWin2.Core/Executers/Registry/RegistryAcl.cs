@@ -7,9 +7,11 @@ using TinyWin2.Core.Native;
 namespace TinyWin2.Core.Executers.Registry;
 
 /// <summary>
-///     Registry-key ACL rescue for TrustedInstaller-owned service keys in a loaded offline hive.
-///     regini.exe works for the live registry, but returns error 87 for a reg.exe-loaded offline
-///     hive. The native backup/restore registry path is required to obtain WRITE_DAC on that hive.
+///     Registry-key ACL rescue for TrustedInstaller-owned keys in a loaded offline hive
+///     (CBS re-creates component and driver-database registrations with descriptors that
+///     deny Administrators any access). Claims ownership + FullControl for Administrators
+///     and SYSTEM via the backup/restore registry path — regini cannot be used here: on
+///     current hosts it exits 0 without changing a reg.exe-loaded hive.
 /// </summary>
 [SuppressMessage("Interoperability", "CA1416",
     Justification = "TinyWin executes Windows registry operations only on Windows build hosts.")]
@@ -26,49 +28,19 @@ internal static partial class RegistryAcl {
     private const int RegistryFullControl = 0xF003F;
     private static readonly IntPtr HkeyLocalMachine = new(unchecked((int)0x80000002));
 
-    /// <summary>regini script codes: Administrators Full and SYSTEM Full.</summary>
-    private const string GrantCodes = "[1 17]";
-
-    public static async Task RescueAsync(IProcessRunner runner, string hklmSubKeyPath, CancellationToken ct) {
+    public static Task RescueAsync(IProcessRunner runner, string hklmSubKeyPath, CancellationToken ct) {
+        _ = runner;
+        _ = ct;
         var subKey = hklmSubKeyPath.Replace("\"", "");
         if (subKey.StartsWith("HKLM\\", StringComparison.OrdinalIgnoreCase)) {
             subKey = subKey["HKLM\\".Length..];
         }
 
-        // regini remains the supported fast path for a live registry. It returns error 87 for a
-        // reg.exe-loaded offline hive; only then use the backup/restore handle path below.
-        try {
-            await RunReginiFallbackAsync(runner, subKey, ct);
-            return;
-        }
-        catch (ProcessRunnerException) {
-            // Expected for a locked key in a loaded offline hive. The native path below retries
-            // with SeBackup/SeRestore and REG_OPTION_BACKUP_RESTORE.
-        }
-
         if (TryGrantAdministratorsFullControl(subKey) == 0) {
-            return;
+            return Task.CompletedTask;
         }
 
         throw new ExecException($"could not grant write access to registry key '{hklmSubKeyPath}'.");
-    }
-
-    private static async Task RunReginiFallbackAsync(IProcessRunner runner, string subKey, CancellationToken ct) {
-        var scriptPath = Path.Combine(Path.GetTempPath(), $"tinywin2-regini-{Guid.NewGuid():N}.txt");
-        try {
-            await File.WriteAllTextAsync(scriptPath,
-                @"\Registry\Machine\" + subKey + " " + GrantCodes, ct);
-            await runner.RunAsync("regini.exe", [scriptPath],
-                new() { Timeout = TimeSpan.FromSeconds(30) }, ct);
-        }
-        finally {
-            try {
-                File.Delete(scriptPath);
-            }
-            catch {
-                /* best effort */
-            }
-        }
     }
 
     private static int TryGrantAdministratorsFullControl(string subKey) {

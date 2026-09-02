@@ -180,25 +180,22 @@ public sealed class RegistryValueExecuterTests : IDisposable {
     }
 
     [Test]
-    public async Task ApplyRetriesDeniedDeleteBehindAclRescue() {
+    public async Task ApplyDeniedDeleteSurfacesWhenRescueCannotReachTheKey() {
         // reg.exe exits 1 for "access denied" as well as "not found"; a denied delete of an
-        // existing value must get the ownership rescue and one retry, not a silent success.
-        var deletes = 0;
+        // existing value must trigger the ownership rescue, and when the grant cannot reach
+        // the (fake, nonexistent) key the denial must surface instead of a silent success.
         _harness.Runner.Handler = (fileName, args) => (fileName, args[0]) switch {
             ("reg.exe", "query") => FakeProcessRunner.Ok(QueryOutput("EnableSpyware", "REG_DWORD", "0x1")),
-            ("reg.exe", "delete") => ++deletes == 1
-                ? FakeProcessRunner.Fail(1, "Access is denied.")
-                : FakeProcessRunner.Ok(),
-            _ => FakeProcessRunner.Ok() // regini.exe rescue script
+            ("reg.exe", "delete") => FakeProcessRunner.Fail(1, "Access is denied."),
+            _ => FakeProcessRunner.Ok()
         };
-        var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.value", OperationAction.Remove,
-                ("hive", "software"),
-                ("values", new JsonArray(new JsonObject { ["key"] = "Policies\\Test", ["name"] = "EnableSpyware" }))),
-            CancellationToken.None);
-        await Assert.That(result.IsSkipped).IsFalse();
-        await Assert.That(deletes).IsEqualTo(2);
-        await Assert.That(_harness.Runner.Calls.Any(c => c.File == "regini.exe")).IsTrue();
+        var ex = (await Assert.ThrowsAsync<ExecException>(() =>
+            _executer.ApplyAsync(_harness.NewContext(),
+                ExecuterTestHarness.Spec("registry.value", OperationAction.Remove,
+                    ("hive", "software"),
+                    ("values", new JsonArray(new JsonObject { ["key"] = "Policies\\Test", ["name"] = "EnableSpyware" }))),
+                CancellationToken.None)))!;
+        await Assert.That(ex.Message).Contains("could not grant write access");
     }
 
     [Test]
@@ -454,28 +451,16 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
     }
 
     [Test]
-    public async Task DeniedServiceKeyTakesOwnershipAndRetries() {
-        // TrustedInstaller-owned keys (e.g. DPS) deny reg add; the rescue path must
-        // grant ACLs via regini and retry the write.
-        var hiveKey = "HKLM\\TinyWin2_system";
-        var servicesRoot = $"{hiveKey}\\ControlSet001\\Services";
-        var deniedKey = $"{servicesRoot}\\DPS";
+    public async Task DeniedServiceKeySurfacesWhenRescueCannotReachTheKey() {
+        // The ACL rescue runs the native backup/restore grant in-process (regini was dropped:
+        // current hosts exit 0 without applying it to reg.exe-loaded hives). Against a fake
+        // runner the denied key does not really exist, so the grant cannot succeed and the
+        // denial must surface as ExecException instead of a silent success.
+        var deniedKey = "HKLM\\TinyWin2_system\\ControlSet001\\Services\\DPS";
         var startAdds = 0;
         _harness.Runner.Handler = (file, args) => {
-            if (file == "regini.exe") {
-                // Script must carry the NT-object path with the HKLM\ prefix stripped:
-                // \Registry\Machine\TinyWin2_...\Services\DPS [1 17]. A stray HKLM\
-                // makes real regini exit 1 ("Failed to load from file (87)").
-                var script = File.ReadAllText(args[0]);
-                var expected = "\\Registry\\Machine\\" + deniedKey["HKLM\\".Length..];
-                if (!script.Contains(expected) || script.Contains("HKLM\\") || !script.Contains("[1 17]")) {
-                    throw new InvalidOperationException("regini script malformed: " + script);
-                }
-
-                return FakeProcessRunner.Ok();
-            }
-
-            if (args[0] == "add" && args[1] == deniedKey && args.Contains("/v") && args.Contains("Start")) {
+            if (file == "reg.exe" && args[0] == "add" && args[1] == deniedKey && args.Contains("/v")
+                && args.Contains("Start")) {
                 return ++startAdds == 1
                     ? throw new ProcessRunnerException("reg.exe", FakeProcessRunner.Fail(1, "Access is denied."))
                     : FakeProcessRunner.Ok();
@@ -489,13 +474,8 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
                 return FakeProcessRunner.Ok();
             }
 
-            if (args.Count == 4 && args[1] == hiveKey + "\\Select" && args[2] == "/v") {
+            if (args.Count == 4 && args[1] == "HKLM\\TinyWin2_system\\Select" && args[2] == "/v") {
                 return FakeProcessRunner.Ok("\r\n    Current    REG_DWORD    0x1\r\n");
-            }
-
-            if (args.Count == 2 && args[1] == servicesRoot) {
-                var machineRoot = $"HKEY_LOCAL_MACHINE\\{servicesRoot["HKLM\\".Length..]}";
-                return FakeProcessRunner.Ok($"\r\n{machineRoot}\r\n{machineRoot}\\DPS\r\n");
             }
 
             if (args.Count >= 2 && args[1].ToString().Contains("\\TriggerInfo", StringComparison.OrdinalIgnoreCase)) {
@@ -506,12 +486,12 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
                 ? FakeProcessRunner.Ok("\r\n    Start    REG_DWORD    0x2\r\n")
                 : FakeProcessRunner.Fail(1);
         };
-        var result = await _executer.ApplyAsync(_harness.NewContext(),
-            ExecuterTestHarness.Spec("registry.service", OperationAction.Apply,
-                ("services", new JsonArray("DPS")), ("start", "disabled")), CancellationToken.None);
-        await Assert.That(result.IsSkipped).IsFalse();
-        await Assert.That(startAdds).IsEqualTo(2); // denied once, rescued, written
-        await Assert.That(_harness.Runner.Called("regini.exe")).IsTrue();
+        var ex = (await Assert.ThrowsAsync<ExecException>(() =>
+            _executer.ApplyAsync(_harness.NewContext(),
+                ExecuterTestHarness.Spec("registry.service", OperationAction.Apply,
+                    ("services", new JsonArray("DPS")), ("start", "disabled")), CancellationToken.None)))!;
+        await Assert.That(ex.Message).Contains("could not grant write access");
+        await Assert.That(startAdds).IsEqualTo(1);
     }
 
     [Test]
