@@ -2,7 +2,7 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "fs.dead-tasks",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "title": "移除死功能计划任务",
   "description": "删除指向已移除或永不使用功能的收件箱计划任务：输入设置漫游（笔/鼠标/触摸板同步）、Azure 设备注册上报（DeviceDirectoryClient）、feature 试用与 OneSettings 上报（Flighting）、企业数据保护（EDP）、云恢复、应用商店 InstallService/PushToInstall、蜂窝网供给、BitLocker MDM 策略、AD RMS 模板分发、账户恢复提醒、PCRPF 固件预测、语言设置同步、位置同意对话框与 appuri 验证。同时清掉 TaskCache 注册项和 Tasks 文件。注意：Windows Setup 在 specialize 阶段可能重新供给部分收件箱任务（与 fs.telemetry-tasks 记录的行为一致），部署后需验证。",
   "category": "System",
@@ -70,7 +70,9 @@
           "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\International\\Synchronize Language Settings",
           "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Location\\WindowsActionDialog",
           "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\ApplicationData\\appuriverifierdaily",
-          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\ApplicationData\\appuriverifierinstall"
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\ApplicationData\\appuriverifierinstall",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\InstallService\\WakeUpAndContinueUpdates",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\InstallService\\WakeUpAndScanForUpdates"
         ]
       }
     },
@@ -99,7 +101,9 @@
           "Windows\\System32\\Tasks\\Microsoft\\Windows\\WindowsAI\\*",
           "Windows\\System32\\Tasks\\Microsoft\\Windows\\International\\Synchronize Language Settings",
           "Windows\\System32\\Tasks\\Microsoft\\Windows\\Location\\WindowsActionDialog",
-          "Windows\\System32\\Tasks\\Microsoft\\Windows\\ApplicationData\\appuriverifier*"
+          "Windows\\System32\\Tasks\\Microsoft\\Windows\\ApplicationData\\appuriverifier*",
+          "Windows\\System32\\Tasks\\Microsoft\\Windows\\InstallService\\WakeUpAndContinueUpdates",
+          "Windows\\System32\\Tasks\\Microsoft\\Windows\\InstallService\\WakeUpAndScanForUpdates"
         ]
       }
     }
