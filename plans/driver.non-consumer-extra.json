@@ -1,0 +1,51 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "driver.non-consumer-extra",
+  "version": "1.0.0",
+  "title": "移除非消费级与遗留硬件驱动",
+  "description": "移除软盘控制器、1394 火线（含 SBP2 存储）、PCMCIA/CardBus、磁带机与介质更换器、CIR 红外、多串口卡、消费级 Wi-Fi（Realtek/Atheros/Broadcom 无线）、蓝牙类、Emulex/Chelsio/QLogic 数据中心网卡与 MTP 便携设备驱动。引导存储（NVMe/AHCI 链）、USB、HID、显示、芯片组不受影响。",
+  "category": "Drivers",
+  "riskLevel": "Medium",
+  "operations": [
+    {
+      "resource": "driver.store",
+      "action": "remove",
+      "spec": {
+        "infNames": [
+          "fdc.inf",
+          "c_fdc.inf",
+          "flpydisk.inf",
+          "1394.inf",
+          "c_1394.inf",
+          "sbp2.inf",
+          "c_sbp2.inf",
+          "pcmcia.inf",
+          "c_pcmcia.inf",
+          "tape.inf",
+          "c_tapedrive.inf",
+          "mchgr.inf",
+          "c_mediumchanger.inf",
+          "mstape.inf",
+          "circlass.inf",
+          "c_multiportserial.inf",
+          "netrtwlanu.inf",
+          "netrtwlans.inf",
+          "rtwlanu_oldic.inf",
+          "netr28ux.inf",
+          "rtucx21x64.inf",
+          "qcwlan64.inf",
+          "bcmdhd64.inf",
+          "bth.inf",
+          "microsoft_bluetooth_avrcptransport.inf",
+          "netevbd0a.inf",
+          "netevbda.inf",
+          "netqevbda.inf",
+          "cht4vx64.inf",
+          "wpdmtp.inf"
+        ],
+        "forceUnusedInbox": true
+      }
+    }
+  ]
+}

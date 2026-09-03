@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "name": "delta-overlay",
+  "description": "Chained-build delta: apply only the newest plans on top of a previous slim ESD. Pair with --input <previous .esd> --index 1; package iso still uses the original ISO for boot.wim.",
+  "selections": [
+    {
+      "planId": "driver.non-consumer-extra",
+      "enabled": true
+    }
+  ]
+}

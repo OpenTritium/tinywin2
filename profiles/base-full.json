@@ -300,6 +300,10 @@
       "enabled": true
     },
     {
+      "planId": "driver.non-consumer-extra",
+      "enabled": true
+    },
+    {
       "planId": "driver.vendor-raid-controllers",
       "enabled": true
     },
