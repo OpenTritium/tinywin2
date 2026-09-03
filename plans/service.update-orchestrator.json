@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.update-orchestrator",
-  "version": "3.0.0",
-  "title": "禁用更新会话编排器 (UsoSvc)",
-  "description": "禁用 Update Session Orchestrator。精简镜像通常不打算再接收更新；恢复更新前需改回手动/自动。",
+  "version": "3.1.0",
+  "title": "更新会话编排器 (UsoSvc) 改为按需手动",
+  "description": "UsoSvc 改为手动启动：不随系统自启、不编排自动更新会话；功能随选（FoD）等按需场景可被显式拉起。仍可选 disabled 彻底禁用。",
   "category": "Update Services",
   "riskLevel": "Medium",
   "operations": [
@@ -32,17 +32,17 @@
       "name": "startMode",
       "type": "enum",
       "label": "启动方式",
-      "default": "disabled",
+      "default": "manual",
       "options": [
+        {
+          "value": "manual",
+          "label": "手动（按需）",
+          "riskLevel": "Low"
+        },
         {
           "value": "disabled",
           "label": "禁用",
           "riskLevel": "Medium"
-        },
-        {
-          "value": "manual",
-          "label": "手动",
-          "riskLevel": "Low"
         }
       ]
     }

@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.windows-update",
-  "version": "1.0.0",
-  "title": "禁用 Windows Update",
-  "description": "禁用 Windows Update (wuauserv)。镜像不会主动执行 Windows 更新；恢复更新前需重新启用该服务及相关更新服务。",
+  "version": "2.0.0",
+  "title": "Windows Update 改为按需手动",
+  "description": "wuauserv 改为手动启动并清除其 SCM 触发器，同时移除 UpdateOrchestrator 与 WindowsUpdate 计划任务树：镜像不会主动检查或安装更新；但安装功能随选（FoD，如 OpenSSH Server）时服务可被 DISM 显式拉起。",
   "category": "Update Services",
   "riskLevel": "High",
   "operations": [
@@ -15,7 +15,18 @@
         "services": [
           "wuauserv"
         ],
-        "start": "disabled"
+        "start": "manual"
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "deleteKeys": [
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\UpdateOrchestrator",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\WindowsUpdate"
+        ]
       }
     }
   ]
