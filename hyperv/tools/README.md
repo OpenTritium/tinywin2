@@ -16,6 +16,34 @@ tinywin2 build --input <26100 ISO> --index 4 \
   --format esd --single-layer --overwrite
 ```
 
+## Fast iteration loop (chained builds)
+
+Each build's ESD is itself a valid `--input` (WIM/ESD are accepted sources).
+To test a new plan or a small delta, chain from the previous output instead of
+the original ISO — the ~283 already-applied steps are then already converged
+and finish as near-instant skips:
+
+```
+tinywin2 inspect --input F:/tinywin2/out/dev-server.esd        # 1 index
+tinywin2 build --input F:/tinywin2/out/dev-server.esd --index 1 \
+  --profile profiles/delta-overlay.json \
+  --output F:/tinywin2/out/dev-server-next.esd --workspace F:/tinywin2/ws-delta \
+  --format esd --single-layer --overwrite
+tinywin2 package iso --input <26100 ISO> --install-image F:/tinywin2/out/dev-server-next.esd \
+  --output F:/tinywin2/iso/tinywin2-next.iso --workspace F:/tinywin2/pkg --oscdimg <...> --overwrite
+```
+
+Rules of the chain:
+
+- `package iso` always pairs the **original ISO** as `--input` (boot.wim/setup
+  files come from the media, never from the slim base).
+- A chained base can only go **further**, not back: plans whose payload a
+  previous round removed (OpenSSH Server capability, FoD metadata under
+  /ResetBase, vendor RAID drivers) cannot be restored — restart from the
+  original ISO for that.
+- Keep `profiles/base-full.json` + full chain as the canonical release path;
+  treat chained builds as the dev loop for plan authoring.
+
 ## Pipeline
 
 1. `vm-recreate.ps1` — recreate the Gen2 VM (TPM, nested virtualization, 80GB vhdx).
