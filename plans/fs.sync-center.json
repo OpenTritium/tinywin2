@@ -1,0 +1,35 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "fs.sync-center",
+  "version": "1.0.0",
+  "title": "移除同步中心空壳",
+  "description": "同步中心的内核服务（CscService）与 Offline Files 计划任务已被其他计划禁用，此处移除其余留的控制面板入口、SyncCenter.dll 与 mobsync.exe：服务关闭后该入口只显示空列表，属于不可用 UI。删除命名空间与 CLSID 注册后控制面板不再显示同步中心。",
+  "category": "Desktop Experience",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\System32\\SyncCenter.dll",
+          "Windows\\System32\\mobsync.exe"
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "deleteKeys": [
+          "Microsoft\\Windows\\CurrentVersion\\Explorer\\ControlPanel\\NameSpace\\{9C73F5E5-7AE7-4E32-A8E8-8D23B85255BF}",
+          "WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ControlPanel\\NameSpace\\{9C73F5E5-7AE7-4E32-A8E8-8D23B85255BF}",
+          "Classes\\CLSID\\{9C73F5E5-7AE7-4E32-A8E8-8D23B85255BF}",
+          "Classes\\WOW6432Node\\CLSID\\{9C73F5E5-7AE7-4E32-A8E8-8D23B85255BF}"
+        ]
+      }
+    }
+  ]
+}

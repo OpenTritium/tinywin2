@@ -1170,6 +1170,14 @@
     {
       "planId": "service.xbox-gaming",
       "enabled": true
+    },
+    {
+      "planId": "fs.sync-center",
+      "enabled": true
+    },
+    {
+      "planId": "fs.dead-tasks",
+      "enabled": true
     }
   ]
 }
