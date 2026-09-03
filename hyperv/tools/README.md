@@ -48,6 +48,14 @@ Not baked into the image — apply per machine when the workload calls for it:
   process `timeBeginPeriod` requests; override with
   `--set registry.timer-resolution.mode=ignore` on battery-sensitive builds).
 - **HAGS** is on by default for supported GPUs on Server 2025 — no plan needed.
+- **SSH server**: the image removes the OpenSSH Server capability, and `/ResetBase`
+  strips the FoD metadata payload, so `Add-WindowsCapability` cannot resolve the name
+  even with wuauserv/DoSvc running. Restore in one command with the bundled script
+  (Microsoft's official Win32-OpenSSH build from GitHub):
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File scripts\install-openssh-server.ps1 [-PublicKey "<ssh-ed25519 ...>"]
+  ```
 - Deliberately NOT provided: Spectre/Meltdown mitigation toggles (security-hostile),
   standby-list purge tools (self-defeating), DisablePagingExecutive (RAM cost with no
   server-side benefit).
