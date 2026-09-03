@@ -1,7 +1,8 @@
+param([string]$EsdPath = 'F:\tinywin2\out\dev-server.esd')
 $ErrorActionPreference = 'Stop'
 $name = 'TinyWin2-ServerSmoke'
 $vhdx = 'F:\tinywin2\vm\ServerSmoke.vhdx'
-$esd = 'F:\tinywin2\out\dev-server.esd'
+$esd = $EsdPath
 # optional: raw install ISO/WIM for restoring feature payloads the build's
 # component cleanup already stripped (e.g. Hyper-V management tools)
 $SourceMedia = 'F:\tinywin2\ws-dev-server\install.source.wim'
