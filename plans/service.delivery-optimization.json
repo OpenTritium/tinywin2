@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.delivery-optimization",
-  "version": "3.0.0",
-  "title": "禁用 Delivery Optimization",
-  "description": "禁用 Delivery Optimization；Windows Update 将回退到传统下载，局域网和互联网更新共享不可用。",
+  "version": "3.1.0",
+  "title": "Delivery Optimization 改为按需手动",
+  "description": "DoSvc 改为手动启动：不随系统自启，P2P 更新共享不可用；功能随选（FoD）等按需下载场景可被 DISM/更新服务显式拉起。",
   "category": "Update Services",
   "riskLevel": "Medium",
   "operations": [
@@ -15,7 +15,7 @@
         "services": [
           "DoSvc"
         ],
-        "start": "disabled"
+        "start": "manual"
       }
     }
   ]

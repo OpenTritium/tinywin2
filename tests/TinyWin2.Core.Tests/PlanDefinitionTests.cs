@@ -256,7 +256,7 @@ public sealed class PlanCatalogTests : IDisposable {
         var withoutSchema = PlanCatalog.LoadDirectory(_directory).Get("alpha.one").Hash;
 
         var plan = JsonNode.Parse(await File.ReadAllTextAsync(path))!.AsObject();
-        plan["$schema"] = "../schemas/plan-v4.schema.json";
+        plan["$schema"] = "../schemas/plan-v5.schema.json";
         await File.WriteAllTextAsync(path, plan.ToJsonString());
 
         var withSchema = PlanCatalog.LoadDirectory(_directory).Get("alpha.one").Hash;

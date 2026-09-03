@@ -6,7 +6,7 @@ namespace TinyWin2.Core.Executers;
 
 /// <summary>Semantic action requested from a resource executor.</summary>
 public enum OperationAction {
-    /// <summary>Make the target present / in the desired state (write, configure, or copy).</summary>
+    /// <summary>Make the target present / in the desired state (registry values, service start modes, fs.path asset copy, …).</summary>
     Apply,
     Remove,
     Cleanup

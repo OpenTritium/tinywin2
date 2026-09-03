@@ -32,9 +32,9 @@ internal static partial class RegistryAcl {
     private static readonly IntPtr HkeyLocalMachine = new(unchecked((int)0x80000002));
 
     /// <summary>
-    ///     Last-resort deletion: takes ownership of the key (and rewrites its DACL) with
-    ///     SeTakeOwnershipPrivilege, then deletes the whole subtree through the .NET registry
-    ///     API. Returns true when the key is gone afterwards.
+    ///     Last-resort deletion: takes ownership of the key and every descendant (each can
+    ///     carry its own Administrators-deny descriptor), rewrites the DACLs, then deletes
+    ///     the subtree through the .NET registry API. Returns true when the key is gone.
     /// </summary>
     public static bool TryForceDeleteSubKeyTree(string hklmSubKeyPath) {
         if (!EnablePrivilege("SeTakeOwnershipPrivilege")
@@ -52,27 +52,87 @@ internal static partial class RegistryAcl {
                 return false;
             }
 
-            using var parent = root.OpenSubKey(subKey[..separator], true);
-            if (parent is null) {
-                return false;
-            }
+            var opened = new List<RegistryKey>();
+            try {
+                var parent = OpenRescued(root, subKey[..separator], opened);
+                if (parent is null) {
+                    return false;
+                }
 
-            var name = subKey[(separator + 1)..];
-            ForceOpen(parent, name);
-            parent.DeleteSubKeyTree(name, false);
-            return parent.OpenSubKey(name) is null;
+                using (parent) {
+                    var name = subKey[(separator + 1)..];
+                    using (var key = ForceOpen(parent, name)) {
+                        ForceDeleteChildren(key);
+                    }
+
+                    parent.DeleteSubKeyTree(name, false);
+                    return parent.OpenSubKey(name) is null;
+                }
+            }
+            finally {
+                // every handle opened along the loaded hive must be released or the engine's
+                // reg.exe unload of that hive fails with access denied
+                foreach (var key in opened) {
+                    key.Dispose();
+                }
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             return false;
         }
     }
 
+    /// <summary>
+    ///     Opens <paramref name="path" /> writable, claiming ownership along every ancestor
+    ///     that denies it — TaskCache and component trees lock intermediate keys as well as
+    ///     leaves, and the delete needs a writable parent handle. Appends every opened key
+    ///     (including the returned one) to <paramref name="opened" /> for the caller to dispose.
+    /// </summary>
+    private static RegistryKey? OpenRescued(RegistryKey root, string path, List<RegistryKey> opened) {
+        RegistryKey current = root;
+        foreach (var segment in path.Split('\\')) {
+            RegistryKey next;
+            try {
+                next = current.OpenSubKey(segment, true)!;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException) {
+                next = ForceOpen(current, segment)
+                       ?? throw new UnauthorizedAccessException($"cannot take over '{segment}'.");
+            }
+
+            opened.Add(next);
+            current = next;
+        }
+
+        return current;
+    }
+
+    private static void ForceDeleteChildren(RegistryKey? key) {
+        if (key is null) {
+            return;
+        }
+
+        foreach (var child in key.GetSubKeyNames()) {
+            RegistryKey? childKey;
+            try {
+                childKey = ForceOpen(key, child);
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException) {
+                continue; // cannot reach this child; DeleteSubKeyTree will surface it if it matters
+            }
+
+            using (childKey) {
+                ForceDeleteChildren(childKey);
+            }
+        }
+    }
+
     /// <summary>Opens <paramref name="name" /> under <paramref name="parent" />, claims ownership and grants Administrators FullControl.</summary>
-    private static void ForceOpen(RegistryKey parent, string name) {
+    private static RegistryKey? ForceOpen(RegistryKey parent, string name) {
         using (var key = parent.OpenSubKey(name, RegistryKeyPermissionCheck.ReadWriteSubTree,
                    RegistryRights.TakeOwnership)) {
             if (key is null) {
-                return;
+                return null;
             }
 
             var owner = key.GetAccessControl(AccessControlSections.Owner);
@@ -83,7 +143,7 @@ internal static partial class RegistryAcl {
         using (var key = parent.OpenSubKey(name, RegistryKeyPermissionCheck.ReadWriteSubTree,
                    RegistryRights.ChangePermissions)) {
             if (key is null) {
-                return;
+                return null;
             }
 
             var acl = key.GetAccessControl();
@@ -92,6 +152,8 @@ internal static partial class RegistryAcl {
                 InheritanceFlags.ContainerInherit, PropagationFlags.None, AccessControlType.Allow));
             key.SetAccessControl(acl);
         }
+
+        return parent.OpenSubKey(name, true);
     }
 
     /// <summary>

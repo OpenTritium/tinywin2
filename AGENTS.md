@@ -10,7 +10,7 @@ and disk space.
 ## Command map
 
 ```
-tinywin2 doctor                 # environment readiness (exit 1 on failed required checks)
+tinywin2 doctor --workspace <dir>   # environment readiness (exit 1 on failed required checks)
 tinywin2 inspect --input <iso>  # list image indexes of an ISO / media folder / WIM / ESD
 tinywin2 source validate --input <iso> [--kind image|media|iso]
 tinywin2 plan list|show|validate
