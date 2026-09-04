@@ -100,6 +100,17 @@ Each carries one or more atomic operations with the three-verb vocabulary:
 - `"action": "remove"` — make the target absent
 - `"action": "cleanup"` — run-once maintenance (component-store cleanup)
 
+Catalog organization: one plan per *decision*, not per mechanism. Same-intent
+mechanisms (files + registry + policy for one feature) live in one plan
+(e.g. `fs.onedrive`, `registry.responsiveness-tuning`); per-entity plans stay
+split where the choice is individual (one service per `service.*` plan, one
+appx per `appx.*` plan, security toggles like UAC/VBS/firewall never bundled).
+When merging, keep the merged id's alphabetical position stable: the base
+profile lists selections alphabetically, and selection order is execution
+order — post-servicing cleanup plans (`registry.control-panel-orphans`,
+`registry.update-task-cache`, `fs.sync-center`, `fs.dead-tasks`) deliberately
+trail the `service.*` block.
+
 Parameters are referenced inside specs as `{"$parameter":"name"}` and translated via
 `{"$map":{"parameter":"n","cases":{...},"default":...}}`. Bundled files live in
 `plans/assets/<planId>/` and are referenced by fs.path apply operations; asset content

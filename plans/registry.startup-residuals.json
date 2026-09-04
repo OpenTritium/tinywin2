@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "registry.startup-residuals",
-  "version": "3.1.0",
-  "title": "清理注册表自启动项",
-  "description": "删除本机与默认用户模板中的 Run、RunOnce 和 StartupApproved 注册表项,阻止软件开机自启动;用户仍可手动启动办公和娱乐软件。",
+  "version": "4.0.0",
+  "title": "清理开机自启动项",
+  "description": "阻止软件在新用户登录时自动启动：删除本机与默认用户模板中的 Run、RunOnce 和 StartupApproved 注册表项，并清理公共与默认用户 Startup 文件夹中的快捷方式及脚本。用户仍可手动启动软件；服务、驱动和系统输入组件不受影响。v4.0.0 起合并原 fs.startup-shortcuts 计划。",
   "category": "Background Experience",
   "riskLevel": "Medium",
   "operations": [
@@ -31,6 +31,16 @@
           "Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce",
           "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run",
           "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\StartupFolder"
+        ]
+      }
+    },
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
+          "Users\\Default\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup"
         ]
       }
     }

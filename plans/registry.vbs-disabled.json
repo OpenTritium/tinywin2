@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "registry.vbs-disabled",
-  "version": "1.0.0",
-  "title": "关闭 VBS、内存完整性和凭据隔离",
-  "description": "关闭 Device Guard 的虚拟化安全、HVCI/内存完整性、平台安全要求、Credential Guard 和 LSA 隔离策略。需要重启才能生效；vTPM/Secure Boot 不会被删除，但不再用于这些防护功能。",
+  "version": "2.0.0",
+  "title": "关闭 VBS 与 Device Guard",
+  "description": "关闭基于虚拟化的安全（VBS）的策略层与系统层开关：VBS、HVCI/内存完整性、Credential Guard 及其场景、LSA 隔离策略、平台安全要求、易受攻击驱动阻止列表和 VBS Microsoft 签名启动链要求。需要重启生效；vTPM/Secure Boot 不会被删除，但不再用于这些防护功能，内核和凭据安全明显降低。v2.0.0 起合并原 device-guard-disabled 计划。",
   "category": "Security",
   "riskLevel": "High",
   "operations": [
@@ -35,6 +35,57 @@
           {
             "key": "Policies\\Microsoft\\Windows\\DeviceGuard",
             "name": "LsaCfgFlags",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\DeviceGuard",
+            "name": "EnableVirtualizationBasedSecurity",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet001\\Control\\DeviceGuard",
+            "name": "RequirePlatformSecurityFeatures",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet001\\Control\\DeviceGuard",
+            "name": "RequireMicrosoftSignedBootChain",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet001\\Control\\DeviceGuard\\Scenarios\\HypervisorEnforcedCodeIntegrity",
+            "name": "Enabled",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet001\\Control\\DeviceGuard\\Scenarios\\CredentialGuard",
+            "name": "Enabled",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet001\\Control\\CI\\Config",
+            "name": "VulnerableDriverBlocklistEnable",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet001\\Control\\CI\\Policy",
+            "name": "VerifiedAndReputablePolicyState",
             "type": "dword",
             "data": 0
           }

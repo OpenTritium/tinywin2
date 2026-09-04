@@ -1,0 +1,22 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "service.install-service",
+  "version": "1.0.0",
+  "title": "禁用商店安装服务",
+  "description": "禁用 Windows 商店安装服务（InstallService），阻止应用商店的应用获取、更新与目录查询；已安装的 AppX 不受影响。由原 service.store-install 拆分（一计划一服务）。",
+  "category": "Background Services",
+  "riskLevel": "High",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "apply",
+      "spec": {
+        "services": [
+          "InstallService"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

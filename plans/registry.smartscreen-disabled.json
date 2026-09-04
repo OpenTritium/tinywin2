@@ -1,0 +1,54 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.smartscreen-disabled",
+  "version": "4.0.0",
+  "title": "关闭 SmartScreen 信誉检查",
+  "description": "同时关闭 Windows Shell 与 Microsoft Edge 的 SmartScreen 信誉检查：未知应用和下载失去 Windows SmartScreen 防护，Edge 的网站信誉检查与潜在有害应用检测一并停用。仅适合受控离线镜像。v4.0.0 起合并原 windows-smartscreen 与 edge-smartscreen 计划。",
+  "category": "Security",
+  "riskLevel": "High",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Policies\\Microsoft\\Windows\\System",
+            "name": "EnableSmartScreen",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Microsoft\\Windows\\CurrentVersion\\Explorer",
+            "name": "SmartScreenEnabled",
+            "type": "string",
+            "data": "Off"
+          }
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Policies\\Microsoft\\Edge",
+            "name": "SmartScreenEnabled",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Policies\\Microsoft\\Edge",
+            "name": "SmartScreenPuaEnabled",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
+    }
+  ]
+}

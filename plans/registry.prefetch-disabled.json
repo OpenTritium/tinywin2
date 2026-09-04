@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "registry.prefetch-disabled",
-  "version": "1.0.0",
-  "title": "关闭应用 Prefetch 策略",
-  "description": "将 Windows 应用 Prefetch 策略显式设为关闭。SysMain 由 service.memory-compression 负责保持自动运行，以提供内存压缩和页面合并；不强制关闭 Superfetch，因为 Windows 11 会用它承载这些内存管理功能。",
+  "version": "2.0.0",
+  "title": "关闭并清理 Prefetch",
+  "description": "将应用 Prefetch 策略显式关闭并移除离线镜像中已有的 Windows\\Prefetch 缓存；策略关闭后系统不再重建缓存，首次冷启动可能略慢。SysMain 由 service.memory-compression 负责保持自动运行，以提供内存压缩和页面合并；不强制关闭 Superfetch，因为 Windows 11 会用它承载这些内存管理功能。v2.0.0 起合并原 fs.prefetch 计划。",
   "category": "Background Services",
   "riskLevel": "Medium",
   "operations": [
@@ -26,6 +26,15 @@
             "type": "dword",
             "data": 0
           }
+        ]
+      }
+    },
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows/Prefetch"
         ]
       }
     }

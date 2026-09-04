@@ -1,0 +1,22 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "service.clip-svc",
+  "version": "1.0.0",
+  "title": "客户端许可服务设为手动",
+  "description": "将客户端许可服务（ClipSVC）设为手动启动：商店应用与部分授权验证按需触发，服务不再常驻后台。由原 service.store-install 拆分（一计划一服务）。",
+  "category": "Background Services",
+  "riskLevel": "High",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "apply",
+      "spec": {
+        "services": [
+          "ClipSVC"
+        ],
+        "start": "manual"
+      }
+    }
+  ]
+}

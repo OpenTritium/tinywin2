@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "fs.help-content",
-  "version": "1.0.0",
-  "title": "移除旧版 Windows 帮助内容",
-  "description": "移除 Windows\\Help 下的旧版离线帮助内容；Get Help Appx 由独立计划处理，桌面、帮助命令 help.exe 和应用运行不受影响。",
+  "version": "2.0.0",
+  "title": "移除旧版帮助组件",
+  "description": "移除 Windows\\Help 下的旧版离线帮助内容，以及 helpctr.exe 已移除后遗留的文件关联抑制注册项；保留 help.exe、HelpPaneProxy.dll 和 Windows Help Runtime，Get Help Appx 由独立计划处理。v2.0.0 起合并原 registry.help-residuals 计划。",
   "category": "Applications",
   "riskLevel": "Low",
   "operations": [
@@ -14,6 +14,16 @@
       "spec": {
         "paths": [
           "Windows\\Help"
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "deleteKeys": [
+          "Classes\\Applications\\helpctr.exe"
         ]
       }
     }

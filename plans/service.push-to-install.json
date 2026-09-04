@@ -1,0 +1,22 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "service.push-to-install",
+  "version": "1.0.0",
+  "title": "禁用远程推送安装服务",
+  "description": "禁用跨设备推送安装服务（PushToInstall），阻止从其他设备或网页向本机远程推送安装商店应用。由原 service.store-install 拆分（一计划一服务）。",
+  "category": "Background Services",
+  "riskLevel": "High",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "apply",
+      "spec": {
+        "services": [
+          "PushToInstall"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

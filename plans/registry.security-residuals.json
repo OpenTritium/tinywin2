@@ -1,0 +1,87 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.security-residuals",
+  "version": "2.0.0",
+  "title": "清理安全组件注册残留",
+  "description": "Defender、SmartScreen 和安全中心移除后的注册表残留集中清理：对应 SCM 服务注册键（防火墙服务键不在内）、Defender/Sense/ExploitGuard 刷新和 TPM 预认证健康检查的任务树注册项、SecurityHealth 托盘自启动项，以及 Defender 与安全中心 UI 的 AppUserModelId、Shell 类、通知和磁盘清理注册项。计划任务文件由 fs.security-residuals 配套清理；不删除策略 schema 或 CBS servicing 元数据。v2.0.0 起合并原 security-service-keys、security-tasks、security-startup、defender-ui-residuals 计划。",
+  "category": "Security",
+  "riskLevel": "High",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "system",
+        "deleteKeys": [
+          "ControlSet001\\Services\\WinDefend",
+          "ControlSet001\\Services\\Sense",
+          "ControlSet001\\Services\\WdBoot",
+          "ControlSet001\\Services\\WdFilter",
+          "ControlSet001\\Services\\WdNisSvc",
+          "ControlSet001\\Services\\WdNisDrv",
+          "ControlSet001\\Services\\SecurityHealthService",
+          "ControlSet001\\Services\\wscsvc",
+          "ControlSet001\\Services\\webthreatdefsvc",
+          "ControlSet001\\Services\\webthreatdefusersvc",
+          "ControlSet001\\Services\\wtd",
+          "ControlSet002\\Services\\WinDefend",
+          "ControlSet002\\Services\\Sense",
+          "ControlSet002\\Services\\WdBoot",
+          "ControlSet002\\Services\\WdFilter",
+          "ControlSet002\\Services\\WdNisSvc",
+          "ControlSet002\\Services\\WdNisDrv",
+          "ControlSet002\\Services\\SecurityHealthService",
+          "ControlSet002\\Services\\wscsvc",
+          "ControlSet002\\Services\\webthreatdefsvc",
+          "ControlSet002\\Services\\webthreatdefusersvc",
+          "ControlSet002\\Services\\wtd"
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "deleteKeys": [
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Windows Defender",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Sense",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\ExploitGuard",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\TPM\\Tpm-PreAttestationHealthCheck"
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Microsoft\\Windows\\CurrentVersion\\Run",
+            "name": "SecurityHealth"
+          },
+          {
+            "key": "Microsoft\\Windows\\CurrentVersion\\RunOnce",
+            "name": "SecurityHealth"
+          }
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "deleteKeys": [
+          "Classes\\AppUserModelId\\Microsoft.Windows.Defender",
+          "Classes\\AppUserModelId\\Windows.Defender",
+          "Classes\\WindowsDefender",
+          "Microsoft\\Windows\\CurrentVersion\\Explorer\\VolumeCaches\\Windows Defender",
+          "Microsoft\\Windows\\CurrentVersion\\PushNotifications\\Applications\\Windows.Defender"
+        ]
+      }
+    }
+  ]
+}

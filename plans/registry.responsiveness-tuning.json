@@ -1,0 +1,144 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.responsiveness-tuning",
+  "version": "2.0.0",
+  "title": "系统响应性调优",
+  "description": "面向交互响应的调度与定时器集中调优：网络节流豁免（NetworkThrottlingIndex=0xFFFFFFFF）并把 MMCSS 后台调度占比降到 10%，Win32PrioritySeparation 设为 0x26（短量子、前台三倍提升），WaitToKillServiceTimeout 从 5000ms 降到 2000ms；定时器精度策略由 mode 参数选择——honor 恢复尊重进程 timeBeginPeriod 请求的传统行为（音频/游戏/模拟器/低延迟网络服务），ignore 维持 Win11/Server 2025 的省电默认。前台交互与多媒体延迟更平滑，后台批量任务吞吐略降；虚拟化客机内收益有限。v2.0.0 起合并原 mmcss-latency、timer-resolution、priority-separation、shutdown-timeout 计划。",
+  "category": "System",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\Multimedia\\SystemProfile",
+            "name": "NetworkThrottlingIndex",
+            "type": "dword",
+            "data": 4294967295
+          },
+          {
+            "key": "ControlSet001\\Control\\Multimedia\\SystemProfile",
+            "name": "SystemResponsiveness",
+            "type": "dword",
+            "data": 10
+          },
+          {
+            "key": "ControlSet002\\Control\\Multimedia\\SystemProfile",
+            "name": "NetworkThrottlingIndex",
+            "type": "dword",
+            "data": 4294967295
+          },
+          {
+            "key": "ControlSet002\\Control\\Multimedia\\SystemProfile",
+            "name": "SystemResponsiveness",
+            "type": "dword",
+            "data": 10
+          }
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\Session Manager\\kernel",
+            "name": "GlobalTimerResolutionRequests",
+            "type": "dword",
+            "data": {
+              "$map": {
+                "parameter": "mode",
+                "cases": {
+                  "honor": 1,
+                  "ignore": 0
+                }
+              }
+            }
+          },
+          {
+            "key": "ControlSet002\\Control\\Session Manager\\kernel",
+            "name": "GlobalTimerResolutionRequests",
+            "type": "dword",
+            "data": {
+              "$map": {
+                "parameter": "mode",
+                "cases": {
+                  "honor": 1,
+                  "ignore": 0
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\PriorityControl",
+            "name": "Win32PrioritySeparation",
+            "type": "dword",
+            "data": 38
+          },
+          {
+            "key": "ControlSet002\\Control\\PriorityControl",
+            "name": "Win32PrioritySeparation",
+            "type": "dword",
+            "data": 38
+          }
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control",
+            "name": "WaitToKillServiceTimeout",
+            "type": "string",
+            "data": "2000"
+          },
+          {
+            "key": "ControlSet002\\Control",
+            "name": "WaitToKillServiceTimeout",
+            "type": "string",
+            "data": "2000"
+          }
+        ]
+      }
+    }
+  ],
+  "parameters": [
+    {
+      "name": "mode",
+      "type": "enum",
+      "label": "定时器请求策略",
+      "default": "honor",
+      "options": [
+        {
+          "value": "honor",
+          "label": "尊重进程请求（传统行为，低延迟场景）",
+          "riskLevel": "Low"
+        },
+        {
+          "value": "ignore",
+          "label": "忽略请求（新默认，省电）",
+          "riskLevel": "Low"
+        }
+      ]
+    }
+  ]
+}

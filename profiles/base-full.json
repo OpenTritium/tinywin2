@@ -556,15 +556,11 @@
       "enabled": true
     },
     {
+      "planId": "fs.image-cleanup",
+      "enabled": true
+    },
+    {
       "planId": "fs.image-event-logs",
-      "enabled": true
-    },
-    {
-      "planId": "fs.image-setup-logs",
-      "enabled": true
-    },
-    {
-      "planId": "fs.image-temporary-data",
       "enabled": true
     },
     {
@@ -600,10 +596,6 @@
       "enabled": true
     },
     {
-      "planId": "fs.prefetch",
-      "enabled": true
-    },
-    {
       "planId": "fs.recovery-environment",
       "enabled": true
     },
@@ -621,10 +613,6 @@
     },
     {
       "planId": "fs.security-residuals",
-      "enabled": true
-    },
-    {
-      "planId": "fs.startup-shortcuts",
       "enabled": true
     },
     {
@@ -668,10 +656,6 @@
       "enabled": true
     },
     {
-      "planId": "registry.advertising-id-disabled",
-      "enabled": true
-    },
-    {
       "planId": "registry.automatic-maintenance",
       "enabled": true
     },
@@ -680,51 +664,15 @@
       "enabled": true
     },
     {
-      "planId": "registry.consumer-content",
-      "enabled": true
-    },
-    {
-      "planId": "registry.default-user-content-delivery",
-      "enabled": true
-    },
-    {
-      "planId": "registry.default-user-content-delivery-cache",
-      "enabled": true
-    },
-    {
-      "planId": "registry.defender-ui-residuals",
-      "enabled": true
-    },
-    {
-      "planId": "registry.device-guard-disabled",
-      "enabled": true
-    },
-    {
       "planId": "registry.edge-background-mode",
       "enabled": true
     },
     {
-      "planId": "registry.edge-browser-residuals",
-      "enabled": true
-    },
-    {
-      "planId": "registry.edge-smartscreen",
-      "enabled": true
-    },
-    {
-      "planId": "registry.edge-update-cleanup",
-      "enabled": true
-    },
-    {
-      "planId": "registry.edge-update-residuals",
+      "planId": "registry.edge-residuals",
       "enabled": true
     },
     {
       "planId": "registry.exploit-protection-disabled",
-      "enabled": true
-    },
-    {
-      "planId": "registry.help-residuals",
       "enabled": true
     },
     {
@@ -733,10 +681,6 @@
     },
     {
       "planId": "registry.lsa-protection-disabled",
-      "enabled": true
-    },
-    {
-      "planId": "registry.mmcss-latency",
       "enabled": true
     },
     {
@@ -752,31 +696,11 @@
       "enabled": true
     },
     {
-      "planId": "registry.onedrive-profile",
-      "enabled": true
-    },
-    {
-      "planId": "registry.onedrive-startup",
-      "enabled": true
-    },
-    {
-      "planId": "registry.photo-viewer-registration",
-      "enabled": true
-    },
-    {
-      "planId": "registry.photo-viewer-residuals",
-      "enabled": true
-    },
-    {
       "planId": "registry.power-settings-unlock",
       "enabled": true
     },
     {
       "planId": "registry.prefetch-disabled",
-      "enabled": true
-    },
-    {
-      "planId": "registry.priority-separation",
       "enabled": true
     },
     {
@@ -788,15 +712,11 @@
       "enabled": true
     },
     {
-      "planId": "registry.security-service-keys",
+      "planId": "registry.responsiveness-tuning",
       "enabled": true
     },
     {
-      "planId": "registry.security-startup",
-      "enabled": true
-    },
-    {
-      "planId": "registry.security-tasks",
+      "planId": "registry.security-residuals",
       "enabled": true
     },
     {
@@ -812,7 +732,7 @@
       "enabled": true
     },
     {
-      "planId": "registry.shutdown-timeout",
+      "planId": "registry.smartscreen-disabled",
       "enabled": true
     },
     {
@@ -825,14 +745,6 @@
     },
     {
       "planId": "registry.startup-residuals",
-      "enabled": true
-    },
-    {
-      "planId": "registry.telemetry-policy",
-      "enabled": true
-    },
-    {
-      "planId": "registry.timer-resolution",
       "enabled": true
     },
     {
@@ -849,10 +761,6 @@
     },
     {
       "planId": "registry.windows-firewall",
-      "enabled": true
-    },
-    {
-      "planId": "registry.windows-smartscreen",
       "enabled": true
     },
     {
@@ -877,6 +785,10 @@
     },
     {
       "planId": "service.bluetooth",
+      "enabled": true
+    },
+    {
+      "planId": "service.clip-svc",
       "enabled": true
     },
     {
@@ -953,6 +865,10 @@
     },
     {
       "planId": "service.ikeext",
+      "enabled": true
+    },
+    {
+      "planId": "service.install-service",
       "enabled": true
     },
     {
@@ -1048,6 +964,10 @@
       "enabled": true
     },
     {
+      "planId": "service.push-to-install",
+      "enabled": true
+    },
+    {
       "planId": "service.remote-access-connection-manager",
       "enabled": true
     },
@@ -1077,10 +997,6 @@
     },
     {
       "planId": "service.software-protection",
-      "enabled": true
-    },
-    {
-      "planId": "service.store-install",
       "enabled": true
     },
     {
