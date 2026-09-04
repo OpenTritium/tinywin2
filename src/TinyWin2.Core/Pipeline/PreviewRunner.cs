@@ -64,9 +64,11 @@ public sealed class PreviewRunner(
             if (!stack.BaseReady) {
                 var stagingWim = Path.Combine(options.WorkDirectory, "install.source.wim");
                 await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, WimCompression.Fast, false, ct);
+                // an ESD export holds exactly one image at index 1; a copied WIM keeps its source indexes
+                var stagedIndex = source.IsEsd ? 1 : options.ImageIndex;
                 log.Info("applying source image into the preview base layer");
                 await stack.ApplyImageToBaseAsync(async (mount, token) => {
-                    await OutputBuilder.ApplyImageAsync(runner, stagingWim, options.ImageIndex, mount, token);
+                    await OutputBuilder.ApplyImageAsync(runner, stagingWim, stagedIndex, mount, token);
                 }, ct);
             }
             else {

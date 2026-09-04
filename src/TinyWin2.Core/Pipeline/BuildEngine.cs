@@ -175,7 +175,9 @@ public sealed class BuildEngine(
 
                 await resolver.StageAsWimAsync(source, options.ImageIndex, stagingWim, options.Export.Compression,
                     options.Export.CheckIntegrity, ct);
-                await ApplyBaseAsync(stack, options, buildId, workspace, stagingWim, sourceIndex, ct,
+                // an ESD export holds exactly one image at index 1; a copied WIM keeps its source indexes
+                var stagedIndex = source.IsEsd ? 1 : options.ImageIndex;
+                await ApplyBaseAsync(stack, options, buildId, workspace, stagingWim, stagedIndex, ct,
                     options is { CaptureEvidence: true, NoLayers: false });
             }
 
@@ -255,13 +257,13 @@ public sealed class BuildEngine(
     /// <summary>Creates (or reuses) the base layer and applies the staged image into it.</summary>
     private async Task ApplyBaseAsync(
         VhdLayerStack stack, BuildOptions options, string buildId, string workspace, string stagingWim,
-        ImageIndexInfo sourceIndex,
+        int stagedIndex,
         CancellationToken ct, bool captureEvidence = true) {
         log.Phase = BuildPhases.BaseLayer;
         await stack.EnsureBaseAsync(options.BaseVhdxMaximumMb, $"TinyWin2-{buildId}", ct);
-        log.Info($"applying '{sourceIndex.Name}' (index {sourceIndex.Index}) into the base layer");
+        log.Info($"applying staged image (index {stagedIndex}) into the base layer");
         await stack.ApplyImageToBaseAsync(async (mount, token) => {
-            await OutputBuilder.ApplyImageAsync(runner, stagingWim, options.ImageIndex, mount, token);
+            await OutputBuilder.ApplyImageAsync(runner, stagingWim, stagedIndex, mount, token);
             if (captureEvidence) {
                 log.Info("capturing base-layer evidence snapshots (file manifest + registry)");
                 await LayerEvidence.CaptureAsync(mount, workspace, 0, runner, log, token);
