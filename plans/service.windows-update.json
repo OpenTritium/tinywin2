@@ -2,11 +2,11 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.windows-update",
-  "version": "2.0.0",
-  "title": "Windows Update 改为按需手动",
-  "description": "wuauserv 改为手动启动并清除其 SCM 触发器，同时移除 UpdateOrchestrator 与 WindowsUpdate 计划任务树：镜像不会主动检查或安装更新；但安装功能随选（FoD，如 OpenSSH Server）时服务可被 DISM 显式拉起。",
+  "version": "3.0.0",
+  "title": "Windows Update 服务启动方式",
+  "description": "wuauserv：manual 为 Windows 默认（触发启动，由 UsoSvc 与计划任务编排自动更新，FoD 如 OpenSSH Server 安装时也可被 DISM 显式拉起）。要彻底关闭自动更新，请搭配 registry.update-task-cache 计划（移除 UpdateOrchestrator/WindowsUpdate 计划任务树）。",
   "category": "Update Services",
-  "riskLevel": "High",
+  "riskLevel": "Medium",
   "operations": [
     {
       "resource": "registry.service",
@@ -15,19 +15,36 @@
         "services": [
           "wuauserv"
         ],
-        "start": "manual"
+        "start": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "manual": "manual",
+              "disabled": "disabled"
+            }
+          }
+        }
       }
-    },
+    }
+  ],
+  "parameters": [
     {
-      "resource": "registry.value",
-      "action": "remove",
-      "spec": {
-        "hive": "software",
-        "deleteKeys": [
-          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\UpdateOrchestrator",
-          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\WindowsUpdate"
-        ]
-      }
+      "name": "startMode",
+      "type": "enum",
+      "label": "启动方式",
+      "default": "manual",
+      "options": [
+        {
+          "value": "manual",
+          "label": "手动（Windows 默认，更新正常流转）",
+          "riskLevel": "Low"
+        },
+        {
+          "value": "disabled",
+          "label": "禁用",
+          "riskLevel": "High"
+        }
+      ]
     }
   ]
 }

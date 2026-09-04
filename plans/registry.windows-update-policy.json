@@ -1,0 +1,142 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.windows-update-policy",
+  "version": "1.0.0",
+  "title": "Windows Update 策略选项",
+  "description": "以组策略面（HKLM Policies）提供 Windows Update 行为选项，默认值即 Windows 默认行为：自动更新开启（AUOptions=4）、质量更新包含驱动更新、驱动搜索走 Windows Update、不锁定功能版本。可选：仅通知（AUOptions=2）、关闭自动更新（NoAutoUpdate=1）、排除驱动更新（ExcludeWUDriversInQualityUpdate=1）、禁止搜索驱动（DriverSearching\\SearchOrderConfig=2）、锁定当前发布版本（TargetReleaseVersion，避免功能升级到更高版本）。",
+  "category": "Update Services",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
+            "name": "NoAutoUpdate",
+            "type": "dword",
+            "data": { "$map": { "parameter": "updateMode", "cases": { "auto": 0, "notify": 0, "off": 1 } } }
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
+            "name": "AUOptions",
+            "type": "dword",
+            "data": { "$map": { "parameter": "updateMode", "cases": { "auto": 4, "notify": 2, "off": 2 } } }
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\WindowsUpdate",
+            "name": "ExcludeWUDriversInQualityUpdate",
+            "type": "dword",
+            "data": { "$map": { "parameter": "includeDriverUpdates", "cases": { "true": 0, "false": 1 } } }
+          },
+          {
+            "key": "Microsoft\\Windows\\CurrentVersion\\DriverSearching",
+            "name": "SearchOrderConfig",
+            "type": "dword",
+            "data": { "$map": { "parameter": "driverSearch", "cases": { "wu": 1, "never": 2 } } }
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\WindowsUpdate",
+            "name": "TargetReleaseVersion",
+            "type": "dword",
+            "data": { "$map": { "parameter": "pinCurrentRelease", "cases": { "false": 0, "true": 1 } } }
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\WindowsUpdate",
+            "name": "TargetReleaseVersionInfo",
+            "type": "string",
+            "data": "26100"
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\WindowsUpdate",
+            "name": "ProductVersion",
+            "type": "string",
+            "data": "Windows Server 2025"
+          }
+        ]
+      }
+    }
+  ],
+  "parameters": [
+    {
+      "name": "updateMode",
+      "type": "enum",
+      "label": "自动更新模式",
+      "default": "auto",
+      "options": [
+        {
+          "value": "auto",
+          "label": "自动检测、下载并安装",
+          "riskLevel": "Low"
+        },
+        {
+          "value": "notify",
+          "label": "仅通知（下载与安装需确认）",
+          "riskLevel": "Low"
+        },
+        {
+          "value": "off",
+          "label": "关闭自动更新",
+          "riskLevel": "High"
+        }
+      ]
+    },
+    {
+      "name": "includeDriverUpdates",
+      "type": "enum",
+      "label": "质量更新包含驱动",
+      "default": "true",
+      "options": [
+        {
+          "value": "true",
+          "label": "包含驱动更新（Windows 默认）",
+          "riskLevel": "Low"
+        },
+        {
+          "value": "false",
+          "label": "不包含驱动更新",
+          "riskLevel": "Low"
+        }
+      ]
+    },
+    {
+      "name": "driverSearch",
+      "type": "enum",
+      "label": "设备驱动搜索来源",
+      "default": "wu",
+      "options": [
+        {
+          "value": "wu",
+          "label": "自动搜索 Windows Update（Windows 默认）",
+          "riskLevel": "Low"
+        },
+        {
+          "value": "never",
+          "label": "从不搜索 Windows Update",
+          "riskLevel": "Low"
+        }
+      ]
+    },
+    {
+      "name": "pinCurrentRelease",
+      "type": "enum",
+      "label": "锁定当前发布版本",
+      "default": "false",
+      "options": [
+        {
+          "value": "false",
+          "label": "不锁定（Windows 默认）",
+          "riskLevel": "Low"
+        },
+        {
+          "value": "true",
+          "label": "锁定 Windows Server 2025 (26100)，屏蔽功能升级",
+          "riskLevel": "Low"
+        }
+      ]
+    }
+  ]
+}

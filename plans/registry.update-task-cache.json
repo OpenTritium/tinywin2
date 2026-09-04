@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.update-task-cache",
+  "version": "1.0.0",
+  "title": "移除 Windows Update 计划任务树",
+  "description": "移除 UpdateOrchestrator 与 WindowsUpdate 计划任务缓存树：镜像不会主动检查或安装更新（彻底关闭自动更新的强手段）。安装功能随选（FoD，如 OpenSSH Server）时服务仍可被 DISM 显式拉起。v1.0.0 起从 service.windows-update 拆分为独立计划，便于按需选择；默认场景建议不启用本计划以保持更新自动流转。",
+  "category": "Update Services",
+  "riskLevel": "High",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "deleteKeys": [
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\UpdateOrchestrator",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\WindowsUpdate"
+        ]
+      }
+    }
+  ]
+}

@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.update-orchestrator",
-  "version": "3.1.0",
-  "title": "更新会话编排器 (UsoSvc) 改为按需手动",
-  "description": "UsoSvc 改为手动启动：不随系统自启、不编排自动更新会话；功能随选（FoD）等按需场景可被显式拉起。仍可选 disabled 彻底禁用。",
+  "version": "3.2.0",
+  "title": "更新会话编排器 (UsoSvc) 启动方式",
+  "description": "UsoSvc：auto 为 Windows 默认（自动启动，编排更新会话与重启仲裁）；manual 按需拉起；disabled 彻底禁用（设置页的 Windows Update 交互会受影响）。",
   "category": "Update Services",
   "riskLevel": "Medium",
   "operations": [
@@ -19,6 +19,7 @@
           "$map": {
             "parameter": "startMode",
             "cases": {
+              "auto": "auto",
               "disabled": "disabled",
               "manual": "manual"
             }
@@ -32,8 +33,13 @@
       "name": "startMode",
       "type": "enum",
       "label": "启动方式",
-      "default": "manual",
+      "default": "auto",
       "options": [
+        {
+          "value": "auto",
+          "label": "自动（Windows 默认）",
+          "riskLevel": "Low"
+        },
         {
           "value": "manual",
           "label": "手动（按需）",

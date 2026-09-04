@@ -30,6 +30,10 @@
     {
       "planId": "service.location",
       "enabled": false
+    },
+    {
+      "planId": "registry.update-task-cache",
+      "enabled": false
     }
   ]
 }

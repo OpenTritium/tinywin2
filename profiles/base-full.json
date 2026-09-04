@@ -1156,6 +1156,14 @@
       "enabled": true
     },
     {
+      "planId": "registry.windows-update-policy",
+      "enabled": true
+    },
+    {
+      "planId": "registry.update-task-cache",
+      "enabled": true
+    },
+    {
       "planId": "service.wlan-config",
       "enabled": true
     },
