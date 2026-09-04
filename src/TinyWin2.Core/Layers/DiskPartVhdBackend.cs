@@ -17,6 +17,11 @@ public sealed class DiskPartVhdBackend(IProcessRunner runner) : ILayerBackend {
     public async Task CreateBaseAsync(string vhdxPath, long maximumMb, string volumeLabel, CancellationToken ct) {
         vhdxPath = Normalize(vhdxPath);
         Directory.CreateDirectory(Path.GetDirectoryName(vhdxPath)!);
+        // NTFS rejects volume labels longer than 32 chars (VDS "label is invalid")
+        if (volumeLabel.Length > 32) {
+            volumeLabel = volumeLabel[..32];
+        }
+
         var driveLetter = DriveLetters.FirstFreeMountLetter("base volume formatting");
 
         var script = $"""
@@ -128,8 +133,26 @@ public sealed class DiskPartVhdBackend(IProcessRunner runner) : ILayerBackend {
         var scriptPath = Path.Combine(Path.GetTempPath(), $"tinywin2-diskpart-{Guid.NewGuid():N}.txt");
         try {
             await File.WriteAllTextAsync(scriptPath, script, ct);
-            var result = await runner.RunAsync("diskpart.exe", ["/s", scriptPath],
-                new() { Timeout = TimeSpan.FromMinutes(10) }, ct);
+            ProcessRunResult result;
+            try {
+                result = await runner.RunAsync("diskpart.exe", ["/s", scriptPath],
+                    new() { Timeout = TimeSpan.FromMinutes(10) }, ct);
+            }
+            catch (ProcessRunnerException) {
+                // keep the failing script for offline reproduction; console encoding mangles
+                // diskpart's localized output inside the exception message
+                const string keepPath = @"C:\tinywin2-out\last-diskpart.txt";
+                try {
+                    Directory.CreateDirectory(Path.GetDirectoryName(keepPath)!);
+                    await File.WriteAllTextAsync(keepPath, script, CancellationToken.None);
+                }
+                catch {
+                    /* diagnostics only */
+                }
+
+                throw;
+            }
+
             if (result.Output.Contains("encountered an error", StringComparison.OrdinalIgnoreCase)
                 || result.Error.Contains("encountered an error", StringComparison.OrdinalIgnoreCase)) {
                 throw new IOException("diskpart reported an error running the script.");

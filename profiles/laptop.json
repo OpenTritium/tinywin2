@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "name": "laptop",
-  "description": "单一完整 profile：基于全部计划，仅保留（enabled:false）笔记本镜像的功能性组件 —— RDP（客户端/服务端/调优/残留）与 OpenSSH 客户端+服务端；SMB 文件共享核心（LanmanServer/Workstation/NetBT/NetBIOS，SMB1/NFS/DFS/FSRM 等服务器角色不保留）；Hyper-V、虚拟机平台(WSL2)、WSL、容器；笔记本硬件基础：WLAN、RAS 链（remote-access/RasMan/telephony/RAS 包，WLAN 离线安装器依赖）、蓝牙（含设备关联配对服务）、音频、定位（WLAN 查询依赖）、生物识别、WiFi 热点(ICS)、消费级与遗留驱动；以及基线可用性：Client.CBS Shell 包、SysMain、记事本、WOW64 32 位子系统、DirectX 配置、显示代理服务。Windows Update 保持默认自动（update-task-cache 保留不删任务树）；电源方案保持默认平衡（可后续在电源选项中切换，隐藏项已由 unlock 计划解锁）。其余全部计划（应用/AppX/遥测/服务器角色/安全加固关闭/性能调优）按默认启用移除。注意：打印与 SMB1 默认被移除，如需保留把对应计划改为 enabled:false 即可。用法：--profile profiles/laptop.json（单层，selections 顺序即执行顺序，字母序主体 + 尾部任务清理计划）。",
+  "description": "单一完整 profile：基于全部计划，仅保留（enabled:false）笔记本镜像的功能性组件 —— RDP（客户端/服务端/调优/残留）与 OpenSSH 客户端+服务端；SMB 文件共享核心（LanmanServer/Workstation/NetBT/NetBIOS，SMB1/NFS/DFS/FSRM 等服务器角色不保留）；Hyper-V、虚拟机平台(WSL2)、WSL、容器；笔记本硬件基础：WLAN、RAS 链（remote-access/RasMan/telephony/RAS 包，WLAN 离线安装器依赖）、蓝牙（含设备关联配对服务）、音频、定位（WLAN 查询依赖）、生物识别、WiFi 热点(ICS)、消费级与遗留驱动；以及基线可用性：Client.CBS Shell 包、SysMain、记事本、WOW64 32 位子系统、DirectX 配置、显示代理服务。Windows Update 保持默认自动（update-task-cache 保留不删任务树）；电源方案保持默认平衡（可后续在电源选项中切换，隐藏项已由 unlock 计划解锁）。其余全部计划（应用/AppX/遥测/服务器角色/安全加固关闭/性能调优）按默认启用移除。Windows 11 26H2 (26300) 策略保护的系统组件（DesktopAppInstaller/winget、安全中心 UI）已加入保留集，移除会报 0x80073CFA。注意：打印与 SMB1 默认被移除，如需保留把对应计划改为 enabled:false 即可。用法：--profile profiles/laptop.json（单层，selections 顺序即执行顺序，字母序主体 + 尾部任务清理计划）。",
   "selections": [
     {
       "planId": "appx.alarms",
@@ -53,7 +53,7 @@
     },
     {
       "planId": "appx.desktop-app-installer",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "appx.dev-home",
@@ -145,7 +145,7 @@
     },
     {
       "planId": "appx.security-health-ui",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "appx.solitaire",
