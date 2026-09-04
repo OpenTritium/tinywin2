@@ -2,11 +2,11 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.audio",
-  "version": "3.0.0",
-  "title": "禁用 Windows 音频服务",
-  "description": "禁用 Audiosrv 和 AudioEndpointBuilder；系统音频输出、录音以及依赖音频会话的应用将不可用。",
+  "version": "3.1.0",
+  "title": "Windows 音频服务启动方式",
+  "description": "Audiosrv 与 AudioEndpointBuilder：manual 为 Windows 默认（按需启动，无常驻开销）；disabled 会禁用系统音频输出、录音以及依赖音频会话的应用，Headless 服务器可按需选择 disabled。",
   "category": "Devices",
-  "riskLevel": "High",
+  "riskLevel": "Medium",
   "operations": [
     {
       "resource": "registry.service",
@@ -16,8 +16,36 @@
           "Audiosrv",
           "AudioEndpointBuilder"
         ],
-        "start": "disabled"
+        "start": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "manual": "manual",
+              "disabled": "disabled"
+            }
+          }
+        }
       }
+    }
+  ],
+  "parameters": [
+    {
+      "name": "startMode",
+      "type": "enum",
+      "label": "启动方式",
+      "default": "manual",
+      "options": [
+        {
+          "value": "manual",
+          "label": "手动（Windows 默认）",
+          "riskLevel": "Low"
+        },
+        {
+          "value": "disabled",
+          "label": "禁用（无音频）",
+          "riskLevel": "High"
+        }
+      ]
     }
   ]
 }

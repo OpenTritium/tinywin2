@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "feature.hyper-v",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "title": "移除 Hyper-V 平台与管理工具",
-  "description": "移除 Hyper-V、虚拟机平台及其管理组件；虚拟机、部分容器和 WSL 2 将不可用。",
+  "description": "移除 Hyper-V、虚拟机平台及其管理组件；虚拟机、部分容器和 WSL 2 将不可用。注意 removePayload=false：Hyper-V 管理工具（RSAT-Hyper-V-Tools / Management-Clients / Management-PowerShell）的 payload 在 Server SKU 上不常驻组件存储，removePayload=true 删除后无法从 Windows Update 找回（0x800f0950），重新启用必须依赖安装介质（DISM /Source:wim:...）。保留 payload 仅移除功能本体即可随时恢复。",
   "category": "Virtualization",
   "riskLevel": "High",
   "operations": [
@@ -20,7 +20,7 @@
           "VirtualMachinePlatform",
           "RSAT-Hyper-V-Tools-Feature"
         ],
-        "removePayload": true
+        "removePayload": false
       }
     }
   ]

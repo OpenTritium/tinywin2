@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.bluetooth",
-  "version": "3.0.0",
-  "title": "禁用蓝牙服务",
-  "description": "禁用 Bluetooth Support Service 及蓝牙用户服务；蓝牙键鼠、耳机和其他蓝牙设备将不可用。",
+  "version": "3.1.0",
+  "title": "蓝牙服务启动方式",
+  "description": "bthserv / BluetoothUserService / BTAGService：manual 为 Windows 默认（按需+触发启动，不常驻）。Server 2025 官方支持蓝牙；disabled 会导致蓝牙键鼠、耳机等外设完全不可用。",
   "category": "Devices",
   "riskLevel": "Medium",
   "operations": [
@@ -17,7 +17,7 @@
           "BluetoothUserService",
           "BTAGService"
         ],
-        "start": "disabled"
+        "start": "manual"
       }
     }
   ]

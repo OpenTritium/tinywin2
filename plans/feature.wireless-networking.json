@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "feature.wireless-networking",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "title": "移除无线网络支持",
-  "description": "移除 WLAN 客户端功能；适合只使用有线网络的服务器。",
+  "description": "移除 WLAN 客户端功能，但保留功能 payload（removePayload=false）。Server SKU 无法从 Windows Update 获取无线网络按需功能包，一旦删除 payload，之后重新启用必须依赖安装介质。需要彻底禁止 WLAN 时，请搭配 service.wlan-config 将 Wcmsvc 一并处理。",
   "category": "Networking",
   "riskLevel": "Medium",
   "operations": [
@@ -15,7 +15,7 @@
         "features": [
           "WirelessNetworking"
         ],
-        "removePayload": true
+        "removePayload": false
       }
     }
   ]

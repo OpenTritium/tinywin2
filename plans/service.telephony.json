@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.telephony",
-  "version": "3.0.0",
-  "title": "禁用电话服务",
-  "description": "禁用 Telephony 服务；TAPI 调制解调器和传统电话应用将不可用。",
+  "version": "3.1.0",
+  "title": "电话服务启动方式",
+  "description": "TapiSrv：manual 为 Windows 默认（按需启动）。注意 RasMan 依赖 Telephony，禁用本服务会连带阻止 RasMan 启动，进而阻断开机离线阶段的网络组件注册（见 service.remote-access-connection-manager）。",
   "category": "Legacy",
   "riskLevel": "Low",
   "operations": [
@@ -15,7 +15,7 @@
         "services": [
           "TapiSrv"
         ],
-        "start": "disabled"
+        "start": "manual"
       }
     }
   ]

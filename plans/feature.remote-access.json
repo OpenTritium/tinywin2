@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "feature.remote-access",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "title": "移除 Remote Access 与路由服务",
-  "description": "移除 RRAS、VPN、NAT、网关和远程访问管理工具；本机不能作为 VPN、路由或 NAT 网关。",
+  "description": "移除 RRAS、VPN、NAT、网关和远程访问管理工具；本机不能作为 VPN、路由或 NAT 网关。注意 removePayload=false：RAS WAN 微端口驱动（ndiswan/raspppoe/raspptp 等）属于该功能 payload，删除后蓝牙 PAN、拨号与部分网络组件注册会损坏，且 Server 无法从 Windows Update 找回这些 payload。",
   "category": "Networking",
   "riskLevel": "High",
   "operations": [
@@ -22,7 +22,7 @@
           "Gateway",
           "Gateway-UI"
         ],
-        "removePayload": true
+        "removePayload": false
       }
     }
   ]

@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "maintenance.component-resetbase",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "title": "固化组件存储基线",
-  "description": "执行 StartComponentCleanup 和 ResetBase；适合最终发布镜像，可进一步回收组件存储，但之后不能卸载已集成更新。",
+  "description": "执行 StartComponentCleanup 和 ResetBase；适合最终发布镜像，可进一步回收组件存储，但之后不能卸载已集成更新。警告：请勿与 removePayload=true 的 dism.feature 计划组合使用——ResetBase 会清除被移除功能的残留 payload 与清单，之后这些功能在目标机上永久无法重新启用（Server SKU 也无法从 Windows Update 找回），并可能触发组件存储清单损坏（CBS CorruptManifest / 0x800f0922）。",
   "category": "Servicing",
   "riskLevel": "High",
   "operations": [

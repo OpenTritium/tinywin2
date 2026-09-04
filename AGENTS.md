@@ -29,10 +29,16 @@ tinywin2 preview --input win11.iso --index 1 --workspace ./ws \
   --profile profiles/base-full.json
 tinywin2 build --input win11.iso --index 1 --output out/install.esd --workspace ./ws \
   --format esd --single-layer --profile profiles/base-full.json \
-  --profile profiles/developer-overlay.json
-tinywin2 package iso --input win11.iso --install-image out/install.esd \
+  --profile profiles/default-balanced.json
+tinywin2 package iso --input --install-image out/install.esd \
   --output out/win11-slim.iso --workspace ./pkg --oscdimg "C:/oscdimg/oscdimg.exe"
 ```
+
+`profiles/default-balanced.json` is the recommended default: layered on base-full it keeps
+WLAN, Hyper-V/VirtualMachinePlatform, Remote Access/RAS, Bluetooth/Audio/Location services
+and consumer/legacy drivers intact — only apps and telemetry are removed. Server SKUs cannot
+recover `removePayload: true` feature payloads from Windows Update, so stripping them is
+effectively irreversible on deployed machines. Extreme-slimming users: drop that layer.
 
 Profiles layer in `--profile` order (later overrides earlier): the base
 `profiles/base-full.json` (the whole catalog, every removal enabled except the Client.CBS/SysMain baseline); scenario overlays

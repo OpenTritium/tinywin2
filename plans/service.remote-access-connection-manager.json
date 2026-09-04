@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.remote-access-connection-manager",
-  "version": "3.0.0",
-  "title": "禁用远程访问连接管理器",
-  "description": "禁用 RasMan 和 SSTP 服务；VPN、拨号连接和部分远程访问客户端将不可用。",
+  "version": "3.1.0",
+  "title": "远程访问连接管理器启动方式",
+  "description": "RasMan 与 SSTP 服务：manual 保持 Windows 默认（按需启动）；disabled 将导致开机离线阶段 Network Drivers 安装器（NetSetupAI.dll）RPC 调用失败，任何涉及网络组件注册的 CBS 变更（如重新启用 WLAN）都会在下次启动时整体回滚。建议保持 manual。",
   "category": "Remote Access",
   "riskLevel": "Medium",
   "operations": [
@@ -16,8 +16,36 @@
           "RasMan",
           "SstpSvc"
         ],
-        "start": "disabled"
+        "start": {
+          "$map": {
+            "parameter": "startMode",
+            "cases": {
+              "manual": "manual",
+              "disabled": "disabled"
+            }
+          }
+        }
       }
+    }
+  ],
+  "parameters": [
+    {
+      "name": "startMode",
+      "type": "enum",
+      "label": "启动方式",
+      "default": "manual",
+      "options": [
+        {
+          "value": "manual",
+          "label": "手动（Windows 默认）",
+          "riskLevel": "Low"
+        },
+        {
+          "value": "disabled",
+          "label": "禁用（会阻断 WLAN 等网络组件变更）",
+          "riskLevel": "High"
+        }
+      ]
     }
   ]
 }

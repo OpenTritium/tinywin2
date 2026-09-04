@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.location",
-  "version": "3.0.0",
-  "title": "禁用位置服务",
-  "description": "禁用 Geolocation Service (lfsvc)。依赖设备位置的应用和自动时区功能将不可用。",
+  "version": "3.1.0",
+  "title": "位置服务启动方式",
+  "description": "Geolocation Service (lfsvc)：manual 保持按需启动。注意 Windows 11 24H2 / Server 2025 的 WLAN 查询（netsh wlan、设置页）要求位置服务可用，disabled 会导致 WlanQueryInterface 返回拒绝访问（错误 5），请至少保持 manual。",
   "category": "Background Services",
   "riskLevel": "Low",
   "operations": [
@@ -15,7 +15,7 @@
         "services": [
           "lfsvc"
         ],
-        "start": "disabled"
+        "start": "manual"
       }
     }
   ]

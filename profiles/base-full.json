@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "name": "Full Base",
-  "description": "Full catalog base: every removal plan enabled except the conflict baseline (Client.CBS kept for IME/shell, SysMain kept for memory compression). Scenario profiles layer on top of this one.",
+  "description": "极限精简基线：全部移除计划启用（仅 Client.CBS/SysMain 冲突基线保留）。这是给极限用户的最高压缩档，会移除 WLAN/Hyper-V/RAS/蓝牙/音频等功能性组件且部分不可逆（详见各 plan 说明）。推荐普通场景在本层之上叠加 profiles/default-balanced.json（保留功能性组件，只裁应用与遥测）。Scenario profiles layer on top of this one.",
   "selections": [
     {
       "planId": "appx.alarms",
