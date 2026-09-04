@@ -26,26 +26,29 @@ Typical workflow:
 ```
 tinywin2 inspect --input win11.iso
 tinywin2 preview --input win11.iso --index 1 --workspace ./ws \
-  --profile profiles/base-full.json
+  --profile profiles/laptop.json
 tinywin2 build --input win11.iso --index 1 --output out/install.esd --workspace ./ws \
-  --format esd --single-layer --profile profiles/base-full.json \
-  --profile profiles/default-balanced.json
+  --format esd --single-layer --profile profiles/laptop.json
 tinywin2 package iso --input --install-image out/install.esd \
   --output out/win11-slim.iso --workspace ./pkg --oscdimg "C:/oscdimg/oscdimg.exe"
 ```
 
-`profiles/default-balanced.json` is the recommended default: layered on base-full it keeps
-WLAN, Hyper-V/VirtualMachinePlatform, Remote Access/RAS, Bluetooth/Audio/Location services
-and consumer/legacy drivers intact — only apps and telemetry are removed. Server SKUs cannot
-recover `removePayload: true` feature payloads from Windows Update, so stripping them is
-effectively irreversible on deployed machines. Extreme-slimming users: drop that layer.
+`profiles/laptop.json` is the single shipped profile: every plan in the catalog
+enabled, except a keep-set (`enabled: false`) for laptop-functional components —
+RDP + OpenSSH, SMB sharing core, Hyper-V/VirtualMachinePlatform/WSL/Containers,
+WLAN + RAS chain + Bluetooth (incl. device association) + audio + location +
+biometrics + hotspot + consumer drivers, and usability baselines (Client.CBS
+shell package, SysMain, Notepad, WOW64, DirectX config, display broker). Windows
+Update stays on by default (`registry.update-task-cache` kept) and the power
+scheme stays Balanced. Printing and SMB1 are removed by default — flip the
+corresponding plan to `enabled: false` in the profile to keep them.
 
-Profiles layer in `--profile` order (later overrides earlier): the base
-`profiles/base-full.json` (the whole catalog, every removal enabled except the Client.CBS/SysMain baseline); scenario overlays
-(e.g. `profiles/developer-overlay.json`) carry only their deltas — keeps
-(`enabled: false`) and parameter overrides. A plan disabled by any layer cannot
-be re-enabled by a later one. New plans: add an enabled selection to the base
-profile (one file), put scenario-specific overrides in the overlay.
+A plan disabled by a profile cannot be re-enabled via `--plan`; edit the profile
+selection instead. To build an extreme image (drop all keeps), duplicate the
+profile and delete the `enabled: false` entries. Selection order in the profile
+is execution order: keep the alphabetical main block, and keep the tail task
+cleanups (`registry.update-task-cache`, `fs.sync-center`, `fs.dead-tasks`)
+trailing the `service.*` block.
 
 ## Machine-readable surfaces
 

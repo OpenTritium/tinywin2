@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
-  "name": "Full Base",
-  "description": "极限精简基线：全部移除计划启用（仅 Client.CBS/SysMain 冲突基线保留）。这是给极限用户的最高压缩档，会移除 WLAN/Hyper-V/RAS/蓝牙/音频等功能性组件且部分不可逆（详见各 plan 说明）。推荐普通场景在本层之上叠加 profiles/default-balanced.json（保留功能性组件，只裁应用与遥测）。Scenario profiles layer on top of this one.",
+  "name": "laptop",
+  "description": "单一完整 profile：基于全部计划，仅保留（enabled:false）笔记本镜像的功能性组件 —— RDP（客户端/服务端/调优/残留）与 OpenSSH 客户端+服务端；SMB 文件共享核心（LanmanServer/Workstation/NetBT/NetBIOS，SMB1/NFS/DFS/FSRM 等服务器角色不保留）；Hyper-V、虚拟机平台(WSL2)、WSL、容器；笔记本硬件基础：WLAN、RAS 链（remote-access/RasMan/telephony/RAS 包，WLAN 离线安装器依赖）、蓝牙（含设备关联配对服务）、音频、定位（WLAN 查询依赖）、生物识别、WiFi 热点(ICS)、消费级与遗留驱动；以及基线可用性：Client.CBS Shell 包、SysMain、记事本、WOW64 32 位子系统、DirectX 配置、显示代理服务。Windows Update 保持默认自动（update-task-cache 保留不删任务树）；电源方案保持默认平衡（可后续在电源选项中切换，隐藏项已由 unlock 计划解锁）。其余全部计划（应用/AppX/遥测/服务器角色/安全加固关闭/性能调优）按默认启用移除。注意：打印与 SMB1 默认被移除，如需保留把对应计划改为 enabled:false 即可。用法：--profile profiles/laptop.json（单层，selections 顺序即执行顺序，字母序主体 + 尾部任务清理计划）。",
   "selections": [
     {
       "planId": "appx.alarms",
@@ -205,7 +205,7 @@
     },
     {
       "planId": "capability.directx-config",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "capability.extra-wallpapers",
@@ -237,7 +237,7 @@
     },
     {
       "planId": "capability.notepad",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "capability.onesync",
@@ -245,11 +245,11 @@
     },
     {
       "planId": "capability.openssh-client",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "capability.openssh-server",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "capability.paint",
@@ -301,7 +301,7 @@
     },
     {
       "planId": "driver.non-consumer-extra",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "driver.vendor-raid-controllers",
@@ -325,7 +325,7 @@
     },
     {
       "planId": "feature.containers",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "feature.data-deduplication",
@@ -381,7 +381,7 @@
     },
     {
       "planId": "feature.hyper-v",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "feature.iis",
@@ -433,15 +433,15 @@
     },
     {
       "planId": "feature.rds-management-tools",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "feature.remote-access",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "feature.remote-desktop-client",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "feature.rsat",
@@ -484,6 +484,10 @@
       "enabled": true
     },
     {
+      "planId": "feature.vm-platform",
+      "enabled": false
+    },
+    {
       "planId": "feature.wcf",
       "enabled": true
     },
@@ -497,7 +501,7 @@
     },
     {
       "planId": "feature.wireless-networking",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "feature.workfolders",
@@ -505,11 +509,11 @@
     },
     {
       "planId": "feature.wow64",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "feature.wsl",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "feature.wsus",
@@ -601,7 +605,7 @@
     },
     {
       "planId": "fs.remote-desktop-residuals",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "fs.searchhost",
@@ -645,7 +649,7 @@
     },
     {
       "planId": "package.ras-residuals",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "package.security-residuals",
@@ -653,7 +657,7 @@
     },
     {
       "planId": "registry.active-power-scheme",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "registry.automatic-maintenance",
@@ -661,6 +665,10 @@
     },
     {
       "planId": "registry.bing-search-provider",
+      "enabled": true
+    },
+    {
+      "planId": "registry.control-panel-orphans",
       "enabled": true
     },
     {
@@ -700,12 +708,24 @@
       "enabled": true
     },
     {
+      "planId": "registry.power-settings-unlock-all",
+      "enabled": true
+    },
+    {
       "planId": "registry.prefetch-disabled",
       "enabled": true
     },
     {
       "planId": "registry.privacy-hardening",
       "enabled": true
+    },
+    {
+      "planId": "registry.rdp-tuning",
+      "enabled": false
+    },
+    {
+      "planId": "registry.remote-desktop-enabled",
+      "enabled": false
     },
     {
       "planId": "registry.reserved-storage",
@@ -764,6 +784,10 @@
       "enabled": true
     },
     {
+      "planId": "registry.windows-update-policy",
+      "enabled": true
+    },
+    {
       "planId": "registry.wpbt-disabled",
       "enabled": true
     },
@@ -773,7 +797,7 @@
     },
     {
       "planId": "service.audio",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.background-trim",
@@ -781,11 +805,11 @@
     },
     {
       "planId": "service.biometric",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.bluetooth",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.clip-svc",
@@ -825,7 +849,7 @@
     },
     {
       "planId": "service.device-association",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.device-setup",
@@ -841,7 +865,7 @@
     },
     {
       "planId": "service.display-broker",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.distributed-link-tracking",
@@ -873,7 +897,7 @@
     },
     {
       "planId": "service.internet-connection-sharing",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.inventory",
@@ -901,7 +925,7 @@
     },
     {
       "planId": "service.location",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.maps-broker",
@@ -913,11 +937,11 @@
     },
     {
       "planId": "service.netbios-helper",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.netbt",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.network-discovery",
@@ -969,11 +993,11 @@
     },
     {
       "planId": "service.remote-access-connection-manager",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.remote-desktop-services",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.remote-registry",
@@ -989,7 +1013,7 @@
     },
     {
       "planId": "service.server",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.smart-card",
@@ -1009,7 +1033,7 @@
     },
     {
       "planId": "service.telephony",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.time-sync",
@@ -1072,16 +1096,8 @@
       "enabled": true
     },
     {
-      "planId": "registry.windows-update-policy",
-      "enabled": true
-    },
-    {
-      "planId": "registry.update-task-cache",
-      "enabled": true
-    },
-    {
       "planId": "service.wlan-config",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.wlms",
@@ -1089,7 +1105,7 @@
     },
     {
       "planId": "service.workstation",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.wpad",
@@ -1100,12 +1116,16 @@
       "enabled": true
     },
     {
+      "planId": "fs.dead-tasks",
+      "enabled": true
+    },
+    {
       "planId": "fs.sync-center",
       "enabled": true
     },
     {
-      "planId": "fs.dead-tasks",
-      "enabled": true
+      "planId": "registry.update-task-cache",
+      "enabled": false
     }
   ]
 }
