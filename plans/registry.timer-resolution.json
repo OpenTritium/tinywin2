@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "title": "内核定时器精度策略",
   "description": "Win11/Server 2025 起系统默认忽略进程的 timeBeginPeriod 定时器精度请求（省电优先），音频/游戏/模拟器/低延迟网络服务等需要 0.5ms 定时器的场景会出现计时毛刺。honor 恢复传统行为（尊重进程请求），ignore 维持新默认。物理机上按工作负载选择；虚拟化客机内收益有限。",
-  "category": "Performance",
+  "category": "System",
   "riskLevel": "Low",
   "operations": [
     {

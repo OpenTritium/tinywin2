@@ -5,7 +5,7 @@
   "version": "1.1.0",
   "title": "隐私策略面加固",
   "description": "补齐 WPD/ShutUp10 等隐私工具覆盖的组策略面（全部为 HKLM Policies 键，对镜像内所有用户生效）：关闭反馈通知与定制体验、限制墨迹/文本/联系人采集、禁用错误报告、关闭活动历史记录（时间线）、禁用云优化内容与账户状态内容、禁用设置同步、阻止设备元数据联网获取。v1.1.0 起不再设置 LocationAndSensors\\DisableLocation：Windows 11 24H2 / Server 2025 的 WLAN 查询（netsh wlan、设置页）依赖位置服务，该策略会导致 WLAN 管理接口返回拒绝访问。服务层（DiagTrack/WerSvc/lfsvc 等）由对应 service.* 计划单独覆盖。",
-  "category": "Privacy",
+  "category": "Policies",
   "riskLevel": "Low",
   "operations": [
     {
