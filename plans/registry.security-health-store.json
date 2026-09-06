@@ -1,0 +1,24 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.security-health-store",
+  "version": "1.0.0",
+  "title": "移除 Windows 安全中心 Appx 注册",
+  "description": "删除 Microsoft.SecHealthUI 的 Appx 全用户注册键（Applications/InboxApplications），使开始菜单与设置的入口不再枚举。包载荷的删除与 Deprovisioned 防重装标记由部署流程处理（在线移除受 0x80073CFA 策略限制，本计划在离线镜像上执行不受限）。若与 appx.security-health-ui 同用，本计划排其后。",
+  "category": "Security",
+  "riskLevel": "Medium",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "deleteKeys": [
+          "Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\Applications\\Microsoft.SecHealthUI_1000.26100.1.0_x64__8wekyb3d8bbwe",
+          "Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\InboxApplications\\Microsoft.SecHealthUI_1000.26100.1.0_x64__8wekyb3d8bbwe",
+          "Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\Staged\\Microsoft.SecHealthUI_1000.26100.1.0_x64__8wekyb3d8bbwe"
+        ]
+      }
+    }
+  ]
+}

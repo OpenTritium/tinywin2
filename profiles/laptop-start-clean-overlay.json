@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 3,
+  "name": "laptop-start-clean-overlay",
+  "description": "叠加在 laptop.json 之上的增量 overlay（用于链式构建：以 laptop.json 构建产物为 --input）。内容：1) 移除开始菜单辅助功能文件夹（讲述人/放大镜/屏幕键盘/语音访问/实时字幕快捷方式）；2) 移除 BitLocker 残留工具与外壳入口（控制面板页/驱动器右键动词）；3) 移除 Windows 安全中心 Appx 注册（开始菜单/Settings 入口不再枚举；Deprovisioned 防重装标记由部署流程 reg add 写入）。入门/Windows 备份入口来自 CBS 共享包，无干净移除手段，不做处理。",
+  "selections": [
+    {
+      "planId": "fs.accessibility-start-shortcuts",
+      "enabled": true
+    },
+    {
+      "planId": "fs.bitlocker-tools",
+      "enabled": true
+    },
+    {
+      "planId": "registry.bitlocker-shell",
+      "enabled": true
+    },
+    {
+      "planId": "registry.security-health-store",
+      "enabled": true
+    }
+  ]
+}

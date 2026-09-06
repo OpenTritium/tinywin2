@@ -1,0 +1,37 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.bitlocker-shell",
+  "version": "1.0.0",
+  "title": "移除 BitLocker 外壳入口",
+  "description": "删除驱动器右键的 BitLocker 动词（管理 BitLocker/加密/解锁/恢复/更改 PIN 与密码短语）以及控制面板的 BitLocker 驱动器加密（Secure Startup）命名空间页和对应 CLSID。卷加密引擎 fvevol 为系统组成不予处理；BDESVC 已由 service.security-minimal 禁用。必须排在全部 CBS servicing 事务之后执行（reginf 修复会以 TrustedInstaller-only 安全描述符重建被删键）。",
+  "category": "Security",
+  "riskLevel": "Low",
+  "requires": [
+    "feature.bitlocker",
+    "maintenance.component-resetbase"
+  ],
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "deleteKeys": [
+          "Classes\\Drive\\shell\\change-passphrase",
+          "Classes\\Drive\\shell\\change-pin",
+          "Classes\\Drive\\shell\\encrypt-bde",
+          "Classes\\Drive\\shell\\encrypt-bde-elev",
+          "Classes\\Drive\\shell\\manage-bde",
+          "Classes\\Drive\\shell\\resume-bde",
+          "Classes\\Drive\\shell\\resume-bde-elev",
+          "Classes\\Drive\\shell\\unlock-bde",
+          "Microsoft\\Windows\\CurrentVersion\\Explorer\\ControlPanel\\NameSpace\\{D9EF8727-CAC2-4E60-809E-86F80A666C91}",
+          "WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ControlPanel\\NameSpace\\{D9EF8727-CAC2-4E60-809E-86F80A666C91}",
+          "Classes\\CLSID\\{D9EF8727-CAC2-4E60-809E-86F80A666C91}",
+          "Classes\\WOW6432Node\\CLSID\\{D9EF8727-CAC2-4E60-809E-86F80A666C91}"
+        ]
+      }
+    }
+  ]
+}

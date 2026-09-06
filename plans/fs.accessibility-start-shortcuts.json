@@ -1,0 +1,21 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "fs.accessibility-start-shortcuts",
+  "version": "1.0.0",
+  "title": "移除辅助功能开始菜单快捷方式",
+  "description": "从 Default 用户模板移除开始菜单的辅助功能文件夹（讲述人、放大镜、屏幕键盘、语音访问、实时字幕的快捷方式）。程序本体保留在 System32，键盘快捷键（如 Win+Ctrl+Enter）不受影响；新建用户配置文件不再出现该文件夹。",
+  "category": "Accessibility",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Users\\Default\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Accessibility"
+        ]
+      }
+    }
+  ]
+}

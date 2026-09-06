@@ -1,0 +1,27 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "fs.bitlocker-tools",
+  "version": "1.0.0",
+  "title": "移除 BitLocker 命令行工具残留",
+  "description": "删除 feature.bitlocker 移除管理功能后被 CBS reginf/组件修复重新带回 System32 的 BitLocker 工具可执行文件（manage-bde、repair-bde、bdehdcfg、BitLockerWizardElev）。BDESVC 已禁用，这些工具无服务可交互。必须在全部 CBS servicing 事务之后执行。",
+  "category": "Security",
+  "riskLevel": "Low",
+  "requires": [
+    "feature.bitlocker"
+  ],
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\System32\\manage-bde.exe",
+          "Windows\\System32\\repair-bde.exe",
+          "Windows\\System32\\bdehdcfg.exe",
+          "Windows\\System32\\BitLockerWizardElev.exe"
+        ]
+      }
+    }
+  ]
+}
