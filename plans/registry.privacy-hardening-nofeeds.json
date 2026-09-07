@@ -1,0 +1,239 @@
+{
+    "$schema":  "../schemas/plan-v5.schema.json",
+    "schemaVersion":  5,
+    "id":  "registry.privacy-hardening-nofeeds",
+    "version":  "2.0.1",
+    "title":  "隐私与推广内容关闭（无 Feeds 项）",
+    "description":  "面向隐私与推广内容的集中关闭：策略层强制关闭诊断遥测（AllowTelemetry=0，Server/企业版支持 Security 级别）、广告 ID、反馈通知与定制体验、墨迹/文本采集、错误报告、活动历史记录（时间线）、云优化内容、账户状态内容、设置同步、设备元数据联网获取；关闭 Windows Chat 图标、资讯与兴趣入口并阻止自动安装消费者推荐应用；同时关闭默认用户模板 ContentDeliveryManager 的推荐应用、锁屏轮换、软着陆和 Shell 建议，并清理其 Renderer/订阅缓存。即使 DiagTrack 等服务未来被重新供给，诊断上报仍在策略层保持关闭；服务层（DiagTrack/WerSvc/lfsvc 等）由对应 service.* 计划单独覆盖。v1.1.0 起不再设置 LocationAndSensors\\DisableLocation：Windows 11 24H2 / Server 2025 的 WLAN 查询依赖位置服务，该策略会导致 WLAN 管理接口拒绝访问。v2.0.0 起合并原 telemetry-policy、advertising-id-disabled、consumer-content、default-user-content-delivery(-cache) 计划。 【nofeeds 变体】移除了 Policies\\Microsoft\\Windows\\Windows Feeds\\EnableFeeds 一项：在无 /ResetBase 的层叠构建中，该键的 reg add 在层视图中确定性被拒（exit 1），离线直接写 base hive 则正常；需要关闭资讯兴趣时可在部署后手动设置。",
+    "category":  "Policies",
+    "riskLevel":  "Low",
+    "operations":  [
+                       {
+                           "resource":  "registry.value",
+                           "action":  "apply",
+                           "spec":  {
+                                        "hive":  "software",
+                                        "values":  [
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\DataCollection",
+                                                           "name":  "DoNotShowFeedbackNotifications",
+                                                           "type":  "dword",
+                                                           "data":  1
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\DataCollection",
+                                                           "name":  "AllowTailoredExperiencesWithDiagnosticData",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\InputPersonalization",
+                                                           "name":  "RestrictImplicitInkCollection",
+                                                           "type":  "dword",
+                                                           "data":  1
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\InputPersonalization",
+                                                           "name":  "RestrictImplicitTextCollection",
+                                                           "type":  "dword",
+                                                           "data":  1
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\InputPersonalization",
+                                                           "name":  "HarvestContacts",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\InputPersonalization",
+                                                           "name":  "AllowInputPersonalization",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\Windows Error Reporting",
+                                                           "name":  "Disabled",
+                                                           "type":  "dword",
+                                                           "data":  1
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\System",
+                                                           "name":  "EnableActivityFeed",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\System",
+                                                           "name":  "PublishUserActivities",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\System",
+                                                           "name":  "UploadUserActivities",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\CloudContent",
+                                                           "name":  "DisableCloudOptimizedContent",
+                                                           "type":  "dword",
+                                                           "data":  1
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\CloudContent",
+                                                           "name":  "DisableConsumerAccountStateContent",
+                                                           "type":  "dword",
+                                                           "data":  1
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\SettingSync",
+                                                           "name":  "DisableSettingSync",
+                                                           "type":  "dword",
+                                                           "data":  2
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\SettingSync",
+                                                           "name":  "DisableSettingSyncUserOverride",
+                                                           "type":  "dword",
+                                                           "data":  1
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\DeviceMetadata",
+                                                           "name":  "PreventDeviceMetadataFromNetwork",
+                                                           "type":  "dword",
+                                                           "data":  1
+                                                       }
+                                                   ]
+                                    }
+                       },
+                       {
+                           "resource":  "registry.value",
+                           "action":  "apply",
+                           "spec":  {
+                                        "hive":  "software",
+                                        "values":  [
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\DataCollection",
+                                                           "name":  "AllowTelemetry",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       }
+                                                   ]
+                                    }
+                       },
+                       {
+                           "resource":  "registry.value",
+                           "action":  "apply",
+                           "spec":  {
+                                        "hive":  "software",
+                                        "values":  [
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\AdvertisingInfo",
+                                                           "name":  "Enabled",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       }
+                                                   ]
+                                    }
+                       },
+                       {
+                           "resource":  "registry.value",
+                           "action":  "apply",
+                           "spec":  {
+                                        "hive":  "software",
+                                        "values":  [
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\Windows Chat",
+                                                           "name":  "ChatIcon",
+                                                           "type":  "dword",
+                                                           "data":  3
+                                                       },
+                                                       {
+                                                           "key":  "Policies\\Microsoft\\Windows\\CloudContent",
+                                                           "name":  "DisableWindowsConsumerFeatures",
+                                                           "type":  "dword",
+                                                           "data":  1
+                                                       }
+                                                   ]
+                                    }
+                       },
+                       {
+                           "resource":  "registry.value",
+                           "action":  "apply",
+                           "spec":  {
+                                        "hive":  "default",
+                                        "values":  [
+                                                       {
+                                                           "key":  "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+                                                           "name":  "SilentInstalledAppsEnabled",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       }
+                                                   ]
+                                    }
+                       },
+                       {
+                           "resource":  "registry.value",
+                           "action":  "apply",
+                           "spec":  {
+                                        "hive":  "default-user",
+                                        "values":  [
+                                                       {
+                                                           "key":  "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+                                                           "name":  "OemPreInstalledAppsEnabled",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       },
+                                                       {
+                                                           "key":  "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+                                                           "name":  "PreInstalledAppsEnabled",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       },
+                                                       {
+                                                           "key":  "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+                                                           "name":  "RotatingLockScreenEnabled",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       },
+                                                       {
+                                                           "key":  "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+                                                           "name":  "RotatingLockScreenOverlayEnabled",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       },
+                                                       {
+                                                           "key":  "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+                                                           "name":  "SilentInstalledAppsEnabled",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       },
+                                                       {
+                                                           "key":  "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+                                                           "name":  "SoftLandingEnabled",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       },
+                                                       {
+                                                           "key":  "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+                                                           "name":  "SystemPaneSuggestionsEnabled",
+                                                           "type":  "dword",
+                                                           "data":  0
+                                                       }
+                                                   ]
+                                    }
+                       },
+                       {
+                           "resource":  "registry.value",
+                           "action":  "remove",
+                           "spec":  {
+                                        "hive":  "default-user",
+                                        "deleteKeys":  [
+                                                           "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager\\Renderers",
+                                                           "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager\\Subscriptions"
+                                                       ]
+                                    }
+                       }
+                   ]
+}
