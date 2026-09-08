@@ -545,7 +545,7 @@
                        },
                        {
                            "planId":  "fs.edge-webview-runtime",
-                           "enabled":  false
+                           "enabled":  true
                        },
                        {
                            "planId":  "fs.extra-theme-assets",
@@ -833,7 +833,7 @@
                        },
                        {
                            "planId":  "service.connected-devices-platform",
-                           "enabled":  true
+                           "enabled":  false
                        },
                        {
                            "planId":  "service.data-usage",
@@ -985,7 +985,7 @@
                        },
                        {
                            "planId":  "service.push-notifications",
-                           "enabled":  true
+                           "enabled":  false
                        },
                        {
                            "planId":  "service.push-to-install",
@@ -1041,7 +1041,7 @@
                        },
                        {
                            "planId":  "service.token-broker",
-                           "enabled":  true
+                           "enabled":  false
                        },
                        {
                            "planId":  "service.tzautoupdate",
