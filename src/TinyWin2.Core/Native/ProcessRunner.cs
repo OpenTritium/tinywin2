@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace TinyWin2.Core.Native;
@@ -36,6 +38,22 @@ public interface IProcessRunner {
 public sealed class ProcessRunner : IProcessRunner {
     private static readonly TimeSpan TerminationWait = TimeSpan.FromSeconds(5);
 
+    [DllImport("kernel32.dll")]
+    private static extern int GetACP();
+
+    /// <summary>
+    ///     Encoding matching the system ANSI code page (CP936 on zh-CN hosts).
+    ///     DISM and other native tools write REDIRECTED output in the ANSI code
+    ///     page regardless of the console output CP, so this (not
+    ///     GetConsoleOutputCP) is the only decode that preserves localized strings.
+    /// </summary>
+    internal static readonly Encoding AnsiEncoding = RegisterAnsi();
+
+    private static Encoding RegisterAnsi() {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        return Encoding.GetEncoding(GetACP());
+    }
+
     public async Task<ProcessRunResult> RunAsync(
         string fileName,
         IReadOnlyList<string> arguments,
@@ -58,6 +76,10 @@ public sealed class ProcessRunner : IProcessRunner {
         foreach (var argument in arguments) {
             startInfo.ArgumentList.Add(argument);
         }
+        // Native tools emit output in the system ANSI code page; decode to match
+        // (see AnsiEncoding) or localized strings are destroyed to '?'.
+        startInfo.StandardOutputEncoding = AnsiEncoding;
+        startInfo.StandardErrorEncoding = AnsiEncoding;
 
         var commandLine = BuildCommandLineEcho(fileName, arguments);
         // Assign StartInfo after the using declaration: an exception in an object
