@@ -1,22 +1,22 @@
 {
-  "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 5,
-  "id": "service.microsoft-account-signin",
-  "version": "3.0.0",
-  "title": "禁用 Microsoft Account Sign-in Assistant",
-  "description": "禁用 wlidsvc。离线镜像不使用 Microsoft 账户登录或商店授权时可禁用；本地 Administrator 登录和 Windows 激活核心服务不受影响。",
-  "category": "Policies",
-  "riskLevel": "Low",
-  "operations": [
-    {
-      "resource": "registry.service",
-      "action": "apply",
-      "spec": {
-        "services": [
-          "wlidsvc"
-        ],
-        "start": "disabled"
-      }
-    }
-  ]
+    "$schema":  "../schemas/plan-v5.schema.json",
+    "schemaVersion":  5,
+    "id":  "service.microsoft-account-signin",
+    "version":  "3.0.0",
+    "title":  "禁用 Microsoft Account Sign-in Assistant",
+    "description":  "禁用 wlidsvc。离线镜像不使用 Microsoft 账户登录或商店授权时可禁用；本地 Administrator 登录和 Windows 激活核心服务不受影响。 【2026-09 实测补充】OOBE 期间 msoobe 会显式 StartService(wlidsvc)，禁用时事件日志报 0x80070422；交互式 OOBE 镜像建议保留本服务（laptop-normal 已保留），纯无人值守部署不受影响。",
+    "category":  "Policies",
+    "riskLevel":  "Low",
+    "operations":  [
+                       {
+                           "resource":  "registry.service",
+                           "action":  "apply",
+                           "spec":  {
+                                        "services":  [
+                                                         "wlidsvc"
+                                                     ],
+                                        "start":  "disabled"
+                                    }
+                       }
+                   ]
 }

@@ -1,7 +1,7 @@
 {
     "schemaVersion":  3,
     "name":  "laptop-normal",
-    "description":  "单一完整 profile：与 laptop.json 相同，但为「可正常完成交互式(引导式)安装」做了两处保留：1) service.microsoft-account-signin 改为保留（wlidsvc 被禁会让 msoobe 报 0x80070422 并参与 OOBE 崩溃循环）；2) maintenance.component-resetbase 不执行（/ResetBase 剥离组件存储载荷，是交互式 OOBE 中 WWAHost.exe fast-fail 的头号嫌疑）。其余精简决策与 laptop.json 完全一致。另外保留 fs.recovery-environment（WinRE）：GUI Setup 安装完成阶段会从 install.wim 提取 winre.wim，镜像里没有该文件会报 Windows 11 安装失败（CExtractFilesFromWIM 0x80070003）。适用场景：手动引导式安装（不挂 autounattend.xml）；纯无人值守部署仍可用 laptop.json。",
+    "description":  "单一完整 profile：与 laptop.json 相同，但为「可正常完成交互式(引导式)安装——含原生 OOBE」做了保留。实测确认的根因与保留项：1) service.token-broker / service.connected-devices-platform / service.push-notifications 改为保留——三者被禁时交互式 OOBE 触发 WWAHost.exe fast-fail 并陷入「为什么我的电脑重启了」无限重启循环，改回自动启动立即恢复（2026-09 Hyper-V 实测）；2) service.microsoft-account-signin 保留——msoobe 显式调用 wlidsvc，禁用报 0x80070422；3) maintenance.component-resetbase 不执行——无 ResetBase 的层叠构建中部分注册表写入被拒（Windows Feeds 键），privacy-hardening 使用 nofeeds 变体、registry.control-panel-orphans 跳过；4) fs.recovery-environment 保留（WinRE）——GUI Setup 完成阶段从 install.wim 提取 winre.wim，缺失即报「Windows 11 安装失败」0x80070003。注意：消费版 ESD 介质的镜像可能本身无 Winre.wim，此时需注入同版本 winre.wim。WebView2 运行时照常移除（对照实验证明与 OOBE 崩溃无关）。其余精简决策与 laptop.json 完全一致。适用场景：手动引导式安装（不挂 autounattend.xml）；纯无人值守部署仍可用 laptop.json。",
     "selections":  [
                        {
                            "planId":  "appx.alarms",
@@ -716,7 +716,7 @@
                            "enabled":  true
                        },
                        {
-                           "planId": "registry.privacy-hardening-nofeeds",
+                           "planId":  "registry.privacy-hardening-nofeeds",
                            "enabled":  true
                        },
                        {

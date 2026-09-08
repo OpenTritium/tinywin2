@@ -1,23 +1,23 @@
 {
-  "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 5,
-  "id": "service.push-notifications",
-  "version": "3.0.0",
-  "title": "禁用 Windows 推送通知",
-  "description": "禁用 Windows Push Notifications 系统服务；Toast 通知和部分应用实时提醒将不可用。",
-  "category": "Background Services",
-  "riskLevel": "Medium",
-  "operations": [
-    {
-      "resource": "registry.service",
-      "action": "apply",
-      "spec": {
-        "services": [
-          "WpnService",
-          "WpnUserService"
-        ],
-        "start": "disabled"
-      }
-    }
-  ]
+    "$schema":  "../schemas/plan-v5.schema.json",
+    "schemaVersion":  5,
+    "id":  "service.push-notifications",
+    "version":  "3.0.0",
+    "title":  "禁用 Windows 推送通知",
+    "description":  "禁用 Windows Push Notifications 系统服务；Toast 通知和部分应用实时提醒将不可用。 【2026-09 实测警告】与 service.token-broker 同组实测：禁用状态下交互式 OOBE 触发 WWAHost.exe fast-fail 无限重启循环，三者一同改回自动启动后恢复（未逐一隔离单一元凶）。需要手动引导安装的镜像建议保留；纯无人值守部署不受影响。",
+    "category":  "Background Services",
+    "riskLevel":  "Medium",
+    "operations":  [
+                       {
+                           "resource":  "registry.service",
+                           "action":  "apply",
+                           "spec":  {
+                                        "services":  [
+                                                         "WpnService",
+                                                         "WpnUserService"
+                                                     ],
+                                        "start":  "disabled"
+                                    }
+                       }
+                   ]
 }

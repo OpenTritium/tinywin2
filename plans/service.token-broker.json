@@ -1,22 +1,22 @@
 {
-  "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 5,
-  "id": "service.token-broker",
-  "version": "3.0.0",
-  "title": "禁用 Web 帐户管理器",
-  "description": "禁用 TokenBroker。离线镜像不使用 Microsoft 账户、商店或 Web 账户令牌时可禁用；普通本地账户桌面应用不受影响。",
-  "category": "Policies",
-  "riskLevel": "Low",
-  "operations": [
-    {
-      "resource": "registry.service",
-      "action": "apply",
-      "spec": {
-        "services": [
-          "TokenBroker"
-        ],
-        "start": "disabled"
-      }
-    }
-  ]
+    "$schema":  "../schemas/plan-v5.schema.json",
+    "schemaVersion":  5,
+    "id":  "service.token-broker",
+    "version":  "3.0.0",
+    "title":  "禁用 Web 帐户管理器",
+    "description":  "禁用 TokenBroker。离线镜像不使用 Microsoft 账户、商店或 Web 账户令牌时可禁用；普通本地账户桌面应用不受影响。 【2026-09 实测警告】禁用本服务会导致交互式 OOBE（不挂应答文件的手动安装）在首个人机界面页面触发 WWAHost.exe fast-fail（弹「stack buffer overflow」系统错误），并陷入「为什么我的电脑重启了」无限重启循环；将本服务改回自动启动后立即恢复。原因：OOBE 的 CloudExperienceHost 页面初始化需要相关服务处于运行态，禁用的服务无法按需启动。需要手动引导安装的镜像必须保留本服务；纯无人值守部署（SkipOOBE 跳过 OOBE）不受影响。同组实测：TokenBroker / CDPSvc / WpnService 三者一同改回自动启动后恢复，未逐一隔离单一元凶，交互式镜像建议三个都保留。",
+    "category":  "Policies",
+    "riskLevel":  "Low",
+    "operations":  [
+                       {
+                           "resource":  "registry.service",
+                           "action":  "apply",
+                           "spec":  {
+                                        "services":  [
+                                                         "TokenBroker"
+                                                     ],
+                                        "start":  "disabled"
+                                    }
+                       }
+                   ]
 }

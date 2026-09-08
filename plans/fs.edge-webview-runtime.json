@@ -1,36 +1,36 @@
 {
-  "$schema": "../schemas/plan-v5.schema.json",
-  "schemaVersion": 5,
-  "id": "fs.edge-webview-runtime",
-  "version": "3.1.0",
-  "title": "移除独立 Edge WebView2 运行时",
-  "description": "删除 Program Files 中独立安装的 Edge WebView2 运行时(约释放 796 MB)及其应用与功能卸载项和产品注册残留;保留 Windows OneCore WebView 和 Win32WebViewHost 以维持系统桌面。Office WebView 登录、Office 加载项、Teams 和其他 EdgeWebView2 依赖程序将不可用。",
-  "category": "Browser",
-  "riskLevel": "High",
-  "operations": [
-    {
-      "resource": "fs.path",
-      "action": "remove",
-      "spec": {
-        "paths": [
-          "Program Files (x86)\\Microsoft\\EdgeWebView"
-        ]
-      }
-    },
-    {
-      "resource": "registry.value",
-      "action": "remove",
-      "spec": {
-        "hive": "software",
-        "deleteKeys": [
-          "WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Microsoft EdgeWebView",
-          "Microsoft\\Windows\\CurrentVersion\\Uninstall\\Microsoft EdgeWebView",
-          "WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
-          "WOW6432Node\\Microsoft\\EdgeUpdate\\ClientState\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
-          "Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
-          "Microsoft\\EdgeUpdate\\ClientState\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
-        ]
-      }
-    }
-  ]
+    "$schema":  "../schemas/plan-v5.schema.json",
+    "schemaVersion":  5,
+    "id":  "fs.edge-webview-runtime",
+    "version":  "3.1.0",
+    "title":  "移除独立 Edge WebView2 运行时",
+    "description":  "删除 Program Files 中独立安装的 Edge WebView2 运行时(约释放 796 MB)及其应用与功能卸载项和产品注册残留;保留 Windows OneCore WebView 和 Win32WebViewHost 以维持系统桌面。Office WebView 登录、Office 加载项、Teams 和其他 EdgeWebView2 依赖程序将不可用。 【2026-09 对照实验】保留本运行时并未解决交互式 OOBE 的 WWAHost fast-fail 循环（该崩溃另有元凶：TokenBroker 等服务被禁），本计划可安全用于无人值守镜像；对交互式 OOBE 的影响未观察到。",
+    "category":  "Browser",
+    "riskLevel":  "High",
+    "operations":  [
+                       {
+                           "resource":  "fs.path",
+                           "action":  "remove",
+                           "spec":  {
+                                        "paths":  [
+                                                      "Program Files (x86)\\Microsoft\\EdgeWebView"
+                                                  ]
+                                    }
+                       },
+                       {
+                           "resource":  "registry.value",
+                           "action":  "remove",
+                           "spec":  {
+                                        "hive":  "software",
+                                        "deleteKeys":  [
+                                                           "WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Microsoft EdgeWebView",
+                                                           "Microsoft\\Windows\\CurrentVersion\\Uninstall\\Microsoft EdgeWebView",
+                                                           "WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+                                                           "WOW6432Node\\Microsoft\\EdgeUpdate\\ClientState\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+                                                           "Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+                                                           "Microsoft\\EdgeUpdate\\ClientState\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+                                                       ]
+                                    }
+                       }
+                   ]
 }
