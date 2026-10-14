@@ -1,0 +1,33 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.hibernate-disabled",
+  "version": "1.0.0",
+  "title": "禁用休眠与快速启动",
+  "description": "通过 Power 策略关闭休眠（HibernateEnabled=0）并禁用快速启动（HiberbootEnabled=0），使系统不再创建 hiberfil.sys 休眠文件（约等于物理内存大小的 40%）。虚拟机/无休眠场景可安全使用；后果是系统无法使用休眠与快速启动，只能正常关机/重启。不影响页面文件——虚拟内存保持系统托管。",
+  "category": "System",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\Power",
+            "name": "HibernateEnabled",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet001\\Control\\Power",
+            "name": "HiberbootEnabled",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
+    }
+  ]
+}

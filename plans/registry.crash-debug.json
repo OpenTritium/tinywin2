@@ -1,0 +1,33 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.crash-debug",
+  "version": "1.0.0",
+  "title": "崩溃诊断模式（蓝屏驻留 + 内核转储）",
+  "description": "调试期专用：CrashControl\\AutoReboot=0 使系统在蓝屏画面驻留而非自动重启（可读取终止代码），CrashDumpEnabled=7 开启自动内存转储（离线分析用）。与 registry.crash-dump-disabled 互斥，二者只能启用其一。稳定后应切回 crash-dump-disabled 以省去转储开销。",
+  "category": "System",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\CrashControl",
+            "name": "AutoReboot",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet001\\Control\\CrashControl",
+            "name": "CrashDumpEnabled",
+            "type": "dword",
+            "data": 7
+          }
+        ]
+      }
+    }
+  ]
+}

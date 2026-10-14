@@ -1,0 +1,54 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "fs.kiosk-theme",
+  "version": "1.0.0",
+  "title": "看盘主题：无壁纸纯黑桌面",
+  "description": "安装 kiosk.theme（Aero 视觉风格、无壁纸、纯黑桌面底色）并把默认用户档的 CurrentTheme 指向它。Wallpaper 置空会被 OOBE 后应用的默认主题（bloom 壁纸）覆盖，因此用主题文件从源头禁掉壁纸，同时把桌面底色设为纯黑以省显存/背光。行情软件窗口在这种底色下对比度最好。",
+  "category": "Desktop Experience",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "apply",
+      "spec": {
+        "path": "Windows\\Resources\\Themes\\kiosk.theme",
+        "source": "kiosk.theme"
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "default-user",
+        "values": [
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Themes",
+            "name": "CurrentTheme",
+            "type": "expand",
+            "data": "%SystemRoot%\\Resources\\Themes\\kiosk.theme"
+          },
+          {
+            "key": "Control Panel\\Colors",
+            "name": "Background",
+            "type": "string",
+            "data": "0 0 0"
+          },
+          {
+            "key": "Control Panel\\Desktop",
+            "name": "Wallpaper",
+            "type": "string",
+            "data": ""
+          },
+          {
+            "key": "Control Panel\\Desktop",
+            "name": "WallpaperStyle",
+            "type": "string",
+            "data": "0"
+          }
+        ]
+      }
+    }
+  ],
+  "conflicts": []
+}

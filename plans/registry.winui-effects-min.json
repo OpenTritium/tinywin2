@@ -1,0 +1,84 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.winui-effects-min",
+  "version": "1.0.0",
+  "title": "WinUI 视效最小化（性能优先）",
+  "description": "把默认用户档的视觉外观切换到“调整为最佳性能”：关闭透明（亚克力/云母材质）、窗口最小化/还原动画、任务栏动画、Aero Peek 缩略图、强调色上色，并把默认桌面壁纸清空为纯色；同时以机器策略禁用窗口动画。DWM 与 XAML(WinUI) 外壳本身是 Windows 8+ 窗口系统的强制组件，无法安全整体摘除——本方案关闭的是它们消耗 GPU/CPU 的装饰性效果，预期降低 Desktop Window Manager 与 shell 进程的内存与 GPU 占用。字体平滑(ClearType)保留，保证行情文字可读。仅写入 Default 用户档（对新用户生效），不动外壳组件文件，风险低。",
+  "category": "Desktop Experience",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "default-user",
+        "values": [
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VisualEffects",
+            "name": "VisualFXSetting",
+            "type": "dword",
+            "data": 2
+          },
+          {
+            "key": "Control Panel\\Desktop",
+            "name": "DragFullWindows",
+            "type": "string",
+            "data": "0"
+          },
+          {
+            "key": "Control Panel\\Desktop",
+            "name": "MinAnimate",
+            "type": "string",
+            "data": "0"
+          },
+          {
+            "key": "Control Panel\\Desktop",
+            "name": "Wallpaper",
+            "type": "string",
+            "data": ""
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+            "name": "EnableTransparency",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\DWM",
+            "name": "EnableAeroPeek",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\DWM",
+            "name": "ColorPrevalence",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+            "name": "TaskbarAnimations",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Policies\\Microsoft\\Windows\\DWM",
+            "name": "DisallowAnimations",
+            "type": "dword",
+            "data": 1
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.security-strip",
+  "version": "1.0.0",
+  "title": "容器机安全缓解全拆（ASLR/HVCI/熔断/驱动黑名单）",
+  "description": "运行在容器隔离环境里的看盘专用机：关闭机器级 ASLR（MoveImages=0）、HVCI 内存完整性（DeviceGuard 下 HypervisorEnforcedIntegrityCodeExecution Enabled=0 与 VBS 开关）、漏洞驱动黑名单（CI Config VulnerableDriverBlocklistEnable=0），并按 Remove Mitigations 惯例关闭 Spectre/Meltdown 缓解（FeatureSettings=1/Override=3/Mask=3，老 i5 有可感知收益）。与 registry.exploit-protection-disabled（MitigationOptions 清零）、registry.vbs-disabled（策略层）、registry.uac、registry.smartscreen-disabled 叠加生效。仅限无安全需求的隔离容器使用。",
+  "category": "Security",
+  "riskLevel": "High",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\Session Manager\\Memory Management",
+            "name": "MoveImages",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet001\\Control\\Session Manager\\Memory Management",
+            "name": "FeatureSettings",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "ControlSet001\\Control\\Session Manager\\Memory Management",
+            "name": "FeatureSettingsOverride",
+            "type": "dword",
+            "data": 3
+          },
+          {
+            "key": "ControlSet001\\Control\\Session Manager\\Memory Management",
+            "name": "FeatureSettingsOverrideMask",
+            "type": "dword",
+            "data": 3
+          },
+          {
+            "key": "ControlSet001\\Control\\DeviceGuard",
+            "name": "EnableVirtualizationBasedSecurity",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet001\\Control\\DeviceGuard\\Scenarios\\HypervisorEnforcedIntegrityCodeExecution",
+            "name": "Enabled",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "ControlSet001\\Control\\CI\\Config",
+            "name": "VulnerableDriverBlocklistEnable",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
+    }
+  ]
+}

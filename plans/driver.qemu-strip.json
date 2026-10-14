@@ -1,0 +1,26 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "driver.qemu-strip",
+  "version": "1.0.0",
+  "title": "QEMU 专用驱动清洗（保 Hyper-V/QEMU，除厂商 RAID/NIC/VMware）",
+  "description": "镜像常年只跑在 QEMU/KVM 里：本计划把永远不会挂载硬件的第三方存储/网络驱动按服务禁用（AMD RAID 的 amdsata/amdxata、QLogic 网卡 b06bdrv、VMware 半虚拟化 SCSI pvscsi、NdisCap 抓包过滤）。禁用后这些驱动不再加载，运行时内存/CPU/句柄占用归零；文件载荷保留在 DriverStore 仅占少量磁盘。Hyper-V 全家（vmbus/storvsc/vpci/storflt）与 QEMU 自己用的 atapi/storahci/cdrom 全部保留。boot 型存储驱动（stornvme/storahci 等）一律不碰。",
+  "category": "Drivers",
+  "riskLevel": "Medium",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "apply",
+      "spec": {
+        "services": [
+          "amdsata",
+          "amdxata",
+          "b06bdrv",
+          "pvscsi",
+          "NdisCap"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}

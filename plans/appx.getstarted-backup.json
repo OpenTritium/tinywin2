@@ -1,0 +1,32 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "appx.getstarted-backup",
+  "version": "1.0.0",
+  "title": "移除『入门』与『Windows 备份』应用",
+  "description": "把开始菜单里的『入门』(Microsoft.GetStarted) 和『Windows 备份』(Microsoft.WindowsBackup) 两个 inbox Appx 连同预置包一并移除：看盘 VM 用不上新手引导，也不往微软云备份。只匹配这两个包名，不触碰承载外壳的 Client.CBS SystemApp（其子目录内的 GetStarted.Eligibility.dll 等内部文件保留，不影响任务栏/开始菜单）。配合 registry.windows-backup（策略层已禁用）使用。",
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "appx.provisioned",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.GetStarted*",
+          "Microsoft.WindowsBackup*"
+        ]
+      }
+    },
+    {
+      "resource": "appx.system",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "Microsoft.GetStarted*",
+          "Microsoft.WindowsBackup*"
+        ]
+      }
+    }
+  ]
+}

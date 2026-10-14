@@ -1,0 +1,27 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.crash-dump-disabled",
+  "version": "1.0.0",
+  "title": "禁用崩溃转储",
+  "description": "将 CrashControl\\CrashDumpEnabled 设为 0（无转储），系统发生蓝屏时不再写入 MEMORY.DMP，节省磁盘写入并避免转储文件占用。代价是蓝屏后无法进行转储分析；对无人值守应用容器通常可接受。不影响页面文件——虚拟内存保持系统托管。",
+  "category": "System",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\CrashControl",
+            "name": "CrashDumpEnabled",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
+    }
+  ]
+}

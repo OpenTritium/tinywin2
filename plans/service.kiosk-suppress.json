@@ -1,0 +1,67 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "service.kiosk-suppress",
+  "version": "1.0.0",
+  "title": "看盘专用机后台压制",
+  "description": "面向『只装同花顺看盘』的低内存 VM：禁用 Windows 更新栈(UsoSvc/WaaSMedicSvc)、软件保护(sppsvc 改按需)、Defender 实时防护全家(WinDefend/MDCoreSvc/WdNisSvc/SecurityHealthService)、SysMain 预取、网络数据用量(Ndu)、云文件过滤器(CldFlt)、离线文件(CSC)、LLDP、P2P 鉴权(PEAUTH)、IPT、网络隐私策略、防火墙引擎与策略服务(BFE/mpssvc)，以及容器/开发向过滤驱动(wcifs/CimFS/FileCrypt/luafv/bfs/storqosflt/bindflt)改按需。RDP/SMB/输入法/WMI 全部保留。代价：无防火墙、无杀软实时防护、不联网更新、组件修复需手动起 TrustedInstaller。仅限容器隔离环境。",
+  "category": "Background Services",
+  "riskLevel": "Medium",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "apply",
+      "spec": {
+        "services": [
+          "SysMain",
+          "MDCoreSvc",
+          "WinDefend",
+          "WdNisSvc",
+          "SecurityHealthService",
+          "Ndu",
+          "CldFlt",
+          "CSC",
+          "MsLldp",
+          "PEAUTH",
+          "IPT",
+          "NetworkPrivacyPolicy",
+          "mpssvc",
+          "BFE",
+          "UsoSvc",
+          "WaaSMedicSvc",
+          "ShellHWDetection"
+        ],
+        "start": "disabled"
+      }
+    },
+    {
+      "resource": "registry.service",
+      "action": "apply",
+      "spec": {
+        "services": [
+          "sppsvc",
+          "TrustedInstaller",
+          "AppXSvc",
+          "LanmanServer"
+        ],
+        "start": "manual"
+      }
+    },
+    {
+      "resource": "registry.service",
+      "action": "apply",
+      "spec": {
+        "servicePatterns": [
+          "wcifs",
+          "CimFS",
+          "FileCrypt",
+          "luafv",
+          "bfs",
+          "storqosflt",
+          "bindflt"
+        ],
+        "start": "manual"
+      }
+    }
+  ]
+}

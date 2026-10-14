@@ -1,8 +1,16 @@
 {
   "schemaVersion": 3,
-  "name": "laptop",
-  "description": "单一完整 profile：基于全部计划，仅保留（enabled:false）笔记本镜像的功能性组件 —— RDP（客户端/服务端/调优/残留）与 OpenSSH 客户端+服务端；SMB 文件共享核心（LanmanServer/Workstation/NetBT/NetBIOS，SMB1/NFS/DFS/FSRM 等服务器角色不保留）；Hyper-V、虚拟机平台(WSL2)、WSL、容器；笔记本硬件基础：WLAN、RAS 链（remote-access/RasMan/telephony/RAS 包，WLAN 离线安装器依赖）、蓝牙（含设备关联配对服务）、音频、定位（WLAN 查询依赖）、生物识别、WiFi 热点(ICS)、消费级与遗留驱动；以及基线可用性：Client.CBS Shell 包、SysMain、记事本、WOW64 32 位子系统、DirectX 配置、显示代理服务。Windows Update 保持默认自动（update-task-cache 保留不删任务树）；电源方案保持默认平衡（可后续在电源选项中切换，隐藏项已由 unlock 计划解锁）。其余全部计划（应用/AppX/遥测/服务器角色/安全加固关闭/性能调优）按默认启用移除。Windows 11 26H2 (26300) 策略保护的系统组件（DesktopAppInstaller/winget、安全中心 UI）已加入保留集，移除会报 0x80073CFA。注意：打印与 SMB1 默认被移除，如需保留把对应计划改为 enabled:false 即可。用法：--profile profiles/laptop.json（单层，selections 顺序即执行顺序，字母序主体 + 尾部任务清理计划）。",
+  "name": "vm-init",
+  "description": "VM minimal-keep profile: all plans enabled; keep only RDP chain, OpenSSH client+server, Client.CBS shell, display broker, policy-protected components (DesktopAppInstaller, Security Health UI), default power scheme and Windows Update task cache. Compared to laptop profile, also removes WLAN/RAS/Bluetooth/audio/location/biometrics/hotspot, Hyper-V/VMPlatform/WSL/Containers, SMB core (Server/Workstation/NetBT/NetBIOS), WOW64, Notepad, DirectX config, SysMain, non-consumer drivers.",
   "selections": [
+    {
+      "planId": "driver.qemu-strip",
+      "enabled": true
+    },
+    {
+      "planId": "fs.kiosk-theme",
+      "enabled": true
+    },
     {
       "planId": "appx.alarms",
       "enabled": true
@@ -32,10 +40,6 @@
       "enabled": true
     },
     {
-      "planId": "appx.client-cbs",
-      "enabled": false
-    },
-    {
       "planId": "appx.clipchamp",
       "enabled": true
     },
@@ -52,10 +56,6 @@
       "enabled": true
     },
     {
-      "planId": "appx.desktop-app-installer",
-      "enabled": false
-    },
-    {
       "planId": "appx.dev-home",
       "enabled": true
     },
@@ -65,6 +65,10 @@
     },
     {
       "planId": "appx.family",
+      "enabled": true
+    },
+    {
+      "planId": "appx.getstarted-backup",
       "enabled": true
     },
     {
@@ -144,10 +148,6 @@
       "enabled": true
     },
     {
-      "planId": "appx.security-health-ui",
-      "enabled": false
-    },
-    {
       "planId": "appx.solitaire",
       "enabled": true
     },
@@ -205,7 +205,7 @@
     },
     {
       "planId": "capability.directx-config",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "capability.extra-wallpapers",
@@ -237,19 +237,11 @@
     },
     {
       "planId": "capability.notepad",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "capability.onesync",
       "enabled": true
-    },
-    {
-      "planId": "capability.openssh-client",
-      "enabled": false
-    },
-    {
-      "planId": "capability.openssh-server",
-      "enabled": false
     },
     {
       "planId": "capability.paint",
@@ -301,7 +293,7 @@
     },
     {
       "planId": "driver.non-consumer-extra",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "driver.vendor-raid-controllers",
@@ -325,7 +317,7 @@
     },
     {
       "planId": "feature.containers",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "feature.data-deduplication",
@@ -381,7 +373,7 @@
     },
     {
       "planId": "feature.hyper-v",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "feature.iis",
@@ -432,16 +424,8 @@
       "enabled": true
     },
     {
-      "planId": "feature.rds-management-tools",
-      "enabled": false
-    },
-    {
       "planId": "feature.remote-access",
-      "enabled": false
-    },
-    {
-      "planId": "feature.remote-desktop-client",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "feature.rsat",
@@ -501,7 +485,7 @@
     },
     {
       "planId": "feature.wireless-networking",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "feature.workfolders",
@@ -513,7 +497,7 @@
     },
     {
       "planId": "feature.wsl",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "feature.wsus",
@@ -528,7 +512,15 @@
       "enabled": true
     },
     {
+      "planId": "fs.accessibility-start-shortcuts",
+      "enabled": true
+    },
+    {
       "planId": "fs.bing-search-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "fs.bitlocker-tools",
       "enabled": true
     },
     {
@@ -600,14 +592,6 @@
       "enabled": true
     },
     {
-      "planId": "fs.recovery-environment",
-      "enabled": true
-    },
-    {
-      "planId": "fs.remote-desktop-residuals",
-      "enabled": false
-    },
-    {
       "planId": "fs.searchhost",
       "enabled": true
     },
@@ -649,15 +633,11 @@
     },
     {
       "planId": "package.ras-residuals",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "package.security-residuals",
       "enabled": true
-    },
-    {
-      "planId": "registry.active-power-scheme",
-      "enabled": false
     },
     {
       "planId": "registry.automatic-maintenance",
@@ -668,8 +648,20 @@
       "enabled": true
     },
     {
+      "planId": "registry.bitlocker-shell",
+      "enabled": true
+    },
+    {
       "planId": "registry.control-panel-orphans",
       "enabled": true
+    },
+    {
+      "planId": "registry.crash-dump-disabled",
+      "enabled": true
+    },
+    {
+      "planId": "registry.crash-debug",
+      "enabled": false
     },
     {
       "planId": "registry.edge-background-mode",
@@ -681,6 +673,14 @@
     },
     {
       "planId": "registry.exploit-protection-disabled",
+      "enabled": true
+    },
+    {
+      "planId": "registry.hibernate-disabled",
+      "enabled": true
+    },
+    {
+      "planId": "registry.winui-effects-min",
       "enabled": true
     },
     {
@@ -712,20 +712,16 @@
       "enabled": true
     },
     {
+      "planId": "registry.ppm-tuning",
+      "enabled": true
+    },
+    {
       "planId": "registry.prefetch-disabled",
       "enabled": true
     },
     {
-      "planId": "registry.privacy-hardening",
+      "planId": "registry.privacy-hardening-nofeeds",
       "enabled": true
-    },
-    {
-      "planId": "registry.rdp-tuning",
-      "enabled": false
-    },
-    {
-      "planId": "registry.remote-desktop-enabled",
-      "enabled": false
     },
     {
       "planId": "registry.reserved-storage",
@@ -733,6 +729,14 @@
     },
     {
       "planId": "registry.responsiveness-tuning",
+      "enabled": true
+    },
+    {
+      "planId": "registry.security-health-store",
+      "enabled": true
+    },
+    {
+      "planId": "registry.security-strip",
       "enabled": true
     },
     {
@@ -797,7 +801,7 @@
     },
     {
       "planId": "service.audio",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "service.background-trim",
@@ -805,11 +809,11 @@
     },
     {
       "planId": "service.biometric",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "service.bluetooth",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "service.clip-svc",
@@ -849,7 +853,7 @@
     },
     {
       "planId": "service.device-association",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "service.device-setup",
@@ -862,10 +866,6 @@
     {
       "planId": "service.diagnostic-tracking",
       "enabled": true
-    },
-    {
-      "planId": "service.display-broker",
-      "enabled": false
     },
     {
       "planId": "service.distributed-link-tracking",
@@ -897,7 +897,11 @@
     },
     {
       "planId": "service.internet-connection-sharing",
-      "enabled": false
+      "enabled": true
+    },
+    {
+      "planId": "service.kiosk-suppress",
+      "enabled": true
     },
     {
       "planId": "service.inventory",
@@ -925,7 +929,7 @@
     },
     {
       "planId": "service.location",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "service.maps-broker",
@@ -937,11 +941,11 @@
     },
     {
       "planId": "service.netbios-helper",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "service.netbt",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "service.network-discovery",
@@ -993,11 +997,7 @@
     },
     {
       "planId": "service.remote-access-connection-manager",
-      "enabled": false
-    },
-    {
-      "planId": "service.remote-desktop-services",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "service.remote-registry",
@@ -1013,7 +1013,7 @@
     },
     {
       "planId": "service.server",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "service.smart-card",
@@ -1024,16 +1024,12 @@
       "enabled": true
     },
     {
-      "planId": "service.sysmain",
-      "enabled": false
-    },
-    {
       "planId": "service.tcpipreg",
       "enabled": true
     },
     {
       "planId": "service.telephony",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "service.time-sync",
@@ -1097,7 +1093,7 @@
     },
     {
       "planId": "service.wlan-config",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "service.wlms",
@@ -1105,7 +1101,7 @@
     },
     {
       "planId": "service.workstation",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "service.wpad",
@@ -1124,7 +1120,67 @@
       "enabled": true
     },
     {
+      "planId": "appx.client-cbs",
+      "enabled": false
+    },
+    {
+      "planId": "appx.desktop-app-installer",
+      "enabled": false
+    },
+    {
+      "planId": "appx.security-health-ui",
+      "enabled": true
+    },
+    {
+      "planId": "capability.openssh-client",
+      "enabled": false
+    },
+    {
+      "planId": "capability.openssh-server",
+      "enabled": false
+    },
+    {
+      "planId": "feature.rds-management-tools",
+      "enabled": false
+    },
+    {
+      "planId": "feature.remote-desktop-client",
+      "enabled": false
+    },
+    {
+      "planId": "fs.recovery-environment",
+      "enabled": false
+    },
+    {
+      "planId": "fs.remote-desktop-residuals",
+      "enabled": false
+    },
+    {
+      "planId": "registry.active-power-scheme",
+      "enabled": false
+    },
+    {
+      "planId": "registry.rdp-tuning",
+      "enabled": false
+    },
+    {
+      "planId": "registry.remote-desktop-enabled",
+      "enabled": false
+    },
+    {
       "planId": "registry.update-task-cache",
+      "enabled": false
+    },
+    {
+      "planId": "service.display-broker",
+      "enabled": false
+    },
+    {
+      "planId": "service.remote-desktop-services",
+      "enabled": false
+    },
+    {
+      "planId": "service.sysmain",
       "enabled": false
     }
   ]

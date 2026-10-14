@@ -1,0 +1,189 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.ppm-tuning",
+  "version": "1.0.0",
+  "title": "处理器调度：上限拉满、下限压低",
+  "description": "在默认『平衡』电源方案上把处理器状态上限设为 100%、下限设为 5%（AC/DC 双写，直接写入方案的用户覆盖区）：负载来了立刻拉满频率，闲时降到最低档省电。休眠由 registry.hibernate-disabled 单独关闭（睡眠/待机不受影响）。虚拟机里 KVM 透传主机频率，这套上下限与 QEMU 的 Hyper-V enlightenments 配合无副作用。",
+  "category": "System",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{bc5038f7-23e0-4960-96da-33abaf5935ec}",
+            "name": "ACSettingIndex",
+            "type": "binary",
+            "data": "64000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{bc5038f7-23e0-4960-96da-33abaf5935ec}",
+            "name": "DCSettingIndex",
+            "type": "binary",
+            "data": "64000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{893dee8e-2bef-41e0-89c6-b55d0929964c}",
+            "name": "ACSettingIndex",
+            "type": "binary",
+            "data": "05000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{893dee8e-2bef-41e0-89c6-b55d0929964c}",
+            "name": "DCSettingIndex",
+            "type": "binary",
+            "data": "05000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{be337238-0d82-4146-a960-4f3749d470c7}",
+            "name": "ACSettingIndex",
+            "type": "binary",
+            "data": "00000002"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{be337238-0d82-4146-a960-4f3749d470c7}",
+            "name": "DCSettingIndex",
+            "type": "binary",
+            "data": "00000002"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{465e1f50-b610-473a-ab58-00d1077dc418}",
+            "name": "ACSettingIndex",
+            "type": "binary",
+            "data": "00000002"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{465e1f50-b610-473a-ab58-00d1077dc418}",
+            "name": "DCSettingIndex",
+            "type": "binary",
+            "data": "00000002"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{40fbefc7-2e9d-4a25-a6a9-7a2d86cbcfa4}",
+            "name": "ACSettingIndex",
+            "type": "binary",
+            "data": "00000001"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{40fbefc7-2e9d-4a25-a6a9-7a2d86cbcfa4}",
+            "name": "DCSettingIndex",
+            "type": "binary",
+            "data": "00000001"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{06cadf0e-64ed-448a-8927-ce7bf90eb35d}",
+            "name": "ACSettingIndex",
+            "type": "binary",
+            "data": "0000000a"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{06cadf0e-64ed-448a-8927-ce7bf90eb35d}",
+            "name": "DCSettingIndex",
+            "type": "binary",
+            "data": "0000000a"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{9ac18e92-aa2c-4e25-aa49-0b1436907bf3}",
+            "name": "ACSettingIndex",
+            "type": "binary",
+            "data": "00000019"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{9ac18e92-aa2c-4e25-aa49-0b1436907bf3}",
+            "name": "DCSettingIndex",
+            "type": "binary",
+            "data": "00000019"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{0cc5b647-c1df-4637-891a-dec35c318583}",
+            "name": "ACSettingIndex",
+            "type": "binary",
+            "data": "00000064"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{54533251-82be-4824-96c1-47b60b740d00}\\{0cc5b647-c1df-4637-891a-dec35c318583}",
+            "name": "DCSettingIndex",
+            "type": "binary",
+            "data": "00000064"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{238c9fa8-0aad-41ed-83f4-97be242c8f20}\\{29f6c1db-86da-48c5-9fdb-f2b67b1f44da}",
+            "name": "ACSettingIndex",
+            "type": "binary",
+            "data": "00000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{238c9fa8-0aad-41ed-83f4-97be242c8f20}\\{29f6c1db-86da-48c5-9fdb-f2b67b1f44da}",
+            "name": "DCSettingIndex",
+            "type": "binary",
+            "data": "00000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{238c9fa8-0aad-41ed-83f4-97be242c8f20}\\{9d7815a6-7ee4-497e-8888-515a05f02364}",
+            "name": "ACSettingIndex",
+            "type": "binary",
+            "data": "00000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{238c9fa8-0aad-41ed-83f4-97be242c8f20}\\{9d7815a6-7ee4-497e-8888-515a05f02364}",
+            "name": "DCSettingIndex",
+            "type": "binary",
+            "data": "00000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{238c9fa8-0aad-41ed-83f4-97be242c8f20}\\{7bc4a2f9-d8fc-4469-b07b-33eb785aaca0}",
+            "name": "ACSettingIndex",
+            "type": "binary",
+            "data": "00000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{238c9fa8-0aad-41ed-83f4-97be242c8f20}\\{7bc4a2f9-d8fc-4469-b07b-33eb785aaca0}",
+            "name": "DCSettingIndex",
+            "type": "binary",
+            "data": "00000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{7516b95f-f776-4464-8c53-06167f40cc99}\\{3eaaea56-65dc-4bb6-8913-3a6a5fc083ed}",
+            "name": "ACSettingIndex",
+            "type": "binary",
+            "data": "00000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{7516b95f-f776-4464-8c53-06167f40cc99}\\{3eaaea56-65dc-4bb6-8913-3a6a5fc083ed}",
+            "name": "DCSettingIndex",
+            "type": "binary",
+            "data": "00000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{2a737441-1930-4402-8d77-b2bebba308a3}\\{48e6b7a6-50f5-4782-a5d4-53bb8f07e226}",
+            "name": "ACSettingIndex",
+            "type": "binary",
+            "data": "00000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{2a737441-1930-4402-8d77-b2bebba308a3}\\{48e6b7a6-50f5-4782-a5d4-53bb8f07e226}",
+            "name": "DCSettingIndex",
+            "type": "binary",
+            "data": "00000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{ee12f906-d277-404b-b6da-e5fa1a576df5}\\{dc5a14aa-a1ce-4e26-93b6-6b0fe119e51c}",
+            "name": "ACSettingIndex",
+            "type": "binary",
+            "data": "00000000"
+          },
+          {
+            "key": "ControlSet001\\Control\\Power\\User\\PowerSchemes\\{381b4222-f694-41f0-9685-ff5bb260df2e}\\{ee12f906-d277-404b-b6da-e5fa1a576df5}\\{dc5a14aa-a1ce-4e26-93b6-6b0fe119e51c}",
+            "name": "DCSettingIndex",
+            "type": "binary",
+            "data": "00000000"
+          }
+        ]
+      }
+    }
+  ]
+}
