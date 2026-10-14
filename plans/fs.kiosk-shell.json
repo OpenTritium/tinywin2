@@ -1,0 +1,51 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "fs.kiosk-shell",
+  "version": "1.0.0",
+  "title": "看盘机外壳：用同花顺替代 explorer 作为登录 shell",
+  "description": "把登录外壳从 explorer.exe 换成同花顺：Winlogon\\Shell = cmd.exe /k C:\\Windows\\System32\\kiosk-shell.cmd，并把 THS 路径写进 HKLM\\SOFTWARE\\TinyWin2\\ThsPath（参数 thsPath，默认 C:\\同花顺\\hexin.exe）。kiosk-shell.cmd 常驻：每 20 秒检查 hexin.exe 是否还在跑，掉了自动重开；路径不存在则回退 start explorer.exe，所以没装同花顺也不会黑屏（只多一个 cmd 控制台窗口）。收益（v6 容器实测 idle 工作集）：不再启动 explorer.exe 289 MiB、StartMenuExperienceHost 91、TextInputHost 73、ctfmon 58、ApplicationFrameHost 43、sihost 41、ShellHost 32、CrossDeviceResume 31，合计约 500-650 MiB，即 2 GB 机器的四分之一到三分之一。代价：没有任务栏/开始菜单/桌面图标/托盘图标，RDP 与控制台会话同样直接进同花顺；保留 cmd 控制台作为唯一救援界面，另可从 RDP 里 taskkill cmd 后再手起 explorer。前提：账户已配置自动登录（dockur 的 unattend 已写 AutoAdminLogon=Docker/admin），本计划不动登录凭据。风险：High（行为变更；上线前请确认 thsPath 与掉线重开逻辑）。",
+  "category": "Desktop Experience",
+  "riskLevel": "High",
+  "parameters": [
+    {
+      "name": "thsPath",
+      "type": "string",
+      "label": "同花顺主程序绝对路径（hexin.exe）",
+      "default": "C:\\同花顺\\hexin.exe"
+    }
+  ],
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "apply",
+      "spec": {
+        "path": "Windows\\System32\\kiosk-shell.cmd",
+        "source": "kiosk-shell.cmd"
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Microsoft\\Windows NT\\CurrentVersion\\Winlogon",
+            "name": "Shell",
+            "type": "string",
+            "data": "cmd.exe /k C:\\Windows\\System32\\kiosk-shell.cmd"
+          },
+          {
+            "key": "TinyWin2",
+            "name": "ThsPath",
+            "type": "string",
+            "data": {
+              "$parameter": "thsPath"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

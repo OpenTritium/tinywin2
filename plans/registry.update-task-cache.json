@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "registry.update-task-cache",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "title": "移除 Windows Update 计划任务树",
-  "description": "移除 UpdateOrchestrator 与 WindowsUpdate 计划任务缓存树：镜像不会主动检查或安装更新（彻底关闭自动更新的强手段）。安装功能随选（FoD，如 OpenSSH Server）时服务仍可被 DISM 显式拉起。v1.0.0 起从 service.windows-update 拆分为独立计划，便于按需选择；默认场景建议不启用本计划以保持更新自动流转。",
+  "description": "移除 UpdateOrchestrator、WindowsUpdate 以及整套维护/服务计划任务缓存树（WaaSMedic、InstallService、Servicing、Flighting、SoftwareProtectionPlatform、Maintenance、Defrag）：镜像不会主动检查或安装更新，也不会自动跑维护与碎片整理。安装功能随选（FoD，如 OpenSSH Server）时服务仍可被 DISM 显式拉起。v1.0.0 起从 service.windows-update 拆分为独立计划；v1.1.0 补齐维护向任务树。注意：本计划只删 TaskCache\\Tree 展示树，真正的停止权在 service.kiosk-suppress 把 wuauserv/UsoSvc/WaaSMedicSvc 置为 disabled —— 两者配合使用。",
   "category": "Update Services",
   "riskLevel": "High",
   "operations": [
@@ -15,7 +15,14 @@
         "hive": "software",
         "deleteKeys": [
           "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\UpdateOrchestrator",
-          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\WindowsUpdate"
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\WindowsUpdate",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\WaaSMedic",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\InstallService",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Servicing",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Flighting",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\SoftwareProtectionPlatform",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Maintenance",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Defrag"
         ]
       }
     }

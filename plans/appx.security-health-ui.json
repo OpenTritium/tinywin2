@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "appx.security-health-ui",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "title": "移除 Windows 安全中心界面",
-  "description": "SecHealthUI 是策略保护包，DISM 离线 Remove-ProvisionedAppxPackage 会以 0xC15015610 拒绝。改用微软官方 Deprovisioned 标记：在 AppxAllUserStore\\Deprovisioned 下注册包名后，Windows 视其为已弃预装——新用户档案不再获得该应用，开始菜单入口消失；包文件保留在 WindowsApps（纯磁盘占用，无进程无服务）。安全中心的服务层（SecurityHealthService/wscsvc）与 Defender 由其它计划移除。",
+  "description": "SecHealthUI 是策略保护包，DISM 离线 Remove-ProvisionedAppxPackage 会以 0xC15015610 拒绝。改用微软官方 Deprovisioned 标记：在 AppxAllUserStore\\Deprovisioned 下注册包名后，Windows 视其为已弃预装——新用户档案不再获得该应用，开始菜单入口消失；包文件保留在 WindowsApps（纯磁盘占用，无进程无服务）。安全中心的服务层（SecurityHealthService/wscsvc）与 Defender 由其它计划移除。 另含首个用户首次登录补丁（HKLM RunOnce -> kiosk-firstlogon.cmd）：以当前用户身份写任务栏五项（开始居左/隐藏搜索/任务视图/小组件/Copilot）并移除 SecHealthUI 包本身，然后自删。规避离线直接写 default-user Explorer\\Advanced 的 ACL 拒绝问题。",
   "category": "Security",
   "riskLevel": "High",
   "operations": [
@@ -18,6 +18,29 @@
             "key": "Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\Deprovisioned\\Microsoft.SecHealthUI_8wekyb3d8bbwe",
             "type": "string",
             "data": ""
+          }
+        ]
+      }
+    },
+    {
+      "resource": "fs.path",
+      "action": "apply",
+      "spec": {
+        "path": "Windows\\kiosk-firstlogon.cmd",
+        "source": "kiosk-firstlogon.cmd"
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Microsoft\\Windows\\CurrentVersion\\RunOnce",
+            "name": "KioskFirstLogon",
+            "type": "string",
+            "data": "cmd /c C:\\Windows\\kiosk-firstlogon.cmd"
           }
         ]
       }

@@ -1,0 +1,34 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "appx.ai-residuals",
+  "version": "1.0.0",
+  "title": "移除 AI / 首启引导 / 推广类 SystemApps 残留",
+  "description": "看盘机不跑任何 AI、首启引导或推广外壳：把 SystemApps 里仅剩此类用途的包整体摘掉。实测（v6 容器内按 WOF 展开统计）：Client.CoreAI 22.3 MiB（Copilot 运行时）、AIFabric.CBS 3.9、Client.AIX 1.0、AugLoop.CBS 1.1，加上 XGpuEjectDialog / PinningConfirmationDialog / CapturePicker / AssignedAccessLockApp / AppResolverUX / AddSuggestedFoldersToLibraryDialog / UndockedDevKit / CBSPreview / ECApp / BioEnrollment，合计约 33 MiB，并去掉它们在登录时注册的 COM 与合约激活。刻意保留：CloudExperienceHost（设置/账户 UI）、FilePicker 与 FileExplorer（文件对话框与资源管理器 XAML 岛）、StartMenuExperienceHost、ShellExperienceHost、Client.CBS/Core/Photon、WindowsAppRuntime.CBS*、Microsoft.UI.Xaml.CBS、creddialoghost、AAD.BrokerPlugin、AccountsControl、LockApp —— 删这些会拆掉外壳、设置或登录。风险：Medium（日后要 Copilot/小组件/旁白需重新集成 AppX）。",
+  "category": "Applications",
+  "riskLevel": "Medium",
+  "operations": [
+    {
+      "resource": "appx.system",
+      "action": "remove",
+      "spec": {
+        "patterns": [
+          "MicrosoftWindows.Client.CoreAI*",
+          "Microsoft.AIFabric.CBS*",
+          "MicrosoftWindows.Client.AIX*",
+          "Microsoft.Windows.AugLoop.CBS*",
+          "Microsoft.Windows.XGpuEjectDialog*",
+          "Microsoft.Windows.PinningConfirmationDialog*",
+          "Microsoft.Windows.CapturePicker*",
+          "Microsoft.Windows.AssignedAccessLockApp*",
+          "Microsoft.Windows.AppResolverUX*",
+          "Microsoft.Windows.AddSuggestedFoldersToLibraryDialog*",
+          "MicrosoftWindows.UndockedDevKit*",
+          "Windows.CBSPreview*",
+          "Microsoft.ECApp*",
+          "Microsoft.BioEnrollment*"
+        ]
+      }
+    }
+  ]
+}

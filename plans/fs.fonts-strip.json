@@ -1,0 +1,59 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "fs.fonts-strip",
+  "version": "1.0.0",
+  "title": "按文件裁剪非中文/非 UI 字体载荷",
+  "description": "客户端 SKU 上 feature.extra-fonts 只删 ServerCore 字体功能包，对客户端完全无效（v6 实测 Windows\\Fonts 仍是 209.6 MiB / 334 个文件）。本计划直接按文件删掉看盘机用不到的字族，实测可回收约 134 MiB：Noto Sans/Serif SC 变量字体（30.6）、等线 Deng/Dengb/Dengl（34.5）、SimSun-ExtB 与 SimSun-ExtG（15.7）、楷体 simkai（7.4）、仿宋 simfang（6.6）、StaticCache.dat（8.9，首次启动时自动重建）、Nirmala/SansSerifCollection 南亚合集（5.1）、Cambria/Calibri/Georgia/Verdana/Impact/Comic/Trebuchet/Corbel/Candara/Leelawadee/Sitka/Bahnschrift/Gabriola/Ebrima/Gadugi/Himalaya/Mongolian Baiti/Constantia/Franklin/Phagspa/Tai Le 等拉丁与非中文字族（约 20）。刻意保留：微软雅黑 msyh*（THS 默认 UI 字）、宋体 simsun.ttc、黑体 simhei、Segoe UI 全家与 Segoe UI Symbol/Emoji/Icons/MDL2（系统 UI 与图标字形）、Times/Arial/Tahoma（旧 MFC 程序首选回退）、Courier/Consolas/Lucida Console/Microsoft Sans Serif/Symbol/Webdings/Wingdings/Marlett（窗口控件与终端），以及全部 *.fon 位图字体（控制台与老程序渲染）。同花顺是原生 MFC，只请求 宋体/微软雅黑/Arial，缺字由字体回退补齐。风险：Low。",
+  "category": "Language",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\Fonts\\Noto*.ttf",
+          "Windows\\Fonts\\Deng*.ttf",
+          "Windows\\Fonts\\simsunb.ttf",
+          "Windows\\Fonts\\SimsunExtG.ttf",
+          "Windows\\Fonts\\simkai.ttf",
+          "Windows\\Fonts\\simfang.ttf",
+          "Windows\\Fonts\\StaticCache.dat",
+          "Windows\\Fonts\\Nirmala.ttc",
+          "Windows\\Fonts\\SansSerifCollection.ttf",
+          "Windows\\Fonts\\cambria*",
+          "Windows\\Fonts\\calibri*",
+          "Windows\\Fonts\\Gabriola.ttf",
+          "Windows\\Fonts\\ebrima*.ttf",
+          "Windows\\Fonts\\himalaya.ttf",
+          "Windows\\Fonts\\monbaiti.ttf",
+          "Windows\\Fonts\\constan*.ttf",
+          "Windows\\Fonts\\comic*.ttf",
+          "Windows\\Fonts\\corbel*.ttf",
+          "Windows\\Fonts\\trebuc*.ttf",
+          "Windows\\Fonts\\sylfaen.ttf",
+          "Windows\\Fonts\\pala*.ttf",
+          "Windows\\Fonts\\javatext.ttf",
+          "Windows\\Fonts\\mmrtext*.ttf",
+          "Windows\\Fonts\\SitkaVF*.ttf",
+          "Windows\\Fonts\\bahnschrift.ttf",
+          "Windows\\Fonts\\Inkfree.ttf",
+          "Windows\\Fonts\\Candara*.ttf",
+          "Windows\\Fonts\\Leela*.ttf",
+          "Windows\\Fonts\\seguihis.ttf",
+          "Windows\\Fonts\\georgia*.ttf",
+          "Windows\\Fonts\\verdana*.ttf",
+          "Windows\\Fonts\\gadugi*.ttf",
+          "Windows\\Fonts\\impact.ttf",
+          "Windows\\Fonts\\ariblk.ttf",
+          "Windows\\Fonts\\framd*.ttf",
+          "Windows\\Fonts\\mvboli.ttf",
+          "Windows\\Fonts\\phagspa*.ttf",
+          "Windows\\Fonts\\ntailu*.ttf",
+          "Windows\\Fonts\\taile*.ttf"
+        ]
+      }
+    }
+  ]
+}

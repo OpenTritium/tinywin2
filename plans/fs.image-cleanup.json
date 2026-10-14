@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "fs.image-cleanup",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "title": "清理构建产物与临时文件",
-  "description": "精简镜像内的一次性内容：清空 Windows、默认用户和服务账户的临时目录、Windows Update 下载缓存、Delivery Optimization 缓存及 WER 报告队列（保留目录结构，相关服务重新启用后可重建）；并删除镜像构建、安装、升级和 Sysprep 产生的日志、临时 Panther 内容及崩溃转储。不删除 CBS/Servicing 元数据、不删除 WinRE。v2.0.0 起合并原 fs.image-setup-logs 计划。",
+  "description": "精简镜像内的一次性内容：清空 Windows、默认用户和服务账户的临时目录、Windows Update 下载缓存、Delivery Optimization 缓存及 WER 报告队列（保留目录结构，相关服务重新启用后可重建）；并删除镜像构建、安装、升级和 Sysprep 产生的日志、临时 Panther 内容及崩溃转储。不删除 CBS/Servicing 元数据、不删除 WinRE。v2.0.0 起合并原 fs.image-setup-logs 计划。v3.0.0 起补删容器实测（v6）确认仍占位的安装/更新残留：InboxApps 7.9 MiB、UUS 14.3、WUModels 1.5、Prefetch 20、SystemTemp、SoftwareDistribution 整树 9.1、USOShared/USOPrivate 与 Delivery Optimization 缓存。",
   "category": "Servicing",
   "riskLevel": "Medium",
   "operations": [
@@ -43,6 +43,23 @@
           "Windows\\memory.dmp",
           "Windows\\Minidump\\*",
           "Windows\\LiveKernelReports\\*"
+        ]
+      }
+    },
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\InboxApps\\*",
+          "Windows\\UUS\\*",
+          "Windows\\WUModels\\*",
+          "Windows\\Prefetch\\*",
+          "Windows\\SystemTemp\\*",
+          "Windows\\SoftwareDistribution\\*",
+          "ProgramData\\USOShared\\*",
+          "ProgramData\\USOPrivate\\*",
+          "ProgramData\\Microsoft\\Windows\\DeliveryOptimization\\*"
         ]
       }
     }

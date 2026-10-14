@@ -1,0 +1,26 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "fs.systemresources-strip",
+  "version": "1.0.0",
+  "title": "清理 SystemResources 里的 ML/特效/示例资源载荷",
+  "description": "Windows\\SystemResources 实测 117 MiB 全是 .mun/.pri 资源载荷（按 WOF 压缩流统计），其中与看盘机无关的：三份 DirectML 资源 directml.dll/x64/arm64 .mun 各 7.12 MiB 合计 21.4（DirectML 只服务于 ML/Studio Effects/Copilot）、Studio Effects 提示动画 4 个 gif 约 5.5、HDR/SDR 校准样本 2 个 mkv 3.4、SyncCenter.dll.mun 1.2（同步中心功能已被 fs.sync-center 移除），共约 31 MiB。刻意保留 imageres/shell32/wininet/mmres/netshell/DDORes/explorerframe/accessibilitycpl 等外壳图标与字符串资源，以及 Windows.UI.*.pri（设置/外壳 UI），删这些会掉图标与文案。DirectML 资源缺失只影响该模块的字符串，不影响 DLL 本体（同花顺不使用 DirectML）。风险：Low。",
+  "category": "Desktop Experience",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\SystemResources\\directml.dll.mun",
+          "Windows\\SystemResources\\directml_x64.dll.mun",
+          "Windows\\SystemResources\\directml_arm64.dll.mun",
+          "Windows\\SystemResources\\StudioEffects*",
+          "Windows\\SystemResources\\*Sample.mkv",
+          "Windows\\SystemResources\\SyncCenter.dll.mun"
+        ]
+      }
+    }
+  ]
+}

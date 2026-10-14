@@ -275,3 +275,47 @@ The week-long "slimmed images die at first boot with CONFIG_INITIALIZATION_FAILE
    ControlSet001 vs CurrentControlSet. Bisection took 6 rounds over 272
    selections (B1 pass → B2/B3/B4 fail → B5 pass → B6 fail with the plan
    re-added = verdict, each round ≈ 45 min).
+
+## Field notes: kiosk appliance trimming (2026-10-15, THS-targeted vm-init)
+
+Measured against the *deployed* vm-init build (dockur/windows podman container,
+2 GB / 4 vCPU guest) by mounting `data.img` read-only (qemu-nbd + ntfs-3g) and by
+driving the live guest over Win+R/QEMU-monitor:
+
+- **WOF hides 3x of the disk.** The guest uses 7.5 GiB of a 32 GB sparse data.img,
+  but plain `du` on the ntfs-3g mount reports only ~2.9 GiB: every inbox binary is a
+  WOF/CompactOS reparse point and its bytes live in the `:WofCompressedData` ADS,
+  which `du` never sees. Mount with `streams_interface=windows` and lstat
+  `file:WofCompressedData` (see `tw2-out/wof-size.py`) or every number is wrong.
+- **Idle RAM (1.3 GB / 2 GB) is the Win11 shell.** tasklist working sets: explorer.exe
+  289 MB, StartMenuExperienceHost 91, TextInputHost 73, ctfmon 58, ApplicationFrameHost
+  43, sihost 41, ShellHost 32, CrossDeviceResume 31 → ≈650 MB of the shell stack
+  alone; svchost 1196 (netsvcs: Appinfo/Schedule/Themes/UserManager/Winmgmt/UsoSvc/
+  wuauserv/LanmanServer) adds 298 MB with TiWorker.exe at 95 MB while Windows Update
+  churns. dwm 120 MB and Registry 82 MB are irreducible. => the only big lever is not
+  starting explorer at all (`fs.kiosk-shell`), second is stopping the WU/servicing
+  stack (`service.kiosk-suppress` + `registry.update-task-cache`).
+- **`feature.extra-fonts` is a Server-SKU no-op on client**: it removes
+  `ServerCoreFonts-NonCritical-Fonts-*`, which do not exist on client SKUs, so
+  Windows\Fonts stayed at 209.6 MiB. Client-side font cuts need real `fs.path`
+  removes (`fs.fonts-strip`, ≈134 MiB: Noto SC, Deng/等线, SimSun-ExtB, 楷体/仿宋,
+  StaticCache.dat, …).
+- **Profile selection order is execution order, so a post-servicing suppressor must
+  sit last.** `service.kiosk-suppress` was appended mid-block, and its
+  `LanmanServer`/`UsoSvc`/`TrustedInstaller` writes were overwritten by the later
+  `service.server` / `service.workstation` / `service.update-orchestrator` /
+  `service.windows-update` plans (same for `service.compressed-memory` → SysMain, which
+  the suppressor disables again). It now trails the selection list, and its v1.1.0
+  description says so.
+- `driver.store` removals leave the empty `FileRepository` shell behind ("parent denies
+  directory deletion") — 671 empty dirs in the deployed image, but the payload is gone.
+- **Driving the live guest for measurements**: `podman exec -i windows11 python3 - <
+  guest-drive.py` types into Win+R through `/run/shm/monitor.sock` (`sendkey`), have the
+  command redirect output to `C:\diag1.txt`, then remount the ntfs-3g guest mount to
+  read it (ntfs-3g caches dentries, new files are invisible until remount). The zh-CN
+  IME silently converts injected ASCII into pinyin/Hanzi — press a bare `shift`
+  (`sendkey shift`) to switch to English mode and check the tray shows 英 before typing.
+  A screendump (`screendump /storage/x.ppm`, readable on the host through the volume
+  dir) is the cheapest way to verify guest state; PPM → PNG needs a tiny stdlib
+  converter (`tw2-out/ppm2png.py`).
+

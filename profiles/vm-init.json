@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "name": "vm-init",
-  "description": "VM minimal-keep profile: all plans enabled; keep only RDP chain, OpenSSH client+server, Client.CBS shell, display broker, policy-protected components (DesktopAppInstaller, Security Health UI), default power scheme and Windows Update task cache. Compared to laptop profile, also removes WLAN/RAS/Bluetooth/audio/location/biometrics/hotspot, Hyper-V/VMPlatform/WSL/Containers, SMB core (Server/Workstation/NetBT/NetBIOS), WOW64, Notepad, DirectX config, SysMain, non-consumer drivers.",
+  "description": "VM minimal-keep profile（看盘机：只跑同花顺 PC 客户端；THS 是 32 位程序，必须保留 WOW64）。列表头部是本轮新增的定向裁剪：appx.ai-residuals（AI/首启/推广 SystemApps ≈33 MiB）、fs.fonts-strip（非中文/非 UI 字体 ≈134 MiB）、fs.systemresources-strip（DirectML/Studio Effects/校准样本 ≈31 MiB）、fs.kiosk-shell（用同花顺替代 explorer 当登录外壳，省 ≈500 MiB 内存，默认关闭，需要手工置 true）。保留：RDP 全链、OpenSSH client+server、Client.CBS 外壳、显示代理、WOW64、策略保护组件（DesktopAppInstaller、Security Health UI）、默认电源方案。registry.update-task-cache 本轮已启用（清更新/维护任务树）；service.kiosk-suppress 移到选择列表末尾执行，否则 service.server / service.workstation / service.update-orchestrator / service.windows-update 后写的启动方式会覆盖它的压制。相较 laptop profile 另删：WLAN/RAS/蓝牙/定位/生物识别/热点、Hyper-V/VMPlatform/WSL/Containers、SMB 服务端与客户端、记事本、DirectX 配置、SysMain、非消费级驱动。",
   "selections": [
     {
       "planId": "driver.qemu-strip",
@@ -10,6 +10,22 @@
     {
       "planId": "fs.kiosk-theme",
       "enabled": true
+    },
+    {
+      "planId": "appx.ai-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "fs.fonts-strip",
+      "enabled": true
+    },
+    {
+      "planId": "fs.systemresources-strip",
+      "enabled": true
+    },
+    {
+      "planId": "fs.kiosk-shell",
+      "enabled": false
     },
     {
       "planId": "appx.alarms",
@@ -900,10 +916,6 @@
       "enabled": true
     },
     {
-      "planId": "service.kiosk-suppress",
-      "enabled": true
-    },
-    {
       "planId": "service.inventory",
       "enabled": true
     },
@@ -1169,7 +1181,7 @@
     },
     {
       "planId": "registry.update-task-cache",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "service.display-broker",
@@ -1182,6 +1194,10 @@
     {
       "planId": "service.sysmain",
       "enabled": false
+    },
+    {
+      "planId": "service.kiosk-suppress",
+      "enabled": true
     }
   ]
 }
