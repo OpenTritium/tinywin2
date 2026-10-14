@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.kiosk-suppress",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "title": "看盘专用机后台压制",
-  "description": "面向『只装同花顺看盘』的低内存 VM：禁用 Windows 更新栈(wuauserv/UsoSvc/WaaSMedicSvc)、软件保护(sppsvc 改按需)、Defender 实时防护全家(WinDefend/MDCoreSvc/WdNisSvc/SecurityHealthService)、SysMain 预取、网络数据用量(Ndu)、云文件过滤器(CldFlt)、离线文件(CSC)、LLDP、P2P 鉴权(PEAUTH)、IPT、网络隐私策略、防火墙引擎与策略服务(BFE/mpssvc)、SMB 服务端与客户端(LanmanServer/LanmanWorkstation)、能力访问管理器(camsvc)、定位(lfsvc)、定时器代理(TimeBrokerSvc)、外壳硬件检测(ShellHWDetection)；AppXSvc/ClipSVC/EventSystem/StorSvc 改按需；容器/开发向过滤驱动(wcifs/CimFS/FileCrypt/luafv/bfs/storqosflt/bindflt)与已删功能残留驱动(vwififlt/NetBIOS/Dfsc/EhStorClass/EhStorTcgDrv/bttflt/rdyboost/nvmedisk/storufs/pmem/nvdimm/mmcss/scmbus)一并处理。RDP/输入法/WMI/DNS/DHCP/CryptSvc 保留。代价：无防火墙、无杀软实时防护、不联网更新、无 SMB、组件修复需手动起 TrustedInstaller。仅限容器隔离环境。v1.1.0：大量新增项必须在其他 service.*（尤其 service.server/workstation/update-orchestrator/windows-update）之后执行——profile 里本计划放在选择列表末尾，否则后写的启动方式会覆盖这里的压制。",
+  "description": "面向『只装同花顺看盘』的低内存 VM：禁用 Windows 更新栈(wuauserv/UsoSvc/WaaSMedicSvc)、软件保护(sppsvc 改按需)、Defender 实时防护全家(WinDefend/MDCoreSvc/WdNisSvc/SecurityHealthService)、SysMain 预取、网络数据用量(Ndu)、云文件过滤器(CldFlt)、离线文件(CSC)、LLDP、P2P 鉴权(PEAUTH)、IPT、网络隐私策略、防火墙引擎与策略服务(BFE/mpssvc)、能力访问管理器(camsvc)、定位(lfsvc)、定时器代理(TimeBrokerSvc)、外壳硬件检测(ShellHWDetection)、SSH 服务端(sshd/ssh-agent，本镜像未预装 sshd，写在这里是为了『装上也默认不自启』——需要 SSH 时在客户机内跑 scripts/install-openssh-server.ps1，该脚本会自行设成自动启动)；AppXSvc/ClipSVC/EventSystem/StorSvc 改按需；容器/开发向过滤驱动(wcifs/CimFS/FileCrypt/luafv/bfs/storqosflt/bindflt)与已删功能残留驱动(vwififlt/NetBIOS/Dfsc/EhStorClass/EhStorTcgDrv/bttflt/rdyboost/nvmedisk/storufs/pmem/nvdimm/mmcss/scmbus)一并处理。RDP/输入法/WMI/DNS/DHCP/CryptSvc 保留。SMB 服务端与客户端的默认禁用不在本计划：由 profile 对 service.server / service.workstation 钉 startMode=disabled 决定，改回 delayed 即开放共享。代价：无防火墙、无杀软实时防护、不联网更新、无 SMB、组件修复需手动起 TrustedInstaller。仅限容器隔离环境。v1.1.0：大量新增项必须在其他 service.*（尤其 service.server/workstation/update-orchestrator/windows-update）之后执行——profile 里本计划放在选择列表末尾，否则后写的启动方式会覆盖这里的压制。v1.2.0：SMB 两项移交 profile 参数控制，补 sshd/ssh-agent 默认禁用。",
   "category": "Background Services",
   "riskLevel": "Medium",
   "operations": [
@@ -34,8 +34,8 @@
           "camsvc",
           "lfsvc",
           "TimeBrokerSvc",
-          "LanmanServer",
-          "LanmanWorkstation"
+          "sshd",
+          "ssh-agent"
         ],
         "start": "disabled"
       }

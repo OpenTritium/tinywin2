@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "name": "vm-init",
-  "description": "VM minimal-keep profile（看盘机：只跑同花顺 PC 客户端；THS 是 32 位程序，必须保留 WOW64）。列表头部是本轮新增的定向裁剪：appx.ai-residuals（AI/首启/推广 SystemApps ≈33 MiB）、fs.fonts-strip（非中文/非 UI 字体 ≈134 MiB）、fs.systemresources-strip（DirectML/Studio Effects/校准样本 ≈31 MiB）、fs.kiosk-shell（用同花顺替代 explorer 当登录外壳，省 ≈500 MiB 内存，默认关闭，需要手工置 true）。保留：RDP 全链、OpenSSH client+server、Client.CBS 外壳、显示代理、WOW64、策略保护组件（DesktopAppInstaller、Security Health UI）、默认电源方案。registry.update-task-cache 本轮已启用（清更新/维护任务树）；service.kiosk-suppress 移到选择列表末尾执行，否则 service.server / service.workstation / service.update-orchestrator / service.windows-update 后写的启动方式会覆盖它的压制。相较 laptop profile 另删：WLAN/RAS/蓝牙/定位/生物识别/热点、Hyper-V/VMPlatform/WSL/Containers、SMB 服务端与客户端、记事本、DirectX 配置、SysMain、非消费级驱动。",
+  "description": "VM minimal-keep profile（看盘机：只跑同花顺 PC 客户端；THS 是 32 位程序，必须保留 WOW64）。列表头部是本轮新增的定向裁剪：appx.ai-residuals（AI/首启/推广 SystemApps ≈33 MiB）、fs.fonts-strip（非中文/非 UI 字体 ≈134 MiB）、fs.systemresources-strip（DirectML/Studio Effects/校准样本 ≈31 MiB）、fs.kiosk-shell（用同花顺替代 explorer 当登录外壳，省 ≈500 MiB 内存，默认关闭，需要手工置 true）。保留：RDP 全链、OpenSSH client+server、Client.CBS 外壳、显示代理、WOW64、策略保护组件（DesktopAppInstaller、Security Health UI）、默认电源方案。registry.update-task-cache 本轮已启用（清更新/维护任务树）；service.kiosk-suppress 移到选择列表末尾执行，否则 service.server / service.workstation / service.update-orchestrator / service.windows-update 后写的启动方式会覆盖它的压制。相较 laptop profile 另删：WLAN/RAS/蓝牙/定位/生物识别/热点、Hyper-V/VMPlatform/WSL/Containers、SMB 服务端与客户端、记事本、DirectX 配置、SysMain、非消费级驱动。 远程/共享默认：RDP 全链保留可用（TermService/SessionEnv/UmRdpService 按需触发）；SMB 服务端与客户端默认禁用——本 profile 给 service.server / service.workstation 钉了 startMode=disabled，要开放共享把该值改回 delayed 即可（不需要改计划）；OpenSSH 服务端不预装（镜像里没有 sshd，需要时在客户机内跑 tinywin2/scripts/install-openssh-server.ps1，它会自行装好并置为自动启动），OpenSSH 客户端保留，ssh-agent 与（若存在的）sshd 由 service.kiosk-suppress 保持禁用。",
   "selections": [
     {
       "planId": "driver.qemu-strip",
@@ -1025,7 +1025,10 @@
     },
     {
       "planId": "service.server",
-      "enabled": true
+      "enabled": true,
+      "parameters": {
+        "startMode": "disabled"
+      }
     },
     {
       "planId": "service.smart-card",
@@ -1113,7 +1116,10 @@
     },
     {
       "planId": "service.workstation",
-      "enabled": true
+      "enabled": true,
+      "parameters": {
+        "startMode": "disabled"
+      }
     },
     {
       "planId": "service.wpad",
