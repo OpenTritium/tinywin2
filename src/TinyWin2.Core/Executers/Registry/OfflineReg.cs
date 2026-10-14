@@ -53,11 +53,14 @@ internal static class OfflineReg {
     ///     Writes one value; on access failure rescues the ACL and retries once.
     ///     TrustedInstaller-owned service keys (e.g. DPS) deny Administrators write:
     ///     the rescue claims ownership + FullControl for the group before the retry.
+    ///     An empty <paramref name="valueName" /> writes the default value (/ve).
     /// </summary>
     public static async Task AddValueAsync(
         IProcessRunner runner, string key, string valueName, string regType, string data,
         string aclRescueKey, CancellationToken ct) {
-        var arguments = new[] { "add", key, "/v", valueName, "/t", regType, "/d", data, "/f" };
+        var arguments = string.IsNullOrEmpty(valueName)
+            ? new[] { "add", key, "/ve", "/t", regType, "/d", data, "/f" }
+            : new[] { "add", key, "/v", valueName, "/t", regType, "/d", data, "/f" };
         try {
             await runner.RunAsync("reg.exe", arguments, cancellationToken: ct);
         }

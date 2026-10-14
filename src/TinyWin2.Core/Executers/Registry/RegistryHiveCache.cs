@@ -112,6 +112,7 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
                 lock (_gate) {
                     _loaded.Remove(hive.HiveId);
                 }
+                NormalizeHiveFile(hive.HiveId, log);
             }
             catch (Exception ex) when (ex is ProcessRunnerException or ExecException) {
                 failures ??= [];
@@ -122,6 +123,33 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
         if (failures is not null) {
             throw new AggregateException("one or more offline registry hives could not be unloaded", failures);
         }
+    }
+
+    /// <summary>
+    ///     reg.exe unload can leave the backing hive file a few bytes longer than an aligned
+    ///     4 KiB image; winload/CmInit rejects such files on first boot with bugcheck 0x67
+    ///     (CONFIG_INITIALIZATION_FAILED) while chntpw and offline reg.exe read them fine.
+    ///     Trim any trailing partial-block bytes after every unload.
+    /// </summary>
+    private void NormalizeHiveFile(string hiveId, BuildLog log) {
+        if (!HiveFiles.TryGetValue(hiveId, out var relativePath)) {
+            return;
+        }
+
+        var path = Path.GetFullPath(Path.Combine(MountPath, relativePath));
+        if (!File.Exists(path)) {
+            return;
+        }
+
+        var info = new FileInfo(path);
+        var aligned = info.Length - info.Length % 4096;
+        if (aligned <= 0 || aligned == info.Length) {
+            return;
+        }
+
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
+        fs.SetLength(aligned);
+        log.Info($"trimmed offline hive '{hiveId}' from {info.Length} to {aligned} bytes (reg.exe tail)");
     }
 
     /// <summary>reg.exe unload lags behind handle release: linear-backoff retries, then fail visibly.</summary>

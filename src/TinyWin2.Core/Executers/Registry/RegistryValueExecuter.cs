@@ -56,18 +56,15 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
                 context.Log.Info($"deleted registry value {change.Change.Target}");
             }
             else {
-                var args = new List<string> {
-                    "add",
-                    hive.KeyUnderHive(target.Key),
-                    string.IsNullOrEmpty(target.Name) ? "/ve" : "/v",
+                var keyPath = hive.KeyUnderHive(target.Key);
+                await OfflineReg.AddValueAsync(
+                    runner,
+                    keyPath,
                     target.Name,
-                    "/t",
                     target.RegType,
-                    "/d",
                     RegValues.RenderData(target.RegType, target.Data),
-                    "/f"
-                };
-                await runner.RunAsync("reg.exe", args, cancellationToken: ct);
+                    keyPath,
+                    ct);
                 context.Log.Info($"set registry value {change.Change.Target} = {target.RegType}");
             }
         }

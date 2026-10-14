@@ -184,7 +184,12 @@ public sealed class BuildEngine(
             // Scan the applied (or reused) base health once, before any plan step: CBS repair
             // re-applies component registrations for keys missing at scan time, so a scan that
             // observes post-plan state would resurrect registry keys deleted by cleanup plans.
-            await ScanBaseHealthAsync(stack, options.NoLayers, ct);
+            if (Environment.GetEnvironmentVariable("TINYWIN2_SKIP_CBS_SCAN") == "1") {
+                log.Info("skipping base CBS health scan (TINYWIN2_SKIP_CBS_SCAN=1)");
+            }
+            else {
+                await ScanBaseHealthAsync(stack, options.NoLayers, ct);
+            }
 
             List<StepFailure> failedSteps;
             string? installPath;
