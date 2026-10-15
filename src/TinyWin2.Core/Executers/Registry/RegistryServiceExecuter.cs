@@ -66,7 +66,7 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         CancellationToken ct) {
         var options = (RegistryServiceOptions)operation.Options;
         var hive = await context.Hives.GetAsync("system", context.Log, ct);
-        var controlSet = await ResolveControlSetAsync(hive, ct);
+        var controlSet = ResolveControlSetAsync(hive);
         var servicesRoot = $@"{hive.HiveKey}\{controlSet}\Services";
 
         // Enumerate service key names once; patterns match against them. RegQuery normalizes
@@ -176,16 +176,14 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         string.Equals(data.Replace(" ", "", StringComparison.Ordinal),
             Convert.ToHexString(expected.ToByteArray()), StringComparison.OrdinalIgnoreCase);
 
-    private async Task<string> ResolveControlSetAsync(RegistryHive hive, CancellationToken ct) {
-        var result = await runner.RunAsync("reg.exe", ["query", $"{hive.HiveKey}\\Select", "/v", "Current"],
-            new() { IgnoreExitCode = true }, ct);
-        var match = HexRegex().Match(result.Output);
-        if (!result.Success || !match.Success) {
-            throw new ExecException("could not resolve the active control set from the offline SYSTEM hive.");
-        }
-
-        return $"ControlSet{Convert.ToInt32(match.Groups[1].Value, 16):D3}";
-    }
+    /// <summary>
+    ///     The live control set is resolved once when the SYSTEM hive is loaded
+    ///     (<see cref="RegistryHiveCache" />), so every executer shares one answer and plan paths
+    ///     spelling another set are rewritten onto it by <see cref="RegistryHive.KeyUnderHive" />.
+    /// </summary>
+    private static string ResolveControlSetAsync(RegistryHive hive) =>
+        hive.LiveControlSet
+        ?? throw new ExecException("could not resolve the active control set from the offline SYSTEM hive.");
 
     private async Task<int?> ReadDwordAsync(string keyPath, string valueName, CancellationToken ct) {
         var result = await OfflineReg.QueryAsync(runner, keyPath, ct, "/v", valueName);
@@ -206,9 +204,6 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
         3 => "manual",
         _ => delayed == 1 ? "delayedAuto" : "auto"
     };
-
-    [GeneratedRegex("0x([0-9A-Fa-f]+)")]
-    private static partial Regex HexRegex();
 
     /// <summary>
     ///     One structured difference carrying its own service key and desired start values —

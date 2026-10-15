@@ -17,8 +17,38 @@ public sealed class RegistryHive(
 
     public bool IsLoaded { get; internal set; }
 
+    /// <summary>
+    ///     The control set <c>Select\Current</c> points at, resolved once when the SYSTEM hive is
+    ///     loaded. Plans that spell a control set literally (or write the stale <c>CurrentControlSet</c>
+    ///     stub) are rewritten onto this set: writing a control set the image does not have creates a
+    ///     ghost key that poisons the boot-time control-set read — the 2026-10-14 and 2026-10-15
+    ///     incident class. Null for hives without a <c>Select</c> key, which disables the rewrite.
+    /// </summary>
+    public string? LiveControlSet { get; internal set; }
+
     internal string KeyUnderHive(string keyPath) =>
-        $"{HiveKey}\\{keyPath.Trim('\\')}";
+        $"{HiveKey}\\{RewriteControlSet(keyPath.Trim('\\'))}";
+
+    /// <summary>Rewrites a leading control-set segment onto <see cref="LiveControlSet" /> when one is known.</summary>
+    private string RewriteControlSet(string keyPath) {
+        if (LiveControlSet is null) {
+            return keyPath;
+        }
+
+        var separator = keyPath.IndexOf('\\');
+        var first = separator < 0 ? keyPath : keyPath[..separator];
+        if (!IsControlSetSegment(first)) {
+            return keyPath;
+        }
+
+        return separator < 0 ? LiveControlSet : $"{LiveControlSet}{keyPath[separator..]}";
+    }
+
+    private static bool IsControlSetSegment(string segment) =>
+        segment.Equals("CurrentControlSet", StringComparison.OrdinalIgnoreCase)
+        || (segment.StartsWith("ControlSet", StringComparison.OrdinalIgnoreCase)
+            && segment.Length == "ControlSet000".Length
+            && segment[10..].All(char.IsAsciiDigit));
 
     /// <summary>Display path for change targets and logs: hive id (e.g. software\K\V), not the transient HKLM key.</summary>
     internal string DisplayValuePath(string keyPath, string valueName) =>
@@ -84,6 +114,22 @@ public sealed class RegistryHiveCache(string mountPath, IProcessRunner runner) {
             await Runner.RunAsync("reg.exe", ["load", hiveKey, hiveFilePath], cancellationToken: ct);
             log.Debug($"loaded offline hive '{hiveId}' at {hiveKey}");
             var hive = new RegistryHive(hiveId.ToLowerInvariant(), hiveKey) { IsLoaded = true };
+
+            // Resolve the live control set once, while the hive is loaded: plans that spell a control
+            // set literally (or write the stale CurrentControlSet stub) are rewritten onto it, so no
+            // plan can create the ghost control set that poisons the boot-time read.
+            if (hiveId.Equals("system", StringComparison.OrdinalIgnoreCase)) {
+                var select = await Runner.RunAsync("reg.exe", ["query", $"{hiveKey}\\Select", "/v", "Current"],
+                    new() { IgnoreExitCode = true }, ct);
+                var current = select.Success ? RegValues.ParseQueryValue(select.Output, "Current") : null;
+                if (current is null || !RegValues.TryParseHex(current.Data, out var index)) {
+                    throw new ExecException("could not resolve the active control set from the offline SYSTEM hive.");
+                }
+
+                hive.LiveControlSet = $"ControlSet{index:D3}";
+                log.Debug($"live control set for '{hiveId}': {hive.LiveControlSet}");
+            }
+
             lock (_gate) {
                 _loaded[hiveId] = hive;
             }
@@ -288,7 +334,7 @@ public static partial class RegValues {
         return true;
     }
 
-    private static bool TryParseHex(string value, out ulong number) {
+    internal static bool TryParseHex(string value, out ulong number) {
         var trimmed = value.Trim();
         if (trimmed.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) {
             trimmed = trimmed[2..];
