@@ -329,3 +329,44 @@ driving the live guest over Win+R/QEMU-monitor:
   image Total Bytes, so `vN` vs `vN-1` deltas prove what a trim really removed (v6 →
   v7 = −290 MiB uncompressed).
 
+## ROOT CAUSE #2 (2026-10-15): plan-side driver `Start` edits kill first boot (0x7B)
+
+- **Never edit the `Start` value of a service whose *stock* value is 0 (Boot) or 1
+  (System).** `service.kiosk-suppress` v1.2 set the container/dev filter drivers
+  (`wcifs/CimFS/FileCrypt/luafv/bfs/storqosflt/bindflt`) to manual and 13 more
+  (`vwififlt/NetBIOS/Dfsc/EhStorClass/EhStorTcgDrv/bttflt/rdyboost/nvmedisk/storufs/
+  pmem/nvdimm/mmcss/scmbus`) to disabled. First boot died with
+  `INACCESSIBLE_BOOT_DEVICE (0x7B)` in *both* targets (Hyper-V gen-2 via storvsc and the
+  dockur QEMU guest), while the same v8 WIM with those 49 plan-touched Starts backfilled
+  to stock boots fine (uptime 40 s → 80 s monotonic, heartbeat `OkApplicationsUnknown`,
+  demand ~430–500 MB on a 1 GB static VM — vs 1085→1986 MB for stock).
+  Stock table measured from the source ISO: Start=0 = `nvmedisk storufs bttflt
+  EhStorClass EhStorTcgDrv rdyboost pmem nvdimm scmbus`; Start=1 = `CimFS FileCrypt
+  Dfsc NetBIOS vwififlt`. Disabling a demand driver saves ~0 RAM anyway (it never loads
+  when its hardware is absent), so v1.3.0 deletes the whole driver block and the plan
+  only touches user-mode services.
+- **Image-vs-recipe discriminator (~15 min, do this before bisecting plans):** deploy the
+  *stock* `install.wim` through the exact same VM/script/profile. Stock boots and stays
+  up under 1 GB static (demand peaks ~2 GB, i.e. starved but functional). If your WIM
+  loops on the same recipe, the bug is image-side — no need to question the deployment.
+- **Cheapest boot-fix test is an offline Start-backfill, not a rebuild.** Apply your WIM
+  to the target VHDX, `reg load` BOTH the target SYSTEM hive and a stock one, copy every
+  plan-touched service's stock `Start` into the target, dismount, boot (one 15-min round
+  trip instead of a 45-min rebuild). The verdict is `uptime` monotonicity + heartbeat.
+  Tooling traps: (a) `reg unload` answers "access denied" when the PowerShell registry
+  provider (`Get-ChildItem`/`Get-ItemProperty`) touched the hive in the same process —
+  unload from a *fresh* `pwsh` child process; (b) a status partial result ("0 lines")
+  from `reglookup` is usually "file gone", not "key absent": WSL `/tmp` is wiped on
+  distro restart, so keep probe artifacts on the Windows side and do
+  extract→dump→check inside ONE shell.
+- **Diagnosing the deployed VM:** `Get-VM <name> | Select Uptime,Heartbeat,MemoryDemand` is the
+  whole verdict: `uptime` must grow monotonically across 40 s samples; a guest that
+  resets ~40 s after start and reports `NoContact`/`demandMB=0` never reached the kernel.
+- **dockur (podman) container reinstall semantics:** the container mounts
+  `-v <iso>:/custom.iso` and stores the baseline name+size in
+  `<volume>/windows.base` (`windows.<bytes>.iso`). Replacing the ISO *changes its byte
+  size*, which makes dockur reinstall from scratch — delete `data.img` and recreate the
+  container with the same env (`VERSION=11 RAM_SIZE=2G CPU_CORES=4 DISK_SIZE=32G`).
+  WSL cannot see Windows-mounted ISOs under `/mnt/<letter>`; `dism /Mount-Image` on the
+  host is the reliable way to read a WIM from WSL-hostile paths.
+
