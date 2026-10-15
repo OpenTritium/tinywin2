@@ -901,7 +901,8 @@
           }
         },
         "deleteKeys": {
-          "$ref": "#/$defs/stringArray"
+          "$ref": "#/$defs/stringArray",
+          "description": "Key paths relative to the hive root, removed with their subtrees. Only the final path segment may carry * and ? wildcards; every matching direct child key is removed. An entry that matches nothing is skipped with a warning."
         }
       }
     }

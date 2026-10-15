@@ -114,12 +114,35 @@ public sealed class RegistryValueExecuter(IProcessRunner runner) : IExecuter {
         }
 
         if (operation.Action == OperationAction.Remove) {
-            foreach (var key in options.DeleteKeys) {
-                var result = await OfflineReg.QueryAsync(runner, hive.KeyUnderHive(key), ct);
-                if (result.Success) {
+            foreach (var entry in options.DeleteKeys) {
+                IReadOnlyList<string> keys;
+                if (DeleteKeyExpander.IsPattern(entry)) {
+                    // Only the final segment is a pattern; the literal parent is enumerated once.
+                    // An unreadable parent yields no children, which the warning below reports.
+                    var parentKey = hive.KeyUnderHive(DeleteKeyExpander.ParentKey(entry));
+                    var enumerated = await OfflineReg.QueryAsync(runner, parentKey, ct);
+                    keys = enumerated.Success
+                        ? DeleteKeyExpander.Expand(entry, [.. RegQuery.DirectChildKeys(enumerated.Output, parentKey)])
+                        : [];
+                    if (keys.Count == 0) {
+                        context.Log.Warn(
+                            $"no registry keys matched deleteKeys pattern '{entry}' in {hive.HiveId}; skipping.");
+                    }
+                }
+                else {
+                    var keyPath = entry.Trim('\\');
+                    keys = (await OfflineReg.QueryAsync(runner, hive.KeyUnderHive(keyPath), ct)).Success
+                        ? [keyPath]
+                        : [];
+                    if (keys.Count == 0) {
+                        context.Log.Warn($"registry key '{keyPath}' was not present in {hive.HiveId}; skipping.");
+                    }
+                }
+
+                foreach (var key in keys) {
                     changes.Add(new(
-                        new(ChangeKind.Removed, $"{hive.HiveId}\\{key.Trim('\\')} (key)"),
-                        DeleteKey: key.Trim('\\')));
+                        new(ChangeKind.Removed, $"{hive.HiveId}\\{key} (key)"),
+                        DeleteKey: key));
                 }
             }
         }

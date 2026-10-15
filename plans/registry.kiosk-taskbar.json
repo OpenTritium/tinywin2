@@ -1,0 +1,51 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.kiosk-taskbar",
+  "version": "1.0.0",
+  "title": "看盘机任务栏最小化（离线写默认用户配置）",
+  "description": "把开始居左、隐藏搜索框、隐藏任务视图、隐藏小组件、隐藏 Copilot 五项写进默认用户配置（Users\\Default\\NTUSER.DAT）。这一版是离线写，所以每个新建用户档案天然继承，不依赖首次登录时机：v6 装机后的实测是这五项一个都没有（Docker 档案里只有 Windows 默认的 Search\\SearchboxTaskbarMode=2，Explorer\\Advanced 下连 TaskbarAl/ShowTaskViewButton/TaskbarDa/ShowCopilotButton 都不存在），原因就是旧版只靠”首次登录 RunOnce 跑 kiosk-firstlogon.cmd“，而 v6 的镜像里那份补丁根本没投放（appx.security-health-ui 当时还是 appx.provisioned 版本）。同名的 reg add 仍留在 kiosk-firstlogon.cmd 里作第二道保险（它顺带重启 explorer 让改动立即生效），但生效不再取决于它。引擎对 default-user 的写入在 v7 日志里已成功 29 次（Explorer\\VisualEffects、Control Panel\\Desktop 等），若本计划某次落到 ACL 拒绝，日志会打出对应的告警。",
+  "category": "Desktop Experience",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "default-user",
+        "values": [
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+            "name": "TaskbarAl",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+            "name": "ShowTaskViewButton",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+            "name": "TaskbarDa",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+            "name": "ShowCopilotButton",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Search",
+            "name": "SearchboxTaskbarMode",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
+    }
+  ]
+}

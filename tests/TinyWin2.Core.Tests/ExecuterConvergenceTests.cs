@@ -114,8 +114,17 @@ public sealed class RegistryValueExecuterTests : IDisposable {
 
     public void Dispose() => _harness.Dispose();
 
+    private const string AppxApplications =
+        @"Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Applications";
+
     private static string QueryOutput(string valueName, string type, string data) =>
         $"\r\nHKEY_LOCAL_MACHINE\\TinyWin2_software\\Policies\\Test\r\n    {valueName}    {type}    {data}\r\n";
+
+    /// <summary>Fake reg.exe listing of one hive key and its direct children, in HKEY_LOCAL_MACHINE form.</summary>
+    private static string KeyListing(string keyPath, params string[] childNames) {
+        var key = $@"HKEY_LOCAL_MACHINE\TinyWin2_software\{keyPath}";
+        return $"\r\n{key}\r\n{string.Join("\r\n", childNames.Select(child => $@"{key}\{child}"))}\r\n";
+    }
 
     [Test]
     public async Task InspectReportsCreatedWhenValueMissing() {
@@ -263,6 +272,117 @@ public sealed class RegistryValueExecuterTests : IDisposable {
                         ("name", "EnableSpyware")), CancellationToken.None)
                 .GetAwaiter().GetResult());
         await Assert.That(ex.Message).Contains("code 5");
+    }
+
+    [Test]
+    public async Task AbsentDeleteKeysExpandsWildcardChildKeys() {
+        const string pattern = @"Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Applications\Microsoft.SecHealthUI_*";
+        var first = "Microsoft.SecHealthUI_1000.26100.1.0_x64__8wekyb3d8bbwe";
+        var second = "Microsoft.SecHealthUI_1000.26100.2.0_x64__8wekyb3d8bbwe";
+        var events = new List<BuildEvent>();
+        using var token = _harness.Log.Attach(events.Add);
+        _harness.Runner.Handler = (_, args) => args[0] == "query"
+            ? FakeProcessRunner.Ok(KeyListing(AppxApplications, first, "Contoso.Unrelated_1.0", second))
+            : FakeProcessRunner.Ok();
+        var spec = ExecuterTestHarness.Spec("registry.value", OperationAction.Remove,
+            ("hive", "software"), ("deleteKeys", new JsonArray(pattern)));
+
+        var diff = await _executer.InspectAsync(_harness.NewContext(), spec, CancellationToken.None);
+        await Assert.That(diff.Satisfied).IsFalse();
+        await Assert.That(diff.Differences.Count).IsEqualTo(2);
+        await Assert.That(diff.Differences.All(d => d.Kind == ChangeKind.Removed)).IsTrue();
+        await Assert.That(diff.Differences[0].Target).IsEqualTo($@"software\{AppxApplications}\{first} (key)");
+        await Assert.That(diff.Differences[1].Target).IsEqualTo($@"software\{AppxApplications}\{second} (key)");
+
+        var result = await _executer.ApplyAsync(_harness.NewContext(), spec, CancellationToken.None);
+        await Assert.That(result.IsSkipped).IsFalse();
+        await Assert.That(result.Changes.Count).IsEqualTo(2);
+        var deleted = _harness.Runner.Calls.Where(c => c.Args[0] == "delete").Select(c => c.Args[1]).ToList();
+        await Assert.That(deleted.Contains($@"HKLM\TinyWin2_software\{AppxApplications}\{first}")).IsTrue();
+        await Assert.That(deleted.Contains($@"HKLM\TinyWin2_software\{AppxApplications}\{second}")).IsTrue();
+        // the pattern itself is never handed to reg.exe
+        await Assert.That(deleted.Any(key => key.Contains('*'))).IsFalse();
+        await Assert.That(events.Any(e => e.Level == BuildEventLevel.Warn)).IsFalse();
+    }
+
+    [Test]
+    public async Task AbsentDeleteKeysWarnsWhenNoChildMatchesThePattern() {
+        const string pattern = @"Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Applications\Microsoft.SecHealthUI_*";
+        var events = new List<BuildEvent>();
+        using var token = _harness.Log.Attach(events.Add);
+        _harness.Runner.Handler = (_, args) => args[0] == "query"
+            ? FakeProcessRunner.Ok(KeyListing(AppxApplications, "Contoso.Unrelated_1.0"))
+            : FakeProcessRunner.Ok();
+        var spec = ExecuterTestHarness.Spec("registry.value", OperationAction.Remove,
+            ("hive", "software"), ("deleteKeys", new JsonArray(pattern)));
+
+        var diff = await _executer.InspectAsync(_harness.NewContext(), spec, CancellationToken.None);
+        await Assert.That(diff.Satisfied).IsTrue();
+        await Assert.That(events.Where(e => e.Level == BuildEventLevel.Warn).Select(e => e.Message).ToArray())
+            .IsEquivalentTo([$"no registry keys matched deleteKeys pattern '{pattern}' in software; skipping."]);
+
+        var result = await _executer.ApplyAsync(_harness.NewContext(), spec, CancellationToken.None);
+        await Assert.That(result.IsSkipped).IsTrue();
+        await Assert.That(_harness.Runner.Calls.Any(c => c.Args[0] == "delete")).IsFalse();
+    }
+
+    [Test]
+    public async Task AbsentDeleteKeysTreatsAnUnreadableParentAsNoMatches() {
+        var events = new List<BuildEvent>();
+        using var token = _harness.Log.Attach(events.Add);
+        _harness.Runner.Handler = (_, args) => args[0] == "query"
+            ? FakeProcessRunner.Fail(1, "The system was unable to find the specified registry key or value.")
+            : FakeProcessRunner.Ok();
+        var spec = ExecuterTestHarness.Spec("registry.value", OperationAction.Remove,
+            ("hive", "software"), ("deleteKeys", new JsonArray(@"Missing\Parent\Microsoft.SecHealthUI_*")));
+
+        var diff = await _executer.InspectAsync(_harness.NewContext(), spec, CancellationToken.None);
+        await Assert.That(diff.Satisfied).IsTrue();
+        await Assert.That(events.Count(e => e.Level == BuildEventLevel.Warn)).IsEqualTo(1);
+        await Assert.That(events.Single(e => e.Level == BuildEventLevel.Warn).Message)
+            .IsEqualTo(
+                @"no registry keys matched deleteKeys pattern 'Missing\Parent\Microsoft.SecHealthUI_*' in software; skipping.");
+    }
+
+    [Test]
+    public async Task AbsentDeleteKeysWarnsWhenALiteralKeyIsNotPresent() {
+        var events = new List<BuildEvent>();
+        using var token = _harness.Log.Attach(events.Add);
+        _harness.Runner.Handler = (_, args) => args[0] == "query"
+            ? FakeProcessRunner.Fail(1, "The system was unable to find the specified registry key or value.")
+            : FakeProcessRunner.Ok();
+        var spec = ExecuterTestHarness.Spec("registry.value", OperationAction.Remove,
+            ("hive", "software"), ("deleteKeys", new JsonArray(@"Policies\Gone")));
+
+        var diff = await _executer.InspectAsync(_harness.NewContext(), spec, CancellationToken.None);
+        await Assert.That(diff.Satisfied).IsTrue();
+        await Assert.That(events.Where(e => e.Level == BuildEventLevel.Warn).Select(e => e.Message).ToArray())
+            .IsEquivalentTo([@"registry key 'Policies\Gone' was not present in software; skipping."]);
+
+        var result = await _executer.ApplyAsync(_harness.NewContext(), spec, CancellationToken.None);
+        await Assert.That(result.IsSkipped).IsTrue();
+        await Assert.That(_harness.Runner.Calls.Any(c => c.Args[0] == "delete")).IsFalse();
+    }
+
+    [Test]
+    public async Task AbsentDeleteKeysRemovesAPresentLiteralKey() {
+        _harness.Runner.Handler = (_, args) => args[0] == "query"
+            ? FakeProcessRunner.Ok(KeyListing(@"Policies\Gone"))
+            : FakeProcessRunner.Ok();
+        var spec = ExecuterTestHarness.Spec("registry.value", OperationAction.Remove,
+            ("hive", "software"), ("deleteKeys", new JsonArray(@"Policies\Gone")));
+
+        var diff = await _executer.InspectAsync(_harness.NewContext(), spec, CancellationToken.None);
+        await Assert.That(diff.Satisfied).IsFalse();
+        await Assert.That(diff.Differences.Single().Kind).IsEqualTo(ChangeKind.Removed);
+        await Assert.That(diff.Differences.Single().Target).IsEqualTo(@"software\Policies\Gone (key)");
+
+        var result = await _executer.ApplyAsync(_harness.NewContext(), spec, CancellationToken.None);
+        await Assert.That(result.Changes.Single().Target).IsEqualTo(@"software\Policies\Gone (key)");
+        var deleted = _harness.Runner.Calls.Where(c => c.Args[0] == "delete").ToList();
+        await Assert.That(deleted.Count).IsEqualTo(1);
+        await Assert.That(deleted[0].Args[1]).IsEqualTo(@"HKLM\TinyWin2_software\Policies\Gone");
+        await Assert.That(deleted[0].Args.Contains("/f")).IsTrue();
     }
 }
 

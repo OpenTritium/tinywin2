@@ -1,0 +1,106 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.security-center-panel",
+  "version": "1.0.0",
+  "title": "移除安全中心面板入口与通知",
+  "description": "安全中心面板（设置→隐私和安全性→Windows 安全中心、通知区气泡、经典控制面板的“安全和维护”）在 UI 层的落脚点。操作集取自 ionuttbara/windows-defender-remover 的 Remove_SecurityComp.reg / DisableDefenderandSecurityCenterNotifications.reg / WindowsSettingsPageVisibility.reg / RemoveShellAssociation.reg（2026-08 版，HEAD 6126092），并只保留在 zh-cn 26300 镜像里确实存在的键（逐个用 reglookup 核对过）：{BB64F8A7-BEE7-4E1A-AB8D-7D8273F7FDB6}（ActionCenterCPL 的安全和维护 CPL）、WindowsRuntime\\Server\\WebThreatDefSvc、Svchost 的 WebThreatDefense 组、Windows Security Health 树（先整棵删再用 Platform\\Registered=0 占位，等价于参考实现的删+写顺序）、Policies\\Explorer 的 SettingsPageVisibility=hide:windowsdefender;、PolicyManager 与 Policies 两处的通知/托盘开关、Microsoft\\Security Center 的首次运行与防病毒/防火墙覆盖项。默认用户配置（Users\\Default\\NTUSER.DAT）里既无 Windows Security Health 也无 windowsdefender 的 URL 关联，故不做 default-user 改动，避免凭空造键。不删除 ActionCenterCPL.dll 本体（仅去除注册），也不动 MsSecCore/MsSecFlt/MsSecWfp/Pluton 等 Defender 引擎服务——那是另一件事，见 service.* / registry.security-* 计划。",
+  "category": "Security",
+  "riskLevel": "High",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "deleteKeys": [
+          "Classes\\CLSID\\{BB64F8A7-BEE7-4E1A-AB8D-7D8273F7FDB6}",
+          "Microsoft\\WindowsRuntime\\Server\\WebThreatDefSvc",
+          "Microsoft\\Windows NT\\CurrentVersion\\Svchost\\WebThreatDefense",
+          "Microsoft\\Windows Security Health"
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
+            "name": "SettingsPageVisibility",
+            "type": "string",
+            "data": "hide:windowsdefender;"
+          },
+          {
+            "key": "Microsoft\\Windows Security Health\\Platform",
+            "name": "Registered",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Microsoft\\PolicyManager\\default\\WindowsDefenderSecurityCenter\\DisableEnhancedNotifications",
+            "name": "value",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Microsoft\\PolicyManager\\default\\WindowsDefenderSecurityCenter\\DisableNotifications",
+            "name": "value",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Microsoft\\PolicyManager\\default\\WindowsDefenderSecurityCenter\\HideWindowsSecurityNotificationAreaControl",
+            "name": "value",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Microsoft\\Policies\\Microsoft\\Windows Defender Security Center\\Notifications",
+            "name": "DisableEnhancedNotifications",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Microsoft\\Policies\\Microsoft\\Windows Defender Security Center\\Notifications",
+            "name": "DisableNotifications",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Microsoft\\Policies\\Microsoft\\Windows Defender Security Center\\Systray",
+            "name": "HideSystray",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Microsoft\\Security Center",
+            "name": "FirstRunDisabled",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Microsoft\\Security Center",
+            "name": "AntiVirusOverride",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Microsoft\\Security Center",
+            "name": "FirewallOverride",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Microsoft\\Windows\\CurrentVersion\\Notifications\\Settings\\Windows.SystemToast.SecurityAndMaintenance",
+            "name": "Enabled",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
+    }
+  ]
+}

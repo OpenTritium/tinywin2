@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "appx.security-health-ui",
-  "version": "3.2.0",
+  "version": "4.0.0",
   "title": "移除 Windows 安全中心界面",
-  "description": "SecHealthUI 是策略保护包，DISM 离线 Remove-ProvisionedAppxPackage 会以 0xC15015610 拒绝。改用微软官方 Deprovisioned 标记：在 AppxAllUserStore\\Deprovisioned 下注册包名后，Windows 视其为已弃预装——新用户档案不再获得该应用，开始菜单入口消失；包文件保留在 WindowsApps（纯磁盘占用，无进程无服务）。安全中心的服务层（SecurityHealthService/wscsvc）与 Defender 由其它计划移除。 另含首个用户首次登录补丁（HKLM RunOnce -> kiosk-firstlogon.cmd）：以当前用户身份写任务栏五项（开始居左/隐藏搜索/任务视图/小组件/Copilot）并移除 SecHealthUI 包本身，然后自删。规避离线直接写 default-user Explorer\\Advanced 的 ACL 拒绝问题。",
+  "description": "SecHealthUI 是策略保护包，DISM 离线 Remove-ProvisionedAppxPackage 会以 0xC15015610 拒绝，所以走参考实现（ionuttbara/windows-defender-remover，2026-08 HEAD 6126092）的两段式做法：① 离线写官方标记——AppxAllUserStore\\Deprovisioned\\<包族名> 让新用户档案不再获得该应用，AppxAllUserStore\\EndOfLife\\<SID>\\<包名> 让部署服务认定该包对 S-1-5-18 已终止（Deprovisioned 单用不足以阻止对 Staged 载荷的按需激活，这正是 v7 仍能看到面板的原因）；② 投放两个在线钩子补做需要 AppX/DISM API 的部分：Windows\\Setup\\Scripts\\SetupComplete.cmd（setup 收尾、首次登录前、SYSTEM 身份）跑 set-nonremovableapppolicy + Remove-AppxProvisionedPackage/Remove-AppxPackage -AllUsers，并在成功后自删；HKLM RunOnce -> Windows\\kiosk-firstlogon.cmd（首次登录、当前用户身份）只做用户级移除与任务栏五项（任务栏五项的主路径已改为 registry.kiosk-taskbar 的离线默认用户写入，这里留同样的 reg add 作第二道保险并顺带重启 explorer），因为 RunOnce 不带提权，旧版的 -AllUsers 会因权限被拒而静默失败。包载荷本身由上面两个在线钩子删除（不在离线阶段硬删）；AppxAllUserStore 里的 Applications/InboxApplications/Staged 注册键由 registry.security-health-store 删除，本计划需排在其后。",
   "category": "Security",
   "riskLevel": "High",
   "operations": [
@@ -18,8 +18,31 @@
             "key": "Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\Deprovisioned\\Microsoft.SecHealthUI_8wekyb3d8bbwe",
             "type": "string",
             "data": ""
+          },
+          {
+            "key": "Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\Deprovisioned\\Microsoft.Windows.SecHealthUI_8wekyb3d8bbwe",
+            "type": "string",
+            "data": ""
+          },
+          {
+            "key": "Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\EndOfLife\\S-1-5-18\\Microsoft.SecHealthUI_8wekyb3d8bbwe",
+            "type": "string",
+            "data": ""
+          },
+          {
+            "key": "Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\EndOfLife\\S-1-5-18\\Microsoft.Windows.SecHealthUI_8wekyb3d8bbwe",
+            "type": "string",
+            "data": ""
           }
         ]
+      }
+    },
+    {
+      "resource": "fs.path",
+      "action": "apply",
+      "spec": {
+        "path": "Windows\\Setup\\Scripts\\SetupComplete.cmd",
+        "source": "SetupComplete.cmd"
       }
     },
     {

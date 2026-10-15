@@ -12,6 +12,10 @@
       "enabled": true
     },
     {
+      "planId": "registry.kiosk-taskbar",
+      "enabled": true
+    },
+    {
       "planId": "appx.ai-residuals",
       "enabled": true
     },
@@ -749,6 +753,10 @@
     },
     {
       "planId": "registry.security-health-store",
+      "enabled": true
+    },
+    {
+      "planId": "registry.security-center-panel",
       "enabled": true
     },
     {

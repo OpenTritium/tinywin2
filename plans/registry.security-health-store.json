@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "registry.security-health-store",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "title": "移除 Windows 安全中心 Appx 注册",
-  "description": "删除 Microsoft.SecHealthUI 的 Appx 全用户注册键（Applications/InboxApplications），使开始菜单与设置的入口不再枚举。包载荷的删除与 Deprovisioned 防重装标记由部署流程处理（在线移除受 0x80073CFA 策略限制，本计划在离线镜像上执行不受限）。若与 appx.security-health-ui 同用，本计划排其后。",
+  "description": "删除 Microsoft.SecHealthUI 的 Appx 全用户注册/暂存键（Applications/InboxApplications/Staged），使开始菜单、设置入口与 shell 激活都找不到这个包。v1.1.0 修掉一个静默失效：旧版把包全名写成 1000.26100.1.0，而 zh-cn 26300 镜像里实际是 1000.26100.9457.0，deleteKeys 逐字匹配、缺失即静默跳过（引擎侧已同时补上“未命中告警”），于是这个计划在 v7 里一条都没删——这正是“安全中心面板仍在”的直接原因之一。现在改用末段通配 Microsoft*SecHealthUI_*，一次覆盖 Microsoft.SecHealthUI 与 Microsoft.Windows.SecHealthUI 两个身份且与 ISO 版本解耦。包载荷（Program Files\\WindowsApps\\Microsoft.SecHealthUI_*）不在这里手删：参考实现（ionuttbara/windows-defender-remover）在 12.6.4 之后也放弃了 rmdir，改由 AppX/DISM 在线接口删除，本目录的做法是由 appx.security-health-ui 投放的 Setup\\Scripts\\SetupComplete.cmd（SYSTEM、首次登录前）执行同一套在线移除，避免离线硬删造成 StateRepository 与实际文件不一致。Deprovisioned/EndOfLife 防重装标记由 appx.security-health-ui 负责；本计划若与它同用，排其后。",
   "category": "Security",
   "riskLevel": "Medium",
   "operations": [
@@ -14,9 +14,9 @@
       "spec": {
         "hive": "software",
         "deleteKeys": [
-          "Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\Applications\\Microsoft.SecHealthUI_1000.26100.1.0_x64__8wekyb3d8bbwe",
-          "Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\InboxApplications\\Microsoft.SecHealthUI_1000.26100.1.0_x64__8wekyb3d8bbwe",
-          "Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\Staged\\Microsoft.SecHealthUI_1000.26100.1.0_x64__8wekyb3d8bbwe"
+          "Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\Applications\\Microsoft*SecHealthUI_*",
+          "Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\InboxApplications\\Microsoft*SecHealthUI_*",
+          "Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\Staged\\Microsoft*SecHealthUI_*"
         ]
       }
     }
