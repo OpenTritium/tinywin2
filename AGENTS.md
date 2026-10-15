@@ -318,4 +318,14 @@ driving the live guest over Win+R/QEMU-monitor:
   A screendump (`screendump /storage/x.ppm`, readable on the host through the volume
   dir) is the cheapest way to verify guest state; PPM → PNG needs a tiny stdlib
   converter (`tw2-out/ppm2png.py`).
+- **`fs.path` patterns must be built from full relative paths, never basenames.** v1.0.0
+  of `fs.systemresources-strip` asked for `SystemResources\StudioEffects*` and
+  `*Sample.mkv` and matched *nothing*: those files live under
+  `Windows.UI.ControlCenter\Assets\Images\` and
+  `Windows.UI.SettingsAppThreshold\SystemSettings\Assets\`. The ad-hoc WOF inventory
+  scripts printed basenames only, which hid the real paths. Verify a path plan actually
+  hit its targets from the build log (`removing image path: …` lines, one per target) or
+  `wimlib-imagex dir install-vN.wim 1 --path=<dir>`; `wimlib-imagex info` also reports the
+  image Total Bytes, so `vN` vs `vN-1` deltas prove what a trim really removed (v6 →
+  v7 = −290 MiB uncompressed).
 
