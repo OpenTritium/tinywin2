@@ -21,7 +21,7 @@
             "data": 1
           },
           {
-            "key": "ControlSet002\\Control\\FileSystem",
+            "key": "ControlSet001\\Control\\FileSystem",
             "name": "NtfsDisable8dot3NameCreation",
             "type": "dword",
             "data": 1

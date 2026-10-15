@@ -21,7 +21,7 @@
             "data": 0
           },
           {
-            "key": "ControlSet002\\Control\\Terminal Server",
+            "key": "ControlSet001\\Control\\Terminal Server",
             "name": "fDenyTSConnections",
             "type": "dword",
             "data": 0

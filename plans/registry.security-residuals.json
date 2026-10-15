@@ -25,17 +25,17 @@
           "ControlSet001\\Services\\webthreatdefsvc",
           "ControlSet001\\Services\\webthreatdefusersvc",
           "ControlSet001\\Services\\wtd",
-          "ControlSet002\\Services\\WinDefend",
-          "ControlSet002\\Services\\Sense",
-          "ControlSet002\\Services\\WdBoot",
-          "ControlSet002\\Services\\WdFilter",
-          "ControlSet002\\Services\\WdNisSvc",
-          "ControlSet002\\Services\\WdNisDrv",
-          "ControlSet002\\Services\\SecurityHealthService",
-          "ControlSet002\\Services\\wscsvc",
-          "ControlSet002\\Services\\webthreatdefsvc",
-          "ControlSet002\\Services\\webthreatdefusersvc",
-          "ControlSet002\\Services\\wtd"
+          "ControlSet001\\Services\\WinDefend",
+          "ControlSet001\\Services\\Sense",
+          "ControlSet001\\Services\\WdBoot",
+          "ControlSet001\\Services\\WdFilter",
+          "ControlSet001\\Services\\WdNisSvc",
+          "ControlSet001\\Services\\WdNisDrv",
+          "ControlSet001\\Services\\SecurityHealthService",
+          "ControlSet001\\Services\\wscsvc",
+          "ControlSet001\\Services\\webthreatdefsvc",
+          "ControlSet001\\Services\\webthreatdefusersvc",
+          "ControlSet001\\Services\\wtd"
         ]
       }
     },

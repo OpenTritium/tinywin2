@@ -27,13 +27,13 @@
             "data": 10
           },
           {
-            "key": "ControlSet002\\Control\\Multimedia\\SystemProfile",
+            "key": "ControlSet001\\Control\\Multimedia\\SystemProfile",
             "name": "NetworkThrottlingIndex",
             "type": "dword",
             "data": 4294967295
           },
           {
-            "key": "ControlSet002\\Control\\Multimedia\\SystemProfile",
+            "key": "ControlSet001\\Control\\Multimedia\\SystemProfile",
             "name": "SystemResponsiveness",
             "type": "dword",
             "data": 10
@@ -62,7 +62,7 @@
             }
           },
           {
-            "key": "ControlSet002\\Control\\Session Manager\\kernel",
+            "key": "ControlSet001\\Control\\Session Manager\\kernel",
             "name": "GlobalTimerResolutionRequests",
             "type": "dword",
             "data": {
@@ -91,7 +91,7 @@
             "data": 38
           },
           {
-            "key": "ControlSet002\\Control\\PriorityControl",
+            "key": "ControlSet001\\Control\\PriorityControl",
             "name": "Win32PrioritySeparation",
             "type": "dword",
             "data": 38
@@ -112,7 +112,7 @@
             "data": "2000"
           },
           {
-            "key": "ControlSet002\\Control",
+            "key": "ControlSet001\\Control",
             "name": "WaitToKillServiceTimeout",
             "type": "string",
             "data": "2000"

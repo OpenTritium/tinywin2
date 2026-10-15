@@ -21,7 +21,7 @@
             "data": 0
           },
           {
-            "key": "ControlSet002\\Control\\Session Manager\\Memory Management\\PrefetchParameters",
+            "key": "ControlSet001\\Control\\Session Manager\\Memory Management\\PrefetchParameters",
             "name": "EnablePrefetcher",
             "type": "dword",
             "data": 0

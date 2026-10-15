@@ -30,7 +30,7 @@
             }
           },
           {
-            "key": "ControlSet002\\Power",
+            "key": "ControlSet001\\Power",
             "name": "ActivePowerScheme",
             "type": "string",
             "data": {

@@ -21,7 +21,7 @@
             "data": 1
           },
           {
-            "key": "ControlSet002\\Control\\Session Manager",
+            "key": "ControlSet001\\Control\\Session Manager",
             "name": "DisableWpbtExecution",
             "type": "dword",
             "data": 1

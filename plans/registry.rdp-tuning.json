@@ -51,7 +51,7 @@
             "data": 2
           },
           {
-            "key": "ControlSet002\\Control\\Terminal Server\\WinStations\\RDP-Tcp",
+            "key": "ControlSet001\\Control\\Terminal Server\\WinStations\\RDP-Tcp",
             "name": "SelectTransport",
             "type": "dword",
             "data": 2

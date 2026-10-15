@@ -34,8 +34,8 @@
         "deleteKeys": [
           "ControlSet001\\Services\\edgeupdate",
           "ControlSet001\\Services\\edgeupdatem",
-          "ControlSet002\\Services\\edgeupdate",
-          "ControlSet002\\Services\\edgeupdatem"
+          "ControlSet001\\Services\\edgeupdate",
+          "ControlSet001\\Services\\edgeupdatem"
         ]
       }
     },
