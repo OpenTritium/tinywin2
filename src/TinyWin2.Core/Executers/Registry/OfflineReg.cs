@@ -50,10 +50,11 @@ internal static class OfflineReg {
     }
 
     /// <summary>
-    ///     Writes one value; on access failure rescues the ACL and retries once.
-    ///     TrustedInstaller-owned service keys (e.g. DPS) deny Administrators write:
-    ///     the rescue claims ownership + FullControl for the group before the retry.
-    ///     An empty <paramref name="valueName" /> writes the default value (/ve).
+    ///     Writes one value. A transient lock and a real descriptor deny both surface as
+    ///     "access denied" from reg.exe, so the write is retried with backoff before the ACL
+    ///     rescue is attempted — taking ownership must not be the answer to a hiccup. Every
+    ///     attempt's error is preserved in the thrown exception; swallowing the first one
+    ///     leaves no way to tell the two causes apart.
     /// </summary>
     public static async Task AddValueAsync(
         IProcessRunner runner, string key, string valueName, string regType, string data,
@@ -61,12 +62,33 @@ internal static class OfflineReg {
         var arguments = string.IsNullOrEmpty(valueName)
             ? new[] { "add", key, "/ve", "/t", regType, "/d", data, "/f" }
             : new[] { "add", key, "/v", valueName, "/t", regType, "/d", data, "/f" };
+        var failures = new List<string>();
+        foreach (var delayMs in new[] { 0, 250, 1000 }) {
+            if (delayMs > 0) {
+                await Task.Delay(delayMs, ct);
+            }
+
+            try {
+                await runner.RunAsync("reg.exe", arguments, cancellationToken: ct);
+                return;
+            }
+            catch (ProcessRunnerException ex) {
+                failures.Add(ex.Message);
+            }
+        }
+
+        // The failure survived the plain retries: claim the key and try once more.
+        RegistryAcl.Rescue(aclRescueKey);
         try {
             await runner.RunAsync("reg.exe", arguments, cancellationToken: ct);
+            return;
         }
-        catch (ProcessRunnerException) {
-            RegistryAcl.Rescue(aclRescueKey);
-            await runner.RunAsync("reg.exe", arguments, cancellationToken: ct);
+        catch (ProcessRunnerException ex) {
+            failures.Add(ex.Message);
+            throw new ExecException(
+                $"reg.exe could not write value '{valueName}' under '{key}' " +
+                $"(3 plain attempts + 1 after an ACL rescue):{Environment.NewLine}" +
+                string.Join($"{Environment.NewLine}---{Environment.NewLine}", failures));
         }
     }
 
