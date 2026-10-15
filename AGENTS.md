@@ -410,3 +410,31 @@ driving the live guest over Win+R/QEMU-monitor:
   WSL cannot see Windows-mounted ISOs under `/mnt/<letter>`; `dism /Mount-Image` on the
   host is the reliable way to read a WIM from WSL-hostile paths.
 
+## ROOT CAUSE #3 (2026-10-16): dockur/windows 6.x aborts at "Windows 无法完成安装" — pin 5.16
+
+- **Symptom:** every install from a `:latest` (6.0x) container dies right after the
+  `Pre OOBE` phase succeeds: `WINDEPLOY error code is 0xC0000409` (WebDeploy crash →
+  the "Windows 无法完成安装" dialog / black screen). Just before it, the WinPE log shows
+  12× `CApplyDrivers::CopyToDriverStore ... oem0..11.inf ... 0x80070002` — those are
+  dockur's *own* injected `$OEM$` driver paths ("Adding drivers to image..." +
+  "Creating/Writing overlay image..." in `podman logs`), not anything from tinywin2.
+- **Controls (all with the same zh-cn 26300 ISO):** our slim ISOs crash; the **stock
+  source ISO crashes**; dockur's **default flow with no `custom.xml` crashes** ⇒ no
+  slimming plan and no answer file is implicated. `ghcr.io/dockur/windows:5.16` (last
+  5.x) with the *stock* ISO installs past the crash point ("正在安装 95%", `Users\Docker`
+  created, CBS live) ⇒ the v6.00 install-path refactor (its notes: wholesale
+  install/ESD/download refactor + VirtIO bump) is the regression.
+- **Workaround:** run the install container on `ghcr.io/dockur/windows:5.16`
+  (env/ports/mounts unchanged); 6.x can still be used for viewing the finished guest.
+- **Consequent exonerations (do not re-litigate without new evidence):**
+  `appx.ai-residuals` (its isolated probe3 reproduction was confounded by this bug and
+  is currently left disabled in vm-init as a conservative default), the security-strip
+  set (v11 blacklist), the Home `--index 1` + `YTMG3` key pairing (self-consistent), and
+  the empty-DriverStore-shell fix (kept; v11/v12/v13 build logs show zero
+  `EMPTY-SHELL-RETAINED` warnings).
+- **Reading the guest's fate offline:** stop the container first (`data.img` is the live
+  qemu disk), then `qemu-nbd -c /dev/nbd0 --read-only <volume>/_data/data.img`, mount
+  `/dev/nbd0p3`, and grep `Windows/Panther/setupact.log` for
+  `WINDEPLOY error code is 0xC0000409`; the last lines of `setuperr.log` +
+  `setupact.log` give the phase that died.
+
