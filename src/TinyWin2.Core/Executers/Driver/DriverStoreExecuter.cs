@@ -260,15 +260,17 @@ public sealed class DriverStoreExecuter(IProcessRunner runner) : DismExecuterBas
         }
 
         try {
-            Directory.Delete(packageDirectoryPath, recursive: true);
+            // Route through the shared ACL-rescue delete: TryNativeDeleteAsync grants the
+            // PARENT the DELETE_CHILD right before its final retry, which is exactly what
+            // FileRepository (TrustedInstaller-owned) needs. An empty shell left behind is
+            // NOT inert for offline Setup: it walks FileRepository, fails to stage drivers
+            // with 0x80070002 and then crashes deployment (windeploy 0xC0000409).
+            await DeletePathIfPresentAsync(packageDirectoryPath, ct);
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or IOException) {
-            // DriverStore's parent is TrustedInstaller-owned and may deny DELETE_CHILD even
-            // after the package files themselves were ACL-rescued. An empty package directory
-            // is inert: DISM and DriverDatabase no longer index it as an installed package.
-            context.Log.Debug(
-                $"driver.store: retained empty DriverStore directory '{packageDirectoryPath}' " +
-                "because its parent denies directory deletion");
+            context.Log.Warn(
+                $"driver.store: EMPTY-SHELL-RETAINED '{packageDirectoryPath}' ({ex.Message}) — " +
+                "offline Setup driver installation will fail for images built with this plan");
         }
     }
 

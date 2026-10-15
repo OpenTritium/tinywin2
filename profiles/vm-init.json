@@ -17,7 +17,7 @@
     },
     {
       "planId": "appx.ai-residuals",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "fs.fonts-strip",

@@ -175,6 +175,46 @@ cycle against a zh-cn 26300 client ISO:
   (e.g. `service.server` sets LanmanServer to delayed-auto and *keeps* SMB
   sharing). Run `plan show <id>` before assuming a plan removes a capability.
 
+- dockur/windows auto-install hard prerequisites (verified 2026-10-15 against
+  a zh-cn 26300 client ISO):
+  - **Source index must be Pro** (`--index 4` = `Windows 11 专业版`). Home
+    indexes ship `termsrv.dll` with an SKU check, so inbound RDP can never
+    work there, and dockur's generic answer file `win11x64.xml` carries the
+    Pro generic key `VK7JG-NPHTM-C97JM-9MPGT-3V66T` (mismatch fails Setup).
+  - **Rename the index to the English name** before packaging, because dockur
+    derives `win11x64-<transliterated>.xml` from the WIM name and misses on
+    `Windows 11 家庭版` (falls back to interactive Setup). DISM cannot rename:
+    `/Export-Image` **rejects `/Name`** with
+    `Error: 87 — "The /name option is not recognized in this context."`
+    (verified 2026-10-15). Use wimlib's positional name instead; delete the
+    destination first (exports append to an existing WIM):
+    `wimlib-imagex export SRC.wim 1 DST.esd "Windows 11 Home" "Windows 11 Home" --compress=LZMS`
+    then assert exactly one index via `wimlib-imagex info`.
+  - **RDP stays OFF by default** (deliberate policy: saves memory — while
+    `fDenyTSConnections=1` (the Windows default we keep) nothing ever starts
+    TermService/SessionEnv/UmRdpService, so they cost zero resident memory).
+    Enter via the VNC console (port 8006) and enable RDP in-guest only when
+    actually needed. The container's 3389 is plain passt forwarding
+    (`-t 3389 -u 3389`) to the guest's own RDP; dockur injects the 3389
+    firewall rule only in its automatic (answer-file) flow. Note Home editions
+    can never serve RDP (termsrv SKU check) regardless of these toggles — Pro
+    images are mandatory for any RDP use at all.
+  - **Do not `taskkill` a running build and reuse its workspace**: the killed
+    DISM leaves `base.vhdx` attached ("used by another process"), the tool then
+    refuses with "workspace is not empty", and `--overwrite` does not clear
+    that check. Use a fresh workspace name instead.
+
+- **Empty DriverStore shells break offline Setup** (found 2026-10-15): the `driver.*`
+  cleanup plans (`driver.legacy-printing`, `driver.legacy-modem`,
+  `driver.non-consumer-extra`, ...) emptied `DriverStore\FileRepository\<pkg>` but
+  could not delete the directory ("parent denies DELETE_CHILD"), leaving ~164 empty
+  shells in a built image. Offline Setup walks FileRepository when staging its
+  `$OEM$` drivers, fails each copy with 0x80070002, and then crashes the deployment
+  engine (`WINDEPLOY error code is 0xC0000409` => "Windows 无法完成安装"). Stock
+  ISOs have no shells, so only slim images fail. Fix: `DeletePackageFilesAsync`
+  must go through `ImageFs.DeleteWithRescueAsync` (which grants the parent
+  DELETE_CHILD and retries) and warn loudly if a shell survives.
+
 ## Field notes: deploy-loop postmortem (dockur + WSL2 podman, 2026-10-13)
 
 A full day of "VM powers off seconds after every boot" that was NOT one bug but a
