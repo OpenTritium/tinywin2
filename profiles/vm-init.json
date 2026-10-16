@@ -1112,7 +1112,10 @@
     },
     {
       "planId": "service.wlan-config",
-      "enabled": true
+      "enabled": true,
+      "parameters": {
+        "startMode": "disabled"
+      }
     },
     {
       "planId": "service.wlms",
