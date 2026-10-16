@@ -16,7 +16,7 @@
                                                          "CDPSvc",
                                                          "CDPUserSvc"
                                                      ],
-                                        "start":  "disabled"
+                                        "start":  "auto"
                                     }
                        }
                    ]

@@ -1131,7 +1131,10 @@
     },
     {
       "planId": "service.wpad",
-      "enabled": true
+      "enabled": true,
+      "parameters": {
+        "startMode": "manual"
+      }
     },
     {
       "planId": "service.xbox-gaming",
@@ -1211,6 +1214,10 @@
     },
     {
       "planId": "service.kiosk-suppress",
+      "enabled": true
+    },
+    {
+      "planId": "service.time-broker",
       "enabled": true
     }
   ]

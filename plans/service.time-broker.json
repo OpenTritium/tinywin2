@@ -1,0 +1,22 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "service.time-broker",
+  "version": "1.0.0",
+  "title": "保持 Time Broker 自启",
+  "description": "TimeBrokerSvc（时间代理）是 Task Scheduler（schedsvc）初始化的硬依赖：schedsvc 启动时会连接时间代理，连不上就在约 60ms 内干净退出（无事件日志；表现为 Schedule 永远起不来、schtasks 挂起、Security-SPP 反复报 0x80041315）。kiosk 外壳下没有任何用户态活动会触发它的 RPC 事件触发器，因此显式设为自启，保证调度器可用。常驻开销约 2-5MiB。",
+  "category": "Background Services",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "apply",
+      "spec": {
+        "services": [
+          "TimeBrokerSvc"
+        ],
+        "start": "auto"
+      }
+    }
+  ]
+}

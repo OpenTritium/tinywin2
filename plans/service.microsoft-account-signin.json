@@ -15,7 +15,7 @@
                                         "services":  [
                                                          "wlidsvc"
                                                      ],
-                                        "start":  "disabled"
+                                        "start":  "manual"
                                     }
                        }
                    ]

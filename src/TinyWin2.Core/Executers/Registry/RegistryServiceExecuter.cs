@@ -96,10 +96,14 @@ public sealed partial class RegistryServiceExecuter(IProcessRunner runner) : IEx
             }
 
             var existingDelayed = await ReadDwordAsync(serviceKey, "DelayedAutoStart", ct) ?? 0;
-            var desiredTriggers = string.Equals(options.Start, "trigger", StringComparison.OrdinalIgnoreCase)
-                ? options.ResolveTriggers()
-                : [];
-            var triggerInfoChanged = !await HasDesiredTriggerInfoAsync(serviceKey, desiredTriggers, ct);
+            // Only 'start: trigger' manages TriggerInfo. Every other start mode must leave a service's
+            // existing triggers alone: treating a blank list as "no triggers desired" wiped the whole
+            // TriggerInfo subtree of every service a plan merely retimed, which silently disabled SCM
+            // trigger-start (worst case: TimeBrokerSvc, whose absence kills Task Scheduler init).
+            var manageTriggers = string.Equals(options.Start, "trigger", StringComparison.OrdinalIgnoreCase);
+            var desiredTriggers = manageTriggers ? options.ResolveTriggers() : [];
+            var triggerInfoChanged = manageTriggers
+                && !await HasDesiredTriggerInfoAsync(serviceKey, desiredTriggers, ct);
             if (existingStart != options.StartDword || existingDelayed != desiredDelayed || triggerInfoChanged) {
                 changes.Add(new(
                     new(ChangeKind.Modified, service,

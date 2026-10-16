@@ -16,7 +16,7 @@
                                                          "WpnService",
                                                          "WpnUserService"
                                                      ],
-                                        "start":  "disabled"
+                                        "start":  "auto"
                                     }
                        }
                    ]

@@ -15,7 +15,7 @@
                                         "services":  [
                                                          "TokenBroker"
                                                      ],
-                                        "start":  "disabled"
+                                        "start":  "manual"
                                     }
                        }
                    ]

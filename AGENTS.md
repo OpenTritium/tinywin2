@@ -438,3 +438,41 @@ driving the live guest over Win+R/QEMU-monitor:
   `WINDEPLOY error code is 0xC0000409`; the last lines of `setuperr.log` +
   `setupact.log` give the phase that died.
 
+## ROOT CAUSE #4 (2026-10-16): Task Scheduler dead since install — TimeBrokerSvc never runs (TriggerInfo wipe)
+
+- **Symptom set:** `sc start Schedule` → START_PENDING then Stopped; the spawned svchost
+  (`svchost -k netsvcs -p -s Schedule`) lives ~60 ms, loads every DLL including
+  `schedsvc.dll` + `TimeBrokerClient.dll`, then unloads cleanly and exits 0; System and
+  Application logs show nothing. `schtasks /query` HANGS against the dead service (always
+  wrap it in a bounded job; bare calls wedge a probe for minutes). Security-SPP logs
+  `0x80041315` (SCHED_E_SERVICE_NOT_RUNNING) every 5 min. The
+  `Microsoft-Windows-TaskScheduler/Operational` channel is empty — but it is disabled by
+  default on healthy hosts too, so emptiness proves nothing.
+- **Causal chain:** `service.kiosk-suppress` (v1.3.0) disabled `TimeBrokerSvc`, and the
+  tool's `registry.service` executer also rewrote `TriggerInfo` for every service a plan
+  touched — with the plan's trigger list, which is empty for any non-`trigger` start mode.
+  Net effect: the whole `Services\*\TriggerInfo` subtree vanished (stock SYSTEM hive: 1443
+  entries; v13's: 0) and `TimeBrokerSvc` sat at Start=4 with no triggers. `schedsvc`'s
+  init hard-depends on the Time Broker: with nothing to connect to it exits cleanly, so
+  the Task Scheduler is dead from the first boot — and the ~200 missing task XML files
+  are a *symptom* (the service materializes them only while it runs), not a cause.
+- **Discriminator that cracked it (reusable):** the CKCL circular ETW buffer holds only
+  the last ~11 s, so `wpr -stop` immediately after `sc start` captures the child's entire
+  life: the ordered `Image,Load` list + `Process,End` (which carries the command line).
+  A complete load sequence followed by a clean reverse unload = "init failed and exited",
+  not a crash — while `Image,UnLoad` before all dependencies loaded would mean a load
+  failure. Pair with `logman query -ets` + `sc qtriggerinfo` before/after comparisons
+  against the healthy host.
+- **Fix pair (both required):** (a) tool — `RegistryServiceExecuter` only manages
+  `TriggerInfo` for `start: "trigger"`; a blank trigger list must never be read as "clear
+  the triggers"; (b) profile/plans — keep `TimeBrokerSvc` out of every disable list and
+  pin it `auto` via `service.time-broker`, because in a kiosk shell no user-mode activity
+  fires its RPC-interface triggers and stock `manual` is not reliable here.
+- **Same-diagnosis service reverts:** `CDPSvc`/`WpnService`/`WpnUserService` back to
+  `auto`, `wlidsvc`/`TokenBroker` back to `manual`.
+- **Verification recipe (proven):** registry-edit `TimeBrokerSvc\Start` to 2 (SCM caches
+  service config per boot; `sc config` may answer access-denied, the registry always
+  works), GRACEFUL `Stop-VM` → `Start-VM` (a `Restart-VM -Force` is a hard reset and
+  loses unflushed registry writes), then `sc start Schedule` → Running and a bounded
+  `schtasks /query` returning task rows.
+
