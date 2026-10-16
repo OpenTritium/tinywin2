@@ -88,8 +88,17 @@ Not baked into the image — apply per machine when the workload calls for it:
   standby-list purge tools (self-defeating), DisablePagingExecutive (RAM cost with no
   server-side benefit).
 
-## Known behaviors
+## Known behaviors:
 
+- **Client images with a NIC attached brick at first boot**: online OOBE calls the
+  stripped update stack and msoobe/wuapi fastfails (0xC0000409) into a
+  "Windows 无法完成安装" boot loop (2026-10-17 vm-init v19/v20 smoke). Offline
+  boots limp through to the desktop. Fix: apply the `bypass-oobe.ps1` registry
+  block (clear Setup state + Setup\OOBE displayed flags + Winlogon autologon)
+  offline after `/Apply-Image`, or live via PowerShell Direct while the loop
+  runs — winlogon then stops launching msoobe and first logon goes straight to
+  the shell. `registry.update-policy-strip` (deleting the UpdatePolicy CLSIDs)
+  is NOT a fix: it moves the same fastfail into msoobe and bricks OOBE harder.
 - After killing an interrupted build, its `workspace\base.vhdx` stays attached at the
   Virtual Disk level: `Dismount-VHD -Path <workspace>\base.vhdx` **before** deleting the
   workspace, or the delete fails with "Device or resource busy" and the next build
