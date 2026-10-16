@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "fs.dead-tasks",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "title": "移除死功能计划任务",
-  "description": "删除指向已移除或永不使用功能的收件箱计划任务：输入设置漫游（笔/鼠标/触摸板同步）、Azure 设备注册上报（DeviceDirectoryClient）、feature 试用与 OneSettings 上报（Flighting）、企业数据保护（EDP）、云恢复、应用商店 InstallService/PushToInstall、蜂窝网供给、BitLocker MDM 策略、AD RMS 模板分发、账户恢复提醒、PCRPF 固件预测、语言设置同步、位置同意对话框与 appuri 验证。同时清掉 TaskCache 注册项和 Tasks 文件。注意：Windows Setup 在 specialize 阶段可能重新供给部分收件箱任务（与 fs.telemetry-tasks 记录的行为一致），部署后需验证。",
+  "description": "删除指向已移除或永不使用功能的收件箱计划任务：输入设置漫游（笔/鼠标/触摸板同步）、Azure 设备注册上报（DeviceDirectoryClient）、设备信息采集（Device Information，客机冒烟发现其 DeviceCensus.exe 在遥测剥离后的镜像上崩溃弹窗，2026-10-16）、feature 试用与 OneSettings 上报（Flighting）、企业数据保护（EDP）、云恢复、应用商店 InstallService/PushToInstall、蜂窝网供给、BitLocker MDM 策略、AD RMS 模板分发、账户恢复提醒、PCRPF 固件预测、语言设置同步、位置同意对话框与 appuri 验证。同时清掉 TaskCache 注册项和 Tasks 文件。注意：Windows Setup 在 specialize 阶段可能重新供给部分收件箱任务（与 fs.telemetry-tasks 记录的行为一致），部署后需验证。",
   "category": "System",
   "riskLevel": "Low",
   "operations": [
@@ -34,6 +34,8 @@
           "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\DeviceDirectoryClient\\RegisterDeviceProtectionStateChanged",
           "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\DeviceDirectoryClient\\RegisterDeviceSettingChange",
           "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\DeviceDirectoryClient\\RegisterUserDevice",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Device Information\\Device",
+          "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Device Information\\Device User",
           "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Flighting\\FeatureConfig\\BootstrapUsageDataReporting",
           "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Flighting\\FeatureConfig\\GovernedFeatureUsageProcessing",
           "Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree\\Microsoft\\Windows\\Flighting\\FeatureConfig\\ReconcileConfigs",
@@ -83,6 +85,7 @@
         "paths": [
           "Windows\\System32\\Tasks\\Microsoft\\Windows\\Input\\*",
           "Windows\\System32\\Tasks\\Microsoft\\Windows\\DeviceDirectoryClient\\*",
+          "Windows\\System32\\Tasks\\Microsoft\\Windows\\Device Information\\*",
           "Windows\\System32\\Tasks\\Microsoft\\Windows\\Flighting\\*",
           "Windows\\System32\\Tasks\\Microsoft\\Windows\\EDP\\*",
           "Windows\\System32\\Tasks\\Microsoft\\Windows\\AppID\\EDP Policy Manager",

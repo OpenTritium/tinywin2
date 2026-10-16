@@ -51,7 +51,16 @@ public sealed partial class FsPathExecuter(IProcessRunner runner) : IExecuter {
 
         if (assetKind == EntryKind.File) {
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-            File.Copy(assetPath, destination, true);
+            try {
+                File.Copy(assetPath, destination, true);
+            }
+            catch (UnauthorizedAccessException) {
+                // TrustedInstaller-owned payload (e.g. the inbox CBS AppxManifest.xml)
+                // denies Administrators write; route through the ownership-rescuing
+                // delete and copy fresh so the new file inherits the parent ACL.
+                await ImageFs.DeleteWithRescueAsync(runner, destination, ct);
+                File.Copy(assetPath, destination, true);
+            }
         }
         else {
             var result = await runner.RunAsync("robocopy.exe",
