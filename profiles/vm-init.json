@@ -1233,6 +1233,10 @@
     {
       "planId": "maintenance.component-resetbase",
       "enabled": true
+    },
+    {
+      "planId": "registry.crash-diagnostics-silent",
+      "enabled": true
     }
   ]
 }

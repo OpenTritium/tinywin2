@@ -1,0 +1,66 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.crash-diagnostics-silent",
+  "version": "1.0.0",
+  "title": "崩溃静默留证（本地转储，零弹窗）",
+  "description": "无人值守看盘机的崩溃取证组合：WER Disabled=0 + LocalDumps（C:\\CrashDumps，DumpType=1 小型转储，最多 10 份）让任何进程崩溃时自动留下 minidump 与 Application 1000 事件；DontShowUI=1 关闭 WER 自己的『已停止工作』界面；ErrorMode=2 抑制系统硬错误弹窗（如 CRT fastfail 的『基于堆栈的缓冲区溢出』框——该框与 WerSvc 无关，禁不禁 WER 都会弹）。配合 service.kiosk-suppress 的 WerSvc=manual：平时零开销（无崩溃 WerSvc 不运行），崩溃时写完转储即停。不做遥测上报（AllowTelemetry=0、无外网，WER 队列只进不出）。来历：2026-10-16 Hyper-V 冒烟中 dllhost.exe 间歇性首启崩溃因 WerSvc 被禁而 4 次拿不到转储，无法定位故障模块；启用本组合后同场景即捕获 minidump。与 registry.crash-dump-disabled（BSOD 内核转储）互不冲突：一个管应用崩溃留证，一个管蓝屏省盘。需在 profile 尾部、service.* 之后执行以覆盖服务计划效果。",
+  "category": "System",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Microsoft\\Windows\\Windows Error Reporting",
+            "name": "Disabled",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Microsoft\\Windows\\Windows Error Reporting",
+            "name": "DontShowUI",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Microsoft\\Windows\\Windows Error Reporting\\LocalDumps",
+            "name": "DumpFolder",
+            "type": "string",
+            "data": "C:\\CrashDumps"
+          },
+          {
+            "key": "Microsoft\\Windows\\Windows Error Reporting\\LocalDumps",
+            "name": "DumpCount",
+            "type": "dword",
+            "data": 10
+          },
+          {
+            "key": "Microsoft\\Windows\\Windows Error Reporting\\LocalDumps",
+            "name": "DumpType",
+            "type": "dword",
+            "data": 1
+          }
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Control\\Windows",
+            "name": "ErrorMode",
+            "type": "dword",
+            "data": 2
+          }
+        ]
+      }
+    }
+  ]
+}
