@@ -3,8 +3,8 @@
   "schemaVersion": 5,
   "id": "registry.update-policy-strip",
   "version": "1.0.0",
-  "title": "更新策略 COM 注册剥离",
-  "description": "删除以 DllHost.exe 为代理承载 Windows 更新策略组件（System32\\UpdatePolicy.dll）的两个 COM CLSID 注册：{07369A67-07A6-4608-ABEA-379491CB7C46} 与 {1E5B067B-95D4-466C-BB9C-84F6B8A58D4D}。来历：2026-10-16 Hyper-V 冒烟（WER minidump + Application 1000 实证）本镜像每次开机约 27 秒后 DllHost.exe 崩溃弹『基于堆栈的缓冲区溢出』——更新栈已被剥离（wuauserv 按需/禁用、UsoSvc 禁用、更新任务树删除），UpdatePolicy.dll 在代理进程内初始化时直接 fastfail（0xC0000409，偏移 0x38f5，dmp 为 dllhost.exe.3848.dmp）。剥掉 CLSID 后激活方拿到『类未注册』的常规失败，代理进程不再被拉起，崩溃路径根除。键属主 TrustedInstaller，离线删除走执行器的 ACL 救援（同 registry.control-panel-orphans 先例）。对看盘机无功能损失：更新策略本就无处生效。",
+  "title": "更新策略 COM 注册剥离（已证实回归，勿启用）",
+  "description": "【2026-10-17 v19 冒烟回归，profile 已禁用】删除这两个 CLSID 后 OOBE 主进程 msoobe.exe 内的 wuapi.dll 在初始化时 fastfail（0xC0000409，Event 1000 实证），OOBE 无法完成、系统卡在『Windows 无法完成安装』引导循环——与 dllhost 代理崩溃同根：更新策略组件在更新栈被剥离的镜像上本就必炸，删注册只是把崩溃从代理进程搬进了调用方。正确姿势：保留 CLSID，让 dllhost 代理崩溃被 registry.crash-diagnostics-silent 静默留证（WerSvc=manual + LocalDumps + DontShowUI/ErrorMode 抑制弹窗）。若未来要真正治本，需先确认 wuapi/UpdatePolicy 对『更新栈不存在』的容错路径，而不是删注册。原始动机（仍然成立的现象）：UpdatePolicy.dll（1509.2608.11022）在 DllHost 代理内初始化 fastfail（偏移 0x38f5，dmp dllhost.exe.3848.dmp），间歇性弹『基于堆栈的缓冲区溢出』——现由静默留证方案兜底。键属主 TrustedInstaller，离线删除走执行器的 ACL 救援。",
   "category": "Update Services",
   "riskLevel": "Low",
   "operations": [

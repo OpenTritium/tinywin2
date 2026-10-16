@@ -1240,7 +1240,7 @@
     },
     {
       "planId": "registry.update-policy-strip",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "registry.crash-diagnostics-silent",
