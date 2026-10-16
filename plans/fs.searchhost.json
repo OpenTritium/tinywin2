@@ -2,18 +2,33 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "fs.searchhost",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "title": "移除任务栏搜索 UI 宿主",
-  "description": "删除保留包 Client.CBS 内的 SearchHost.exe（任务栏搜索框宿主）。它不运行时不占用常驻内存；文件本身的磁盘体积未单独测量。Windows 11 26100 的 v15 首启中，StartMenuExperienceHost 仍调用 CortanaUI，移除该文件后出现 7 条 DCOM 10001（2147942402，目标路径不存在）；vm-init 因此保留该二进制，避免每次启动制造错误。除非同时可靠禁用 CortanaUI 激活，否则不要在保留 Client.CBS 外壳的镜像中启用本计划。",
+  "description": "删除保留包 Client.CBS 内的整个搜索 UI 表面：SearchHost.exe、FESearchHost.exe、SearchUx.* 五个 DLL/winmd、SemanticSearchHelper.dll、Cortana.* 四个 winmd、Cortana.UI\\ 资源目录（含 ConstraintIndex 索引与 WebView 缓存）及 localizedScopeStrings.json / windows-searchbox-dynamic-content.schema.json。任务栏搜索框已由 registry.kiosk-taskbar/首登脚本隐藏，对看盘机无功能损失。v1.1 只删 SearchHost.exe 时 StartMenuExperienceHost 仍按清单激活 CortanaUI，产生 7 条 DCOM 10001（2147942402 目标路径不存在）；v2.0.0 配合 fs.cbs-manifest-strip 把 CortanaUI/CortanaUIFullTrustApp/FESearchUI 激活入口从包清单剥离，DCOM 报错类随之消除。保留 SearchHost 也不可行：2026-10-16 Hyper-V 冒烟（WER 转储实证）它每次启动在 twinapi.appcore.dll 崩溃循环 6 次（stowed exception 0xC000027B），之后才自愈——移除即治本。",
   "category": "Desktop Experience",
-  "riskLevel": "Low",
+  "riskLevel": "Medium",
   "operations": [
     {
       "resource": "fs.path",
       "action": "remove",
       "spec": {
         "paths": [
-          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchHost.exe"
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchHost.exe",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\FESearchHost.exe",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchUx.Core.dll",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchUx.InternalWebApi.dll",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchUx.Model.dll",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchUx.SearchApi.winmd",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchUx.UI.dll",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchUx.WebApi.dll",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SemanticSearchHelper.dll",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\Cortana.Internal.Search.winmd",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\Cortana.Internal.winmd",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\Cortana.Search.winmd",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\Cortana.Settings.winmd",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\Cortana.UI",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\localizedScopeStrings.json",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\windows-searchbox-dynamic-content.schema.json"
         ]
       }
     }

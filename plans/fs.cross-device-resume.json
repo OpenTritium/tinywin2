@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "fs.cross-device-resume",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "title": "移除跨设备继续（CBS 内嵌组件）",
-  "description": "删除保留的 Client.CBS 外壳内嵌的 CrossDeviceResume 组件：CrossDeviceResume.exe（AppxManifest 中 CrossDeviceResumeApp，FullTrustApplication）、CrossDeviceResumeTaskbarExtensionsUX.dll、CrossDeviceResumeView.dll 及 CrossDeviceResume\\ 资源目录。appx.cross-device 只移除 MicrosoftWindows.CrossDevice 预置包，实测运行中的进程来自 CBS 包自身（47MB 常驻），必须删文件才能根除。删除后跨设备继续/手机接续 UI 失效；CBS 其余功能（搜索/开始/外壳）不受影响。v1.1.0：同时用清理后的 AppxManifest.xml 资产覆盖包清单——移除 CrossDeviceResumeApp Application 条目、指向已删 DLL 的两个 windows.activatableClass.inProcessServer 注册块和 windows.packageExtension 声明块；只删文件会残留激活入口，客机实测 Explorer/外壳触发激活时弹『Windows 找不到文件 …\\CrossDeviceResume.exe』（2026-10-16 Hyper-V 冒烟确认，覆盖清单后弹窗根除）。资产取自 26300.9457 zh-CN 客户端介质（install-v16.esd 实测通过），换基础镜像版本时需重新生成。注意包清单属主 TrustedInstaller，fs.path 覆盖时走 ACL 接管（v1.1.0 起执行器支持）。",
+  "description": "删除保留的 Client.CBS 外壳内嵌的 CrossDeviceResume 组件：CrossDeviceResume.exe（AppxManifest 中 CrossDeviceResumeApp，FullTrustApplication）、CrossDeviceResumeTaskbarExtensionsUX.dll、CrossDeviceResumeView.dll 及 CrossDeviceResume\\ 资源目录。appx.cross-device 只移除 MicrosoftWindows.CrossDevice 预置包，实测运行中的进程来自 CBS 包自身（47MB 常驻），必须删文件才能根除。删除后跨设备继续/手机接续 UI 失效；CBS 其余功能（搜索/开始/外壳）不受影响。清单激活入口（CrossDeviceResumeApp Application 条目、指向已删 DLL 的 inProcessServer 注册块、packageExtension 声明）由 fs.cbs-manifest-strip 统一剥离——只删文件会残留激活入口，客机实测 Explorer/外壳触发激活时弹『Windows 找不到文件 …\\CrossDeviceResume.exe』（2026-10-16 Hyper-V 冒烟确认）。",
   "category": "Background Experience",
   "riskLevel": "Low",
   "operations": [
@@ -17,14 +17,6 @@
           "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\CrossDeviceResumeTaskbarExtensionsUX.dll",
           "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\CrossDeviceResumeView.dll"
         ]
-      }
-    },
-    {
-      "resource": "fs.path",
-      "action": "apply",
-      "spec": {
-        "path": "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\appxmanifest.xml",
-        "source": "Client.CBS.AppxManifest.xml"
       }
     }
   ]

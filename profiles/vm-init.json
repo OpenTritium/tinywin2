@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "name": "vm-init",
-  "description": "VM minimal-keep profile（只运行同花顺 PC 客户端；THS 为 32 位，保留 WOW64）。已启用：fs.fonts-strip（保留中文/界面字体）、fs.systemresources-strip、fs.kiosk-theme、registry.winui-effects-min；appx.ai-residuals 仍关闭（dockur/windows 6.x 安装回归尚未排除）。fs.kiosk-shell 默认关闭：测试镜像未安装 THS，尚不能验证 hexin.exe 实际路径；确认路径后可启用以替代 Explorer，预计节省约 500 MiB。保留系统管理的 pagefile、WinRE、中文字体、Client.CBS/开始菜单外壳、显示代理、WOW64 和默认电源方案。appx.security-health-ui 仍选中移除，但 v15 客机审计仍发现 Microsoft.SecHealthUI 注册，暂不计其约 23 MiB 为已节省。RDP 服务链禁用（dockur VNC/8006 控制台不受影响），RDP 客户端与管理工具移除；SMB 服务端/客户端禁用；OpenSSH 客户端与服务端组件移除。registry.update-task-cache 移除 Windows Update/维护任务树但保留 SoftwareProtectionPlatform 许可任务。service.kiosk-suppress 在普通服务计划后执行，SysMain 保持禁用、sppsvc 按需启动。",
+  "description": "VM minimal-keep profile（只运行同花顺 PC 客户端；THS 为 32 位，保留 WOW64）。已启用：fs.fonts-strip（保留中文/界面字体）、fs.systemresources-strip、fs.kiosk-theme、registry.winui-effects-min；appx.ai-residuals 仍关闭（dockur/windows 6.x 安装回归尚未排除）。fs.kiosk-shell 默认关闭：测试镜像未安装 THS，尚不能验证 hexin.exe 实际路径；确认路径后可启用以替代 Explorer，预计节省约 500 MiB。fs.searchhost v2 已启用（整个搜索 UI 表面 + fs.cbs-manifest-strip 剥离 CortanaUI/FESearchUI 激活入口；2026-10-16 冒烟实证 SearchHost 每次启动在 twinui.appcore.dll 崩溃循环 6 次，保留无意义）。保留系统管理的 pagefile、WinRE、中文字体、Client.CBS/开始菜单外壳、显示代理、WOW64 和默认电源方案。appx.security-health-ui 仍选中移除，但 v15 客机审计仍发现 Microsoft.SecHealthUI 注册，暂不计其约 23 MiB 为已节省。RDP 服务链禁用（dockur VNC/8006 控制台不受影响），RDP 客户端与管理工具移除；SMB 服务端/客户端禁用；OpenSSH 客户端与服务端组件移除。registry.update-task-cache 移除 Windows Update/维护任务树但保留 SoftwareProtectionPlatform 许可任务。service.kiosk-suppress 在普通服务计划后执行，SysMain 保持禁用、sppsvc 按需启动。",
   "selections": [
     {
       "planId": "driver.qemu-strip",
@@ -73,6 +73,10 @@
     },
     {
       "planId": "appx.cross-device",
+      "enabled": true
+    },
+    {
+      "planId": "fs.cbs-manifest-strip",
       "enabled": true
     },
     {
@@ -617,7 +621,7 @@
     },
     {
       "planId": "fs.searchhost",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "fs.security-deep-residuals",
