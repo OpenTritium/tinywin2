@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "fs.cbs-consumer-apps",
-  "version": "1.0.0",
-  "title": "移除 CBS 内嵌消费者应用（Windows 备份、入门/发现中心）",
-  "description": "删除保留包 Client.CBS 内嵌的两个消费者应用载荷：Windows 备份（WindowsBackupClient.exe、WindowsBackup.dll、WindowsBackup\\ 资源目录）与入门/发现中心（DiscoveryHubApp.exe、DiscoveryHub\\ 、DiscoveryHubWidget\\ 目录）。v16 构建时 appx.getstarted-backup 对它们全部 skipped——与 CrossDeviceResume 同类，CBS 内嵌组件不走 provisioned/inbox 通道，必须直接删文件。清单激活入口（WindowsBackup、DiscoveryHub、DiscoveryHubWidgetHost Application 条目、inProcessServer 注册、firewallRules 声明）由 fs.cbs-manifest-strip 统一剥离；开始菜单固定项随应用移除自动消失。",
+  "version": "1.1.0",
+  "title": "移除 CBS 内嵌消费者应用（Windows 备份、入门、发现中心）",
+  "description": "删除保留包 Client.CBS 内嵌的三个消费者应用载荷：Windows 备份（WindowsBackupClient.exe、WindowsBackup.dll、WindowsBackup\\ 资源目录）、入门/发现中心（DiscoveryHubApp.exe、DiscoveryHub\\ 、DiscoveryHubWidget\\ 目录）与开始菜单『入门』磁贴的真身 WebExperienceHost（WebExperienceHostApp.exe、WebExperienceHost.dll——Get-StartApps 实证『入门』条目 AppID 即 CBS 包的 !WebExperienceHost）。v16 构建时 appx.getstarted-backup 对它们全部 skipped——与 CrossDeviceResume 同类，CBS 内嵌组件不走 provisioned/inbox 通道，必须直接删文件。清单激活入口（WindowsBackup、DiscoveryHub、DiscoveryHubWidgetHost、WebExperienceHost Application 条目、inProcessServer 注册、firewallRules 声明）由 fs.cbs-manifest-strip 统一剥离；开始菜单固定项随应用移除自动消失。",
   "category": "Desktop Experience",
   "riskLevel": "Low",
   "operations": [
@@ -18,7 +18,9 @@
           "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\WindowsBackup",
           "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\DiscoveryHubApp.exe",
           "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\DiscoveryHub",
-          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\DiscoveryHubWidget"
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\DiscoveryHubWidget",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\WebExperienceHostApp.exe",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\WebExperienceHost.dll"
         ]
       }
     }

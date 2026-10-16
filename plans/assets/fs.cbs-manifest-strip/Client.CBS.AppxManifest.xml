@@ -1319,125 +1319,6 @@
                 </com2:Extension>
             </Extensions>
         </Application>
-        <Application Id="WebExperienceHost" Executable="WebExperienceHostApp.exe" EntryPoint="WebExperienceHostApp.App" desktop4:SupportsMultipleInstances="true" xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4">
-      <uap:VisualElements DisplayName="ms-resource:WebExperienceHostAppName/Text" Square150x150Logo="Assets\GetStartedMedTile.png" Square44x44Logo="Assets\GetStartedAppList.png" Description="ms-resource:WebExperienceHostDescription" BackgroundColor="transparent">
-        <uap:DefaultTile Wide310x150Logo="Assets\GetStartedWideTile.png" Square310x310Logo="Assets\GetStartedLargeTile.png" Square71x71Logo="Assets\GetStartedSmallTile.png" />
-        <uap:SplashScreen Image="Assets\GetStartedSplashScreen.png" />
-        <uap:LockScreen Notification="badge" BadgeLogo="Assets\GetStartedBadgeLogo.png" />
-      </uap:VisualElements>
-      <Extensions>
-        <uap:Extension Category="windows.protocol">
-          <uap:Protocol Name="ms-wxh" ReturnResults="optional" />
-        </uap:Extension>
-        <uap:Extension Category="windows.protocol">
-          <uap:Protocol Name="ms-device-enrollment2" ReturnResults="optional" />
-        </uap:Extension>
-        <uap3:Extension Category="windows.appExtension">
-          <uap3:AppExtension Name="com.microsoft.windows.extensionpackage" Id="extensionPackage" PublicFolder="Public" DisplayName="Extension Metadata">
-            <uap3:Properties>
-              <PackageAliases>
-                <PackageAlias>UserSetupEligibilityAlias</PackageAlias>
-              </PackageAliases>
-            </uap3:Properties>
-          </uap3:AppExtension>
-        </uap3:Extension>
-        <uap3:Extension Category="windows.appExtension">
-          <uap3:AppExtension Name="com.microsoft.windows.webexperiencehost" Id="webexperiencehost" PublicFolder="Public" DisplayName="Web Experience Host Supported Overrides">
-            <uap3:Properties>
-              <Protocol>ms-wxh</Protocol>
-              <SupportedExperiences>
-                <SupportedExperience>scoobe</SupportedExperience>
-                <SupportedExperience>getstarted</SupportedExperience>
-                <SupportedExperience>scoobe/backup</SupportedExperience>
-                <SupportedExperience>scoobe/subsrenewal</SupportedExperience>
-              </SupportedExperiences>
-            </uap3:Properties>
-          </uap3:AppExtension>
-        </uap3:Extension>
-        <uap3:Extension Category="windows.appExtension">
-          <uap3:AppExtension Name="com.microsoft.windows.extension.usersetupeligibility" Id="usersetupeligibility" PublicFolder="Public" DisplayName="User Setup Eligibility">
-            <uap3:Properties>
-              <Classes>
-                <WindowsUdk.System.UserProfile.UserSetupEligibilityExtension>UserSetup.Eligibility.UserSetupEligibilityProviderImpl</WindowsUdk.System.UserProfile.UserSetupEligibilityExtension>
-              </Classes>
-            </uap3:Properties>
-          </uap3:AppExtension>
-        </uap3:Extension>
-        <uap3:Extension Category="windows.appExtension">
-          <uap3:AppExtension Name="com.microsoft.windows.extension.modalusersetupeligibility" Id="modalusersetupeligibility" PublicFolder="Public" DisplayName="Modal User Setup Eligibility">
-            <uap3:Properties>
-              <Classes>
-                <WindowsUdk.System.UserProfile.ModalUserSetupEligibilityExtension>UserSetup.Eligibility.ModalUserSetupEligibilityProviderImpl</WindowsUdk.System.UserProfile.ModalUserSetupEligibilityExtension>
-              </Classes>
-            </uap3:Properties>
-          </uap3:AppExtension>
-        </uap3:Extension>
-        <uap3:Extension Category="windows.appExtension">
-          <uap3:AppExtension Name="com.microsoft.windows.extension.getstartedeligibility" Id="getstartedeligibility" PublicFolder="Public" DisplayName="Get Started Eligibility">
-            <uap3:Properties>
-              <Classes>
-                <WindowsUdk.System.UserProfile.GetStartedEligibilityExtension>GetStarted.Eligibility.GetStartedEligibilityProviderImpl</WindowsUdk.System.UserProfile.GetStartedEligibilityExtension>
-              </Classes>
-            </uap3:Properties>
-          </uap3:AppExtension>
-        </uap3:Extension>
-        <wincap3:Extension Category="windows.internal.componentUI" xmlns:wincap3="http://schemas.microsoft.com/appx/manifest/foundation/windows10/windowscapabilities/3" />
-        <uap:Extension Category="windows.appService" EntryPoint="WebExperienceHost.AppServiceTask">
-          <uap:AppService Name="WebExperienceHost.AppService" />
-        </uap:Extension>
-        <Extension Category="windows.backgroundTasks" EntryPoint="WebExperienceHost.BackgroundTask.UpdateTimer">
-          <BackgroundTasks>
-            <Task Type="timer" />
-          </BackgroundTasks>
-        </Extension>
-        <Extension Category="windows.backgroundTasks" EntryPoint="WebExperienceHost.BackgroundTask.Maintenance">
-          <BackgroundTasks>
-            <Task Type="systemEvent" />
-          </BackgroundTasks>
-        </Extension>
-        <Extension Category="windows.updateTask" EntryPoint="WebExperienceHost.BackgroundTask.UpdateTask" />
-        <Extension Category="windows.preInstalledConfigTask" EntryPoint="WebExperienceHost.BackgroundTask.Configuration" />
-      </Extensions>
-      <uap:ApplicationContentUriRules>
-        <uap:Rule Type="include" Match="https://prod.rewardsplatform.microsoft.com/" />
-        <uap:Rule Type="include" Match="https://www.microsoft.com/officeoobe/" WindowsRuntimeAccess="all" />
-        <uap:Rule Type="include" Match="https://wwwqa.microsoft.com/officeoobe/" WindowsRuntimeAccess="all" />
-        <uap:Rule Type="include" Match="https://onedrive.live.com/windows/" />
-        <uap:Rule Type="include" Match="https://account.live.com/" />
-        <uap:Rule Type="include" Match="https://login.live.com/" />
-        <uap:Rule Type="include" Match="https://oloobe.officeapps.live.com/" WindowsRuntimeAccess="all" />
-        <uap:Rule Type="include" Match="https://oloobe.officeapps.live-int.com/" WindowsRuntimeAccess="all" />
-        <uap:Rule Type="include" Match="https://login.microsoftonline.com/" />
-        <uap:Rule Type="include" Match="https://login.microsoft.com/" />
-        <uap:Rule Type="include" Match="https://login.windows.net/" />
-        <uap:Rule Type="include" Match="https://login.windows-ppe.net/" />
-        <uap:Rule Type="include" Match="https://signup.live.com/" />
-        <uap:Rule Type="include" Match="https://account.live-int.com/" />
-        <uap:Rule Type="include" Match="https://login.live-int.com/" />
-        <uap:Rule Type="include" Match="https://signup.live-int.com/" />
-        <uap:Rule Type="include" Match="https://buy.live.com/" />
-        <uap:Rule Type="include" Match="https://buy.live-int.com/" />
-        <uap:Rule Type="include" Match="https://passwordreset.microsoftonline.com/" />
-        <uap:Rule Type="include" Match="https://account.activedirectory.windowsazure.com/" />
-        <uap:Rule Type="include" Match="https://tip.passwordreset.microsoftonline.com/" />
-        <uap:Rule Type="include" Match="https://account.activedirectory.windowsazure.us/" />
-        <uap:Rule Type="include" Match="https://account.activedirectory.windowsazure.cn/" />
-        <uap:Rule Type="include" Match="https://passwordreset.activedirectory.windowsazure.cn/" />
-        <uap:Rule Type="include" Match="https://password.ccsctp.com/" />
-        <uap:Rule Type="include" Match="https://account.activedirectory-ppe.windowsazure.com/" />
-        <uap:Rule Type="include" Match="https://sdx.microsoft.com/" WindowsRuntimeAccess="all" />
-        <uap:Rule Type="include" Match="https://sdx.microsoft-ppe.com/" WindowsRuntimeAccess="all" />
-        <uap:Rule Type="include" Match="https://sdx.microsoft-int.com/" WindowsRuntimeAccess="all" />
-        <uap:Rule Type="include" Match="https://canary.sdx.microsoft.com/" />
-        <uap:Rule Type="include" Match="ms-appx-web:///webapps/" WindowsRuntimeAccess="all" />
-        <uap:Rule Type="include" Match="ms-appx-web:///views/" WindowsRuntimeAccess="all" />
-        <uap:Rule Type="include" Match="ms-appx-web:///RetailDemo/" WindowsRuntimeAccess="all" />
-        <uap:Rule Type="include" Match="ms-appx-web:///core/" WindowsRuntimeAccess="all" />
-        <uap:Rule Type="include" Match="https://login.microsoftonline.us/" />
-        <uap:Rule Type="include" Match="https://login.microsoftonline.de/" />
-        <uap:Rule Type="include" Match="https://login.partner.microsoftonline.cn/" />
-      </uap:ApplicationContentUriRules>
-    </Application>
         <Application Id="Global.WidgetDataModel" StartPage="http://microsoft.com">
             <uap:VisualElements DisplayName="Global.WidgetDataModel" Description="Global.WidgetDataModel" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" BackgroundColor="transparent" AppListEntry="none" />
             <Extensions>
@@ -2885,22 +2766,6 @@
         <ActivatableClass ActivatableClassId="GetStarted.Eligibility.GetStartedEligibilityProviderImpl" ThreadingModel="both" />
       </InProcessServer>
     </Extension>
-        <Extension Category="windows.activatableClass.inProcessServer">
-      <InProcessServer xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10">
-        <Path>WebExperienceHost.dll</Path>
-        <ActivatableClass ActivatableClassId="WebExperienceHost.AppServiceTask" ThreadingModel="both" />
-        <ActivatableClass ActivatableClassId="WebExperienceHost.BackgroundTask.UpdateTimer" ThreadingModel="both" />
-        <ActivatableClass ActivatableClassId="WebExperienceHost.BackgroundTask.Maintenance" ThreadingModel="both" />
-        <ActivatableClass ActivatableClassId="WebExperienceHost.BackgroundTask.UpdateTask" ThreadingModel="both" />
-        <ActivatableClass ActivatableClassId="WebExperienceHost.BackgroundTask.Configuration" ThreadingModel="both" />
-      </InProcessServer>
-    </Extension>
-        <Extension Category="windows.activatableClass.inProcessServer">
-      <InProcessServer xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10">
-        <Path>WebExperienceHost.dll</Path>
-        <ActivatableClass ActivatableClassId="Undocked.ExtensionViewController" ThreadingModel="both" />
-      </InProcessServer>
-    </Extension>
         <uap17:Extension Category="windows.packageExtension">
             <uap17:PackageExtension Name="com.microsoft.windows.extensionpackage" Id="extensionPackage" DisplayName="Extension Package">
                 <uap17:Properties>
@@ -2910,17 +2775,6 @@
                 </uap17:Properties>
             </uap17:PackageExtension>
         </uap17:Extension>
-        <Extension Category="windows.activatableClass.inProcessServer">
-            <InProcessServer>
-                <Path>WebExperienceHost.dll</Path>
-                <ActivatableClass ActivatableClassId="WebHost.AppContext" ThreadingModel="both" />
-                <ActivatableClass ActivatableClassId="WebHost.User" ThreadingModel="both" />
-                <ActivatableClass ActivatableClassId="WebHost.WebApp" ThreadingModel="both" />
-                <ActivatableClass ActivatableClassId="WebHost.Management.Deployment.PackageManagerHelper" ThreadingModel="both" />
-                <ActivatableClass ActivatableClassId="WebHost.Search.IndexerHelper" ThreadingModel="both" />
-                <ActivatableClass ActivatableClassId="WebHost.Search.PinningHelper" ThreadingModel="both" />
-            </InProcessServer>
-        </Extension>
         <Extension Category="windows.activatableClass.inProcessServer">
             <InProcessServer>
                 <Path>Widgets.dll</Path>
