@@ -2,9 +2,9 @@
     "$schema":  "../schemas/plan-v5.schema.json",
     "schemaVersion":  5,
     "id":  "service.connected-devices-platform",
-    "version":  "3.0.0",
+    "version":  "3.1.0",
     "title":  "禁用 Connected Devices Platform",
-    "description":  "禁用跨设备体验平台；附近共享、跨设备活动和部分设备配对体验将不可用。 【2026-09 实测警告】与 service.token-broker 同组实测：禁用状态下交互式 OOBE 触发 WWAHost.exe fast-fail 无限重启循环，三者一同改回自动启动后恢复（未逐一隔离单一元凶）。需要手动引导安装的镜像建议保留；纯无人值守部署不受影响。",
+    "description":  "禁用跨设备体验平台；附近共享、跨设备活动和部分设备配对体验将不可用。 【2026-09 实测警告】与 service.token-broker 同组实测：禁用状态下交互式 OOBE 触发 WWAHost.exe fast-fail 无限重启循环，三者一同改回自动启动后恢复（未逐一隔离单一元凶）。需要手动引导安装的镜像建议保留；纯无人值守部署不受影响。【2026-10-16 决定】本档案为纯无人值守部署，按裁剪目标恢复 disabled（v13 实测即 disabled）；残余的 CDPSvc 依赖链提示（7001）属已知无副作用事件。",
     "category":  "Background Services",
     "riskLevel":  "Medium",
     "operations":  [
@@ -16,7 +16,7 @@
                                                          "CDPSvc",
                                                          "CDPUserSvc"
                                                      ],
-                                        "start":  "auto"
+                                        "start":  "disabled"
                                     }
                        }
                    ]

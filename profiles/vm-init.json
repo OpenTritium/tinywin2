@@ -76,6 +76,10 @@
       "enabled": true
     },
     {
+      "planId": "fs.cross-device-resume",
+      "enabled": true
+    },
+    {
       "planId": "appx.dev-home",
       "enabled": true
     },
@@ -637,14 +641,6 @@
     },
     {
       "planId": "fs.windows-photo-viewer",
-      "enabled": true
-    },
-    {
-      "planId": "maintenance.component-cleanup",
-      "enabled": true
-    },
-    {
-      "planId": "maintenance.component-resetbase",
       "enabled": true
     },
     {
@@ -1218,6 +1214,14 @@
     },
     {
       "planId": "service.time-broker",
+      "enabled": true
+    },
+    {
+      "planId": "maintenance.component-cleanup",
+      "enabled": true
+    },
+    {
+      "planId": "maintenance.component-resetbase",
       "enabled": true
     }
   ]

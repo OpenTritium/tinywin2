@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "fs.cross-device-resume",
+  "version": "1.0.0",
+  "title": "移除跨设备继续（CBS 内嵌组件）",
+  "description": "删除保留的 Client.CBS 外壳内嵌的 CrossDeviceResume 组件：CrossDeviceResume.exe（AppxManifest 中 CrossDeviceResumeApp，FullTrustApplication）、CrossDeviceResumeTaskbarExtensionsUX.dll、CrossDeviceResumeView.dll 及 CrossDeviceResume\\ 资源目录。appx.cross-device 只移除 MicrosoftWindows.CrossDevice 预置包，实测运行中的进程来自 CBS 包自身（47MB 常驻），必须删文件才能根除。删除后跨设备继续/手机接续 UI 失效；CBS 其余功能（搜索/开始/外壳）不受影响。",
+  "category": "Background Experience",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "fs.path",
+      "action": "remove",
+      "spec": {
+        "paths": [
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\CrossDeviceResume*",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\CrossDeviceResumeTaskbarExtensionsUX.dll",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\CrossDeviceResumeView.dll"
+        ]
+      }
+    }
+  ]
+}

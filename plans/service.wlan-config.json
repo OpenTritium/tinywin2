@@ -2,12 +2,22 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.wlan-config",
-  "version": "3.0.0",
-  "title": "WLAN 配置服务改为延迟启动",
-  "description": "Wcmsvc 改为延迟自动启动。桌面网络配置不急于开机瞬间。",
+  "version": "3.1.0",
+  "title": "WLAN 服务裁剪",
+  "description": "v3.1.0：新增禁用 WlanSvc（WLAN AutoConfig）——本机为有线 virtio 网卡、无无线硬件，保留只会白耗句柄；Wcmsvc（连接管理器）改为延迟自动启动，它同时服务有线网络，不可停。",
   "category": "Networking",
   "riskLevel": "Low",
   "operations": [
+    {
+      "resource": "registry.service",
+      "action": "apply",
+      "spec": {
+        "services": [
+          "WlanSvc"
+        ],
+        "start": "disabled"
+      }
+    },
     {
       "resource": "registry.service",
       "action": "apply",
