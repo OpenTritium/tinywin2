@@ -8,6 +8,8 @@ reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v Sh
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarDa /t REG_DWORD /d 0 /f
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v ShowCopilotButton /t REG_DWORD /d 0 /f
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Search" /v SearchboxTaskbarMode /t REG_DWORD /d 0 /f
-powershell -NoProfile -Command "$names = 'Microsoft.SecHealthUI','Microsoft.Windows.SecHealthUI'; foreach ($n in $names) { Get-AppxPackage -Name $n -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue }"
+powershell -NoProfile -Command "$names = 'Microsoft.SecHealthUI','Microsoft.Windows.SecHealthUI'; foreach ($n in 'Microsoft.SecHealthUI','Microsoft.Windows.SecHealthUI') { Get-AppxPackage -Name $n -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue }"
+rem 任务栏先于 RunOnce 启动，注册必须伴随一次 explorer 重启才生效
+taskkill /f /im explorer.exe >nul 2>&1
 start explorer.exe
 del "%~f0"

@@ -719,45 +719,6 @@
           </uap5:Extension>
       </Extensions>
     </Application>
-        <Application Id="DiscoveryHub" Executable="DiscoveryHubApp.exe" EntryPoint="Windows.FullTrustApplication">
-            <uap:VisualElements DisplayName="ms-resource:DiscoveryHub/Resources/AppDisplayName" Description="ms-resource:DiscoveryHub/Resources/AppDescription" BackgroundColor="transparent" Square150x150Logo="DiscoveryHub\Assets\Square150x150Logo.png" Square44x44Logo="DiscoveryHub\Assets\Square44x44Logo.png" AppListEntry="none">
-                <uap:DefaultTile Wide310x150Logo="DiscoveryHub\Assets\Wide310x150Logo.png" />
-                <uap:SplashScreen Image="DiscoveryHub\Assets\SplashScreen.png" />
-            </uap:VisualElements>
-            <Extensions>
-                <uap3:Extension Category="windows.appExtension">
-                    <uap3:AppExtension Name="com.microsoft.windows.extensionpackage" Id="DiscoveryHub" DisplayName="Extension Metadata">
-                        <uap3:Properties>
-                            <PackageAliases>
-                                <PackageAlias>DiscoveryHubAlias</PackageAlias>
-                            </PackageAliases>
-                        </uap3:Properties>
-                    </uap3:AppExtension>
-                </uap3:Extension>
-            </Extensions>
-        </Application>
-        <Application Id="DiscoveryHubWidgetHost" Executable="DiscoveryHubApp.exe" EntryPoint="Windows.FullTrustApplication">
-            <uap:VisualElements DisplayName="ms-resource:DiscoveryHub/Resources/AppDisplayName" Description="ms-resource:DiscoveryHub/Resources/AppDescription" BackgroundColor="transparent" Square150x150Logo="DiscoveryHub\Assets\Square150x150Logo.png" Square44x44Logo="DiscoveryHub\Assets\Square44x44Logo.png" AppListEntry="none">
-                <uap:DefaultTile Wide310x150Logo="DiscoveryHub\Assets\Wide310x150Logo.png" />
-                <uap:SplashScreen Image="DiscoveryHub\Assets\SplashScreen.png" />
-            </uap:VisualElements>
-            <Extensions>
-                <uap:Extension Category="windows.protocol">
-                    <uap:Protocol Name="ms-discoverwidget">
-                        <uap:DisplayName>Discovery Hub Widget Protocol</uap:DisplayName>
-                    </uap:Protocol>
-                </uap:Extension>
-                <uap3:Extension Category="windows.appExtension">
-                    <uap3:AppExtension Name="com.microsoft.windows.extensionpackage" Id="DiscoveryHubWidget" DisplayName="Extension Metadata">
-                        <uap3:Properties>
-                            <PackageAliases>
-                                <PackageAlias>DiscoveryHubWidgetAlias</PackageAlias>
-                            </PackageAliases>
-                        </uap3:Properties>
-                    </uap3:AppExtension>
-                </uap3:Extension>
-            </Extensions>
-        </Application>
         <Application Id="Global.DragTray" StartPage="http://microsoft.com">
             <uap:VisualElements DisplayName="Global.DragTray" Description="Global.DragTray" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" BackgroundColor="transparent" AppListEntry="none" />
             <Extensions>
@@ -1620,71 +1581,6 @@
                 </uap3:Extension>
             </Extensions>
         </Application>
-        <Application Id="WindowsBackup" Executable="WindowsBackupClient.exe" EntryPoint="WindowsBackup.App" uap10:TrustLevel="mediumIL" uap10:RuntimeBehavior="windowsApp">
-            <uap:VisualElements DisplayName="ms-resource:WindowsBackup/Resources/WindowsBackupHostName" Description="ms-resource:WindowsBackup/Resources/WindowsBackupDescription" Square150x150Logo="WindowsBackup\Assets\MedTile.png" Square44x44Logo="WindowsBackup\Assets\AppList.png" BackgroundColor="transparent">
-                <uap:DefaultTile Wide310x150Logo="WindowsBackup\Assets\WideTile.png" Square310x310Logo="WindowsBackup\Assets\LargeTile.png" Square71x71Logo="WindowsBackup\Assets\SmallTile.png" />
-                        <uap:SplashScreen Image="WindowsBackup\Assets\SplashScreen.png" />
-            </uap:VisualElements>
-            <Extensions>
-                <uap:Extension Category="windows.protocol">
-                    <uap:Protocol Name="ms-windowsbackup" ReturnResults="optional" />
-                </uap:Extension>
-                <uap3:Extension Category="windows.appExtension">
-                    <uap3:AppExtension Name="com.microsoft.windows.extensionpackage" Id="WindowsBackup" DisplayName="Extension Metadata">
-                        <uap3:Properties>
-                            <PackageAliases>
-                                <PackageAlias>WindowsBackupAlias</PackageAlias>
-                            </PackageAliases>
-                        </uap3:Properties>
-                    </uap3:AppExtension>
-                </uap3:Extension>
-                <uap3:Extension Category="windows.appExtension">
-                    <uap3:AppExtension Name="com.microsoft.windows.extensions.xaml.windowsbackup" Id="WindowsBackup" DisplayName="Microsoft Windows Extensions">
-                        <uap3:Properties>
-                            <Classes>
-                                <WindowsBackupControl>WindowsBackup.WindowsBackupControl</WindowsBackupControl>
-                            </Classes>
-                            <MetadataProviders>
-                                <Provider>WindowsBackup.XamlMetaDataProvider</Provider>
-                            </MetadataProviders>
-                            <ResourceDictionaries>
-                                <ResourceDictionary>WindowsBackup.WindowsBackupResources</ResourceDictionary>
-                                <ResourceDictionary>WindowsBackup.WindowsMigrationResources</ResourceDictionary>
-                            </ResourceDictionaries>
-                        </uap3:Properties>
-                    </uap3:AppExtension>
-                </uap3:Extension>
-                <Extension Category="windows.backgroundTasks" EntryPoint="WindowsBackup.BackupNotificationTask" uap10:TrustLevel="mediumIL">
-                    <BackgroundTasks>
-                        <Task Type="systemEvent" />
-                        <Task Type="timer" />
-                        <Task Type="pushNotification" />
-                    </BackgroundTasks>
-                </Extension>
-                <Extension Category="windows.backgroundTasks" EntryPoint="WindowsBackup.DynamicStringTask" uap10:TrustLevel="mediumIL">
-                    <BackgroundTasks>
-                        <Task Type="systemEvent" />
-                        <Task Type="timer" />
-                    </BackgroundTasks>
-                </Extension>
-                <Extension Category="windows.updateTask" EntryPoint="WindowsBackup.BackupNotificationUpdateTask" />
-                <Extension Category="windows.preInstalledConfigTask" EntryPoint="WindowsBackup.BackupNotificationUpdateTask" />
-                <uap3:Extension Category="windows.appExtension">
-                    <uap3:AppExtension Name="com.microsoft.windows.extension.migrationorchestrator" PublicFolder="Public" Id="WindowsMigration" DisplayName="Microsoft Windows Extensions">
-                        <uap3:Properties>
-                            <Classes>
-                                <WindowsUdk.System.UserProfile.UserStateMigrationOrchestratorExtension>WindowsMigration.UserStateMigrationOrchestrator</WindowsUdk.System.UserProfile.UserStateMigrationOrchestratorExtension>
-                            </Classes>
-                        </uap3:Properties>
-                    </uap3:AppExtension>
-                </uap3:Extension>
-            </Extensions>
-            <uap:ApplicationContentUriRules>
-                <uap:Rule Type="include" Match="https://login.live.com/" />
-                <uap:Rule Type="include" Match="https://signup.live.com/" />
-                <uap:Rule Type="include" Match="https://account.live.com/" />
-            </uap:ApplicationContentUriRules>
-        </Application>
         <Application Id="Global.WindowsMigration" Executable="$targetnametoken$.exe" EntryPoint="WindowsMigration.App" uap10:TrustLevel="mediumIL" uap10:RuntimeBehavior="windowsApp">
             <uap:VisualElements DisplayName="Global.WindowsMigration" Description="Global.WindowsMigration" Square150x150Logo="WindowsMigration\Assets\Square150x150Logo.png" Square44x44Logo="WindowsMigration\Assets\Square44x44Logo.png" BackgroundColor="transparent" AppListEntry="none" />
             <Extensions>
@@ -2379,15 +2275,6 @@
                 <uap17:Properties>
                     <PackageAliases>
                         <PackageAlias>DesktopStickerEditorAlias</PackageAlias>
-                    </PackageAliases>
-                </uap17:Properties>
-            </uap17:PackageExtension>
-        </uap17:Extension>
-        <uap17:Extension Category="windows.packageExtension">
-            <uap17:PackageExtension Name="com.microsoft.windows.extensionpackage" Id="DiscoveryHub" DisplayName="Extension Package">
-                <uap17:Properties>
-                    <PackageAliases>
-                        <PackageAlias>DiscoveryHubAlias</PackageAlias>
                     </PackageAliases>
                 </uap17:Properties>
             </uap17:PackageExtension>
@@ -3157,40 +3044,6 @@
                 </uap17:Properties>
             </uap17:PackageExtension>
         </uap17:Extension>
-        <Extension Category="windows.activatableClass.inProcessServer">
-            <InProcessServer>
-                <Path>WindowsBackup.dll</Path>
-                <ActivatableClass ActivatableClassId="WindowsBackup.XamlMetaDataProvider" ThreadingModel="both" />
-                <ActivatableClass ActivatableClassId="WindowsBackup.WindowsBackupResources" ThreadingModel="both" />
-                <ActivatableClass ActivatableClassId="WindowsBackup.WindowsMigrationResources" ThreadingModel="both" />
-                <ActivatableClass ActivatableClassId="WindowsBackup.WindowsBackupControl" ThreadingModel="both" />
-                <ActivatableClass ActivatableClassId="WindowsBackup.BackupNotificationTask" ThreadingModel="both" />
-                <ActivatableClass ActivatableClassId="WindowsBackup.BackupNotificationUpdateTask" ThreadingModel="both" />
-                <ActivatableClass ActivatableClassId="WindowsMigration.UserStateMigrationOrchestrator" ThreadingModel="both" />
-                <ActivatableClass ActivatableClassId="WindowsBackup.DynamicStringTask" ThreadingModel="both" />
-            </InProcessServer>
-        </Extension>
-        <uap17:Extension Category="windows.packageExtension">
-            <uap17:PackageExtension Name="com.microsoft.windows.extensionpackage" Id="WindowsBackup" DisplayName="Extension Package">
-                <uap17:Properties>
-                    <PackageAliases>
-                        <PackageAlias>WindowsBackupAlias</PackageAlias>
-                    </PackageAliases>
-                </uap17:Properties>
-            </uap17:PackageExtension>
-        </uap17:Extension>
-        <desktop2:Extension Category="windows.firewallRules" xmlns:desktop2="http://schemas.microsoft.com/appx/manifest/desktop/windows10/2">
-            <desktop2:FirewallRules Executable="WindowsBackupClient.exe">
-                <desktop2:Rule Direction="in" IPProtocol="TCP" LocalPortMax="7000" LocalPortMin="7000" Profile="public" />
-                <desktop2:Rule Direction="in" IPProtocol="TCP" LocalPortMax="7000" LocalPortMin="7000" Profile="private" />
-                <desktop2:Rule Direction="in" IPProtocol="UDP" LocalPortMax="7000" LocalPortMin="7000" Profile="public" />
-                <desktop2:Rule Direction="in" IPProtocol="UDP" LocalPortMax="7000" LocalPortMin="7000" Profile="private" />
-                <desktop2:Rule Direction="out" IPProtocol="TCP" LocalPortMax="7000" LocalPortMin="7000" Profile="public" />
-                <desktop2:Rule Direction="out" IPProtocol="TCP" LocalPortMax="7000" LocalPortMin="7000" Profile="private" />
-                <desktop2:Rule Direction="out" IPProtocol="UDP" LocalPortMax="7000" LocalPortMin="7000" Profile="public" />
-                <desktop2:Rule Direction="out" IPProtocol="UDP" LocalPortMax="7000" LocalPortMin="7000" Profile="private" />
-            </desktop2:FirewallRules>
-        </desktop2:Extension>
         <Extension Category="windows.activatableClass.inProcessServer">
             <InProcessServer>
                 <Path>WindowsMigrationView.dll</Path>

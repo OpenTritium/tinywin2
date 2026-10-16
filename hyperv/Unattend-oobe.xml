@@ -68,6 +68,11 @@
           <Description>Set High Performance power scheme</Description>
           <CommandLine>powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c</CommandLine>
         </SynchronousCommand>
+        <SynchronousCommand wcm:action="add">
+          <Order>6</Order>
+          <Description>Hide taskbar search box and widgets button (SearchHost removed)</Description>
+          <CommandLine>cmd /c reg add &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Search&quot; /v SearchboxTaskbarMode /t REG_DWORD /d 0 /f &amp; reg add &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced&quot; /v TaskbarDa /t REG_DWORD /d 0 /f</CommandLine>
+        </SynchronousCommand>
       </FirstLogonCommands>
       <OOBE>
         <SkipMachineOOBE>true</SkipMachineOOBE>

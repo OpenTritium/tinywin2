@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "fs.cbs-manifest-strip",
-  "version": "1.0.0",
-  "title": "CBS 包清单剥离（搜索与跨设备激活入口）",
-  "description": "用清理后的 AppxManifest.xml 资产覆盖保留的 Client.CBS 外壳包清单，移除已删组件的全部激活入口：CrossDeviceResumeApp（跨设备继续）、CortanaUI / CortanaUIFullTrustApp / FESearchUI（SearchHost / FESearchHost 搜索 UI）、以及指向已删 DLL 的 windows.activatableClass.inProcessServer 注册块与相关扩展声明。教训（2026-10-16 Hyper-V 冒烟实证）：只删文件不删清单激活入口，客机会弹『Windows 找不到文件 …\\CrossDeviceResume.exe』；SearchHost 保留则每次启动在 twinapi.appcore.dll 崩溃循环 6 次（stowed exception 0xC000027B，WER 转储确认），干脆移除。资产取自 26300.9457 zh-CN 客户端介质并已双轮冒烟验证，换基础镜像版本时需重新生成（用 fs.cross-device-resume / fs.searchhost 时代的剥离脚本重跑一遍）。包清单属主 TrustedInstaller，fs.path 覆盖时执行器会做 ACL 接管。本计划是该清单文件的唯一写入者。",
+  "version": "2.0.0",
+  "title": "CBS 包清单剥离（搜索、跨设备与消费者应用激活入口）",
+  "description": "用清理后的 AppxManifest.xml 资产覆盖保留的 Client.CBS 外壳包清单，移除已删组件的全部激活入口：CrossDeviceResumeApp（跨设备继续）、CortanaUI / CortanaUIFullTrustApp / FESearchUI（SearchHost / FESearchHost 搜索 UI）、WindowsBackup（Windows 备份）、DiscoveryHub / DiscoveryHubWidgetHost（入门/发现中心），以及指向已删 DLL 的 windows.activatableClass.inProcessServer 注册块、WindowsBackupClient 防火墙规则声明与相关扩展声明。教训（2026-10-16 Hyper-V 冒烟实证）：只删文件不删清单激活入口，客机会弹『Windows 找不到文件 …\\CrossDeviceResume.exe』；SearchHost 保留则每次启动在 twinapi.appcore.dll 崩溃循环 6 次（stowed exception 0xC000027B，WER 转储确认），干脆移除。资产取自 26300.9457 zh-CN 客户端介质并已双轮冒烟验证，换基础镜像版本时需重新生成（用 fs.cross-device-resume / fs.searchhost / fs.cbs-consumer-apps 时代的剥离脚本重跑一遍）。包清单属主 TrustedInstaller，fs.path 覆盖时执行器会做 ACL 接管。本计划是该清单文件的唯一写入者。",
   "category": "System",
   "riskLevel": "Medium",
   "operations": [

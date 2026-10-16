@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.update-policy-strip",
+  "version": "1.0.0",
+  "title": "更新策略 COM 注册剥离",
+  "description": "删除以 DllHost.exe 为代理承载 Windows 更新策略组件（System32\\UpdatePolicy.dll）的两个 COM CLSID 注册：{07369A67-07A6-4608-ABEA-379491CB7C46} 与 {1E5B067B-95D4-466C-BB9C-84F6B8A58D4D}。来历：2026-10-16 Hyper-V 冒烟（WER minidump + Application 1000 实证）本镜像每次开机约 27 秒后 DllHost.exe 崩溃弹『基于堆栈的缓冲区溢出』——更新栈已被剥离（wuauserv 按需/禁用、UsoSvc 禁用、更新任务树删除），UpdatePolicy.dll 在代理进程内初始化时直接 fastfail（0xC0000409，偏移 0x38f5，dmp 为 dllhost.exe.3848.dmp）。剥掉 CLSID 后激活方拿到『类未注册』的常规失败，代理进程不再被拉起，崩溃路径根除。键属主 TrustedInstaller，离线删除走执行器的 ACL 救援（同 registry.control-panel-orphans 先例）。对看盘机无功能损失：更新策略本就无处生效。",
+  "category": "Update Services",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "remove",
+      "spec": {
+        "hive": "software",
+        "deleteKeys": [
+          "Classes\\CLSID\\{07369A67-07A6-4608-ABEA-379491CB7C46}",
+          "Classes\\CLSID\\{1E5B067B-95D4-466C-BB9C-84F6B8A58D4D}"
+        ]
+      }
+    }
+  ]
+}

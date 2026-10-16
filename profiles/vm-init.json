@@ -76,6 +76,10 @@
       "enabled": true
     },
     {
+      "planId": "fs.cbs-consumer-apps",
+      "enabled": true
+    },
+    {
       "planId": "fs.cbs-manifest-strip",
       "enabled": true
     },
@@ -1232,6 +1236,10 @@
     },
     {
       "planId": "maintenance.component-resetbase",
+      "enabled": true
+    },
+    {
+      "planId": "registry.update-policy-strip",
       "enabled": true
     },
     {
