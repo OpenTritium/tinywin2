@@ -26,22 +26,16 @@ Typical workflow:
 ```
 tinywin2 inspect --input win11.iso
 tinywin2 preview --input win11.iso --index 1 --workspace ./ws \
-  --profile profiles/laptop.json
+  --profile profiles/vm-init.json
 tinywin2 build --input win11.iso --index 1 --output out/install.esd --workspace ./ws \
-  --format esd --single-layer --profile profiles/laptop.json
+  --format esd --single-layer --profile profiles/vm-init.json
 tinywin2 package iso --input --install-image out/install.esd \
   --output out/win11-slim.iso --workspace ./pkg --oscdimg "C:/oscdimg/oscdimg.exe"
 ```
 
-`profiles/laptop.json` is the single shipped profile: every plan in the catalog
-enabled, except a keep-set (`enabled: false`) for laptop-functional components —
-RDP + OpenSSH, SMB sharing core, Hyper-V/VirtualMachinePlatform/WSL/Containers,
-WLAN + RAS chain + Bluetooth (incl. device association) + audio + location +
-biometrics + hotspot + consumer drivers, and usability baselines (Client.CBS
-shell package, SysMain, Notepad, WOW64, DirectX config, display broker). Windows
-Update stays on by default (`registry.update-task-cache` kept) and the power
-scheme stays Balanced. Printing and SMB1 are removed by default — flip the
-corresponding plan to `enabled: false` in the profile to keep them.
+`profiles/vm-init.json` is the shipped THS-only profile, not a general laptop keep-set. It keeps WOW64 for 32-bit THS, Client.CBS for the Windows shell/Chinese text input, Chinese fonts, WinRE, and the system-managed pagefile; `registry.hibernate-disabled` only removes hibernation/fast startup. The default power scheme is left unchanged.
+It disables the RDP service chain and removes RDP client/management tools, OpenSSH client/server components, and SMB service roles; dockur's VNC console on port 8006 is independent. RDP core files remain (`fs.remote-desktop-residuals` is off). `fs.kiosk-shell` remains off until the real THS executable path and startup are tested; `appx.desktop-app-installer` stays kept until the THS installer route is known.
+`appx.ai-residuals` stays off while the dockur/windows 6.x install regression is unresolved. `appx.security-health-ui` is selected but the v15 guest still registered the package, so do not count it as saved space until a fresh build verifies the hook. `fs.searchhost` is kept because its removal produced missing-target DCOM errors in the test guest. The profile disables SysMain via its final suppressor; this also forgoes the memory-compression/page-combining behavior documented by `service.compressed-memory`. That tradeoff is unmeasured with THS, so compare under actual load before changing it. `registry.update-task-cache` removes update/maintenance task trees but preserves SoftwareProtectionPlatform licensing tasks.
 
 A plan disabled by a profile cannot be re-enabled via `--plan`; edit the profile
 selection instead. To build an extreme image (drop all keeps), duplicate the
@@ -340,13 +334,12 @@ driving the live guest over Win+R/QEMU-monitor:
   Windows\Fonts stayed at 209.6 MiB. Client-side font cuts need real `fs.path`
   removes (`fs.fonts-strip`, ≈134 MiB: Noto SC, Deng/等线, SimSun-ExtB, 楷体/仿宋,
   StaticCache.dat, …).
-- **Profile selection order is execution order, so a post-servicing suppressor must
-  sit last.** `service.kiosk-suppress` was appended mid-block, and its
-  `LanmanServer`/`UsoSvc`/`TrustedInstaller` writes were overwritten by the later
-  `service.server` / `service.workstation` / `service.update-orchestrator` /
-  `service.windows-update` plans (same for `service.compressed-memory` → SysMain, which
-  the suppressor disables again). It now trails the selection list, and its v1.1.0
-  description says so.
+- **Profile selections execute in order; `service.kiosk-suppress` must be last among
+  `service.*` plans.** It had been appended mid-block, so later `service.server` /
+  `service.workstation` / `service.update-orchestrator` / `service.windows-update`
+  writes (and `service.compressed-memory` → SysMain) overwrote its values. The current
+  profile places it after every service plan; only registry/filesystem/maintenance
+  cleanups follow, and they do not change service start modes.
 - `driver.store` removals leave the empty `FileRepository` shell behind ("parent denies
   directory deletion") — 671 empty dirs in the deployed image, but the payload is gone.
 - **Driving the live guest for measurements**: `podman exec -i windows11 python3 - <
@@ -475,4 +468,14 @@ driving the live guest over Win+R/QEMU-monitor:
   works), GRACEFUL `Stop-VM` → `Start-VM` (a `Restart-VM -Force` is a hard reset and
   loses unflushed registry writes), then `sc start Schedule` → Running and a bounded
   `schtasks /query` returning task rows.
+
+## Field notes: `vm-init` resource audit (2026-10-16)
+
+- **Storage is not the same as reclaimable space.** `tw2-out/comp-cleanup.log` is from the v15 Hyper-V test guest: the 31.8 GB C: volume had 18.0 GB free before `DISM /StartComponentCleanup /ResetBase` and 17.9 GB after; the counted `WinSxS` tree stayed at 9,825 MB. `AnalyzeComponentStore` reported 10.18 GB actual component-store size, of which 6.31 GB is shared with Windows and 3.86 GB is backups/disabled features; cache was 0 bytes and two packages were reclaimable. Do not treat the shared bytes or all 3.86 GB as safely removable, and do not claim a meaningful cleanup saving from this run.
+- **The shell is the measured memory lever.** `tw2-out/boot-diagnostics.log` sampled v15 after 508 s with 4,095 MB total / 2,512 MB free and 77 processes; working sets included Explorer 254 MB, StartMenuExperienceHost 117, ShellHost 94, DWM 90, TextInputHost 83, ShellExperienceHost 71, ctfmon 44, plus Task Manager 129 MB. This is not a THS-loaded 2 GB measurement. The earlier dockur v6 idle snapshot above was about 1.3 GB used of 2 GB. Keep `fs.kiosk-shell` disabled until THS is installed and its actual executable path and startup behavior are verified; it remains the largest plausible memory saving. Do not lower guest RAM below 2 GB before measuring THS under load.
+- **Preserve virtual memory and recovery.** `registry.hibernate-disabled` only disables hibernation/fast startup and explicitly leaves the system-managed pagefile alone. `fs.recovery-environment` is disabled in `vm-init` (kept), as is WOW64 for 32-bit THS. Never count pagefile or WinRE as trim targets.
+- **v15 audit findings are not proof of the current profile.** That guest still had `TermService` Running/Manual, W32Time Running/Manual, `wisvc` Manual, `BcastDVRUserService_<suffix>` Manual, SysMain Disabled, and `Microsoft.SecHealthUI` registered; its `SearchHost.exe` was absent. The profile now disables the RDP service chain, removes unused SSH/RDP client components, keeps `fs.searchhost` off, preserves the SoftwareProtectionPlatform task tree, and adds `wisvc`/BcastDVR service suppression. Plan/profile validation passes and preview resolves 286 steps. The default shell token is non-admin; Windows `sudo.exe` is available in forced new-window mode for elevation. No full image build or rebuilt guest has verified the final settings.
+- **Do not claim the Security Health UI saving.** The v15 guest still registered `Microsoft.SecHealthUI` and had no `sec-health-setup.log`; the selected `appx.security-health-ui` plan therefore remains an unverified removal, not a measured 23 MiB saving. Verify its setup hook on a fresh elevated build before counting it.
+- **Visual-effects settings are a small cosmetic cut, not a RAM measure.** `registry.winui-effects-min` writes `VisualFXSetting=2`, `TaskbarAnimations=0`, and `DisallowAnimations=1`, but the v15 audit found `TaskbarAnimations=1` in the active user hive; taskbar animation suppression remains unverified until a fresh build/new-user check.
+- **Keep the conservative cut line.** `appx.client-cbs` and `feature.wow64` remain kept for the shell/Chinese text input and 32-bit THS; the default installer path is unknown, so keep `appx.desktop-app-installer`. RDP service disablement is enough for VNC; leave high-risk `fs.remote-desktop-residuals` off rather than deleting `termsrv.dll` and RDP core files without a boot test.
 

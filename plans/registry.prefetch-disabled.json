@@ -4,7 +4,7 @@
   "id": "registry.prefetch-disabled",
   "version": "2.0.0",
   "title": "关闭并清理 Prefetch",
-  "description": "将应用 Prefetch 策略显式关闭并移除离线镜像中已有的 Windows\\Prefetch 缓存；策略关闭后系统不再重建缓存，首次冷启动可能略慢。SysMain 由 service.memory-compression 负责保持自动运行，以提供内存压缩和页面合并；不强制关闭 Superfetch，因为 Windows 11 会用它承载这些内存管理功能。v2.0.0 起合并原 fs.prefetch 计划。",
+  "description": "将应用 Prefetch 策略显式关闭并移除离线镜像中已有的 Windows\\Prefetch 缓存；策略关闭后系统不再重建缓存，首次冷启动可能略慢。需要保留内存压缩/页面合并的 profile 应显式启用 service.compressed-memory，避免同时启用会禁用 SysMain 的 service.sysmain 或 service.kiosk-suppress；vm-init 选择 kiosk-suppress，因此不保留这项收益。v2.0.0 起合并原 fs.prefetch 计划.",
   "category": "Background Services",
   "riskLevel": "Medium",
   "operations": [

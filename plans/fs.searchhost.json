@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "fs.searchhost",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "title": "移除任务栏搜索 UI 宿主",
-  "description": "删除保留包 Client.CBS 内的 SearchHost.exe（任务栏搜索框 UI，常驻 ~45MB）。搜索服务 WSearch 与搜索功能已由其他计划移除，该宿主仅是空壳入口。已在运行中的镜像上验证：移除后任务栏/开始菜单/中文输入法不受影响，仅任务栏搜索框失效。CBS 更新可能在未来累积更新中还原该文件。",
+  "description": "删除保留包 Client.CBS 内的 SearchHost.exe（任务栏搜索框宿主）。它不运行时不占用常驻内存；文件本身的磁盘体积未单独测量。Windows 11 26100 的 v15 首启中，StartMenuExperienceHost 仍调用 CortanaUI，移除该文件后出现 7 条 DCOM 10001（2147942402，目标路径不存在）；vm-init 因此保留该二进制，避免每次启动制造错误。除非同时可靠禁用 CortanaUI 激活，否则不要在保留 Client.CBS 外壳的镜像中启用本计划。",
   "category": "Desktop Experience",
   "riskLevel": "Low",
   "operations": [

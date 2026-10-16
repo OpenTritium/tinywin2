@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "name": "vm-init",
-  "description": "VM minimal-keep profile（看盘机：只跑同花顺 PC 客户端；THS 是 32 位程序，必须保留 WOW64）。列表头部是本轮新增的定向裁剪：appx.ai-residuals（AI/首启/推广 SystemApps ≈33 MiB）、fs.fonts-strip（非中文/非 UI 字体 ≈134 MiB）、fs.systemresources-strip（DirectML/Studio Effects/校准样本 ≈31 MiB）、fs.kiosk-shell（用同花顺替代 explorer 当登录外壳，省 ≈500 MiB 内存，默认关闭，需要手工置 true）。保留：RDP 全链、OpenSSH client+server、Client.CBS 外壳、显示代理、WOW64、策略保护组件（DesktopAppInstaller、Security Health UI）、默认电源方案。registry.update-task-cache 本轮已启用（清更新/维护任务树）；service.kiosk-suppress 移到选择列表末尾执行，否则 service.server / service.workstation / service.update-orchestrator / service.windows-update 后写的启动方式会覆盖它的压制。相较 laptop profile 另删：WLAN/RAS/蓝牙/定位/生物识别/热点、Hyper-V/VMPlatform/WSL/Containers、SMB 服务端与客户端、记事本、DirectX 配置、SysMain、非消费级驱动。 远程/共享默认：RDP 全链保留可用（TermService/SessionEnv/UmRdpService 按需触发）；SMB 服务端与客户端默认禁用——本 profile 给 service.server / service.workstation 钉了 startMode=disabled，要开放共享把该值改回 delayed 即可（不需要改计划）；OpenSSH 服务端不预装（镜像里没有 sshd，需要时在客户机内跑 tinywin2/scripts/install-openssh-server.ps1，它会自行装好并置为自动启动），OpenSSH 客户端保留，ssh-agent 与（若存在的）sshd 由 service.kiosk-suppress 保持禁用。",
+  "description": "VM minimal-keep profile（只运行同花顺 PC 客户端；THS 为 32 位，保留 WOW64）。已启用：fs.fonts-strip（保留中文/界面字体）、fs.systemresources-strip、fs.kiosk-theme、registry.winui-effects-min；appx.ai-residuals 仍关闭（dockur/windows 6.x 安装回归尚未排除）。fs.kiosk-shell 默认关闭：测试镜像未安装 THS，尚不能验证 hexin.exe 实际路径；确认路径后可启用以替代 Explorer，预计节省约 500 MiB。保留系统管理的 pagefile、WinRE、中文字体、Client.CBS/开始菜单外壳、显示代理、WOW64 和默认电源方案。appx.security-health-ui 仍选中移除，但 v15 客机审计仍发现 Microsoft.SecHealthUI 注册，暂不计其约 23 MiB 为已节省。RDP 服务链禁用（dockur VNC/8006 控制台不受影响），RDP 客户端与管理工具移除；SMB 服务端/客户端禁用；OpenSSH 客户端与服务端组件移除。registry.update-task-cache 移除 Windows Update/维护任务树但保留 SoftwareProtectionPlatform 许可任务。service.kiosk-suppress 在普通服务计划后执行，SysMain 保持禁用、sppsvc 按需启动。",
   "selections": [
     {
       "planId": "driver.qemu-strip",
@@ -617,7 +617,7 @@
     },
     {
       "planId": "fs.searchhost",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "fs.security-deep-residuals",
@@ -853,7 +853,7 @@
     },
     {
       "planId": "service.compressed-memory",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.connected-devices-platform",
@@ -1040,7 +1040,7 @@
     },
     {
       "planId": "service.software-protection",
-      "enabled": true
+      "enabled": false
     },
     {
       "planId": "service.tcpipreg",
@@ -1140,14 +1140,6 @@
       "enabled": true
     },
     {
-      "planId": "fs.dead-tasks",
-      "enabled": true
-    },
-    {
-      "planId": "fs.sync-center",
-      "enabled": true
-    },
-    {
       "planId": "appx.client-cbs",
       "enabled": false
     },
@@ -1161,19 +1153,19 @@
     },
     {
       "planId": "capability.openssh-client",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "capability.openssh-server",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "feature.rds-management-tools",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "feature.remote-desktop-client",
-      "enabled": false
+      "enabled": true
     },
     {
       "planId": "fs.recovery-environment",
@@ -1196,27 +1188,38 @@
       "enabled": false
     },
     {
-      "planId": "registry.update-task-cache",
-      "enabled": true
-    },
-    {
       "planId": "service.display-broker",
       "enabled": false
     },
     {
       "planId": "service.remote-desktop-services",
-      "enabled": false
+      "enabled": true,
+      "parameters": {
+        "startMode": "disabled"
+      }
     },
     {
       "planId": "service.sysmain",
       "enabled": false
     },
     {
+      "planId": "service.time-broker",
+      "enabled": true
+    },
+    {
       "planId": "service.kiosk-suppress",
       "enabled": true
     },
     {
-      "planId": "service.time-broker",
+      "planId": "registry.update-task-cache",
+      "enabled": true
+    },
+    {
+      "planId": "fs.sync-center",
+      "enabled": true
+    },
+    {
+      "planId": "fs.dead-tasks",
       "enabled": true
     },
     {

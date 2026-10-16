@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "service.xbox-gaming",
-  "version": "3.0.0",
+  "version": "3.2.0",
   "title": "禁用 Xbox 游戏服务",
-  "description": "禁用 Xbox Live、Xbox 配件、GameInput 和 GameDVR 用户服务；Xbox 游戏、手柄增强功能和游戏录制将不可用。",
+  "description": "禁用 Xbox Live、Xbox 配件、GameInput 和 GameDVR 用户服务；同时禁用 BcastDVRUserService 模板与已有的 BcastDVRUserService_* 实例，避免首登后新建的广播服务实例恢复为 Manual。Xbox 游戏、手柄增强功能和游戏录制将不可用。",
   "category": "Background Services",
   "riskLevel": "Medium",
   "operations": [
@@ -17,7 +17,8 @@
           "XblGameSave",
           "XboxGipSvc",
           "XboxNetApiSvc",
-          "GameInputSvc"
+          "GameInputSvc",
+          "BcastDVRUserService"
         ],
         "servicePatterns": [
           "BcastDVRUserService_*"
