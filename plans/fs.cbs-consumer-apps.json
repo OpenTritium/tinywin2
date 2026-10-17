@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "fs.cbs-consumer-apps",
-  "version": "1.1.0",
-  "title": "移除 CBS 内嵌消费者应用（Windows 备份、入门、发现中心）",
-  "description": "删除保留包 Client.CBS 内嵌的三个消费者应用载荷：Windows 备份（WindowsBackupClient.exe、WindowsBackup.dll、WindowsBackup\\ 资源目录）、入门/发现中心（DiscoveryHubApp.exe、DiscoveryHub\\ 、DiscoveryHubWidget\\ 目录）与开始菜单『入门』磁贴的真身 WebExperienceHost（WebExperienceHostApp.exe、WebExperienceHost.dll——Get-StartApps 实证『入门』条目 AppID 即 CBS 包的 !WebExperienceHost）。v16 构建时 appx.getstarted-backup 对它们全部 skipped——与 CrossDeviceResume 同类，CBS 内嵌组件不走 provisioned/inbox 通道，必须直接删文件。清单激活入口（WindowsBackup、DiscoveryHub、DiscoveryHubWidgetHost、WebExperienceHost Application 条目、inProcessServer 注册、firewallRules 声明）由 fs.cbs-manifest-strip 统一剥离；开始菜单固定项随应用移除自动消失。",
+  "version": "1.2.0",
+  "title": "移除 CBS 内嵌消费者应用（Windows 备份、入门、发现中心、单击以执行）",
+  "description": "删除保留包 Client.CBS 内嵌的消费者应用载荷：Windows 备份（WindowsBackupClient.exe、WindowsBackup.dll、WindowsBackup\\ 资源目录）、发现中心（DiscoveryHubApp.exe、DiscoveryHub\\ 、DiscoveryHubWidget\\ 目录）、开始菜单『入门』磁贴的真身 WebExperienceHost（WebExperienceHostApp.exe、WebExperienceHost.dll——Get-StartApps 实证『入门』条目 AppID 即 CBS 包的 !WebExperienceHost）以及 AI 残留『单击以执行』的宿主包 MicrosoftWindows.Client.CoreAI（ClickToDoApp 所在，整目录移除）。v16 构建时 appx.getstarted-backup 对它们全部 skipped——与 CrossDeviceResume 同类，CBS 内嵌组件不走 provisioned/inbox 通道，必须直接删文件；活体 Remove-AppxPackage 对系统组件报 0x80073CFA 拒绝，同样必须离线。清单激活入口（WindowsBackup、DiscoveryHub、DiscoveryHubWidgetHost、WebExperienceHost Application 条目、inProcessServer 注册、firewallRules 声明）由 fs.cbs-manifest-strip 统一剥离；开始菜单固定项随应用移除自动消失。",
   "category": "Desktop Experience",
   "riskLevel": "Low",
   "operations": [
@@ -20,7 +20,8 @@
           "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\DiscoveryHub",
           "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\DiscoveryHubWidget",
           "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\WebExperienceHostApp.exe",
-          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\WebExperienceHost.dll"
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\WebExperienceHost.dll",
+          "Windows\\SystemApps\\MicrosoftWindows.Client.CoreAI_cw5n1h2txyewy"
         ]
       }
     }
