@@ -49,29 +49,14 @@
       </UserAccounts>
       <FirstLogonCommands>
         <SynchronousCommand wcm:action="add">
-          <Order>1</Order>
-          <Description>Enable unattended console auto logon</Description>
-          <CommandLine>cmd /c reg add &quot;HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon&quot; /v AutoAdminLogon /t REG_SZ /d 1 /f &amp; reg add &quot;HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon&quot; /v DefaultUserName /t REG_SZ /d TinyWin /f &amp; reg add &quot;HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon&quot; /v DefaultPassword /t REG_SZ /d &quot;TinyWin2026Temp&quot; /f</CommandLine>
-        </SynchronousCommand>
-        <SynchronousCommand wcm:action="add">
           <Order>2</Order>
-          <Description>Remove setup regenerated Defender and update tasks</Description>
+          <Description>Remove setup regenerated Defender and update tasks (specialize regenerates them; plans removed them offline)</Description>
           <CommandLine>cmd /c schtasks.exe /Delete /TN &quot;\Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance&quot; /F &amp; schtasks.exe /Delete /TN &quot;\Microsoft\Windows\Windows Defender\Windows Defender Cleanup&quot; /F &amp; schtasks.exe /Delete /TN &quot;\Microsoft\Windows\Windows Defender\Windows Defender Scheduled Scan&quot; /F &amp; schtasks.exe /Delete /TN &quot;\Microsoft\Windows\Windows Defender\Windows Defender Verification&quot; /F &amp; schtasks.exe /Delete /TN &quot;\Microsoft\Windows\WindowsUpdate\Refresh Group Policy Cache&quot; /F &amp; schtasks.exe /Delete /TN &quot;\Microsoft\Windows\WindowsUpdate\Scheduled Start&quot; /F</CommandLine>
         </SynchronousCommand>
         <SynchronousCommand wcm:action="add">
           <Order>3</Order>
           <Description>Restore disabled Windows Update services after setup</Description>
           <CommandLine>cmd /c net.exe stop wuauserv /y &amp; reg.exe add &quot;HKLM\SYSTEM\CurrentControlSet\Services\wuauserv&quot; /v Start /t REG_DWORD /d 4 /f &amp; reg.exe add &quot;HKLM\SYSTEM\CurrentControlSet\Services\UsoSvc&quot; /v Start /t REG_DWORD /d 4 /f &amp; reg.exe add &quot;HKLM\SYSTEM\CurrentControlSet\Services\WaaSMedicSvc&quot; /v Start /t REG_DWORD /d 4 /f</CommandLine>
-        </SynchronousCommand>
-        <SynchronousCommand wcm:action="add">
-          <Order>5</Order>
-          <Description>Set High Performance power scheme</Description>
-          <CommandLine>powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c</CommandLine>
-        </SynchronousCommand>
-        <SynchronousCommand wcm:action="add">
-          <Order>6</Order>
-          <Description>Hide taskbar search box and widgets button (SearchHost removed)</Description>
-          <CommandLine>cmd /c reg add &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Search&quot; /v SearchboxTaskbarMode /t REG_DWORD /d 0 /f &amp; reg add &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced&quot; /v TaskbarDa /t REG_DWORD /d 0 /f</CommandLine>
         </SynchronousCommand>
       </FirstLogonCommands>
       <OOBE>
