@@ -99,6 +99,27 @@ Not baked into the image — apply per machine when the workload calls for it:
   runs — winlogon then stops launching msoobe and first logon goes straight to
   the shell. `registry.update-policy-strip` (deleting the UpdatePolicy CLSIDs)
   is NOT a fix: it moves the same fastfail into msoobe and bricks OOBE harder.
+- **OOBE bypass execution gotchas (2026-10-17 vm-init v22/v23 smoke)**:
+  1. Writing the bypass regs then `Stop-VM -TurnOff` LOSES them — the hard power
+     cut drops the unflushed registry. After writing the regs, flush with a
+     **clean guest restart** (`Restart-Computer -Force`).
+  2. A guest-initiated restart can drop the disk from the Gen2 firmware boot
+     order (falls to PXE, "no boot devices"). Recover host-side: stop the VM,
+     `Set-VMFirmware -FirstBootDevice (Get-VMHardDiskDrive ...)`, start.
+  3. Never leave a `Mount-VHD` / WSL `drvfs` mount on the VM's VHD volumes —
+     leaked handles block `Start-VM` with "另一个程序正在使用此文件" and survive
+     vmms/vmcompute restarts. `wsl --shutdown` + explicit Dismount release them.
+  The validated end-to-end sequence lives in `hyperv/tools/bypass-oobe-live.ps1`
+  (bypass regs → clean guest restart → host-side boot-order fix).
+- **SecHealthUI removal (validated live)**: the Start entry can be removed with
+  the reference flow (`script/RemoveSecHealthApp.ps1`) run elevated via
+  PowerShell Direct — the critical bit is **EndOfLife markers for EVERY user
+  SID** (S-1-5-18 + all S-1-5-21-*); missing the calling user's SID yields
+  0x70032 "part of Windows". Validated copy: `hyperv/tools/remove-sechealth-live.ps1`.
+  The staged package payload itself stays in WindowsApps (WindowsApps ACL wall
+  blocks offline deletion) — cosmetic orphan, no functions behind it. For real
+  setup.exe deployments the staged `SetupComplete.cmd` covers removal; the
+  offline-apply smoke flow never runs SetupComplete, so use the live script.
 - After killing an interrupted build, its `workspace\base.vhdx` stays attached at the
   Virtual Disk level: `Dismount-VHD -Path <workspace>\base.vhdx` **before** deleting the
   workspace, or the delete fails with "Device or resource busy" and the next build

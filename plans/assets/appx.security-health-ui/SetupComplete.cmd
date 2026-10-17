@@ -12,6 +12,9 @@ for %%P in (Microsoft.SecHealthUI_8wekyb3d8bbwe Microsoft.Windows.SecHealthUI_8w
 )
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue | Where-Object { $_.PackageName -like '*SecHealthUI*' -or $_.DisplayName -like '*SecHealthUI*' } | ForEach-Object { Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName -AllUsers -ErrorAction SilentlyContinue | Out-Null }" >> "%LOG%" 2>&1
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*SecHealthUI*' } | ForEach-Object { Remove-AppxPackage -Package $_.PackageFullName -AllUsers -ErrorAction SilentlyContinue }" >> "%LOG%" 2>&1
+rem 每用户 EndOfLife 标记（S-1-5-21-*）+ 解除非可移除后按 AllUsers 再删一轮——
+rem 与 hyperv/tools/remove-sechealth-live.ps1（v22 冒烟已验证）同一配方
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SystemRoot%\Setup\Scripts\remove-sechealth.ps1" >> "%LOG%" 2>&1
 echo [%DATE% %TIME%] SetupComplete: done >> "%LOG%"
 rem 不把钩子留给第二次 setup
 del /f /q "%~f0"
