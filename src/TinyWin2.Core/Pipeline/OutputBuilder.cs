@@ -31,7 +31,7 @@ public sealed class OutputBuilder(IProcessRunner runner, BuildLog log) {
         IProcessRunner runner, string stagingWim, string applyDir, string workDir, int stagedIndex,
         Action<string> info, Action<string> warn, CancellationToken ct) {
         var sentinel = Path.Combine(applyDir,
-            "Windows", "SystemApps", "Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy", "AppxManifest.xml");
+            "Windows", "SystemApps", "MicrosoftWindows.CloudExperienceHost_cw5n1h2txyewy", "AppxManifest.xml");
         if (File.Exists(sentinel)) {
             info("chunk reconciliation: sentinel present, nothing to do");
             return;

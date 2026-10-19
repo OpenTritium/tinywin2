@@ -709,10 +709,6 @@
     },
     {
       "planId": "registry.oobe-critical-services",
-      "enabled": false
-    },
-    {
-      "planId": "registry.updatepolicy-clsid-path-fix",
       "enabled": true
     },
     {
