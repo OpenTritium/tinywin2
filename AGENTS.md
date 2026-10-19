@@ -498,3 +498,43 @@ driving the live guest over Win+R/QEMU-monitor:
   - DWORD plan data is parsed as HEX (`NumberStyles.HexNumber`): `Type=16` must be written `"10"`, `Start=2` as `"2"`.
 - **SecHealthUI status update:** the baked `SetupComplete.cmd` + `remove-sechealth.ps1` recipe is now verified on a REAL first boot: per-user EndOfLife for S-1-5-18 + all S-1-5-21-* SIDs, `dism /set-nonremovableapppolicy /nonremovable:0`, then `Remove-AppxPackage -AllUsers` — start entry gone; a staged remnant may still list under `Get-AppxPackage -AllUsers` (entry count is the user-visible truth). Note `-ErrorAction Continue` on Remove-AppxPackage can swallow the failure — rerun with `-ErrorAction Stop` when auditing.
 - **Known remaining noise:** `svchost.exe_StorSvc` crashes at boot with VSS disabled (`0x80070422` from Volume Shadow Copy) — cosmetic for the kiosk appliance, revisit only if THS misbehaves.
+
+## CORRECTION to ROOT CAUSE #5 + dockur field notes (2026-10-19, dockur 6.x/5.16 real-setup loop)
+
+- **"CXH content missing from built images" was a self-inflicted false alarm.** The 26300
+  WIM ships the package as `Windows\SystemApps\Microsoft.Windows.CloudExperienceHost_...`
+  (WITH dot); the installed/enumerated SystemApps dir = `MicrosoftWindows.CloudExperienceHost_...`
+  (NO dot). Diagnostics that probed the no-dot path against a DISM-applied tree reported
+  "missing" forever. ntfs-3g additionally hides WOF-compressed reparse files from listings
+  (they appear as 34-byte symlinks, tag 0x80000017) - 52k "husks" on a failed guest were
+  NORMAL WOF compression, not data loss. Lesson: verify file presence through Windows
+  (fsutil/Mount-DiskImage), never through ntfs-3g listings, and grep the WIM listing for the
+  exact name variant before declaring content lost.
+- **dockur/windows + custom.iso: dockur ALWAYS uses its own generated answer file** (Docker
+  user, en-US template win11x64.xml) and IGNORES any autounattend.xml placed in the custom
+  ISO. Evidence: guest `Panther\unattend.xml` = dockur's template (Docker x3) and
+  `[Shell Unattend] UserAccounts: created account 'Docker'` in UnattendGC. Clicking "我没有
+  产品密钥" manually is expected - dockur's template has no key for foreign editions.
+- **dockur version matrix:** 6.x (latest) processes the custom ISO through the new setup and
+  reaches OOBE; 5.16 boots the legacy purple setup which ignores the custom ISO's answer
+  file entirely and stops at the product-key page. Neither version fixes the OOBE crash
+  below.
+- **Remaining real defect:** real-setup installation (dockur 6.x, QEMU) of v23/v24/v25
+  trimmed images crashes at the OOBE UI hand-off: `[oobeldr.exe] Failed to end OOBE
+  transition UX; hr = 0x80070002` + `OOBE UI failed with exit code [0xc0000409]` right
+  after msoobe's mandatory tasks (through ZDP) complete. Restore of
+  TokenBroker/CDPSvc/WpnService (registry.oobe-critical-services) did NOT change it.
+  Suspected: one or more of the ~292 trim plans removes a component the OOBE UI stack
+  requires. Isolation = plan bisection campaign (build half-profile -> install in dockur ->
+  observe; ~1.5 h per round). Offline-apply + registry.autologon-user deploys bypass OOBE
+  entirely and are the proven production path today.
+- **WOF/deploy note:** after a failed OOBE hand-off windeploy's failure cleanup DELETES
+  System32\oobe binaries and the CXH directory - post-mortems of a crashed install show
+  them "missing" and it is a red herring; read `Panther\UnattendGC\setuperr.log` +
+  `setupact.log` (timestamps are guest-clock skewed under QEMU) BEFORE concluding.
+- **Pipeline:** `OutputBuilder.ReconcileChunkedFilesAsync` now diffs the applied tree
+  against the staged WIM via 7z (dual size columns, backslash entry separators, tolerates
+  the index prefix) right after apply and materializes anything absent; gated on the
+  CloudExperienceHost sentinel. 7-Zip is a hard build dependency for 24H2+ chunked media.
+  Build flag reminders: `--single-layer` needs 30 GB free; DWORD plan data is parsed as HEX
+  and must be JSON numbers.
