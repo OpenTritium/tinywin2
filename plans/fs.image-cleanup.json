@@ -52,7 +52,6 @@
       "spec": {
         "paths": [
           "Windows\\InboxApps\\*",
-          "Windows\\UUS\\*",
           "Windows\\WUModels\\*",
           "Windows\\Prefetch\\*",
           "Windows\\SystemTemp\\*",
