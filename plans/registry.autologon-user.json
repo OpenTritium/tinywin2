@@ -18,19 +18,19 @@
             "key": "ControlSet001\\Services\\CreateUser",
             "name": "Start",
             "type": "dword",
-            "data": "2"
+            "data": 2
           },
           {
             "key": "ControlSet001\\Services\\CreateUser",
             "name": "Type",
             "type": "dword",
-            "data": "10"
+            "data": 16
           },
           {
             "key": "ControlSet001\\Services\\CreateUser",
             "name": "ErrorControl",
             "type": "dword",
-            "data": "0"
+            "data": 0
           },
           {
             "key": "ControlSet001\\Services\\CreateUser",

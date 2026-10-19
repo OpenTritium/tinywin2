@@ -708,6 +708,10 @@
       "enabled": true
     },
     {
+      "planId": "registry.oobe-critical-services",
+      "enabled": true
+    },
+    {
       "planId": "registry.winui-effects-min",
       "enabled": true
     },

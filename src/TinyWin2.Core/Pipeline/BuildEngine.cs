@@ -269,6 +269,8 @@ public sealed class BuildEngine(
         log.Info($"applying staged image (index {stagedIndex}) into the base layer");
         await stack.ApplyImageToBaseAsync(async (mount, token) => {
             await OutputBuilder.ApplyImageAsync(runner, stagingWim, stagedIndex, mount, token);
+            await OutputBuilder.ReconcileChunkedFilesAsync(runner, stagingWim, mount, workspace, stagedIndex,
+                s => log.Info(s), s => log.Warn(s), token);
             if (captureEvidence) {
                 log.Info("capturing base-layer evidence snapshots (file manifest + registry)");
                 await LayerEvidence.CaptureAsync(mount, workspace, 0, runner, log, token);

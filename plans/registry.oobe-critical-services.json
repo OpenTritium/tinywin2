@@ -1,0 +1,51 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.oobe-critical-services",
+  "version": "1.0.0",
+  "title": "OOBE 关键服务恢复：TokenBroker / CDPSvc / WpnService 自动启动",
+  "description": "把会触发 OOBE fast-fail 的三个服务恢复为可用状态：TokenBroker=auto、CDPSvc=auto、CDPUserSvc=manual、WpnService=auto。【依据】2026-10-18/19 两轮 dockur/windows 6.x 真实安装冒烟：携带 service.token-broker / service.connected-devices-platform / service.push-notifications 禁用组合出厂的镜像，OOBE 在首个人机界面阶段稳定崩溃——setuperr 记录 [oobeldr.exe] Failed to end OOBE transition UX; hr = 0x80070002 + OOBE UI failed with exit code [0xc0000409]（WWAHost fast-fail），setup 随即报「Windows 无法完成安装」并陷入重装循环；恢复这组服务后（见本计划来源的同组实测）OOBE 立即恢复正常。service.token-broker 计划自身的【2026-09 实测警告】与此一致，并注明未逐一隔离单一元凶，三个需一起恢复。使用方式：放在禁用计划之后（profile 顺序即执行顺序）作为『真实安装（dockur/手动 setup）兼容』的兜底；纯离线 apply + registry.autologon-user 跳过 OOBE 的烟测镜像可以只保留禁用计划。",
+  "category": "Background Services",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "ControlSet001\\Services\\TokenBroker",
+            "name": "Start",
+            "type": "dword",
+            "data": 2
+          },
+          {
+            "key": "ControlSet001\\Services\\CDPSvc",
+            "name": "Start",
+            "type": "dword",
+            "data": 2
+          },
+          {
+            "key": "ControlSet001\\Services\\CDPUserSvc",
+            "name": "Start",
+            "type": "dword",
+            "data": 3
+          },
+          {
+            "key": "ControlSet001\\Services\\WpnService",
+            "name": "Start",
+            "type": "dword",
+            "data": 2
+          },
+          {
+            "key": "ControlSet001\\Services\\WpnUserService",
+            "name": "Start",
+            "type": "dword",
+            "data": 3
+          }
+        ]
+      }
+    }
+  ]
+}
