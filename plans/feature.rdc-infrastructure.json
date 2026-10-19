@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "feature.rdc-infrastructure",
+  "version": "1.0.0",
+  "title": "移除远程差分压缩 API 支持（MSRDC-Infrastructure）",
+  "description": "移除可选功能 MSRDC-Infrastructure（控制面板中的『远程差分压缩 API 支持』，WinSxS 包 microsoft-windows-rdc，System32/SysWOW64 msrdc.dll）。RDC 仅被旧版 SMB 复制与部分同步工具使用，同花顺客户端不依赖；同时移除有效载荷减小体积。",
+  "category": "Applications",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "dism.feature",
+      "action": "remove",
+      "spec": {
+        "features": [
+          "MSRDC-Infrastructure"
+        ],
+        "forceExplicit": true,
+        "removePayload": true
+      }
+    }
+  ]
+}
