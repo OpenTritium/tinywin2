@@ -538,3 +538,17 @@ driving the live guest over Win+R/QEMU-monitor:
   CloudExperienceHost sentinel. 7-Zip is a hard build dependency for 24H2+ chunked media.
   Build flag reminders: `--single-layer` needs 30 GB free; DWORD plan data is parsed as HEX
   and must be JSON numbers.
+
+## HARD WORKFLOW GATE (user directive, 2026-10-19): smoke before dockur, fast smoke format
+
+- **Every image MUST pass a full smoke in Hyper-V/QEMU (boot -> apply -> OOBE -> desktop)
+  BEFORE it may enter the dockur flow.** No exceptions, no "dockur will tell us".
+- **Smoke artifacts use the fast format**: `--format wim --compression none --fast
+  --single-layer --no-verify --skip-evidence`. NO ESD/LZMS/max compression on smoke
+  builds - compression is a final-delivery step only, after the smoke gate passes.
+- Never let the smoke workspace/dead artifacts eat the C: drive: check `df -h /mnt/c`
+  (need 30+ GB) before every build, and delete superseded WIMs/VHDs/ISOs immediately.
+- The dockur custom.iso flow: dockur IGNORES autounattend.xml inside custom ISOs (it
+  generates its own Docker-user answer file); manual clicks through the product-key
+  page are part of the flow. Never remove the /custom.iso mount "to test" - dockur
+  then downloads stock Windows from the internet.
