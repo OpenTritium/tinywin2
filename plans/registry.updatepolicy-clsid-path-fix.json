@@ -1,0 +1,33 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.updatepolicy-clsid-path-fix",
+  "version": "1.0.0",
+  "title": "修复 26300 介质 UpdatePolicy CLSID 的无效 X: 构建路径",
+  "description": "把两个 UpdatePolicy COM 注册的 InprocServer32 从微软介质烤入的无效构建路径 X:\\Windows\\System32\\UpdatePolicy.dll 改写为真实安装路径 C:\\Windows\\System32\\UpdatePolicy.dll。【实证】2026-10-19 dockur 6.x v25 真实安装冒烟:OOBE 阶段 msoobe.exe 的 ZDP 更新任务(联网时触发)加载 wusys.dll 初始化 WU 客户端,CoCreate 这两个 CLSID 时解析到不存在的 X: 路径,返回 0x80070002,msoobe 立即 __fastfail(转储 LocalDumps\\msoobe.exe.*.dmp,异常代码 0xc0000409,异常地址命中 C:\\Windows\\System32\\wusys.dll),setup 报「Windows 无法完成安装」并循环。7d8eb94 与 e2d40d7 记录的 msoobe/wuapi fastfail 同源:26300 介质 + 在线 OOBE 即触发,与裁剪无关(原版介质也复现)。注意:仅改 InprocServer32 路径,保留 AppID 走 dllhost surrogate 的原始设计;离线 apply + registry.autologon-user 的烟测镜像不经过在线 OOBE,此修复对它们无副作用。X: 路径为微软构建机器残留,原版介质同样带病,属介质缺陷而非裁剪副作用。",
+  "category": "System",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Classes\\CLSID\\{07369A67-07A6-4608-ABEA-379491CB7C46}\\InprocServer32",
+            "name": "",
+            "type": "string",
+            "data": "C:\\Windows\\System32\\UpdatePolicy.dll"
+          },
+          {
+            "key": "Classes\\CLSID\\{1E5B067B-95D4-466C-BB9C-84F6B8A58D4D}\\InprocServer32",
+            "name": "",
+            "type": "string",
+            "data": "C:\\Windows\\System32\\UpdatePolicy.dll"
+          }
+        ]
+      }
+    }
+  ]
+}
