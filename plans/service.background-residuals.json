@@ -1,0 +1,37 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "service.background-residuals",
+  "version": "1.0.0",
+  "title": "禁用后台残余服务（蓝牙/跨设备/蜂窝/演示/诊断）",
+  "description": "【2026-10-20 v34 IoT 离线注册表审计】对照后台进程清单确认 16 个服务仍为 manual（触发即拉起）：蓝牙族 BTAGService/BthAvctpSvc/BluetoothUserService/bthserv（QEMU 无射频，永不使用）；跨设备 DevicesFlowUserSvc（Devices Flow 用户实例）；零售演示 RetailDemo；钱包 WalletService；NFC/安全邮件 SEMgrSvc；智能卡 SCPolicySvc；蜂窝网络 WwanSvc；移动热点 icssvc；WAP 推送路由 dmwappushservice；诊断宿主 WdiServiceHost/WdiSystemHost；WER 支持服务 wercplsupport（WerSvc 本体保留——LocalDumps 崩溃取证依赖）；隐私弹窗 ConsentUxUserSvc。全部置 disabled：QEMU/kiosk 场景无触发条件，后台列表清空。保留 CaptureService（截图可用）与 WerSvc（取证）。",
+  "category": "Services",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.service",
+      "action": "apply",
+      "spec": {
+        "services": [
+          "BTAGService",
+          "BthAvctpSvc",
+          "BluetoothUserService",
+          "bthserv",
+          "DevicesFlowUserSvc",
+          "RetailDemo",
+          "WalletService",
+          "SEMgrSvc",
+          "SCPolicySvc",
+          "WwanSvc",
+          "icssvc",
+          "dmwappushservice",
+          "WdiServiceHost",
+          "WdiSystemHost",
+          "wercplsupport",
+          "ConsentUxUserSvc"
+        ],
+        "start": "disabled"
+      }
+    }
+  ]
+}
