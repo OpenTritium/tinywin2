@@ -1,0 +1,38 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test
+        run: dotnet test --project tests/TinyWin2.Core.Tests
+
+      - name: Publish win-x64 binary
+        run: dotnet publish src/TinyWin2.Cli -c Release -r win-x64 -o out/tinywin2-win-x64
+
+      - name: Pack dotnet tool
+        run: dotnet pack src/TinyWin2.Cli -c Release -p:PackAsTool=true -o out/tool
+
+      - name: Zip binary
+        run: Compress-Archive -Path out/tinywin2-win-x64/* -DestinationPath out/tinywin2-win-x64.zip
+
+      - name: Attach assets to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            out/tinywin2-win-x64.zip
+            out/tool/*.nupkg

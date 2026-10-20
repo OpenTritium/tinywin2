@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json.Nodes;
 using TinyWin2.Core;
 using TinyWin2.Core.Layers;
@@ -5,6 +6,7 @@ using TinyWin2.Core.Logging;
 using TinyWin2.Core.Native;
 using TinyWin2.Core.Pipeline;
 using TinyWin2.Core.Plans;
+using TinyWin2.Core.Unattend;
 
 namespace TinyWin2.Cli.Commands;
 
@@ -273,7 +275,14 @@ internal static class PackageHandler {
         var output = Path.GetFullPath(request.Output);
         var workspace = Path.GetFullPath(request.Workspace);
         var oscdimg = Path.GetFullPath(request.Oscdimg);
-        var unattended = request.Unattended is null ? null : Path.GetFullPath(request.Unattended);
+        var unattendedSpec = request.Unattended?.Trim();
+        var generateUnattended = string.Equals(unattendedSpec, "auto", StringComparison.OrdinalIgnoreCase);
+        string? unattended = null;
+        if (!generateUnattended
+            && !string.IsNullOrEmpty(unattendedSpec)
+            && !string.Equals(unattendedSpec, "none", StringComparison.OrdinalIgnoreCase)) {
+            unattended = Path.GetFullPath(unattendedSpec);
+        }
         if (!File.Exists(image) || new FileInfo(image).Length == 0) {
             throw new FileNotFoundException($"built image is missing or empty: '{image}'.");
         }
@@ -320,6 +329,22 @@ internal static class PackageHandler {
                 var media = Path.Combine(workspace, "media");
                 var builder = new OutputBuilder(new ProcessRunner(), new());
                 await builder.StageMediaAsync(source.MediaRootPath!, media, image, format, request.Overwrite, ct);
+                if (generateUnattended) {
+                    var generated = Path.Combine(workspace, "Autounattend.xml");
+                    var xml = UnattendGenerator.Generate(new UnattendOptions {
+                        UserName = request.KioskUser,
+                        Password = request.KioskPassword,
+                        Firmware = Cli.ParseFirmware(request.Firmware)
+                    });
+                    UnattendValidator.EnsureValid(xml);
+                    File.WriteAllText(generated, xml, new UTF8Encoding(false));
+                    unattended = generated;
+                    Console.WriteLine($"unattend: generated ({request.Firmware}) -> {generated}");
+                }
+                else if (unattended is not null) {
+                    UnattendValidator.EnsureValid(File.ReadAllText(unattended));
+                }
+
                 if (unattended is not null) {
                     File.Copy(unattended, Path.Combine(media, "Autounattend.xml"), true);
                     Console.WriteLine($"unattended: {unattended}");
@@ -335,6 +360,65 @@ internal static class PackageHandler {
                 await resolver.DismountIsoAsync(source, CancellationToken.None);
             }
         });
+    }
+}
+
+internal static class UnattendHandler {
+    public static int Generate(UnattendGenerateRequest request) {
+        if (request.ImageIndex is < 1 or > int.MaxValue) {
+            throw new ArgumentException("--image-index must be a positive image index.", nameof(request));
+        }
+
+        var output = Path.GetFullPath(request.Output);
+        if (!output.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)) {
+            throw new ArgumentException("--output must end with .xml", nameof(request.Output));
+        }
+
+        var options = new UnattendOptions {
+            UserName = request.UserName,
+            Password = request.Password,
+            ComputerName = request.ComputerName ?? "TINYWIN",
+            ImageIndex = (int)request.ImageIndex,
+            Firmware = Cli.ParseFirmware(request.Firmware),
+            ProductKey = request.ProductKey,
+            Locale = request.Locale ?? "zh-CN",
+            TimeZone = request.TimeZone ?? "China Standard Time"
+        };
+        var xml = UnattendGenerator.Generate(options);
+        UnattendValidator.EnsureValid(xml);
+
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+        File.WriteAllText(output, xml, new UTF8Encoding(false));
+        Console.WriteLine($"unattend: {output}");
+        Console.WriteLine($"firmware: {request.Firmware}; account: {options.UserName}; image index: {options.ImageIndex}");
+        return ExitCodes.Success;
+    }
+
+    public static int Validate(UnattendValidateRequest request) {
+        var file = Path.GetFullPath(request.File);
+        if (!File.Exists(file)) {
+            throw new FileNotFoundException($"unattend file not found: '{file}'.");
+        }
+
+        var errors = UnattendValidator.Validate(File.ReadAllText(file));
+        if (request.Json) {
+            Console.WriteLine(new JsonObject {
+                ["file"] = file,
+                ["valid"] = errors.Count == 0,
+                ["errors"] = new JsonArray([.. errors.Select(error => (JsonNode?)JsonValue.Create(error))])
+            }.ToPrettyString());
+        }
+        else if (errors.Count == 0) {
+            Console.WriteLine($"valid: {file}");
+        }
+        else {
+            Console.Error.WriteLine($"invalid: {file}");
+            foreach (var error in errors) {
+                Console.Error.WriteLine($"  {error}");
+            }
+        }
+
+        return errors.Count == 0 ? ExitCodes.Success : ExitCodes.Failure;
     }
 }
 

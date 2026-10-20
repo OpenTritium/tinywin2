@@ -7,6 +7,7 @@ using TinyWin2.Core.Native;
 using TinyWin2.Core.Pipeline;
 using TinyWin2.Core.Plans;
 using TinyWin2.Core.Profiles;
+using TinyWin2.Core.Unattend;
 
 namespace TinyWin2.Cli;
 
@@ -61,6 +62,13 @@ internal static class Cli {
             "esd" => OutputFormat.Esd,
             "vhdx" => OutputFormat.Vhdx,
             _ => throw new ArgumentException($"unknown output format '{value}' (wim|esd|vhdx)")
+        };
+
+    public static UnattendFirmware ParseFirmware(string value) =>
+        value.ToLowerInvariant() switch {
+            "bios" => UnattendFirmware.Bios,
+            "uefi" => UnattendFirmware.Uefi,
+            _ => throw new ArgumentException($"unknown firmware '{value}' (bios|uefi)")
         };
 
     public static OutputFormat ParseCaptureFormat(string value) =>

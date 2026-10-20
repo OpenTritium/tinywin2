@@ -1,5 +1,8 @@
 # Normalize the repo to LF in the working tree and the index.
 * text=auto eol=lf
+# cmd.exe only parses CRLF: batch files must check out with CRLF on every platform.
+*.cmd text eol=crlf
+*.bat text eol=crlf
 *.png binary
 *.vhdx binary
 *.wim binary

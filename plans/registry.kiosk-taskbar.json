@@ -4,7 +4,7 @@
   "id": "registry.kiosk-taskbar",
   "version": "1.0.1",
   "title": "看盘机任务栏最小化（离线写默认用户配置）",
-  "description": "把开始居左、隐藏任务视图、隐藏 Copilot 三项写进默认用户配置（Users\\Default\\NTUSER.DAT），每个新建用户档案天然继承，不依赖首次登录时机。v6 装机后的实测是这几项一个都没有，原因是旧版只靠”首次登录 RunOnce 跑 kiosk-firstlogon.cmd“，而 v6 镜像里那份补丁根本没投放（appx.security-health-ui 当时还是 appx.provisioned 版本）。TaskbarDa 与 SearchboxTaskbarMode 已从离线计划移除（v1.0.1）：2026-10-15 在本构建主机上把「已加载的离线 hive」写入拆到最小复现，得到两条与镜像无关的主机级硬限制——(1) 写名为 TaskbarDa 的值一律「拒绝访问」，大小写不敏感（taskbarda/TASKBARDA 同样失败），换类型与数据无效，且 reg.exe 与 .NET RegistryKey.SetValue 两条独立路径都一样（名字变体 TaskbarDx/XTaskbarDa/TaskbarD/askbarDa 全部成功，说明是精确名匹配的外部拦截）；(2) 在已加载 hive 中**新建键**同样被拒（reg.exe add 与 .NET CreateSubKey 都失败），所以 Search 键不存在时无法离线创建。这两项改由 kiosk-firstlogon.cmd（appx.security-health-ui 资产，首登以交互用户写活注册表）覆盖，效果不变。其余值（含 10 个全新值）在同一 hive 上写入全部成功，故本计划保留三项离线写。",
+  "description": "把开始居左、隐藏任务视图、隐藏 Copilot 三项写进默认用户配置（Users\\Default\\NTUSER.DAT），每个新建用户档案天然继承，不依赖首次登录时机。v6 装机后的实测是这几项一个都没有，原因是旧版只靠”首次登录 RunOnce 跑 kiosk-firstlogon.cmd“，而 v6 镜像里那份补丁根本没投放（appx.security-health-ui 当时还是 appx.provisioned 版本）。TaskbarDa 与 SearchboxTaskbarMode 已从离线计划移除（v1.0.1）：2026-10-15 在本构建主机上把「已加载的离线 hive」写入拆到最小复现，得到两条与镜像无关的主机级硬限制——(1) 写名为 TaskbarDa 的值一律「拒绝访问」，大小写不敏感（taskbarda/TASKBARDA 同样失败），换类型与数据无效，且 reg.exe 与 .NET RegistryKey.SetValue 两条独立路径都一样（名字变体 TaskbarDx/XTaskbarDa/TaskbarD/askbarDa 全部成功，说明是精确名匹配的外部拦截）；(2) 在已加载 hive 中**新建键**同样被拒（reg.exe add 与 .NET CreateSubKey 都失败），所以 Search 键不存在时无法离线创建。这两项改由 kiosk-firstlogon.cmd（appx.security-health-ui 资产，经 Active Setup 在每个新档案首次登录、shell 启动前以交互用户写活注册表；SearchboxTaskbarMode 与 SearchboxTaskbarModeCache 都写 0 才会彻底隐藏）覆盖，效果不变。其余值（含 10 个全新值）在同一 hive 上写入全部成功，故本计划保留三项离线写。",
   "category": "Desktop Experience",
   "riskLevel": "Low",
   "operations": [

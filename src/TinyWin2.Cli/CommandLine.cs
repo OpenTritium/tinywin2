@@ -18,6 +18,7 @@ internal static class CommandLine {
         root.Add(Build());
         root.Add(Preview());
         root.Add(Package());
+        root.Add(Unattend());
         root.Add(Layers());
         return root;
     }
@@ -245,7 +246,14 @@ internal static class CommandLine {
         var output = RequiredText("--output", "destination .iso file");
         var workspace = RequiredText("--workspace", "temporary media staging directory");
         var oscdimg = RequiredText("--oscdimg", "path to oscdimg.exe");
-        var unattended = Text("--unattend", "optional Autounattend.xml to place at the media root");
+        var unattended = Text("--unattend", "Autounattend.xml to place at the media root: a file path, 'auto' to generate one, or 'none'");
+        unattended.DefaultValueFactory = _ => "auto";
+        var firmware = Text("--firmware", "firmware layout for the generated unattend: bios (MBR) or uefi (GPT)");
+        firmware.DefaultValueFactory = _ => "bios";
+        var kioskUser = Text("--kiosk-user", "local administrator created by the generated unattend");
+        kioskUser.DefaultValueFactory = _ => "TinyWin";
+        var kioskPassword = Text("--kiosk-password", "password for the generated unattend account (plain text)");
+        kioskPassword.DefaultValueFactory = _ => "TinyWin2026Temp";
         var overwrite = Flag("--overwrite", "replace an existing ISO");
         iso.Add(input);
         iso.Add(installImage);
@@ -253,6 +261,9 @@ internal static class CommandLine {
         iso.Add(workspace);
         iso.Add(oscdimg);
         iso.Add(unattended);
+        iso.Add(firmware);
+        iso.Add(kioskUser);
+        iso.Add(kioskPassword);
         iso.Add(overwrite);
         iso.SetAction(result => PackageHandler.CreateIsoAsync(new(
             result.GetRequiredValue(input),
@@ -261,8 +272,63 @@ internal static class CommandLine {
             result.GetRequiredValue(workspace),
             result.GetRequiredValue(oscdimg),
             result.GetValue(overwrite),
-            result.GetValue(unattended))));
+            result.GetValue(unattended),
+            result.GetValue(firmware)!,
+            result.GetValue(kioskUser)!,
+            result.GetValue(kioskPassword)!)));
         command.Add(iso);
+        return command;
+    }
+
+    private static Command Unattend() {
+        var command = new Command("unattend", "generate and validate an Autounattend.xml for kiosk VMs");
+
+        var generate = new Command("generate",
+            "write an Autounattend.xml that wipes the disk, skips OOBE and signs in a local administrator");
+        var output = RequiredText("--output", "destination Autounattend.xml path");
+        var firmware = Text("--firmware", "target firmware layout: bios (MBR) or uefi (GPT)");
+        firmware.DefaultValueFactory = _ => "bios";
+        var user = Text("--user", "local administrator account name");
+        user.DefaultValueFactory = _ => "TinyWin";
+        var password = Text("--password", "password stored in plain text in the answer file");
+        password.DefaultValueFactory = _ => "TinyWin2026Temp";
+        var computerName = Text("--computer-name", "target computer name (max 15 characters)");
+        var imageIndex = Number("--image-index", "image index to install from the media");
+        imageIndex.DefaultValueFactory = _ => 1;
+        var productKey = Text("--product-key", "optional 25-character product key");
+        var locale = Text("--locale", "language, input, system and user locale");
+        var timeZone = Text("--timezone", "target time zone");
+        generate.Add(output);
+        generate.Add(firmware);
+        generate.Add(user);
+        generate.Add(password);
+        generate.Add(computerName);
+        generate.Add(imageIndex);
+        generate.Add(productKey);
+        generate.Add(locale);
+        generate.Add(timeZone);
+        generate.SetAction(result => UnattendHandler.Generate(new(
+            result.GetRequiredValue(output),
+            result.GetValue(firmware)!,
+            result.GetValue(user)!,
+            result.GetValue(password)!,
+            result.GetValue(computerName),
+            result.GetValue(imageIndex),
+            result.GetValue(productKey),
+            result.GetValue(locale),
+            result.GetValue(timeZone))));
+
+        var validate = new Command("validate", "check an Autounattend.xml for structural and consistency errors");
+        var file = RequiredText("--file", "Autounattend.xml to validate");
+        var json = Flag("--json", "write machine-readable JSON");
+        validate.Add(file);
+        validate.Add(json);
+        validate.SetAction(result => UnattendHandler.Validate(new(
+            result.GetRequiredValue(file),
+            result.GetValue(json))));
+
+        command.Add(generate);
+        command.Add(validate);
         return command;
     }
 

@@ -84,7 +84,23 @@ internal sealed record PackageIsoRequest(
     string Workspace,
     string Oscdimg,
     bool Overwrite,
-    string? Unattended);
+    string? Unattended,
+    string Firmware,
+    string KioskUser,
+    string KioskPassword);
+
+internal sealed record UnattendGenerateRequest(
+    string Output,
+    string Firmware,
+    string UserName,
+    string Password,
+    string? ComputerName,
+    long ImageIndex,
+    string? ProductKey,
+    string? Locale,
+    string? TimeZone);
+
+internal sealed record UnattendValidateRequest(string File, bool Json);
 
 internal sealed record LayerCaptureRequest(
     string Workspace,

@@ -12,6 +12,11 @@ public sealed class RegistryHiveCacheTests : IDisposable {
 
     public RegistryHiveCacheTests() {
         _cache = new(_root, _runner);
+        // The cache resolves Select\Current when the SYSTEM hive loads; answer that query.
+        _runner.Handler = (_, args) => args.Count > 0 && args[0] == "query"
+                                      && args.Any(arg => arg.EndsWith("\\Select", StringComparison.OrdinalIgnoreCase))
+            ? FakeProcessRunner.Ok("\r\n    Current    REG_DWORD    0x1\r\n")
+            : FakeProcessRunner.Ok();
     }
 
     public void Dispose() {

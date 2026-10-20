@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "appx.security-health-ui",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "title": "移除 Windows 安全中心界面",
-  "description": "SecHealthUI 是策略保护包，DISM 离线 Remove-ProvisionedAppxPackage 会以 0xC15015610 拒绝，所以走参考实现（ionuttbara/windows-defender-remover，2026-08 HEAD 6126092）的两段式做法：① 离线写官方标记——AppxAllUserStore\\Deprovisioned\\<包族名> 让新用户档案不再获得该应用，AppxAllUserStore\\EndOfLife\\<SID>\\<包名> 让部署服务认定该包对 S-1-5-18 已终止（Deprovisioned 单用不足以阻止对 Staged 载荷的按需激活，这正是 v7 仍能看到面板的原因）；② 投放两个在线钩子补做需要 AppX/DISM API 的部分：Windows\\Setup\\Scripts\\SetupComplete.cmd（setup 收尾、首次登录前、SYSTEM 身份）跑 set-nonremovableapppolicy + Remove-AppxProvisionedPackage/Remove-AppxPackage -AllUsers，并在成功后自删；HKLM RunOnce -> Windows\\kiosk-firstlogon.cmd（首次登录、当前用户身份）只做用户级移除与任务栏五项（任务栏五项的主路径已改为 registry.kiosk-taskbar 的离线默认用户写入，这里留同样的 reg add 作第二道保险并顺带重启 explorer），因为 RunOnce 不带提权，旧版的 -AllUsers 会因权限被拒而静默失败。包载荷本身由上面两个在线钩子删除（不在离线阶段硬删）；AppxAllUserStore 里的 Applications/InboxApplications/Staged 注册键由 registry.security-health-store 删除，本计划需排在其后。【2026-10-17 离线 apply 流程最终结论】离线 apply + unattend 流程不执行 SetupComplete.cmd（v22 冒烟实测 %SystemRoot%\\Temp\\sec-health-setup.log 为空），RunOnce 用户级删除报 0x80073CFA『此应用是 Windows 的一部分』；DISM set-nonremovableapppolicy:0 后活体删除（含 AppXSvc 重启）仍 0x80070032；Deprovisioned+EndOfLife 标记无效；离线删 AppxAllUserStore 注册键后 SR 状态库仍有包行、Start 条目依旧；离线删 WindowsApps 载荷目录时 CodeIntegrity.cat/SecHealthUI.exe 对 takeown+icacls /reset+grant 全面拒绝访问（WindowsApps 包 ACL 特殊保护墙）。结论：26300 上 SecHealthUI 在无 TrustedInstaller 提权（PowerRun 类工具）时不可移除；开始菜单条目为外观残留，点击打开的面板因 Defender 全家禁用而无内容。真 ISO 安装路径（setup.exe 流程执行 SetupComplete.cmd）不受此限。【2026-10-17 已验证的活体移除】参考流程脚本 script/RemoveSecHealthApp.ps1 的关键 = EndOfLife 标记必须覆盖每个用户 SID（S-1-5-18 + 全部 S-1-5-21-*，漏了调用用户 SID 就报 0x80070032）。v22 冒烟以 PowerShell Direct 执行 hyperv/tools/remove-sechealth-live.ps1 成功：包计数 0、开始菜单条目消失、重启后不复活。v4.1.0 将该脚本固化为 Windows\\Setup\\Scripts\\remove-sechealth.ps1，由 unattend FirstLogonCommands Order 7 在首次登录执行。",
+  "description": "SecHealthUI 是策略保护包，DISM 离线 Remove-ProvisionedAppxPackage 会以 0xC15015610 拒绝，所以走参考实现（ionuttbara/windows-defender-remover，2026-08 HEAD 6126092）的两段式做法：① 离线写官方标记——AppxAllUserStore\\Deprovisioned\\<包族名> 让新用户档案不再获得该应用，AppxAllUserStore\\EndOfLife\\<SID>\\<包名> 让部署服务认定该包对 S-1-5-18 已终止（Deprovisioned 单用不足以阻止对 Staged 载荷的按需激活，这正是 v7 仍能看到面板的原因）；② 投放两个在线钩子补做需要 AppX/DISM API 的部分：Windows\\Setup\\Scripts\\SetupComplete.cmd（setup 收尾、首次登录前、SYSTEM 身份）跑 set-nonremovableapppolicy + Remove-AppxProvisionedPackage/Remove-AppxPackage -AllUsers，并在成功后自删；HKLM RunOnce -> Windows\\kiosk-firstlogon.cmd（首次登录、当前用户身份）只做用户级移除与任务栏五项（任务栏五项的主路径已改为 registry.kiosk-taskbar 的离线默认用户写入，这里留同样的 reg add 作第二道保险并顺带重启 explorer），因为 RunOnce 不带提权，旧版的 -AllUsers 会因权限被拒而静默失败。包载荷本身由上面两个在线钩子删除（不在离线阶段硬删）；AppxAllUserStore 里的 Applications/InboxApplications/Staged 注册键由 registry.security-health-store 删除，本计划需排在其后。【2026-10-17 离线 apply 流程最终结论】离线 apply + unattend 流程不执行 SetupComplete.cmd（v22 冒烟实测 %SystemRoot%\\Temp\\sec-health-setup.log 为空），RunOnce 用户级删除报 0x80073CFA『此应用是 Windows 的一部分』；DISM set-nonremovableapppolicy:0 后活体删除（含 AppXSvc 重启）仍 0x80070032；Deprovisioned+EndOfLife 标记无效；离线删 AppxAllUserStore 注册键后 SR 状态库仍有包行、Start 条目依旧；离线删 WindowsApps 载荷目录时 CodeIntegrity.cat/SecHealthUI.exe 对 takeown+icacls /reset+grant 全面拒绝访问（WindowsApps 包 ACL 特殊保护墙）。结论：26300 上 SecHealthUI 在无 TrustedInstaller 提权（PowerRun 类工具）时不可移除；开始菜单条目为外观残留，点击打开的面板因 Defender 全家禁用而无内容。真 ISO 安装路径（setup.exe 流程执行 SetupComplete.cmd）不受此限。【2026-10-17 已验证的活体移除】参考流程脚本 script/RemoveSecHealthApp.ps1 的关键 = EndOfLife 标记必须覆盖每个用户 SID（S-1-5-18 + 全部 S-1-5-21-*，漏了调用用户 SID 就报 0x80070032）。v22 冒烟以 PowerShell Direct 执行 hyperv/tools/remove-sechealth-live.ps1 成功：包计数 0、开始菜单条目消失、重启后不复活。v4.1.0 将该脚本固化为 Windows\\Setup\\Scripts\\remove-sechealth.ps1，由 unattend FirstLogonCommands Order 7 在首次登录执行。v4.2.0：首登钩子从 HKLM RunOnce 改为 Active Setup——OOBE 的 defaultuser0 登录会消耗 HKLM RunOnce，钩子在真实用户创建前就丢失；Active Setup 按用户版本号在每个新档案首次登录、shell 启动前执行。kiosk-firstlogon.cmd 同时改为 CRLF 换行（LF 会让 cmd.exe 解析错乱）并补写 SearchboxTaskbarModeCache=0。",
   "category": "Security",
   "riskLevel": "High",
   "operations": [
@@ -68,10 +68,22 @@
         "hive": "software",
         "values": [
           {
-            "key": "Microsoft\\Windows\\CurrentVersion\\RunOnce",
-            "name": "KioskFirstLogon",
+            "key": "Microsoft\\Active Setup\\Installed Components\\{7F2C1B44-6A9D-4E0C-9E2B-3A5D8C1F0B77}",
+            "name": "StubPath",
             "type": "string",
             "data": "cmd /c C:\\Windows\\kiosk-firstlogon.cmd"
+          },
+          {
+            "key": "Microsoft\\Active Setup\\Installed Components\\{7F2C1B44-6A9D-4E0C-9E2B-3A5D8C1F0B77}",
+            "name": "Version",
+            "type": "string",
+            "data": "1,0,0,0"
+          },
+          {
+            "key": "Microsoft\\Active Setup\\Installed Components\\{7F2C1B44-6A9D-4E0C-9E2B-3A5D8C1F0B77}",
+            "name": "IsInstalled",
+            "type": "dword",
+            "data": 1
           }
         ]
       }

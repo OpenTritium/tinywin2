@@ -18,6 +18,30 @@
     <OptimizationPreference>Speed</OptimizationPreference>
     <RootNamespace>TinyWin2.Cli</RootNamespace>
     <AssemblyName>tinywin2</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <!--
+    `dotnet pack -p:PackAsTool=true` produces the framework-dependent global tool.
+    The AOT/self-contained settings above stay in effect for `dotnet publish` binaries;
+    a .NET tool must ship IL, so this block overrides them for packing only.
+  -->
+  <PropertyGroup Condition="'$(PackAsTool)' == 'true'">
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>tinywin2</ToolCommandName>
+    <PackageId>TinyWin2.Cli</PackageId>
+    <Description>Layered Windows image slimming with explicit inputs, outputs, and workspaces.</Description>
+    <PackageTags>windows;image;dism;wim;esd;slipstream</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/OpenTritium/tinywin2</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/OpenTritium/tinywin2</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <SelfContained>false</SelfContained>
+    <RuntimeIdentifier></RuntimeIdentifier>
+    <PublishAot>false</PublishAot>
+    <PublishTrimmed>false</PublishTrimmed>
+    <TrimMode></TrimMode>
+    <IsAotCompatible>false</IsAotCompatible>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <Optimize>true</Optimize>
@@ -33,5 +57,8 @@
   <ItemGroup>
     <ProjectReference Include="..\TinyWin2.Core\TinyWin2.Core.csproj"/>
     <PackageReference Include="System.CommandLine" Version="2.0.11"/>
+  </ItemGroup>
+  <ItemGroup Condition="'$(PackAsTool)' == 'true'">
+    <None Include="..\..\README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 </Project>

@@ -724,6 +724,10 @@ public sealed class DriverStoreExecuterTests : IDisposable {
             }
 
             var key = args[1].ToString();
+            if (key.EndsWith("\\Select", StringComparison.OrdinalIgnoreCase)) {
+                return FakeProcessRunner.Ok("\r\n    Current    REG_DWORD    0x1\r\n");
+            }
+
             if (key == "HKLM\\TinyWin2_system") {
                 return FakeProcessRunner.Ok("HKEY_LOCAL_MACHINE\\TinyWin2_system\\ControlSet001\r\n");
             }

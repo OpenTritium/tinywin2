@@ -581,9 +581,8 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
         _harness.Runner.Handler = (file, args) => {
             if (file == "reg.exe" && args[0] == "add" && args[1] == deniedKey && args.Contains("/v")
                 && args.Contains("Start")) {
-                return ++startAdds == 1
-                    ? throw new ProcessRunnerException("reg.exe", FakeProcessRunner.Fail(1, "Access is denied."))
-                    : FakeProcessRunner.Ok();
+                startAdds++;
+                throw new ProcessRunnerException("reg.exe", FakeProcessRunner.Fail(1, "Access is denied."));
             }
 
             if (args[0] == "load" || args[0] == "add") {
@@ -611,7 +610,7 @@ public sealed class RegistryServiceExecuterTests : IDisposable {
                 ExecuterTestHarness.Spec("registry.service", OperationAction.Apply,
                     ("services", new JsonArray("DPS")), ("start", "disabled")), CancellationToken.None)))!;
         await Assert.That(ex.Message).Contains("could not grant write access");
-        await Assert.That(startAdds).IsEqualTo(1);
+        await Assert.That(startAdds).IsEqualTo(3);
     }
 
     [Test]
