@@ -1,0 +1,33 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.wu-autoupdate-policy",
+  "version": "1.0.0",
+  "title": "关闭自动更新（保留 WU 组件完整）",
+  "description": "标准企业做法：组策略键 HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU / NoAutoUpdate=1 关闭自动更新；WU 服务保持系统默认（manual 按需），组件/CLSID/UUS 完整保留。与删除式禁用的区别（v28/v29/v36 三次实证）：删除式会破坏 OOBE 更新检查链导致 fastfail 死循环；本计划在 OOBE 完成后生效（经 autounattend FirstLogonCommands 或离线应用），安装期 WU 可用，装好后不自动拉取更新。同花顺 kiosk 场景：更新手动控制。",
+  "category": "Update Services",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "software",
+        "values": [
+          {
+            "key": "Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
+            "name": "NoAutoUpdate",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Policies\\Microsoft\\Windows\\WindowsUpdate",
+            "name": "DoNotConnectToWindowsUpdateInternetLocations",
+            "type": "dword",
+            "data": 1
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1245,6 +1245,10 @@
     {
       "planId": "registry.updatepolicy-clsid-path-fix",
       "enabled": true
+    },
+    {
+      "planId": "registry.wu-autoupdate-policy",
+      "enabled": true
     }
   ]
 }
