@@ -824,10 +824,6 @@
       "enabled": true
     },
     {
-      "planId": "registry.windows-update-policy",
-      "enabled": true
-    },
-    {
       "planId": "registry.wpbt-disabled",
       "enabled": true
     },
@@ -1083,10 +1079,6 @@
       "enabled": true
     },
     {
-      "planId": "service.update-orchestrator",
-      "enabled": true
-    },
-    {
       "planId": "service.user-access-logging",
       "enabled": true
     },
@@ -1120,10 +1112,6 @@
     },
     {
       "planId": "service.windows-search",
-      "enabled": true
-    },
-    {
-      "planId": "service.windows-update",
       "enabled": true
     },
     {
@@ -1184,10 +1172,6 @@
       "enabled": true
     },
     {
-      "planId": "fs.recovery-environment",
-      "enabled": false
-    },
-    {
       "planId": "fs.remote-desktop-residuals",
       "enabled": false
     },
@@ -1227,10 +1211,6 @@
       "enabled": true
     },
     {
-      "planId": "registry.update-task-cache",
-      "enabled": true
-    },
-    {
       "planId": "fs.sync-center",
       "enabled": true
     },
@@ -1247,11 +1227,23 @@
       "enabled": true
     },
     {
-      "planId": "registry.update-policy-strip",
-      "enabled": false
+      "planId": "registry.crash-diagnostics-silent",
+      "enabled": true
     },
     {
-      "planId": "registry.crash-diagnostics-silent",
+      "planId": "registry.bypass-tpm",
+      "enabled": true
+    },
+    {
+      "planId": "feature.rdc-infrastructure",
+      "enabled": true
+    },
+    {
+      "planId": "service.background-residuals",
+      "enabled": true
+    },
+    {
+      "planId": "registry.updatepolicy-clsid-path-fix",
       "enabled": true
     }
   ]
