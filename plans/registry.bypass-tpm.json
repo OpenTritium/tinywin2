@@ -1,0 +1,57 @@
+{
+  "$schema": "../schemas/plan-v5.schema.json",
+  "schemaVersion": 5,
+  "id": "registry.bypass-tpm",
+  "version": "1.0.0",
+  "title": "绕过 Windows 11 硬件检查（TPM 2.0 / SecureBoot / RAM / CPU / Storage）",
+  "description": "【来源：GitHub 通行做法】AveYo/MediaCreationTool.bat 与 NTDEV/tiny11builder 采用的 LabConfig 绕过键，微软官方文档亦收录 MoSetup 放行策略。1) SYSTEM\\Setup\\LabConfig：WinPE 安装器读取的五项绕过开关（BypassTPMCheck/BypassSecureBootCheck/BypassRAMCheck/BypassCPUCheck/BypassStorageCheck），配方中同时烤入离线 SYSTEM 配置单元，覆盖系统内再次评估与升级场景；2) SYSTEM\\Setup\\MoSetup：AllowUpgradesWithUnsupportedTPMOrCPU=1，放行不受支持硬件上的升级检查。QEMU/kiosk 虚拟机无物理 TPM，同花顺客户端不使用 TPM 功能。注意：boot.wim（WinPE）阶段的硬件预检由打包脚本对 boot.wim 离线配置单元另行注入同一组 LabConfig 键，不属本计划范围。",
+  "category": "System",
+  "riskLevel": "Low",
+  "operations": [
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "system",
+        "values": [
+          {
+            "key": "Setup\\LabConfig",
+            "name": "BypassTPMCheck",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Setup\\LabConfig",
+            "name": "BypassSecureBootCheck",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Setup\\LabConfig",
+            "name": "BypassRAMCheck",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Setup\\LabConfig",
+            "name": "BypassCPUCheck",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Setup\\LabConfig",
+            "name": "BypassStorageCheck",
+            "type": "dword",
+            "data": 1
+          },
+          {
+            "key": "Setup\\MoSetup",
+            "name": "AllowUpgradesWithUnsupportedTPMOrCPU",
+            "type": "dword",
+            "data": 1
+          }
+        ]
+      }
+    }
+  ]
+}
