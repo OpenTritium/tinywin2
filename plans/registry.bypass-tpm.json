@@ -49,6 +49,39 @@
             "name": "AllowUpgradesWithUnsupportedTPMOrCPU",
             "type": "dword",
             "data": 1
+          },
+          {
+            "key": "Control Panel\\UnsupportedHardwareNotificationCache",
+            "name": "SV1",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Control Panel\\UnsupportedHardwareNotificationCache",
+            "name": "SV2",
+            "type": "dword",
+            "data": 0
+          }
+        ]
+      }
+    },
+    {
+      "resource": "registry.value",
+      "action": "apply",
+      "spec": {
+        "hive": "default-user",
+        "values": [
+          {
+            "key": "Control Panel\\UnsupportedHardwareNotificationCache",
+            "name": "SV1",
+            "type": "dword",
+            "data": 0
+          },
+          {
+            "key": "Control Panel\\UnsupportedHardwareNotificationCache",
+            "name": "SV2",
+            "type": "dword",
+            "data": 0
           }
         ]
       }
