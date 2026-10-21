@@ -704,10 +704,6 @@
       "enabled": true
     },
     {
-      "planId": "registry.autologon-user",
-      "enabled": true
-    },
-    {
       "planId": "registry.oobe-critical-services",
       "enabled": true
     },
