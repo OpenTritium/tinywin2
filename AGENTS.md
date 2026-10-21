@@ -575,7 +575,36 @@ driving the live guest over Win+R/QEMU-monitor:
   builds - compression is a final-delivery step only, after the smoke gate passes.
 - Never let the smoke workspace/dead artifacts eat the C: drive: check `df -h /mnt/c`
   (need 30+ GB) before every build, and delete superseded WIMs/VHDs/ISOs immediately.
-- The dockur custom.iso flow: dockur IGNORES autounattend.xml inside custom ISOs (it
-  generates its own Docker-user answer file); manual clicks through the product-key
-  page are part of the flow. Never remove the /custom.iso mount "to test" - dockur
-  then downloads stock Windows from the internet.
+- The dockur custom.iso flow (updated 2026-10-21): dockur attaches its generated answer
+  as a 64 MB USB (setup.img, C: in WinPE = disk 0) and boots the custom ISO unchanged.
+  The shipped boot.wim (image 2) runs winpeshl.ini -> setup-launch.cmd, which calls
+  wpeinit, waits for the install media (`\sources\install.esd`) and for a GB-sized
+  disk, partitions it (EFI 260 FAT32 / MSR 128 / NTFS), then starts setup with an
+  explicit /unattend for the ISO's Autounattend-TinyWin.xml, so dockur's answer media
+  is ignored. Never remove the /custom.iso mount "to test" - dockur then downloads
+  stock Windows from the internet.
+
+## Field notes: custom-ISO unattended launcher (2026-10-21)
+
+- **Windows 11 26300 no longer treats an empty ProductKey + WillShowUI=Never as "skip".**
+  Setup stops at the key page. Write the edition's generic key into the answer
+  (Home: YTMG3-N6DKC-DKB77-7M9GH-8HVX7); `package iso --product-key` forwards it.
+- **The install disk can enumerate after wpeinit.** A `diskpart list disk` run right
+  after wpeinit can show only dockur's 64 MB USB; retry until a disk measured in GB
+  appears (the virtio-scsi disk shows up seconds later). A hardcoded DiskID 0 answer
+  then wipes the USB instead of the install disk (0x80004005-0x4002F).
+- **The answer must be disk-agnostic.** The launcher partitions the disk and the
+  generated answer installs with InstallToAvailablePartition (no DiskConfiguration);
+  hardcoded DiskID/PartitionID cannot cover both the direct (install disk = 0) and
+  dockur (USB = 0, install disk = 1) layouts.
+- **WinPE lacks findstr and wmic.** Parse `diskpart /s` output with a `for /f` loop:
+  redirected output is ANSI (GBK), token 2 = disk number, token 4 = size value,
+  token 5 = unit (`GB`); the small USB is filtered out naturally.
+- **Diagnostics:** setup-launch.cmd logs to `%TEMP%\tw2-launch.log`, copies it to the
+  EFI partition (assigned Y:) and, on fallback, to every writable drive root. Read it
+  offline with qemu-nbd + ntfs-3g (mount p1 for the EFI log, or the FAT setup.img).
+- **Baked Winlogon credentials fight deployment answers.** registry.autologon-user
+  v1.1.0 no longer writes AutoAdminLogon/DefaultUserName/DefaultPassword; dockur's
+  answer sets DefaultUserName=Docker but its base64 password never replaced ours, so
+  AutoLogon submitted Docker/TinyWin2026Temp and the lock screen reported a bad
+  password with no user input.
