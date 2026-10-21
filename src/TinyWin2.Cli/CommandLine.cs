@@ -251,7 +251,7 @@ internal static class CommandLine {
         var firmware = Text("--firmware", "firmware layout for the generated unattend: bios (MBR) or uefi (GPT)");
         firmware.DefaultValueFactory = _ => "bios";
         var layout = Text("--layout",
-            "partition layout: standard, or minimal (same partitions, WinRE moved to C: and the recovery partition deleted)");
+            "partition layout: standard, or minimal (stages a SYSTEM SetupComplete.cmd that moves WinRE to C: and deletes the recovery partition)");
         layout.DefaultValueFactory = _ => "standard";
         var kioskUser = Text("--kiosk-user", "local administrator created by the generated unattend");
         kioskUser.DefaultValueFactory = _ => "TinyWin";
@@ -293,9 +293,6 @@ internal static class CommandLine {
         var output = RequiredText("--output", "destination Autounattend.xml path");
         var firmware = Text("--firmware", "target firmware layout: bios (MBR) or uefi (GPT)");
         firmware.DefaultValueFactory = _ => "bios";
-        var layout = Text("--layout",
-            "partition layout: standard, or minimal (same partitions, WinRE moved to C: and the recovery partition deleted)");
-        layout.DefaultValueFactory = _ => "standard";
         var user = Text("--user", "local administrator account name");
         user.DefaultValueFactory = _ => "TinyWin";
         var password = Text("--password", "password stored in plain text in the answer file");
@@ -308,7 +305,6 @@ internal static class CommandLine {
         var timeZone = Text("--timezone", "target time zone");
         generate.Add(output);
         generate.Add(firmware);
-        generate.Add(layout);
         generate.Add(user);
         generate.Add(password);
         generate.Add(computerName);
@@ -319,7 +315,6 @@ internal static class CommandLine {
         generate.SetAction(result => UnattendHandler.Generate(new(
             result.GetRequiredValue(output),
             result.GetValue(firmware)!,
-            result.GetValue(layout)!,
             result.GetValue(user)!,
             result.GetValue(password)!,
             result.GetValue(computerName),

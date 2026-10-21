@@ -35,7 +35,6 @@ public sealed record UnattendOptions {
     public string TimeZone { get; init; } = "China Standard Time";
     public int ImageIndex { get; init; } = 1;
     public UnattendFirmware Firmware { get; init; } = UnattendFirmware.Bios;
-    public UnattendLayout Layout { get; init; } = UnattendLayout.Standard;
     public string? ProductKey { get; init; }
 
     /// <summary>Returns the display name to emit, falling back to <see cref="UserName" /> when blank.</summary>

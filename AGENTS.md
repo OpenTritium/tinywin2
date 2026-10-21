@@ -19,7 +19,7 @@ tinywin2 build    --input --index --output --workspace --format wim|esd|vhdx
 tinywin2 preview  --input --index --workspace        # what would each plan change?
 tinywin2 package iso --input --install-image --output --workspace --oscdimg \
   [--unattend auto|<file>|none] [--firmware bios|uefi] [--layout standard|minimal] [--kiosk-user --kiosk-password]
-tinywin2 unattend generate --output <file> [--firmware bios|uefi] [--layout standard|minimal] [--user --password --image-index]
+tinywin2 unattend generate --output <file> [--firmware bios|uefi] [--user --password --image-index]
 tinywin2 unattend validate --file <autounattend.xml>
 tinywin2 layer list|diff|extract|capture --workspace ...
 ```
@@ -42,9 +42,13 @@ phases, creates a local administrator and signs it in; `--firmware bios` (defaul
 writes an MBR layout and `--firmware uefi` a GPT layout. The generated file — and any
 `--unattend <file>` overlay — is validated before it is copied. `--unattend none`
 ships the media untouched. `--layout minimal` keeps the same partitions but removes the
-setup-created recovery partition: first-logon commands move WinRE to
-`C:\Recovery\WindowsRE` and delete it. UEFI cannot drop the MSR — without it Setup
-fails at the disk page (`DiskLayoutMakeReserved: Couldn't create MSR partition`).
+setup-created recovery partition: the media carries
+`sources\$OEM$\$$\Setup\Scripts\SetupComplete.cmd`, which runs as SYSTEM before OOBE and
+moves WinRE to `C:\Recovery\WindowsRE` before deleting the partition. UEFI cannot drop
+the MSR — without it Setup fails at the disk page
+(`DiskLayoutMakeReserved: Couldn't create MSR partition`). FirstLogonCommands cannot do
+this work: they run with the user's filtered token, so `reagentc` and `diskpart` fail
+with access denied.
 
 `profiles/vm-init.json` is the shipped THS-only profile, not a general laptop keep-set. It keeps WOW64 for 32-bit THS, Client.CBS for the Windows shell/Chinese text input, Chinese fonts, WinRE, and the system-managed pagefile; `registry.hibernate-disabled` only removes hibernation/fast startup. The default power scheme is left unchanged.
 It disables the RDP service chain and removes RDP client/management tools, OpenSSH client/server components, and SMB service roles; dockur's VNC console on port 8006 is independent. RDP core files remain (`fs.remote-desktop-residuals` is off). `fs.kiosk-shell` remains off until the real THS executable path and startup are tested; `appx.desktop-app-installer` stays kept until the THS installer route is known.

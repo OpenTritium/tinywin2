@@ -334,8 +334,7 @@ internal static class PackageHandler {
                     var xml = UnattendGenerator.Generate(new UnattendOptions {
                         UserName = request.KioskUser,
                         Password = request.KioskPassword,
-                        Firmware = Cli.ParseFirmware(request.Firmware),
-                        Layout = Cli.ParseLayout(request.Layout)
+                        Firmware = Cli.ParseFirmware(request.Firmware)
                     });
                     UnattendValidator.EnsureValid(xml);
                     File.WriteAllText(generated, xml, new UTF8Encoding(false));
@@ -349,6 +348,18 @@ internal static class PackageHandler {
                 if (unattended is not null) {
                     File.Copy(unattended, Path.Combine(media, "Autounattend.xml"), true);
                     Console.WriteLine($"unattended: {unattended}");
+                }
+
+                if (Cli.ParseLayout(request.Layout) == UnattendLayout.Minimal) {
+                    // FirstLogonCommands run with the user's filtered token, so reagentc/diskpart
+                    // fail there. $OEM$\$$\Setup\Scripts\SetupComplete.cmd runs as SYSTEM.
+                    var scripts = Path.Combine(media, "sources", "$OEM$", "$$", "Setup", "Scripts");
+                    Directory.CreateDirectory(scripts);
+                    var script = Path.Combine(scripts, "SetupComplete.cmd");
+                    File.WriteAllText(script,
+                        WinReCleanupScript.Generate(Cli.ParseFirmware(request.Firmware)),
+                        new UTF8Encoding(false));
+                    Console.WriteLine($"winre: {script} (runs as SYSTEM before OOBE)");
                 }
 
                 Directory.CreateDirectory(Path.GetDirectoryName(output)!);
@@ -381,7 +392,6 @@ internal static class UnattendHandler {
             ComputerName = request.ComputerName ?? "TINYWIN",
             ImageIndex = (int)request.ImageIndex,
             Firmware = Cli.ParseFirmware(request.Firmware),
-            Layout = Cli.ParseLayout(request.Layout),
             ProductKey = request.ProductKey,
             Locale = request.Locale ?? "zh-CN",
             TimeZone = request.TimeZone ?? "China Standard Time"

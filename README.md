@@ -47,11 +47,13 @@ tinywin2 package iso ... --firmware uefi --layout minimal   # same, recovery par
 ```
 
 `--layout minimal` omits the recovery partition: Setup always carves a WinRE partition out of the
-OS volume on NTFS installs, so the generated first-logon commands run `reagentc /disable`, delete
-that partition, extend C:, then re-register WinRE in `C:\Recovery\WindowsRE`. UEFI still needs the
-MSR partition (128 MB on disks larger than 16 GB) — a GPT disk without one fails at the disk page
-with `DiskLayoutMakeReserved: Couldn't create MSR partition (0x8007000e)`. Verify the final layout
-with `reagentc /info`.
+OS volume on NTFS installs, so the packaged media carries
+`sources\$OEM$\$$\Setup\Scripts\SetupComplete.cmd`. Setup runs it as SYSTEM before OOBE; it runs
+`reagentc /disable`, deletes that partition, extends C:, then `reagentc /enable` re-stages WinRE
+under `C:\Recovery\WindowsRE`. UEFI still needs the MSR partition (128 MB on disks larger than
+16 GB) — a GPT disk without one fails at the disk page with
+`DiskLayoutMakeReserved: Couldn't create MSR partition (0x8007000e)`. Verify the final layout with
+`reagentc /info`.
 
 Pass `--unattend <file>` to overlay your own answer file (it is validated before being copied)
 or `--unattend none` to ship the media unchanged. `tinywin2 unattend generate` writes the file

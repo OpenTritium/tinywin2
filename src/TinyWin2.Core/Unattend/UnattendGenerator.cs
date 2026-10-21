@@ -209,7 +209,6 @@ public static class UnattendGenerator {
                         new XElement(Ns + "Description", "TinyWin kiosk administrator"),
                         new XElement(Ns + "Group", "Administrators"),
                         PasswordElement(options.Password)))),
-            options.Layout == UnattendLayout.Minimal ? FirstLogonWinReCommands(options.Firmware) : null,
             new XElement(Ns + "OOBE",
                 new XElement(Ns + "SkipMachineOOBE", "true"),
                 new XElement(Ns + "SkipUserOOBE", "true"),
@@ -220,34 +219,6 @@ public static class UnattendGenerator {
                 new XElement(Ns + "HideWirelessSetupInOOBE", "true"),
                 new XElement(Ns + "NetworkLocation", "Work"),
                 new XElement(Ns + "ProtectYourPC", "3")));
-
-    /// <summary>
-    ///     Setup always carves a WinRE partition out of the OS volume on NTFS installs. These commands move
-    ///     WinRE onto C: and delete that partition, leaving ESP + MSR + Windows (UEFI) or
-    ///     System Reserved + Windows (BIOS).
-    /// </summary>
-    private static XElement FirstLogonWinReCommands(UnattendFirmware firmware) {
-        // Setup appends the recovery partition after the OS partition, so its number follows the
-        // three-partition UEFI layout and the two-partition BIOS layout.
-        var windows = firmware == UnattendFirmware.Uefi ? 3 : 2;
-        var recovery = windows + 1;
-        return new XElement(Ns + "FirstLogonCommands",
-            SynchronousCommand(1, "Move WinRE off the recovery partition",
-                "cmd /c reagentc /disable"),
-            SynchronousCommand(2, "Delete the setup-created recovery partition and extend Windows",
-                $"cmd /c (echo select disk 0& echo select partition {recovery}& echo delete partition override&"
-                + $" echo select partition {windows}& echo extend)| diskpart"),
-            SynchronousCommand(3, "Register WinRE on C:\\Recovery\\WindowsRE",
-                "cmd /c if not exist C:\\Recovery\\WindowsRE mkdir C:\\Recovery\\WindowsRE&"
-                + " reagentc /setreimage /path C:\\Recovery\\WindowsRE& reagentc /enable"));
-    }
-
-    private static XElement SynchronousCommand(int order, string description, string commandLine) =>
-        new(Ns + "SynchronousCommand",
-            new XAttribute(Wcm + "action", "add"),
-            new XElement(Ns + "Order", order.ToString(CultureInfo.InvariantCulture)),
-            new XElement(Ns + "Description", description),
-            new XElement(Ns + "CommandLine", commandLine));
 
     private static XElement PasswordElement(string password) =>
         new(Ns + "Password",

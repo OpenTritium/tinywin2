@@ -53,48 +53,32 @@ public sealed class UnattendGeneratorTests {
     }
 
     [Test]
-    public async Task MinimalLayoutKeepsTheMsrAndDeletesTheRecoveryPartition() {
-        var document = XDocument.Parse(UnattendGenerator.Generate(new UnattendOptions {
-            Firmware = UnattendFirmware.Uefi,
-            Layout = UnattendLayout.Minimal
-        }));
-        await Assert.That(PartitionTypes(document)).IsEquivalentTo(new[] { "EFI", "MSR", "Primary" });
-        await Assert.That(InstallPartition(document)).IsEqualTo("3");
-        await Assert.That(UnattendValidator.Validate(document.ToString())).IsEmpty();
-
-        var commands = document.Descendants(Ns + "FirstLogonCommands")
-            .Descendants(Ns + "CommandLine")
-            .Select(element => element.Value)
-            .ToList();
-        await Assert.That(commands.Count).IsEqualTo(3);
-        await Assert.That(commands[0]).Contains("reagentc /disable");
-        await Assert.That(commands[1]).Contains("select partition 4");
-        await Assert.That(commands[1]).Contains("delete partition override");
-        await Assert.That(commands[1]).Contains("select partition 3");
-        await Assert.That(commands[2]).Contains("reagentc /enable");
+    public async Task WinReCleanupScriptTargetsUefiRecoveryAndWindowsPartitions() {
+        var script = WinReCleanupScript.Generate(UnattendFirmware.Uefi);
+        await Assert.That(script).Contains("reagentc /disable");
+        await Assert.That(script).Contains("select partition 4");
+        await Assert.That(script).Contains("delete partition override");
+        await Assert.That(script).Contains("select partition 3");
+        await Assert.That(script).Contains("extend");
+        await Assert.That(script).Contains("reagentc /enable");
+        await Assert.That(script).Contains("\r\n");
     }
 
     [Test]
-    public async Task MinimalBiosLayoutDeletesThirdPartitionAndExtendsSecond() {
-        var document = XDocument.Parse(UnattendGenerator.Generate(new UnattendOptions {
-            Firmware = UnattendFirmware.Bios,
-            Layout = UnattendLayout.Minimal
-        }));
-        await Assert.That(PartitionTypes(document)).IsEquivalentTo(new[] { "Primary", "Primary" });
-        await Assert.That(InstallPartition(document)).IsEqualTo("2");
-
-        var commands = document.Descendants(Ns + "FirstLogonCommands")
-            .Descendants(Ns + "CommandLine")
-            .Select(element => element.Value)
-            .ToList();
-        await Assert.That(commands[1]).Contains("select partition 3");
-        await Assert.That(commands[1]).Contains("select partition 2");
+    public async Task WinReCleanupScriptTargetsBiosRecoveryAndWindowsPartitions() {
+        var script = WinReCleanupScript.Generate(UnattendFirmware.Bios);
+        await Assert.That(script).Contains("select partition 3");
+        await Assert.That(script).Contains("select partition 2");
+        await Assert.That(script).Contains("reagentc /enable");
     }
 
     [Test]
-    public async Task StandardLayoutLeavesWinReAlone() {
-        var document = Generate(UnattendFirmware.Uefi);
-        await Assert.That(document.Descendants(Ns + "FirstLogonCommands")).IsEmpty();
+    public async Task GeneratedUnattendDoesNotRelyOnFirstLogonCommands() {
+        // FirstLogonCommands run with the user's filtered token; reagentc and diskpart fail there.
+        foreach (var firmware in Enum.GetValues<UnattendFirmware>()) {
+            var document = Generate(firmware);
+            await Assert.That(document.Descendants(Ns + "FirstLogonCommands")).IsEmpty();
+        }
     }
 
     [Test]
