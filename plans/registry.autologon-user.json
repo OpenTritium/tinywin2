@@ -2,9 +2,9 @@
   "$schema": "../schemas/plan-v5.schema.json",
   "schemaVersion": 5,
   "id": "registry.autologon-user",
-  "version": "1.0.0",
-  "title": "烟测自动登录：离线建户服务 + TinyWin 自动登录",
-  "description": "为无人值守烟测部署离线建户与自动登录，完全不依赖 OOBE。【背景】2026-10-18 实测：v23/v24 起镜像的 OOBE UI（CloudExperienceHost 宿主）在首个人机界面阶段 fast-fail（oobeldr 报 0xc0000409 / hr=0x80070002，CXH 的 AppxManifest.xml 在构建后缺失），真实 setup 与离线 apply 都到不了建户界面；Unattend 的 UserAccounts 元素在 OOBE UI 阶段处理，UI 崩溃即永不建户，autologon 随即报「指定的域不存在」。本计划改用部署工具的经典手法：注册一次性系统服务 CreateUser（Start=auto，ImagePath=cmd.exe），SCM 开机以 SYSTEM 身份拉起——net user 建户、加入 Administrators、然后服务键自删（幂等：用户已存在时 net user 报错但链条继续，localgroup 与自删照常执行）。同时写 Winlogon 自动登录五件套（AutoAdminLogon / DefaultUserName / DefaultPassword / DefaultDomainName=. / ForceAutoLogon）。风险：镜像内含明文密码，仅限烟测镜像使用，严禁进入分发给别人的镜像；net user 在 SAM 服务启动后即可用，早于 logon UI。v25 离线 apply 实测：开机数秒建户、自动登录直达桌面（PS Direct user=TinyWin, explorer=1）。",
+  "version": "1.1.0",
+  "title": "烟测离线建户（AutoLogon 交给部署答案文件）",
+  "description": "为 OOBE UI 崩溃的烟测镜像离线创建 TinyWin 管理员账户，不依赖 OOBE。【背景】2026-10-18 实测：v23/v24 起镜像的 OOBE UI（CloudExperienceHost 宿主）在首个人机界面阶段 fast-fail（oobeldr 报 0xc0000409 / hr=0x80070002，CXH 的 AppxManifest.xml 在构建后缺失），Unattend 的 UserAccounts 元素在 OOBE UI 阶段处理，UI 崩溃即永不建户。本计划注册一次性系统服务 CreateUser（Start=auto，ImagePath=cmd.exe），SCM 开机以 SYSTEM 身份拉起——net user 建户、加入 Administrators、然后服务键自删（幂等：用户已存在时 net user 报错但链条继续，localgroup 与自删照常执行）。【v1.1.0，2026-10-21】不再写 Winlogon 自动登录五件套（AutoAdminLogon / DefaultUserName / DefaultPassword / DefaultDomainName / ForceAutoLogon）：镜像里烘焙 DefaultPassword 会与部署方答案文件冲突——dockur 的答案把 DefaultUserName 改成 Docker，但其 base64 AutoLogon 密码未覆盖旧的 DefaultPassword，AutoLogon 以 Docker/TinyWin2026Temp 自动登录失败，锁屏在无人输入时弹出「用户名或密码不正确」。自动登录现在完全由部署答案文件的 AutoLogon 决定。风险：服务命令行含明文密码，仅限烟测镜像使用，严禁进入分发镜像。",
   "category": "System",
   "riskLevel": "Medium",
   "operations": [
@@ -37,45 +37,6 @@
             "name": "ImagePath",
             "type": "expand",
             "data": "cmd.exe /c net user TinyWin TinyWin2026Temp /add & net localgroup Administrators TinyWin /add & reg delete HKLM\\SYSTEM\\CurrentControlSet\\Services\\CreateUser /f"
-          }
-        ]
-      }
-    },
-    {
-      "resource": "registry.value",
-      "action": "apply",
-      "spec": {
-        "hive": "software",
-        "values": [
-          {
-            "key": "Microsoft\\Windows NT\\CurrentVersion\\Winlogon",
-            "name": "AutoAdminLogon",
-            "type": "string",
-            "data": "1"
-          },
-          {
-            "key": "Microsoft\\Windows NT\\CurrentVersion\\Winlogon",
-            "name": "DefaultUserName",
-            "type": "string",
-            "data": "TinyWin"
-          },
-          {
-            "key": "Microsoft\\Windows NT\\CurrentVersion\\Winlogon",
-            "name": "DefaultPassword",
-            "type": "string",
-            "data": "TinyWin2026Temp"
-          },
-          {
-            "key": "Microsoft\\Windows NT\\CurrentVersion\\Winlogon",
-            "name": "DefaultDomainName",
-            "type": "string",
-            "data": "."
-          },
-          {
-            "key": "Microsoft\\Windows NT\\CurrentVersion\\Winlogon",
-            "name": "ForceAutoLogon",
-            "type": "string",
-            "data": "1"
           }
         ]
       }
