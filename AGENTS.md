@@ -226,15 +226,15 @@ cycle against a zh-cn 26300 client ISO:
   must go through `ImageFs.DeleteWithRescueAsync` (which grants the parent
   DELETE_CHILD and retries) and warn loudly if a shell survives.
 
-- **WinPE has no virtio-blk driver** (found 2026-10-21): a qemu test VM that
-  attaches the target disk with `-device virtio-blk-pci` boots Setup, but
-  `diskpart` reports "没有可以显示的固定磁盘" and the unattended
-  `PerformDiskProvisioning` step fails with `VDS_E_OBJECT_NOT_FOUND`
-  (0x80042405) before touching the disk. Microsoft's install `boot.wim` only
-  ships inbox storage drivers, so test harnesses must present the disk as
-  AHCI/SATA (`-drive file=disk.qcow2,format=qcow2,if=ide,index=0` on q35) or
-  inject the virtio driver into the media. A disk pre-partitioned offline
-  masks the failure: the partitions exist, but Setup still cannot see them.
+- **Prefer NVMe (or AHCI) for the test disk — never virtio-blk without a driver**
+  (found 2026-10-21): WinPE and Windows ship the inbox `stornvme` and AHCI drivers, but
+  not virtio-blk, so a qemu disk attached with `-device virtio-blk-pci` is invisible to
+  Setup (`diskpart` reports "没有可以显示的固定磁盘") and unattended provisioning fails
+  with `VDS_E_OBJECT_NOT_FOUND` (0x80042405) before touching the disk. Use
+  `-drive file=disk.qcow2,if=none,id=d0,format=qcow2 -device nvme,drive=d0,serial=...`
+  (qemu NVMe; matches Hyper-V's modern disk path) or `if=ide` on q35. A disk
+  pre-partitioned offline masks the failure: the partitions exist, but Setup still
+  cannot see them.
 
 ## Field notes: deploy-loop postmortem (dockur + WSL2 podman, 2026-10-13)
 
