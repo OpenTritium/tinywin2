@@ -43,7 +43,15 @@ partition layout follows the VM firmware:
 ```
 tinywin2 package iso ... --firmware bios   # MBR: System Reserved + Windows (default)
 tinywin2 package iso ... --firmware uefi   # GPT: EFI + MSR + Windows
+tinywin2 package iso ... --firmware uefi --layout minimal   # same, recovery partition removed
 ```
+
+`--layout minimal` omits the recovery partition: Setup always carves a WinRE partition out of the
+OS volume on NTFS installs, so the generated first-logon commands run `reagentc /disable`, delete
+that partition, extend C:, then re-register WinRE in `C:\Recovery\WindowsRE`. UEFI still needs the
+MSR partition (128 MB on disks larger than 16 GB) — a GPT disk without one fails at the disk page
+with `DiskLayoutMakeReserved: Couldn't create MSR partition (0x8007000e)`. Verify the final layout
+with `reagentc /info`.
 
 Pass `--unattend <file>` to overlay your own answer file (it is validated before being copied)
 or `--unattend none` to ship the media unchanged. `tinywin2 unattend generate` writes the file

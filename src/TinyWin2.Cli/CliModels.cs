@@ -86,12 +86,14 @@ internal sealed record PackageIsoRequest(
     bool Overwrite,
     string? Unattended,
     string Firmware,
+    string Layout,
     string KioskUser,
     string KioskPassword);
 
 internal sealed record UnattendGenerateRequest(
     string Output,
     string Firmware,
+    string Layout,
     string UserName,
     string Password,
     string? ComputerName,

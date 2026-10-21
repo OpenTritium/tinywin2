@@ -23,7 +23,7 @@ public static class UnattendGenerator {
         ArgumentNullException.ThrowIfNull(options);
         options.Validate();
 
-        var windowsPartition = options.Firmware == UnattendFirmware.Bios ? 2 : 3;
+        var windowsPartition = options.Firmware == UnattendFirmware.Uefi ? 3 : 2;
         var document = new XDocument(
             new XDeclaration("1.0", "utf-8", null),
             new XElement(Ns + "unattend",
@@ -107,12 +107,13 @@ public static class UnattendGenerator {
             disk.Add(
                 new XElement(Ns + "CreatePartitions",
                     CreatePartition(1, "EFI", size: 260),
-                    CreatePartition(2, "MSR", size: 16),
+                    CreatePartition(2, "MSR", size: 128),
                     CreatePartition(3, "Primary", extend: true)),
                 new XElement(Ns + "ModifyPartitions",
+                    // Order is the modification sequence, PartitionID the created partition: the MSR
+                    // (partition 2) cannot be modified, so the Windows entry is second with ID 3.
                     ModifyPartition(1, 1, format: "FAT32", label: "System"),
-                    ModifyPartition(2, 2),
-                    ModifyPartition(3, 3, format: "NTFS", label: "Windows", letter: "C")));
+                    ModifyPartition(2, 3, format: "NTFS", label: "Windows", letter: "C")));
         }
 
         return new XElement(Ns + "DiskConfiguration",
@@ -208,6 +209,7 @@ public static class UnattendGenerator {
                         new XElement(Ns + "Description", "TinyWin kiosk administrator"),
                         new XElement(Ns + "Group", "Administrators"),
                         PasswordElement(options.Password)))),
+            options.Layout == UnattendLayout.Minimal ? FirstLogonWinReCommands(options.Firmware) : null,
             new XElement(Ns + "OOBE",
                 new XElement(Ns + "SkipMachineOOBE", "true"),
                 new XElement(Ns + "SkipUserOOBE", "true"),
@@ -218,6 +220,34 @@ public static class UnattendGenerator {
                 new XElement(Ns + "HideWirelessSetupInOOBE", "true"),
                 new XElement(Ns + "NetworkLocation", "Work"),
                 new XElement(Ns + "ProtectYourPC", "3")));
+
+    /// <summary>
+    ///     Setup always carves a WinRE partition out of the OS volume on NTFS installs. These commands move
+    ///     WinRE onto C: and delete that partition, leaving ESP + MSR + Windows (UEFI) or
+    ///     System Reserved + Windows (BIOS).
+    /// </summary>
+    private static XElement FirstLogonWinReCommands(UnattendFirmware firmware) {
+        // Setup appends the recovery partition after the OS partition, so its number follows the
+        // three-partition UEFI layout and the two-partition BIOS layout.
+        var windows = firmware == UnattendFirmware.Uefi ? 3 : 2;
+        var recovery = windows + 1;
+        return new XElement(Ns + "FirstLogonCommands",
+            SynchronousCommand(1, "Move WinRE off the recovery partition",
+                "cmd /c reagentc /disable"),
+            SynchronousCommand(2, "Delete the setup-created recovery partition and extend Windows",
+                $"cmd /c (echo select disk 0& echo select partition {recovery}& echo delete partition override&"
+                + $" echo select partition {windows}& echo extend)| diskpart"),
+            SynchronousCommand(3, "Register WinRE on C:\\Recovery\\WindowsRE",
+                "cmd /c if not exist C:\\Recovery\\WindowsRE mkdir C:\\Recovery\\WindowsRE&"
+                + " reagentc /setreimage /path C:\\Recovery\\WindowsRE& reagentc /enable"));
+    }
+
+    private static XElement SynchronousCommand(int order, string description, string commandLine) =>
+        new(Ns + "SynchronousCommand",
+            new XAttribute(Wcm + "action", "add"),
+            new XElement(Ns + "Order", order.ToString(CultureInfo.InvariantCulture)),
+            new XElement(Ns + "Description", description),
+            new XElement(Ns + "CommandLine", commandLine));
 
     private static XElement PasswordElement(string password) =>
         new(Ns + "Password",

@@ -334,7 +334,8 @@ internal static class PackageHandler {
                     var xml = UnattendGenerator.Generate(new UnattendOptions {
                         UserName = request.KioskUser,
                         Password = request.KioskPassword,
-                        Firmware = Cli.ParseFirmware(request.Firmware)
+                        Firmware = Cli.ParseFirmware(request.Firmware),
+                        Layout = Cli.ParseLayout(request.Layout)
                     });
                     UnattendValidator.EnsureValid(xml);
                     File.WriteAllText(generated, xml, new UTF8Encoding(false));
@@ -380,6 +381,7 @@ internal static class UnattendHandler {
             ComputerName = request.ComputerName ?? "TINYWIN",
             ImageIndex = (int)request.ImageIndex,
             Firmware = Cli.ParseFirmware(request.Firmware),
+            Layout = Cli.ParseLayout(request.Layout),
             ProductKey = request.ProductKey,
             Locale = request.Locale ?? "zh-CN",
             TimeZone = request.TimeZone ?? "China Standard Time"

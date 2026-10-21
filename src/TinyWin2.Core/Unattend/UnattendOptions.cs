@@ -9,6 +9,19 @@ public enum UnattendFirmware {
     Uefi
 }
 
+/// <summary>Partition layout the answer file creates.</summary>
+public enum UnattendLayout {
+    /// <summary>Microsoft's recommended layout, including the setup-created WinRE partition.</summary>
+    Standard,
+
+    /// <summary>
+    ///     Smallest layout Windows Setup accepts: EFI + MSR + Windows on UEFI (a GPT disk without MSR
+    ///     fails at the disk page), System Reserved + Windows on BIOS. Setup still carves a WinRE
+    ///     partition out of the OS volume, so first-logon commands move WinRE onto C: and delete it.
+    /// </summary>
+    Minimal
+}
+
 /// <summary>
 ///     Inputs for <see cref="UnattendGenerator" />. Every value is written verbatim into Autounattend.xml,
 ///     including the password, because Windows Setup accepts only plain-text local account credentials here.
@@ -22,6 +35,7 @@ public sealed record UnattendOptions {
     public string TimeZone { get; init; } = "China Standard Time";
     public int ImageIndex { get; init; } = 1;
     public UnattendFirmware Firmware { get; init; } = UnattendFirmware.Bios;
+    public UnattendLayout Layout { get; init; } = UnattendLayout.Standard;
     public string? ProductKey { get; init; }
 
     /// <summary>Returns the display name to emit, falling back to <see cref="UserName" /> when blank.</summary>

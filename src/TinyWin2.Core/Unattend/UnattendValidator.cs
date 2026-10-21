@@ -88,8 +88,24 @@ public static class UnattendValidator {
                     errors.Add("windowsPE: Disk 0 has no <CreatePartitions> entries.");
                 }
 
-                if (modifyPartitions.Count != createPartitions.Count) {
-                    errors.Add("windowsPE: every created partition needs exactly one <ModifyPartition>.");
+                // MSR and Extended partitions cannot be modified; listing one in <ModifyPartitions>
+                // makes Setup reject the whole disk layout (0x80042405) before touching the disk.
+                var unmodifiableOrders = createPartitions
+                    .Where(element => element.Element(Ns + "Type")?.Value is { } type
+                                      && (type.Equals("MSR", StringComparison.OrdinalIgnoreCase)
+                                          || type.Equals("Extended", StringComparison.OrdinalIgnoreCase)))
+                    .Select(element => (string?)element.Element(Ns + "Order"))
+                    .OfType<string>()
+                    .ToHashSet(StringComparer.Ordinal);
+                var modifyIds = modifyPartitions
+                    .Select(element => (string?)element.Element(Ns + "PartitionID"))
+                    .ToList();
+                if (modifyIds.Any(id => id is not null && unmodifiableOrders.Contains(id))) {
+                    errors.Add("windowsPE: MSR and Extended partitions cannot be modified.");
+                }
+
+                if (modifyIds.Count != createPartitions.Count - unmodifiableOrders.Count) {
+                    errors.Add("windowsPE: every modifiable created partition needs exactly one <ModifyPartition>.");
                 }
 
                 var types = createPartitions
@@ -98,6 +114,8 @@ public static class UnattendValidator {
                 var hasEfi = types.Contains("EFI", StringComparer.OrdinalIgnoreCase);
                 var hasMsr = types.Contains("MSR", StringComparer.OrdinalIgnoreCase);
                 if (hasEfi != hasMsr) {
+                    // Setup refuses a GPT disk without an MSR: it tries to fit one between the ESP and
+                    // Windows and aborts with DiskLayoutMakeReserved when there is no room.
                     errors.Add("windowsPE: EFI and MSR partitions must be used together.");
                 }
 

@@ -18,8 +18,8 @@ tinywin2 profile list|show|export|validate
 tinywin2 build    --input --index --output --workspace --format wim|esd|vhdx
 tinywin2 preview  --input --index --workspace        # what would each plan change?
 tinywin2 package iso --input --install-image --output --workspace --oscdimg \
-  [--unattend auto|<file>|none] [--firmware bios|uefi] [--kiosk-user --kiosk-password]
-tinywin2 unattend generate --output <file> [--firmware bios|uefi] [--user --password --image-index]
+  [--unattend auto|<file>|none] [--firmware bios|uefi] [--layout standard|minimal] [--kiosk-user --kiosk-password]
+tinywin2 unattend generate --output <file> [--firmware bios|uefi] [--layout standard|minimal] [--user --password --image-index]
 tinywin2 unattend validate --file <autounattend.xml>
 tinywin2 layer list|diff|extract|capture --workspace ...
 ```
@@ -41,7 +41,10 @@ tinywin2 package iso --input --install-image out/install.esd \
 phases, creates a local administrator and signs it in; `--firmware bios` (default)
 writes an MBR layout and `--firmware uefi` a GPT layout. The generated file — and any
 `--unattend <file>` overlay — is validated before it is copied. `--unattend none`
-ships the media untouched.
+ships the media untouched. `--layout minimal` keeps the same partitions but removes the
+setup-created recovery partition: first-logon commands move WinRE to
+`C:\Recovery\WindowsRE` and delete it. UEFI cannot drop the MSR — without it Setup
+fails at the disk page (`DiskLayoutMakeReserved: Couldn't create MSR partition`).
 
 `profiles/vm-init.json` is the shipped THS-only profile, not a general laptop keep-set. It keeps WOW64 for 32-bit THS, Client.CBS for the Windows shell/Chinese text input, Chinese fonts, WinRE, and the system-managed pagefile; `registry.hibernate-disabled` only removes hibernation/fast startup. The default power scheme is left unchanged.
 It disables the RDP service chain and removes RDP client/management tools, OpenSSH client/server components, and SMB service roles; dockur's VNC console on port 8006 is independent. RDP core files remain (`fs.remote-desktop-residuals` is off). `fs.kiosk-shell` remains off until the real THS executable path and startup are tested; `appx.desktop-app-installer` stays kept until the THS installer route is known.
@@ -218,6 +221,16 @@ cycle against a zh-cn 26300 client ISO:
   ISOs have no shells, so only slim images fail. Fix: `DeletePackageFilesAsync`
   must go through `ImageFs.DeleteWithRescueAsync` (which grants the parent
   DELETE_CHILD and retries) and warn loudly if a shell survives.
+
+- **WinPE has no virtio-blk driver** (found 2026-10-21): a qemu test VM that
+  attaches the target disk with `-device virtio-blk-pci` boots Setup, but
+  `diskpart` reports "没有可以显示的固定磁盘" and the unattended
+  `PerformDiskProvisioning` step fails with `VDS_E_OBJECT_NOT_FOUND`
+  (0x80042405) before touching the disk. Microsoft's install `boot.wim` only
+  ships inbox storage drivers, so test harnesses must present the disk as
+  AHCI/SATA (`-drive file=disk.qcow2,format=qcow2,if=ide,index=0` on q35) or
+  inject the virtio driver into the media. A disk pre-partitioned offline
+  masks the failure: the partitions exist, but Setup still cannot see them.
 
 ## Field notes: deploy-loop postmortem (dockur + WSL2 podman, 2026-10-13)
 

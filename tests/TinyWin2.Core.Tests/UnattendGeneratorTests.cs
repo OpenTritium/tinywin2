@@ -53,6 +53,51 @@ public sealed class UnattendGeneratorTests {
     }
 
     [Test]
+    public async Task MinimalLayoutKeepsTheMsrAndDeletesTheRecoveryPartition() {
+        var document = XDocument.Parse(UnattendGenerator.Generate(new UnattendOptions {
+            Firmware = UnattendFirmware.Uefi,
+            Layout = UnattendLayout.Minimal
+        }));
+        await Assert.That(PartitionTypes(document)).IsEquivalentTo(new[] { "EFI", "MSR", "Primary" });
+        await Assert.That(InstallPartition(document)).IsEqualTo("3");
+        await Assert.That(UnattendValidator.Validate(document.ToString())).IsEmpty();
+
+        var commands = document.Descendants(Ns + "FirstLogonCommands")
+            .Descendants(Ns + "CommandLine")
+            .Select(element => element.Value)
+            .ToList();
+        await Assert.That(commands.Count).IsEqualTo(3);
+        await Assert.That(commands[0]).Contains("reagentc /disable");
+        await Assert.That(commands[1]).Contains("select partition 4");
+        await Assert.That(commands[1]).Contains("delete partition override");
+        await Assert.That(commands[1]).Contains("select partition 3");
+        await Assert.That(commands[2]).Contains("reagentc /enable");
+    }
+
+    [Test]
+    public async Task MinimalBiosLayoutDeletesThirdPartitionAndExtendsSecond() {
+        var document = XDocument.Parse(UnattendGenerator.Generate(new UnattendOptions {
+            Firmware = UnattendFirmware.Bios,
+            Layout = UnattendLayout.Minimal
+        }));
+        await Assert.That(PartitionTypes(document)).IsEquivalentTo(new[] { "Primary", "Primary" });
+        await Assert.That(InstallPartition(document)).IsEqualTo("2");
+
+        var commands = document.Descendants(Ns + "FirstLogonCommands")
+            .Descendants(Ns + "CommandLine")
+            .Select(element => element.Value)
+            .ToList();
+        await Assert.That(commands[1]).Contains("select partition 3");
+        await Assert.That(commands[1]).Contains("select partition 2");
+    }
+
+    [Test]
+    public async Task StandardLayoutLeavesWinReAlone() {
+        var document = Generate(UnattendFirmware.Uefi);
+        await Assert.That(document.Descendants(Ns + "FirstLogonCommands")).IsEmpty();
+    }
+
+    [Test]
     public async Task OobeIsSkippedAndLocalAccountMatchesAutoLogon() {
         var document = Generate(UnattendFirmware.Bios);
         var oobe = document.Descendants(Ns + "OOBE").Single();
@@ -112,5 +157,19 @@ public sealed class UnattendGeneratorTests {
         firstModify.Add(new XElement(Ns + "Active", "true"));
         var errors = UnattendValidator.Validate(document.ToString());
         await Assert.That(errors.Any(error => error.Contains("must not mark any partition active"))).IsTrue();
+    }
+
+    [Test]
+    public async Task ValidatorRejectsEfiLayoutWithoutMsr() {
+        // The GPT disk without MSR this validator guards against is exactly what made Setup abort
+        // with DiskLayoutMakeReserved: Couldn't create MSR partition (0x8007000e).
+        var document = Generate(UnattendFirmware.Uefi);
+        var setup = Setup(document);
+        var msr = setup.Descendants(Ns + "CreatePartition")
+            .Single(element => (string?)element.Element(Ns + "Type") == "MSR");
+        msr.Remove();
+
+        var errors = UnattendValidator.Validate(document.ToString());
+        await Assert.That(errors.Any(error => error.Contains("EFI and MSR"))).IsTrue();
     }
 }

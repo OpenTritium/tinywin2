@@ -71,6 +71,13 @@ internal static class Cli {
             _ => throw new ArgumentException($"unknown firmware '{value}' (bios|uefi)")
         };
 
+    public static UnattendLayout ParseLayout(string value) =>
+        value.ToLowerInvariant() switch {
+            "standard" => UnattendLayout.Standard,
+            "minimal" => UnattendLayout.Minimal,
+            _ => throw new ArgumentException($"unknown layout '{value}' (standard|minimal)")
+        };
+
     public static OutputFormat ParseCaptureFormat(string value) =>
         value.ToLowerInvariant() switch {
             "wim" => OutputFormat.Wim,
