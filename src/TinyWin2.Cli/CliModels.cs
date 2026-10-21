@@ -88,7 +88,8 @@ internal sealed record PackageIsoRequest(
     string Firmware,
     string Layout,
     string KioskUser,
-    string KioskPassword);
+    string KioskPassword,
+    string? ProductKey);
 
 internal sealed record UnattendGenerateRequest(
     string Output,

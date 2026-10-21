@@ -182,8 +182,9 @@ public static class UnattendGenerator {
             new XElement(Ns + "AcceptEula", "true"),
             new XElement(Ns + "FullName", options.EffectiveDisplayName),
             new XElement(Ns + "Organization", "TinyWin"),
-            // An explicit (possibly empty) ProductKey with WillShowUI=Never is what keeps setup
-            // from stopping at the key page on an unattended install.
+            // An explicit ProductKey with WillShowUI=Never keeps setup from stopping at the key
+            // page on unattended installs. An empty key still worked on 26100, but 26300 media
+            // prompts for a key regardless, so pass the edition's generic key via --product-key.
             new XElement(Ns + "ProductKey",
                 new XElement(Ns + "Key", options.ProductKey ?? ""),
                 new XElement(Ns + "WillShowUI", "Never")));

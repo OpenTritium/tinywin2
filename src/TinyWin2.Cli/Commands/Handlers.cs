@@ -334,7 +334,8 @@ internal static class PackageHandler {
                     var xml = UnattendGenerator.Generate(new UnattendOptions {
                         UserName = request.KioskUser,
                         Password = request.KioskPassword,
-                        Firmware = Cli.ParseFirmware(request.Firmware)
+                        Firmware = Cli.ParseFirmware(request.Firmware),
+                        ProductKey = request.ProductKey
                     });
                     UnattendValidator.EnsureValid(xml);
                     File.WriteAllText(generated, xml, new UTF8Encoding(false));

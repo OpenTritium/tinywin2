@@ -257,6 +257,8 @@ internal static class CommandLine {
         kioskUser.DefaultValueFactory = _ => "TinyWin";
         var kioskPassword = Text("--kiosk-password", "password for the generated unattend account (plain text)");
         kioskPassword.DefaultValueFactory = _ => "TinyWin2026Temp";
+        var productKey = Text("--product-key",
+            "25-character product key for the generated unattend; required on Windows 11 24H2+/26H2 media, where an empty key no longer skips the setup key page");
         var overwrite = Flag("--overwrite", "replace an existing ISO");
         iso.Add(input);
         iso.Add(installImage);
@@ -268,6 +270,7 @@ internal static class CommandLine {
         iso.Add(layout);
         iso.Add(kioskUser);
         iso.Add(kioskPassword);
+        iso.Add(productKey);
         iso.Add(overwrite);
         iso.SetAction(result => PackageHandler.CreateIsoAsync(new(
             result.GetRequiredValue(input),
@@ -280,7 +283,8 @@ internal static class CommandLine {
             result.GetValue(firmware)!,
             result.GetValue(layout)!,
             result.GetValue(kioskUser)!,
-            result.GetValue(kioskPassword)!)));
+            result.GetValue(kioskPassword)!,
+            result.GetValue(productKey))));
         command.Add(iso);
         return command;
     }
