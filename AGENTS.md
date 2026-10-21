@@ -608,3 +608,22 @@ driving the live guest over Win+R/QEMU-monitor:
   answer sets DefaultUserName=Docker but its base64 password never replaced ours, so
   AutoLogon submitted Docker/TinyWin2026Temp and the lock screen reported a bad
   password with no user input.
+
+## ROOT CAUSE #6 (2026-10-22): ComputerName in specialize breaks UserAccounts group adds
+
+- **Symptom:** the unattended account exists but is in no group; `net localgroup
+  administrators` lacks it, so admin tools (`diskmgmt.msc`) fail even with EnableLUA=0.
+- **Log evidence:** `Windows\Panther\UnattendGC\setupact.log`:
+  `UserAccounts: failed to add 'TinyWin' to group 'Users' (0x8007056b)` and the same
+  for `Administrators`. 0x8007056b = ERROR_NONE_MAPPED (member does not exist).
+- **Cause:** the answer renames the computer in the specialize pass; the rename is only
+  effective after the post-OOBE reboot. The oobeSystem UserAccounts pass still resolves
+  members against the old SAM local domain name (`NEWNAME\TinyWin`), so the group add
+  fails while the account creation itself succeeds.
+- **Fix:** omit `<ComputerName>` from the answer (Setup picks a name such as
+  `TINYWIN-XXXXXXX`), or add the group in a later boot. The shipped vminit answer omits
+  it; `hv-smoke-final.ps1` then verifies `net localgroup administrators` lists TinyWin,
+  the token carries S-1-5-32-544, and `diskmgmt.msc` is present.
+- **Also:** `registry.autologon-user` was dropped from the vm-init profile. Its one-shot
+  CreateUser service raced the OOBE pass (event 7034 twice, never self-deleted) and
+  could not repair the membership.
