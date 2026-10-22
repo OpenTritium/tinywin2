@@ -650,3 +650,14 @@ driving the live guest over Win+R/QEMU-monitor:
   `curl -o C:\THS.exe http://20.20.20.1:8000/THS_insoft_9.60.81_1019.exe`
 - **compose is the recommended startup** (podman-compose 1.6.0): restart always,
   stop_grace_period 2m; Windows Home has no RDP server so 3389 is pointless.
+
+## Field notes: unattend password quirk (2026-10-22)
+
+- Setting a local-account password in unattend with `PlainText=true` (or an
+  AutoLogon password) makes setup set `pwdLastSet=0`: the first logon shows
+  "在登录之前，必须更改用户的密码" and interactive password change would break
+  kiosk automation. dockur's own answer templates avoid this by storing the
+  password **base64-encoded (UTF-16LE) with `PlainText=false`** - e.g.
+  base64(utf16le("123456")) = `MQAyADMANAA1ADYA`. Same trick for the AutoLogon
+  Password element. Our answers now do exactly this; the FirstLogonCommands
+  `net user` workaround was tried and reverted (cleaner single mechanism).
