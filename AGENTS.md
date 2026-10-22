@@ -686,3 +686,26 @@ driving the live guest over Win+R/QEMU-monitor:
   the WSL host is reachable from the guest at the gateway address
   (http://<guest-gw>:8000/...); the gateway (podman bridge / WSL side) always
   routes, the container IP may not.
+
+## Field notes: guest SMB needs BOTH switches on 24H2+ (2026-10-22)
+
+- Install-verified root cause chain for guest SMB access to the dockur share:
+  1. AllowInsecureGuestAuth=1 (LanmanWorkstation\Parameters, specialize) is
+     necessary but NOT sufficient.
+  2. Windows 11 24H2+ SMB client requires signing by default; guest sessions
+     cannot sign (no auth = no key), so the session dies with "你的电脑配置为
+     需要 SMB 登录" regardless of the guest policy. Also set
+     RequireSecuritySignature=0 in the same key. Both values are now preset in
+     the answers (specialize RunSynchronous, Orders 1-2).
+- passt mode addressing: the guest mirrors the container IP (both show e.g.
+  10.89.0.3), so the container is NOT reachable at its own IP from the guest.
+  dockur keeps a 20.20.20.1 compat alias but passt does not forward to it
+  reliably. The working address is the guest DEFAULT GATEWAY IP - passt
+  forwards gateway-addressed connections to the container loopback, which is
+  exactly why dockur binds smbd to lo only in passt mode. Resolve the gateway
+  with ipconfig and use \\ <gateway> \Data.
+- Earlier "working" SMB used real credentials (a TinyWin account created
+  container-side); that account dies with the container. With the two registry
+  switches preset in the image, guest access needs no account at all.
+- dockur regenerates /etc/samba/smb.conf on every container start; any manual
+  smbd bind edits are ephemeral (and unnecessary in passt mode).
