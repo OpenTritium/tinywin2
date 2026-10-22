@@ -651,13 +651,20 @@ driving the live guest over Win+R/QEMU-monitor:
 - **compose is the recommended startup** (podman-compose 1.6.0): restart always,
   stop_grace_period 2m; Windows Home has no RDP server so 3389 is pointless.
 
-## Field notes: unattend password quirk (2026-10-22)
+## Field notes: unattend password quirk (2026-10-22, corrected)
 
-- Setting a local-account password in unattend with `PlainText=true` (or an
-  AutoLogon password) makes setup set `pwdLastSet=0`: the first logon shows
-  "在登录之前，必须更改用户的密码" and interactive password change would break
-  kiosk automation. dockur's own answer templates avoid this by storing the
-  password **base64-encoded (UTF-16LE) with `PlainText=false`** - e.g.
-  base64(utf16le("123456")) = `MQAyADMANAA1ADYA`. Same trick for the AutoLogon
-  Password element. Our answers now do exactly this; the FirstLogonCommands
-  `net user` workaround was tried and reverted (cleaner single mechanism).
+- Setting a local-account password in unattend with PlainText=true makes setup
+  set pwdLastSet=0: the first logon shows the forced password-change dialog,
+  which breaks kiosk automation.
+- PlainText=false does NOT mean base64 for LocalAccount/AutoLogon Password
+  elements: setup fails to decode it ([Shell Unattend] Failed to decode password
+  0x8007000d -> oobeSystem 0x8030000b -> the generic Windows cannot complete
+  installation dialog, install dead). dockurs template carries such a base64
+  block only as dead placeholder text that answer.sh replaces wholesale.
+- Working recipe: passwordless LocalAccount + passwordless AutoLogon in unattend,
+  then FirstLogonCommands on first boot: net user TinyWin 123456, plus Winlogon
+  AutoAdminLogon/DefaultUserName/DefaultPassword registry values so later
+  reboots autologon via the classic path.
+- Diagnosing install-time unattend failures: mount the target disk read-only
+  (qemu-nbd + ntfs-3g) and read C:/Windows/Panther/UnattendGC/setupact.log -
+  it names the failing component and HRESULT; the on-screen dialog is generic.
