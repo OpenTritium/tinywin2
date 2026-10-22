@@ -735,3 +735,11 @@ driving the live guest over Win+R/QEMU-monitor:
   for the device switch).
 - post-v40.cmd MUST have CRLF endings: with LF, cmd mis-expands %ROOT% in the
   long quoted oscdimg line (empty %ROOT% -> "Could not open boot sector file").
+
+## Field notes: percent escaping in FirstLogonCommands (2026-10-22)
+
+- FirstLogonCommands CommandLine strings undergo environment-variable expansion
+  at execution: a bare `for %d in (...)` loop variable is expanded to EMPTY
+  (undefined env var d) and the command silently fails. Escape as `%%d` exactly
+  like a batch file. Verified: v8/v9 installs with bare %d never staged the
+  viogpudo driver; %%d is the fix (matches dockur, whose commands contain no %).
