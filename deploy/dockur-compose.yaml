@@ -1,0 +1,38 @@
+# dockur/windows 部署模板 - TinyWin2 kiosk VM (podman-compose 1.6.0)
+#
+# 用法 (WSL Ubuntu):
+#   mkdir -p ~/dockur-tw2 && cd ~/dockur-tw2
+#   cp <repo>/deploy/dockur-compose.yaml compose.yaml
+#   cp win11_home_26300.9457_vminit.iso custom.iso    # tinywin2 build 产物
+#   podman-compose up -d
+#   # Web 查看器: http://127.0.0.1:8006/ (WSL localhost 转发到 Windows)
+#
+# /storage 数据布局 (~/dockur-tw2):
+#   custom.iso  安装介质; dockur 检测到后优先引导, 装完保留可随时重装
+#   data.img    guest 系统盘 (稀疏文件, 上限 32G)
+#
+# guest: TinyWin / 123456 (Administrators, 自动登录)
+# 传入文件: 宿主 Downloads 经 dockur 内置 smbd 共享为 \\server\Data;
+#   镜像已内置 AllowInsecureGuestAuth=1, 无需认证即可连接。
+
+services:
+  windows:
+    image: docker.io/dockurr/windows
+    container_name: windows
+    environment:
+      VERSION: "11"      # 有 custom.iso 时 dockur 直接引导我们的镜像
+      DISK_SIZE: "32G"   # data.img 上限 (稀疏, 按需增长)
+      RAM_SIZE: "2G"
+      CPU_CORES: "2"
+    devices:
+      - /dev/kvm         # KVM 硬件加速 (WSL2 内核)
+      - /dev/net/tun
+    cap_add:
+      - NET_ADMIN        # dockur 用户态网络 (passt, 20.20.20.x)
+    ports:
+      - 127.0.0.1:8006:8006
+    volumes:
+      - /home/triti/dockur-tw2:/storage
+      - /mnt/c/Users/triti/Downloads:/shared
+    restart: always      # WSL 启动即自动拉起 VM
+    stop_grace_period: 2m
