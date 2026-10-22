@@ -699,11 +699,11 @@ driving the live guest over Win+R/QEMU-monitor:
      the answers (specialize RunSynchronous, Orders 1-2).
 - passt mode addressing: the guest mirrors the container IP (both show e.g.
   10.89.0.3), so the container is NOT reachable at its own IP from the guest.
-  dockur keeps a 20.20.20.1 compat alias but passt does not forward to it
-  reliably. The working address is the guest DEFAULT GATEWAY IP - passt
-  forwards gateway-addressed connections to the container loopback, which is
-  exactly why dockur binds smbd to lo only in passt mode. Resolve the gateway
-  with ipconfig and use \\ <gateway> \Data.
+  The 20.20.20.1 compat alias (dockur adds it as eth0:compat) is NOT forwarded
+  and does not work - ignore it. The only working address is the guest DEFAULT
+  GATEWAY IP: passt forwards gateway-addressed connections to the container
+  loopback, which is exactly why dockur binds smbd to lo only in passt mode.
+  Run ipconfig in the guest and use \\ <gateway> \Data.
 - Earlier "working" SMB used real credentials (a TinyWin account created
   container-side); that account dies with the container. With the two registry
   switches preset in the image, guest access needs no account at all.
