@@ -709,3 +709,16 @@ driving the live guest over Win+R/QEMU-monitor:
   switches preset in the image, guest access needs no account at all.
 - dockur regenerates /etc/samba/smb.conf on every container start; any manual
   smbd bind edits are ephemeral (and unnecessary in passt mode).
+
+## Field notes: display driver (viogpudo) must be a FirstLogonCommand (2026-10-22)
+
+- QEMU exposes -device virtio-vga; without a bound GPU driver Windows runs the
+  Basic Display Adapter and the resolution is fixed at 1280x800.
+- dockur's stock answers run `pnputil.exe -i -a
+  %SystemRoot%\Drivers\viogpudo\viogpudo.inf` as a FirstLogonCommand (see
+  /run/assets/win10x64.cmd et al). The driver payload reaches the guest via the
+  $OEM$/$$/Drivers/viogpudo copy on dockur's setup USB.
+- Our replaced answer lacked that command, so installs showed a fixed
+  resolution. Fixed: the same pnputil line is now Order 1 in our
+  FirstLogonCommands. Side effect of replacing dockur's answer: their
+  Unattend.vbs post-logon config (Z: mapping etc.) also never ran.
