@@ -722,3 +722,16 @@ driving the live guest over Win+R/QEMU-monitor:
   resolution. Fixed: the same pnputil line is now Order 1 in our
   FirstLogonCommands. Side effect of replacing dockur's answer: their
   Unattend.vbs post-logon config (Z: mapping etc.) also never ran.
+
+## Field notes: FirstLogonCommands need cmd /c for builtins (2026-10-22)
+
+- FirstLogonCommands are dispatched via CreateProcess, NOT through cmd: cmd
+  builtins (`for`, `if exist`) silently do nothing. Wrap compound commands:
+  `cmd /c for %d in (C D E F...) do @if exist ...` (single % in the XML).
+- Debugged live: the wrapped for-loop scans C-K drive letters for
+  $OEM$\$$\Drivers\viogpudo\viogpudo.inf on the install media and pnputil
+  /add-driver's it - verified working interactively (VioGpuDod kernel driver
+  bound to PCI\VEN_1AF4&DEV_1050 immediately after pnputil, no reboot needed
+  for the device switch).
+- post-v40.cmd MUST have CRLF endings: with LF, cmd mis-expands %ROOT% in the
+  long quoted oscdimg line (empty %ROOT% -> "Could not open boot sector file").
