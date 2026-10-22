@@ -627,3 +627,26 @@ driving the live guest over Win+R/QEMU-monitor:
 - **Also:** `registry.autologon-user` was dropped from the vm-init profile. Its one-shot
   CreateUser service raced the OOBE pass (event 7034 twice, never self-deleted) and
   could not repair the membership.
+
+## Field notes: dual-answer launcher finalized (2026-10-22)
+
+- **The ISO ships two answers**: `Autounattend-TinyWin-0.xml` (DiskID 0, direct/Hyper-V)
+  and `Autounattend-TinyWin-1.xml` (DiskID 1, dockur). The boot.wim launcher
+  (setup-launch.cmd) picks `-1` when dockur's answer USB (`$WinPEDriver$\NetKVM`)
+  is present, else `-0`. Answers are identical except DiskID; password 123456.
+- **Do NOT add virtio drivers anywhere in our ISO.** dockur's answer USB re-stages
+  `$WinPEDriver$` (vioscsi/viostor/NetKVM, 109 files) on every boot and setup loads
+  them exactly once - injecting/drvloading the same packages again (boot.wim DISM,
+  own $WinPEDriver$, drvload) aborts setup with `0x80070103 - 0x40031` (duplicate
+  driver install; same root cause as quickemu #1791/#1958). Proven twice.
+- **Answers preset `AllowInsecureGuestAuth=1`** (specialize RunSynchronous) - Win11
+  24H2+ blocks insecure guest SMB logons by default, which produced
+  "你的电脑配置为需要 SMB 登录" on the first \\host.lan\Data attempt.
+- **File transfer into the guest** (no browser, SMB blocked by default): the dockur
+  container serves /shared over SMB; from WSL/container side an HTTP server on
+  port 8000 is reachable from the guest at the passt loopback-mapped address
+  20.20.20.1 (dockur runs passt with the host-loopback mapped there; smbd also
+  binds 20.20.20.1:445). Guest one-liner:
+  `curl -o C:\THS.exe http://20.20.20.1:8000/THS_insoft_9.60.81_1019.exe`
+- **compose is the recommended startup** (podman-compose 1.6.0): restart always,
+  stop_grace_period 2m; Windows Home has no RDP server so 3389 is pointless.
