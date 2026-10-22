@@ -1039,7 +1039,7 @@
       "planId": "service.server",
       "enabled": true,
       "parameters": {
-        "startMode": "disabled"
+        "startMode": "delayed"
       }
     },
     {
@@ -1114,7 +1114,7 @@
       "planId": "service.wlan-config",
       "enabled": true,
       "parameters": {
-        "startMode": "disabled"
+        "startMode": "delayed"
       }
     },
     {
@@ -1125,7 +1125,7 @@
       "planId": "service.workstation",
       "enabled": true,
       "parameters": {
-        "startMode": "disabled"
+        "startMode": "delayed"
       }
     },
     {
@@ -1191,7 +1191,7 @@
       "planId": "service.remote-desktop-services",
       "enabled": true,
       "parameters": {
-        "startMode": "disabled"
+        "startMode": "delayed"
       }
     },
     {
