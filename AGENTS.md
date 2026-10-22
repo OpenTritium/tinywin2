@@ -668,3 +668,21 @@ driving the live guest over Win+R/QEMU-monitor:
 - Diagnosing install-time unattend failures: mount the target disk read-only
   (qemu-nbd + ntfs-3g) and read C:/Windows/Panther/UnattendGC/setupact.log -
   it names the failing component and HRESULT; the on-screen dialog is generic.
+
+## Field notes: dockur network modes + final password scheme (2026-10-22)
+
+- FINAL password scheme (install-verified): Value = base64(UTF-16LE(plaintext +
+  element name)) with PlainText=false - dockur encodeUnattendPassword appends the
+  ELEMENT NAME as suffix ("123456" + "Password" -> MQAyADMANAA1ADYAUABhAHMAcwB3AG8AcgBkAA==).
+  Without the suffix setup fails to decode (0x8007000d) and the install dies.
+  This scheme does not set pwdLastSet=0, so no forced password change.
+- dockur has two network modes: with /dev/net/tun visible it switches to TAP
+  bridging - the guest takes over the container IP (172.x.0/20 via dnsmasq) while
+  its smb.conf still binds 20.20.20.1, so the Data share becomes unreachable from
+  the guest (generic "check the spelling" error for both IP and host.lan).
+  Without /dev/net/tun it uses passt user-mode networking (20.20.20.x) and the
+  share works natively. Keep tun/NET_ADMIN out of the kiosk deployment.
+- Emergency file-transfer fallback when SMB is unreachable: any HTTP server on
+  the WSL host is reachable from the guest at the gateway address
+  (http://<guest-gw>:8000/...); the gateway (podman bridge / WSL side) always
+  routes, the container IP may not.

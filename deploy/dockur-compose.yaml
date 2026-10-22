@@ -26,9 +26,9 @@ services:
       CPU_CORES: "2"
     devices:
       - /dev/kvm         # KVM 硬件加速 (WSL2 内核)
-      - /dev/net/tun
-    cap_add:
-      - NET_ADMIN        # dockur 用户态网络 (passt, 20.20.20.x)
+    # 不要挂 /dev/net/tun、不要 NET_ADMIN: tun 可用时 dockur 切 TAP 桥接,
+    # guest 会拿走容器 IP(172.x) 而 smbd 仍绑 20.20.20.1 -> SMB 不可达。
+    # 无 tun 时 dockur 用 passt 用户态网络(20.20.20.x), smbd 原生可用。
     ports:
       - 127.0.0.1:8006:8006
     volumes:
