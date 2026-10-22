@@ -32,7 +32,11 @@ services:
     ports:
       - 127.0.0.1:8006:8006
     volumes:
-      - /home/triti/dockur-tw2:/storage
+      - /home/triti/dockur-tw2:/storage    # dockur 数据家: data.img/custom.iso/setup.img/UEFI vars
       - /mnt/c/Users/triti/Downloads:/shared
+      # ^ 宿主侧路径可换任意目录; 容器侧必须挂为 /shared -
+      #   dockur samba.sh 只认 /shared, 自动发布为 [Data] 共享(guest ok),
+      #   guest 经 \\网关IP\Data 访问(网关 IP 用 guest 里 ipconfig 查)。
+      #   共享名固定 Data, YAML 顺序无关。
     restart: always      # WSL 启动即自动拉起 VM
     stop_grace_period: 2m
