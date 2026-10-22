@@ -743,3 +743,16 @@ driving the live guest over Win+R/QEMU-monitor:
   (undefined env var d) and the command silently fails. Escape as `%%d` exactly
   like a batch file. Verified: v8/v9 installs with bare %d never staged the
   viogpudo driver; %%d is the fix (matches dockur, whose commands contain no %).
+
+## Field notes: percent-free FirstLogonCommands (2026-10-22 final)
+
+- The % expansion chain for FirstLogonCommands is not reliably determinable
+  offline (registry storage, oobeldr handling, CreateProcess all differ in what
+  they expand). Do not use % variables in FirstLogonCommands at all: expand the
+  loop into explicit per-letter commands instead:
+  `cmd /c if exist <drive>:\$OEM$\$$\Drivers\viogpudo\viogpudo.inf
+  pnputil.exe /add-driver <drive>:\... /install` for D:, E:, F:.
+- Also verified live: pnputil /add-driver + /install binds the viogpudo driver
+  to PCI\VEN_1AF4&DEV_1050 IMMEDIATELY (no reboot); the resolution dropdown
+  unlocks right away. A reboot is only needed if the basic display adapter is
+  not live-restarted - pnputil /restart-device <instance-id> also works.
